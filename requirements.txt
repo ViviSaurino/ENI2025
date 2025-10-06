@@ -1,0 +1,9 @@
+streamlit
+pandas
+numpy
+st-aggrid
+openpyxl
+reportlab
+gspread
+gspread-dataframe
+google-auth
