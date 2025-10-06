@@ -124,6 +124,31 @@ def new_row(prefix):
         "Evaluación": "Pendiente", "Calificación": 0,
     }
 
+# --------- (NUEVO) Helper de lectura de verificación desde Google Sheets ---------
+def _read_sheet_tab(tab_name: str):
+    """
+    Intenta leer la pestaña `tab_name` desde el Google Sheet definido en st.secrets.
+    Si falta dependencia o secrets/permiso, devuelve None silenciosamente (no rompe tu flujo).
+    """
+    try:
+        import gspread
+        from google.oauth2.service_account import Credentials
+        sa_info = st.secrets["gcp_service_account"]
+        scopes = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
+        creds = Credentials.from_service_account_info(sa_info, scopes=scopes)
+        gc = gspread.authorize(creds)
+        sh = gc.open_by_url(st.secrets["SHEET_URL"])
+        ws = sh.worksheet(tab_name)
+        records = ws.get_all_records()
+        df = pd.DataFrame(records)
+        # Garantiza columnas de tu modelo
+        for c in COLS:
+            if c not in df.columns:
+                df[c] = None
+        return df[COLS]
+    except Exception:
+        return None
+
 # Guardar a CSV por área
 def _save_area_df(area: str, df: pd.DataFrame):
     path = os.path.join(DATA_DIR, f"{area.replace(' ','_').lower()}.csv")
@@ -199,14 +224,14 @@ st.markdown("""
 
 .ico-excel{ background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%2300a651' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/><path d='M9 17l3-5 3 5'/><path d='M9 12l3 5 3-5'/></svg>"); }
 .ico-csv{ background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%230084ff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/><text x='7' y='17' font-size='8' fill='%230084ff' font-family='monospace'>CSV</text></svg>"); }
-.ico-pdf{ background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%23e53935' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/><text x='7' y='17' font-size='8' fill='%23e53935' font-family='monospace'>PDF</text></svg>"); }
+.ico-pdf{ background-image=url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%23e53935' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/><text x='7' y='17' font-size='8' fill='%23e53935' font-family='monospace'>PDF</text></svg>"); }
 </style>
 """, unsafe_allow_html=True)
 
 # ---------- Título ----------
 st.title("📁 Gestión (ENI2025)")
 
-# ============== FUNCIÓN RENDER (con FORM para guardado fiable) ==============
+# ============== FUNCIÓN RENDER (sin st.form, con botón nativo) ==============
 def render_area_block(area: str):
     prefix = AREAS[area]
     sk = f"df_{area}"
@@ -214,221 +239,224 @@ def render_area_block(area: str):
     st.markdown('<div class="section-card">', unsafe_allow_html=True)
     st.markdown(f"<div class='section-title'>{area}</div>", unsafe_allow_html=True)
 
-    # ------------- FORM: garantiza que el botón Guardar confirme la edición -------------
-    with st.form(f"form_{area}", clear_on_submit=False):
+    # --------- DF base para grid (lo que se ve en pantalla) ---------
+    df = st.session_state[sk].copy()
+    for c in COLS:
+        if c not in df.columns:
+            df[c] = None
+    df = df[COLS]
+    for c in ["Fecha inicio", "Vencimiento", "Fecha fin"]:
+        df[c] = pd.to_datetime(df[c], errors="coerce")
 
-        # --------- DF base para grid (lo que se ve en pantalla) ---------
-        df = st.session_state[sk].copy()
-        for c in COLS:
-            if c not in df.columns:
-                df[c] = None
-        df = df[COLS]
-        for c in ["Fecha inicio", "Vencimiento", "Fecha fin"]:
-            df[c] = pd.to_datetime(df[c], errors="coerce")
+    # ====== hotkeys dentro del grid ======
+    grid_hotkeys_js = JsCode(f"""
+    function(e){{
+      const api = e.api, evt = e.event; if (!evt) return;
+      function nextId(prefix){{ let max=0; api.forEachNode(n=>{{ const v=String((n.data&&n.data['Id'])||''); if(v.startsWith(prefix)){{ const num=parseInt(v.replace(prefix,''))||0; if(num>max) max=num; }} }}); return prefix + (max + 1); }}
+      if (evt.key==='Enter' && evt.shiftKey) {{
+        evt.preventDefault(); evt.stopPropagation();
+        const defs=e.columnApi.getAllGridColumns().map(c=>c.getColDef().field);
+        const row={{}}; defs.forEach(f=>row[f]=null);
+        row['Id']=nextId('{prefix}'); row['Ts_creación']=new Date().toISOString();
+        api.applyTransaction({{ add:[row] }});
+      }}
+      if (evt.key==='Delete') {{
+        const sel=api.getSelectedRows(); if(sel&&sel.length){{ evt.preventDefault(); evt.stopPropagation(); api.applyTransaction({{ remove: sel }}); }}
+      }}
+    }}""")
+    suppress_kbd = JsCode("function(params){ const e=params.event; if(!e) return false; return false; }")
 
-        # ====== hotkeys dentro del grid ======
-        grid_hotkeys_js = JsCode(f"""
-        function(e){{
-          const api = e.api, evt = e.event; if (!evt) return;
-          function nextId(prefix){{ let max=0; api.forEachNode(n=>{{ const v=String((n.data&&n.data['Id'])||''); if(v.startsWith(prefix)){{ const num=parseInt(v.replace(prefix,''))||0; if(num>max) max=num; }} }}); return prefix + (max + 1); }}
-          if (evt.key==='Enter' && evt.shiftKey) {{
-            evt.preventDefault(); evt.stopPropagation();
-            const defs=e.columnApi.getAllGridColumns().map(c=>c.getColDef().field);
-            const row={{}}; defs.forEach(f=>row[f]=null);
-            row['Id']=nextId('{prefix}'); row['Ts_creación']=new Date().toISOString();
-            api.applyTransaction({{ add:[row] }});
-          }}
-          if (evt.key==='Delete') {{
-            const sel=api.getSelectedRows(); if(sel&&sel.length){{ evt.preventDefault(); evt.stopPropagation(); api.applyTransaction({{ remove: sel }}); }}
-          }}
-        }}
-        """)
-        suppress_kbd = JsCode("function(params){ const e=params.event; if(!e) return false; return false; }")
+    # ------------ CONFIG GRID ------------
+    gob = GridOptionsBuilder.from_dataframe(df)
+    gob.configure_grid_options(
+        rowSelection="multiple",
+        suppressRowClickSelection=True,
+        domLayout="normal",
+        rowHeight=38, headerHeight=46,
+        wrapHeaderText=True, autoHeaderHeight=True,
+        suppressSizeToFit=False, alwaysShowHorizontalScroll=False,
+        enableRangeSelection=True, enableCellTextSelection=True,
+        singleClickEdit=True, stopEditingWhenCellsLoseFocus=True,  # importante para que el click del botón confirme edición
+        undoRedoCellEditing=True, enterMovesDown=True,
+        onCellKeyDown=grid_hotkeys_js, suppressKeyboardEvent=suppress_kbd,
+    )
+    gob.configure_selection("multiple", use_checkbox=True)
+    gob.configure_column(
+        "Id", editable=False, width=110, minWidth=110, pinned="left",
+        checkboxSelection=True, headerCheckboxSelection=True
+    )
 
-        # ------------ CONFIG GRID ------------
-        gob = GridOptionsBuilder.from_dataframe(df)
-        gob.configure_grid_options(
-            rowSelection="multiple",
-            suppressRowClickSelection=True,
-            domLayout="normal",
-            rowHeight=38, headerHeight=46,
-            wrapHeaderText=True, autoHeaderHeight=True,
-            suppressSizeToFit=False, alwaysShowHorizontalScroll=False,
-            enableRangeSelection=True, enableCellTextSelection=True,
-            singleClickEdit=True, stopEditingWhenCellsLoseFocus=True,
-            undoRedoCellEditing=True, enterMovesDown=True,
-            onCellKeyDown=grid_hotkeys_js, suppressKeyboardEvent=suppress_kbd,
-        )
-        gob.configure_selection("multiple", use_checkbox=True)
+    colw = {
+        "Tarea": 180, "Tipo": 140, "Responsable": 140, "Fase": 130,
+        "Complejidad": 130, "Prioridad": 130, "Estado": 130,
+        "Fecha inicio": 150, "Vencimiento": 150, "Fecha fin": 150,
+        "Duración": 100, "Días hábiles": 110,
+        "Cumplimiento": 160, "¿Generó alerta?": 130, "Tipo de alerta": 160,
+        "¿Se corrigió?": 130, "Evaluación": 130, "Calificación": 120
+    }
+
+    # “Banderitas” con emojis en Complejidad / Prioridad
+    flag_formatter = JsCode("""
+    function(p){
+      const v = String(p.value || '');
+      if (v === 'Alta')  return '🔴 Alta';
+      if (v === 'Media') return '🟡 Media';
+      if (v === 'Baja')  return '🟢 Baja';
+      return v || '—';
+    }""")
+    white_style = JsCode("function(){return {background:'#fff',textAlign:'left'};}")
+
+    # Texto libre
+    for c, fx in [("Tarea", 3), ("Tipo", 2), ("Tipo de alerta", 2), ("Responsable", 2), ("Fase", 1)]:
+        gob.configure_column(c, editable=True, minWidth=colw[c], flex=fx, wrapText=True, autoHeight=True)
+
+    # Selects con “banderas”
+    for c in ["Complejidad", "Prioridad"]:
         gob.configure_column(
-            "Id", editable=False, width=110, minWidth=110, pinned="left",
-            checkboxSelection=True, headerCheckboxSelection=True
+            c, editable=True, cellEditor="agSelectCellEditor",
+            cellEditorParams={"values": ["Alta", "Media", "Baja"]},
+            valueFormatter=flag_formatter, cellStyle=white_style,
+            minWidth=colw[c], maxWidth=200, flex=1
         )
 
-        colw = {
-            "Tarea": 180, "Tipo": 140, "Responsable": 140, "Fase": 130,
-            "Complejidad": 130, "Prioridad": 130, "Estado": 130,
-            "Fecha inicio": 150, "Vencimiento": 150, "Fecha fin": 150,
-            "Duración": 100, "Días hábiles": 110,
-            "Cumplimiento": 160, "¿Generó alerta?": 130, "Tipo de alerta": 160,
-            "¿Se corrigió?": 130, "Evaluación": 130, "Calificación": 120
-        }
+    # Chips rectangulares
+    chip_style = JsCode("""
+    function(p){
+      const v = String(p.value || '');
+      let bg = '#E0E0E0', fg = '#FFFFFF';
+      if (v === 'No iniciado') { bg = '#90A4AE'; }
+      else if (v === 'En curso') { bg = '#B388FF'; }
+      else if (v === 'Terminado') { bg = '#FF6EC7'; }
+      else if (v === 'Cancelado') { bg = '#FF2D95'; }
+      else if (v === 'Pausado') { bg = '#7E57C2'; }
+      else if (v === 'Entregado a tiempo') { bg = '#00C4B3'; }
+      else if (v === 'Entregado con retraso') { bg = '#00ACC1'; }
+      else if (v === 'No entregado') { bg = '#006064'; }
+      else if (v === 'En riesgo de retraso') { bg = '#0277BD'; }
+      else if (v === 'Pendiente') { bg = '#F6C90E'; fg = '#3D2C00'; }
+      else if (v === 'Aprobada') { bg = '#FFA000'; }
+      else if (v === 'Desaprobada') { bg = '#FF5C8A'; }
+      else if (v === 'Observada') { bg = '#8D6E63'; }
+      else if (v === 'Sí') { bg = '#FF8A80'; }
+      else if (v === 'No') { bg = '#B0BEC5'; }
+      return { backgroundColor:bg, color:fg, fontWeight:'600', textAlign:'center',
+               borderRadius:'6px', padding:'4px 10px' };
+    }""")
 
-        # “Banderitas” con emojis en Complejidad / Prioridad
-        flag_formatter = JsCode("""
-        function(p){
-          const v = String(p.value || '');
-          if (v === 'Alta')  return '🔴 Alta';
-          if (v === 'Media') return '🟡 Media';
-          if (v === 'Baja')  return '🟢 Baja';
-          return v || '—';
-        }""")
-        white_style = JsCode("function(){return {background:'#fff',textAlign:'left'};}")
+    fmt_dash = JsCode("""
+    function(p){ if(p.value===null||p.value===undefined) return '—';
+      const s=String(p.value).trim().toLowerCase();
+      if (s===''||s==='nan'||s==='nat'||s==='none'||s==='null') return '—';
+      return String(p.value);
+    }""")
 
-        # Texto libre
-        for c, fx in [("Tarea", 3), ("Tipo", 2), ("Tipo de alerta", 2), ("Responsable", 2), ("Fase", 1)]:
-            gob.configure_column(c, editable=True, minWidth=colw[c], flex=fx, wrapText=True, autoHeight=True)
-
-        # Selects con “banderas”
-        for c in ["Complejidad", "Prioridad"]:
-            gob.configure_column(
-                c, editable=True, cellEditor="agSelectCellEditor",
-                cellEditorParams={"values": ["Alta", "Media", "Baja"]},
-                valueFormatter=flag_formatter, cellStyle=white_style,
-                minWidth=colw[c], maxWidth=200, flex=1
-            )
-
-        # Chips rectangulares
-        chip_style = JsCode("""
-        function(p){
-          const v = String(p.value || '');
-          let bg = '#E0E0E0', fg = '#FFFFFF';
-          if (v === 'No iniciado') { bg = '#90A4AE'; }
-          else if (v === 'En curso') { bg = '#B388FF'; }
-          else if (v === 'Terminado') { bg = '#FF6EC7'; }
-          else if (v === 'Cancelado') { bg = '#FF2D95'; }
-          else if (v === 'Pausado') { bg = '#7E57C2'; }
-          else if (v === 'Entregado a tiempo') { bg = '#00C4B3'; }
-          else if (v === 'Entregado con retraso') { bg = '#00ACC1'; }
-          else if (v === 'No entregado') { bg = '#006064'; }
-          else if (v === 'En riesgo de retraso') { bg = '#0277BD'; }
-          else if (v === 'Pendiente') { bg = '#F6C90E'; fg = '#3D2C00'; }
-          else if (v === 'Aprobada') { bg = '#FFA000'; }
-          else if (v === 'Desaprobada') { bg = '#FF5C8A'; }
-          else if (v === 'Observada') { bg = '#8D6E63'; }
-          else if (v === 'Sí') { bg = '#FF8A80'; }
-          else if (v === 'No') { bg = '#B0BEC5'; }
-          return { backgroundColor:bg, color:fg, fontWeight:'600', textAlign:'center',
-                   borderRadius:'6px', padding:'4px 10px' };
-        }""")
-
-        fmt_dash = JsCode("""
-        function(p){ if(p.value===null||p.value===undefined) return '—';
-          const s=String(p.value).trim().toLowerCase();
-          if (s===''||s==='nan'||s==='nat'||s==='none'||s==='null') return '—';
-          return String(p.value);
-        }""")
-
-        for c, vals in [
-            ("Estado", ESTADO),
-            ("Cumplimiento", CUMPLIMIENTO),
-            ("¿Generó alerta?", SI_NO),
-            ("¿Se corrigió?", SI_NO),
-            ("Evaluación", EVALUACION),
-        ]:
-            gob.configure_column(
-                c, editable=True, cellEditor="agSelectCellEditor",
-                cellEditorParams={"values": vals},
-                cellStyle=chip_style, valueFormatter=fmt_dash,
-                minWidth=colw.get(c, 120), maxWidth=220, flex=1,
-                wrapText=True, autoHeight=True
-            )
-
-        for c in ["Ts_creación", "Ts_en_curso", "Ts_terminado", "Ts_cancelado", "Ts_pausado", "Fecha detectada", "Fecha corregida"]:
-            gob.configure_column(c, hide=True)
-
-        # Fechas
-        date_time_editor = JsCode("""
-        class DateTimeEditor{
-          init(p){ this.eInput=document.createElement('input'); this.eInput.type='datetime-local';
-            this.eInput.classList.add('ag-input'); this.eInput.style.width='100%';
-            const v=p.value?new Date(p.value):null;
-            if(v&&!isNaN(v.getTime())){ const pad=n=>String(n).padStart(2,'0');
-              this.eInput.value = v.getFullYear()+'-'+pad(v.getMonth()+1)+'-'+pad(v.getDate())+'T'+pad(v.getHours())+':'+pad(v.getMinutes()); }
-          }
-          getGui(){return this.eInput} afterGuiAttached(){this.eInput.focus()} getValue(){return this.eInput.value}
-        }""")
-        date_time_fmt = JsCode("""
-        function(p){ if(p.value===null||p.value===undefined) return '—';
-          const d=new Date(String(p.value).trim()); if(isNaN(d.getTime())) return '—';
-          const pad=n=>String(n).padStart(2,'0');
-          return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes());
-        }""")
-        for c in ["Fecha inicio", "Vencimiento", "Fecha fin"]:
-            gob.configure_column(
-                c, editable=True, cellEditor=date_time_editor,
-                valueFormatter=date_time_fmt, minWidth=colw[c],
-                maxWidth=180, flex=1, wrapText=True, autoHeight=True
-            )
-
-        dur_getter = JsCode("function(p){const s=p.data['Fecha inicio'],e=p.data['Vencimiento'];if(!s||!e)return null;const sd=new Date(s),ed=new Date(e);if(isNaN(sd.getTime())||isNaN(ed.getTime()))return null;return Math.floor((ed-sd)/(1000*60*60*24));}")
-        bd_getter  = JsCode("function(p){const s=p.data['Fecha inicio'],e=p.data['Vencimiento'];if(!s||!e)return null;let sd=new Date(s),ed=new Date(e);if(isNaN(sd.getTime())||isNaN(ed.getTime()))return null;if(ed<sd)return 0;sd=new Date(sd.getFullYear(),sd.getMonth(),sd.getDate());ed=new Date(ed.getFullYear(),ed.getMonth(),ed.getDate());let c=0;const one=24*60*60*1000;for(let t=sd.getTime();t<=ed.getTime();t+=one){const d=new Date(t).getDay();if(d!==0&&d!==6)c++;}return c;}")
-
-        gob.configure_column("Duración", editable=False, valueGetter=dur_getter,
-                             valueFormatter=fmt_dash, minWidth=colw["Duración"], maxWidth=120, flex=0)
-        gob.configure_column("Días hábiles", editable=False, valueGetter=bd_getter,
-                             valueFormatter=fmt_dash, minWidth=colw["Días hábiles"], maxWidth=130, flex=0)
-        gob.configure_column("Calificación", editable=True, cellEditor="agSelectCellEditor",
-                             cellEditorParams={"values":[0,1,2,3,4,5]},
-                             valueFormatter=JsCode("function(p){const n=Math.max(0,Math.min(5,Number(p.value||0)));return '★'.repeat(n)+'☆'.repeat(5-n);}"),
-                             cellStyle=JsCode("function(){return {color:'#f2c200',fontWeight:'700',fontSize:'22px',letterSpacing:'2px',textAlign:'center'};}"),
-                             minWidth=170, maxWidth=220, flex=0)
-
-        grid = AgGrid(
-            df,
-            key=f"grid_{area}",
-            gridOptions=gob.build(),
-            height=450,
-            fit_columns_on_grid_load=True,
-            data_return_mode=DataReturnMode.AS_INPUT,
-            update_mode=(GridUpdateMode.VALUE_CHANGED | GridUpdateMode.MODEL_CHANGED | GridUpdateMode.SELECTION_CHANGED),
-            allow_unsafe_jscode=True,
-            theme="balham",
+    for c, vals in [
+        ("Estado", ESTADO),
+        ("Cumplimiento", CUMPLIMIENTO),
+        ("¿Generó alerta?", SI_NO),
+        ("¿Se corrigió?", SI_NO),
+        ("Evaluación", EVALUACION),
+    ]:
+        gob.configure_column(
+            c, editable=True, cellEditor="agSelectCellEditor",
+            cellEditorParams={"values": vals},
+            cellStyle=chip_style, valueFormatter=fmt_dash,
+            minWidth=colw.get(c, 120), maxWidth=220, flex=1,
+            wrapText=True, autoHeight=True
         )
 
-        # Exportar: SIEMPRE desde el último estado guardado (no desde edición en curso)
-        df_export = st.session_state[sk].copy()
-        xlsx_b = export_excel(df_export, sheet=area.replace(" ", "_"))
-        csv_b  = df_export.to_csv(index=False).encode("utf-8-sig")
-        pdf_b  = export_pdf_from_df(df_export, title=f"Gestión ENI2025 — {area}")
-        xlsx64 = base64.b64encode(xlsx_b).decode("utf-8")
-        csv64  = base64.b64encode(csv_b).decode("utf-8")
-        pdf64  = base64.b64encode(pdf_b).decode("utf-8") if pdf_b else None
-        fname  = f"gestion_{area.replace(' ', '_').lower()}"
-        excel_item = f"<a class='dl-btn' href='data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{xlsx64}' download='{fname}.xlsx'><span class='ico ico-excel'></span> Excel</a>"
-        csv_item   = f"<a class='dl-btn' href='data:text/csv;base64,{csv64}' download='{fname}.csv'><span class='ico ico-csv'></span> CSV</a>"
-        pdf_item   = (f"<a class='dl-btn' href='data:application/pdf;base64,{pdf64}' download='{fname}.pdf'><span class='ico ico-pdf'></span> PDF</a>"
-                      if pdf64 else "<div class='dl-btn' style='opacity:.5;cursor:not-allowed'><span class='ico ico-pdf'></span> PDF (instala reportlab)</div>")
-        dropdown_html = f"<details class='drop'><summary class='btn'>📤 Exportar ▾</summary><div class='menu'>{excel_item}{csv_item}{pdf_item}</div></details>"
+    for c in ["Ts_creación", "Ts_en_curso", "Ts_terminado", "Ts_cancelado", "Ts_pausado", "Fecha detectada", "Fecha corregida"]:
+        gob.configure_column(c, hide=True)
 
-        left_col, right_col = st.columns([0.62, 0.38])
-        with left_col:
-            st.markdown(
-                "<div class='infobar'><div class='left'>Selecciona filas con el checkbox de la <b>1ª columna</b>. "
-                "<kbd>Shift</kbd>+<kbd>Enter</kbd> nueva tarea · <kbd>Supr</kbd> eliminar</div></div>",
-                unsafe_allow_html=True
-            )
-        with right_col:
-            c1, c2 = st.columns([1, 1])
-            with c1:
-                st.markdown(dropdown_html, unsafe_allow_html=True)
-            with c2:
-                submitted = st.form_submit_button("💾 Guardar cambios")
+    # Fechas
+    date_time_editor = JsCode("""
+    class DateTimeEditor{
+      init(p){ this.eInput=document.createElement('input'); this.eInput.type='datetime-local';
+        this.eInput.classList.add('ag-input'); this.eInput.style.width='100%';
+        const v=p.value?new Date(p.value):null;
+        if(v&&!isNaN(v.getTime())){ const pad=n=>String(n).padStart(2,'0');
+          this.eInput.value = v.getFullYear()+'-'+pad(v.getMonth()+1)+'-'+pad(v.getDate())+'T'+pad(v.getHours())+':'+pad(v.getMinutes()); }
+      }
+      getGui(){return this.eInput} afterGuiAttached(){this.eInput.focus()} getValue(){return this.eInput.value}
+    }""")
+    date_time_fmt = JsCode("""
+    function(p){ if(p.value===null||p.value===undefined) return '—';
+      const d=new Date(String(p.value).trim()); if(isNaN(d.getTime())) return '—';
+      const pad=n=>String(n).padStart(2,'0');
+      return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes());
+    }""")
+    for c in ["Fecha inicio", "Vencimiento", "Fecha fin"]:
+        gob.configure_column(
+            c, editable=True, cellEditor=date_time_editor,
+            valueFormatter=date_time_fmt, minWidth=colw[c],
+            maxWidth=180, flex=1, wrapText=True, autoHeight=True
+        )
 
-    # -------------------- POST FORM: normalización y guardado (SIN AUTOGUARDADO) --------------------
-    grid_resp = grid if isinstance(grid, dict) else {}
-    base_state_df = st.session_state[sk].copy()
-    new_df = pd.DataFrame(grid_resp.get("data", base_state_df))
+    dur_getter = JsCode("function(p){const s=p.data['Fecha inicio'],e=p.data['Vencimiento'];if(!s||!e)return null;const sd=new Date(s),ed=new Date(e);if(isNaN(sd.getTime())||isNaN(ed.getTime()))return null;return Math.floor((ed-sd)/(1000*60*60*24));}")
+    bd_getter  = JsCode("function(p){const s=p.data['Fecha inicio'],e=p.data['Vencimiento'];if(!s||!e)return null;let sd=new Date(s),ed=new Date(e);if(isNaN(sd.getTime()))return null;if(ed<sd)return 0;sd=new Date(sd.getFullYear(),sd.getMonth(),sd.getDate());ed=new Date(ed.getFullYear(),ed.getMonth(),ed.getDate());let c=0;const one=24*60*60*1000;for(let t=sd.getTime();t<=ed.getTime();t+=one){const d=new Date(t).getDay();if(d!==0&&d!==6)c++;}return c;}")
+
+    gob.configure_column("Duración", editable=False, valueGetter=dur_getter,
+                         valueFormatter=fmt_dash, minWidth=colw["Duración"], maxWidth=120, flex=0)
+    gob.configure_column("Días hábiles", editable=False, valueGetter=bd_getter,
+                         valueFormatter=fmt_dash, minWidth=colw["Días hábiles"], maxWidth=130, flex=0)
+    gob.configure_column("Calificación", editable=True, cellEditor="agSelectCellEditor",
+                         cellEditorParams={"values":[0,1,2,3,4,5]},
+                         valueFormatter=JsCode("function(p){const n=Math.max(0,Math.min(5,Number(p.value||0)));return '★'.repeat(n)+'☆'.repeat(5-n);}"),
+                         cellStyle=JsCode("function(){return {color:'#f2c200',fontWeight:'700',fontSize:'22px',letterSpacing:'2px',textAlign:'center'};}"),
+                         minWidth=170, maxWidth=220, flex=0)
+
+    grid = AgGrid(
+        df,
+        key=f"grid_{area}",
+        gridOptions=gob.build(),
+        height=450,
+        fit_columns_on_grid_load=True,
+        data_return_mode=DataReturnMode.AS_INPUT,
+        update_mode=(GridUpdateMode.VALUE_CHANGED | GridUpdateMode.MODEL_CHANGED | GridUpdateMode.SELECTION_CHANGED),
+        allow_unsafe_jscode=True,
+        theme="balham",
+    )
+
+    # ---------------- Snapshot del grid tras renderizar ----------------  <-- NUEVO
+    if isinstance(grid, dict) and "data" in grid:
+        st.session_state[f"grid_snapshot_{area}"] = pd.DataFrame(grid["data"])
+
+    # Exportar: SIEMPRE desde el último estado guardado (no desde edición en curso)
+    df_export = st.session_state[sk].copy()
+    xlsx_b = export_excel(df_export, sheet=area.replace(" ", "_"))
+    csv_b  = df_export.to_csv(index=False).encode("utf-8-sig")
+    pdf_b  = export_pdf_from_df(df_export, title=f"Gestión ENI2025 — {area}")
+    xlsx64 = base64.b64encode(xlsx_b).decode("utf-8")
+    csv64  = base64.b64encode(csv_b).decode("utf-8")
+    pdf64  = base64.b64encode(pdf_b).decode("utf-8") if pdf_b else None
+    fname  = f"gestion_{area.replace(' ', '_').lower()}"
+    excel_item = f"<a class='dl-btn' href='data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{xlsx64}' download='{fname}.xlsx'><span class='ico ico-excel'></span> Excel</a>"
+    csv_item   = f"<a class='dl-btn' href='data:text/csv;base64,{csv64}' download='{fname}.csv'><span class='ico ico-csv'></span> CSV</a>"
+    pdf_item   = (f"<a class='dl-btn' href='data:application/pdf;base64,{pdf64}' download='{fname}.pdf'><span class='ico ico-pdf'></span> PDF</a>"
+                  if pdf64 else "<div class='dl-btn' style='opacity:.5;cursor:not-allowed'><span class='ico ico-pdf'></span> PDF (instala reportlab)</div>")
+    dropdown_html = f"<details class='drop'><summary class='btn'>📤 Exportar ▾</summary><div class='menu'>{excel_item}{csv_item}{pdf_item}</div></details>"
+
+    # Barra inferior
+    left_col, right_col = st.columns([0.62, 0.38])
+    with left_col:
+        st.markdown(
+            "<div class='infobar'><div class='left'>Selecciona filas con el checkbox de la <b>1ª columna</b>. "
+            "<kbd>Shift</kbd>+<kbd>Enter</kbd> nueva tarea · <kbd>Supr</kbd> eliminar</div></div>",
+            unsafe_allow_html=True
+        )
+    with right_col:
+        c1, c2 = st.columns([1, 1])
+        with c1:
+            st.markdown(dropdown_html, unsafe_allow_html=True)
+        with c2:
+            # Botón nativo: al hacer click pierde foco el grid y, por 'stopEditingWhenCellsLoseFocus=True', se confirman ediciones
+            submitted = st.button("💾 Guardar cambios", key=f"btn_save_{area}")
+
+    # -------------------- Guardado (SIN AUTOGUARDADO) --------------------
+    # Usar snapshot del grid si existe; si no, DF de sesión               <-- NUEVO
+    base_state_df = st.session_state.get(f"grid_snapshot_{area}", st.session_state[sk]).copy()
+    new_df = pd.DataFrame(base_state_df)
+
     for c in ["Fecha inicio", "Vencimiento", "Fecha fin"]:
         new_df[c] = pd.to_datetime(new_df[c], errors="coerce")
 
@@ -446,11 +474,18 @@ def render_area_block(area: str):
             new_df.at[idx, "Id"] = nxt
             mask = new_df["Id"].astype(str).str.strip().isin(["", "nan", "None"])
 
-    # Guardado explícito con el botón del form (única vía de guardado)
+    # Guardado explícito con el botón (única vía de guardado)
     if submitted:
         st.session_state[sk] = new_df.copy()
         _save_area_df(area, st.session_state[sk])
-        st.toast(f"✅ Guardado: {area}", icon="✅")
+
+        # ---------- (NUEVO) Confirmación leyendo de vuelta desde Sheets ----------
+        df_check = _read_sheet_tab(area)
+        if df_check is not None:
+            st.success(f"Guardado en Sheets ✔ — pestaña “{area}” tiene {len(df_check)} filas.")
+        else:
+            st.info("Guardado local ✔ (no pude verificar en Sheets; revisa secrets/permisos o dependencias).")
+
         st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)
