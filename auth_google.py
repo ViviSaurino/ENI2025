@@ -3,7 +3,8 @@ import base64
 import streamlit as st
 from streamlit_oauth import OAuth2Component
 
-st.set_page_config(layout="wide", initial_sidebar_state="collapsed")
+# ⚠️ Importante: NO llamar st.set_page_config aquí.
+# (El set_page_config debe ejecutarse sólo en el script principal)
 
 # ================== Compatibilidad Streamlit (rerun & query params) ==================
 def _safe_rerun():
