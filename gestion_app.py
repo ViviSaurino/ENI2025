@@ -7,7 +7,12 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-# 🔐 Login Google
+# ⚠️ Debe ser lo primero de Streamlit
+st.set_page_config(page_title="Gestión — ENI2025",
+                   layout="wide",
+                   initial_sidebar_state="collapsed")
+
+# 🔐 Login Google (importar DESPUÉS del set_page_config)
 from auth_google import google_login, logout
 
 # Parche compatibilidad Streamlit 1.50 + st-aggrid
@@ -18,14 +23,14 @@ if not hasattr(_stc, "components"):
 
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, JsCode, DataReturnMode
 
-st.set_page_config(page_title="Gestión — ENI2025", layout="wide", initial_sidebar_state="collapsed")
-
 # --- allow-list ---
 allowed_emails  = st.secrets.get("auth", {}).get("allowed_emails", [])
 allowed_domains = st.secrets.get("auth", {}).get("allowed_domains", [])
 
 # 👤 Login
-user = google_login(allowed_emails=allowed_emails, allowed_domains=allowed_domains, redirect_page=None)
+user = google_login(allowed_emails=allowed_emails,
+                    allowed_domains=allowed_domains,
+                    redirect_page=None)
 if not user:
     st.stop()
 
