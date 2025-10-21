@@ -1,14 +1,21 @@
-streamlit>=1.30,<1.38
+# --- Core ---
+streamlit>=1.32,<1.39
 pandas>=2.0,<2.3
 numpy>=1.24,<2.0
-streamlit-aggrid==0.3.4.post3
+
+# --- UI ---
+streamlit-aggrid>=0.3.5
+streamlit-oauth>=0.1.6
+
+# --- Google / Sheets ---
 gspread>=5.7,<6
+gspread-dataframe>=3.3,<4
 google-auth>=2.20,<3
+google-auth-oauthlib>=1.1,<2
+google-auth-httplib2>=0.2,<1
+google-api-python-client>=2.100,<3
+
+# --- Excel / utilidades (si usas) ---
 openpyxl>=3.1.2,<3.2
 reportlab>=4.1,<4.2
-python-dateutil>=2.8.2
-streamlit-oauth
-
-
-
-
+python-dateutil>=2.8,<2.9
