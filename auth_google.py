@@ -178,7 +178,6 @@ def google_login(
             }}
 
             /* ===================== ANTI-ROJO: overrides globales ===================== */
-            /* Streamlit moderno usa BaseWeb: data-baseweb="button" */
             [data-baseweb="button"]:hover,
             [data-baseweb="button"]:focus,
             [data-baseweb="button"]:active {{
@@ -190,7 +189,6 @@ def google_login(
               box-shadow:0 0 0 3px rgba(96,165,250,.35) !important, 0 8px 22px rgba(96,165,250,.25) !important;
             }}
 
-            /* Cualquier botón HTML genérico (por si el widget cambia) */
             button:hover,
             button:focus,
             button:active {{
@@ -202,7 +200,6 @@ def google_login(
               box-shadow:0 0 0 3px rgba(96,165,250,.35) !important, 0 8px 22px rgba(96,165,250,.25) !important;
             }}
 
-            /* Botón dentro del contenedor de la izquierda (máxima especificidad práctica) */
             .left .stButton > button:hover,
             .left .stButton > button:focus,
             .left .stButton > button:active,
@@ -217,7 +214,6 @@ def google_login(
               box-shadow:0 0 0 3px rgba(96,165,250,.35) !important, 0 8px 22px rgba(96,165,250,.25) !important;
             }}
 
-            /* Contenedores de botón secundarios que algunos builds usan */
             [data-testid="baseButton-secondary"] button:hover,
             [data-testid="baseButton-secondary"] button:focus,
             [data-testid="baseButton-secondary"] button:active {{
@@ -228,7 +224,6 @@ def google_login(
               box-shadow:0 0 0 3px rgba(96,165,250,.35) !important, 0 8px 22px rgba(96,165,250,.25) !important;
             }}
 
-            /* Variables de tema (si el rojo venía del primary del tema) */
             :root{{
               --primary-color:#60A5FA !important;
               --accent-color:#60A5FA !important;
@@ -329,6 +324,27 @@ def google_login(
                                 use_container_width=False,
                                 scope="openid email profile",
                             )
+
+            # ====== ⬇️ Bloque agregado: forzar hover/focus/active a CELESTE (#60A5FA) ⬇️
+            st.markdown("""
+<style id="force-google-hover">
+.left :is(button, [data-baseweb="button"], [role="button"], a.button, a[role="button"]) {
+  transition: background-color .12s ease, box-shadow .12s ease, border-color .12s ease !important;
+  background-image: none !important;
+}
+.left :is(button, [data-baseweb="button"], [role="button"], a.button, a[role="button"]):hover,
+.left :is(button, [data-baseweb="button"], [role="button"], a.button, a[role="button"]):focus,
+.left :is(button, [data-baseweb="button"], [role="button"], a.button, a[role="button"]):active {
+  background: #60A5FA !important;
+  border-color: #60A5FA !important;
+  color: #FFFFFF !important;
+  outline: none !important;
+  background-image: none !important;
+  box-shadow: 0 0 0 3px rgba(96,165,250,.35) !important, 0 8px 22px rgba(96,165,250,.25) !important;
+}
+</style>
+""", unsafe_allow_html=True)
+            # ====== ⬆️ FIN bloque agregado ⬆️
 
             st.markdown('</div>', unsafe_allow_html=True)  # wrapper del botón
             st.markdown('</div>', unsafe_allow_html=True)  # .cta
