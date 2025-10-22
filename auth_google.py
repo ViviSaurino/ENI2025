@@ -2,6 +2,7 @@
 import base64
 import streamlit as st
 from streamlit_oauth import OAuth2Component
+import streamlit.components.v1 as components  # <-- añadido
 
 # ================== Utilidades ==================
 def _safe_rerun():
@@ -129,27 +130,18 @@ def google_login(
             }
 
             /* ========= CLAVE: forzar el widget de BOTÓN a px exactos ========= */
-            /* El botón es un widget dentro de .left; lo fijamos aquí con alta especificidad */
             .left .row-widget.stButton{ 
               width:var(--left-w) !important; 
               max-width:var(--left-w) !important; 
-              align-self:flex-start !important;   /* evita estiramiento por flex */
-              padding:0 !important; 
-              margin:0 !important;
-              box-sizing:border-box !important;
+              align-self:flex-start !important;
+              padding:0 !important; margin:0 !important; box-sizing:border-box !important;
             }
             .left .row-widget.stButton > div{ 
-              width:100% !important; 
-              max-width:100% !important; 
-              padding:0 !important; 
-              margin:0 !important; 
-              display:block !important; 
-              box-sizing:border-box !important;
+              width:100% !important; max-width:100% !important; padding:0 !important; margin:0 !important;
+              display:block !important; box-sizing:border-box !important;
             }
             .left .row-widget.stButton > div > button{
-              width:100% !important; 
-              min-width:0 !important; 
-              height:48px !important;
+              width:100% !important; min-width:0 !important; height:48px !important;
               border-radius:12px !important; border:1px solid #D5DBEF !important;
               background:#fff !important; font-size:15px !important;
               box-sizing:border-box !important; padding:0 .95rem !important;
@@ -241,6 +233,60 @@ def google_login(
                                 use_container_width=False,
                                 scope="openid email profile",
                             )
+
+            # ========= SINCRONIZADOR: botón = ancho exacto de la PÍLDORA =========
+            components.html("""
+<script>
+(function () {
+  function sync() {
+    try {
+      const left = window.parent.document.querySelector('.left');
+      if (!left) return;
+      const pill = left.querySelector('.pill');
+      const btnWrap = left.querySelector('.row-widget.stButton');
+      if (!pill || !btnWrap) return;
+
+      const w = Math.round(pill.getBoundingClientRect().width);
+
+      btnWrap.style.width = w + 'px';
+      btnWrap.style.maxWidth = w + 'px';
+      btnWrap.style.padding = '0';
+      btnWrap.style.margin = '0';
+      btnWrap.style.boxSizing = 'border-box';
+
+      const inner = btnWrap.querySelector('div');
+      if (inner) {
+        inner.style.width = '100%';
+        inner.style.maxWidth = '100%';
+        inner.style.padding = '0';
+        inner.style.margin = '0';
+        inner.style.display = 'block';
+        inner.style.boxSizing = 'border-box';
+      }
+
+      const btn = btnWrap.querySelector('button');
+      if (btn) {
+        btn.style.width = '100%';
+        btn.style.minWidth = '0';
+        btn.style.boxSizing = 'border-box';
+      }
+    } catch (e) {}
+  }
+
+  sync();
+  window.addEventListener('resize', sync);
+
+  const RO = (window.parent.ResizeObserver || ResizeObserver);
+  if (RO) {
+    const ro = new RO(sync);
+    const pillEl = window.parent.document.querySelector('.left .pill');
+    if (pillEl) ro.observe(pillEl);
+  }
+})();
+</script>
+""", height=0)
+            # ========= FIN SINCRONIZADOR =========
+
             st.markdown('</div>', unsafe_allow_html=True)  # /cta
             st.markdown('</div>', unsafe_allow_html=True)  # /left
 
