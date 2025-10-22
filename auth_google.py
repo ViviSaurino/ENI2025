@@ -90,7 +90,7 @@ def google_login(
             token_endpoint=cfg["token_uri"],
         )
 
-        # ====== CSS: sin scroll + 2 columnas + un solo ancho maestro ======
+        # ====== CSS: sin scroll + 2 columnas + un ancho maestro ======
         st.markdown("""
             <style>
             /* Sin scroll y ocultar cabeceras/footers de Streamlit */
@@ -105,16 +105,15 @@ def google_login(
             [data-testid="stMain"]{ height:100%; padding-top:0 !important; padding-bottom:0 !important; }
             .block-container{ height:100%; max-width:1180px; padding:0 16px !important; margin:0 auto !important; }
 
-            /* Variables de diseño (ajusta solo estas 3 para afinar) */
+            /* 👉 Ajusta SOLO estos 3 valores para afinar la maqueta */
             :root{
-              --left-w: 520px;          /* 👈 ANCHO maestro para TÍTULO + PÍLDORA + BOTÓN */
-              --title-max: 96px;        /* tamaño máximo del título */
-              --media-max: 620px;       /* ancho máximo de la imagen/video */
+              --left-w:   560px;   /* ANCHO maestro: título + píldora + botón */
+              --title-max: 100px;  /* Tamaño máximo del título */
+              --media-max: 600px;  /* Ancho máximo de la imagen/video */
             }
 
-            /* Forzar que el bloque de columnas ocupe todo el alto del viewport */
+            /* Forzar altura de viewport para alinear verticalmente */
             [data-testid="stHorizontalBlock"]{ height:100vh !important; }
-            /* Cada columna centrada verticalmente */
             [data-testid="column"] > div{
               height:100%;
               display:flex; flex-direction:column; justify-content:center;
@@ -123,7 +122,7 @@ def google_login(
             /* Columna izquierda */
             .left { width: var(--left-w); max-width: 100%; }
             .title{
-              width: var(--left-w);           /* 👈 mismo ancho que la pill/botón */
+              width: var(--left-w); /* mismo ancho que píldora/botón */
               max-width: 100%;
               font-weight:900; color:#B38BE3;
               line-height:.92; letter-spacing:.4px;
@@ -132,9 +131,8 @@ def google_login(
             }
             .title .line{ display:block; }
 
-            /* Bloque que comparte el mismo ancho */
             .cta{
-              width: var(--left-w);           /* 👈 mismo ancho */
+              width: var(--left-w); /* mismo ancho */
               max-width: 100%;
             }
             .pill{
@@ -158,13 +156,13 @@ def google_login(
               box-shadow:0 8px 22px rgba(139,92,246,.18) !important;
             }
 
-            /* Columna derecha: imagen/video */
+            /* Columna derecha: media sin empujar scroll */
             .right{ display:flex; justify-content:center; }
             .hero-media{
               display:block;
               width:auto;
               max-width: min(var(--media-max), 46vw);
-              max-height: 68vh;
+              max-height: 64vh;   /* un poco menos para evitar cualquier scroll */
               height:auto;
               object-fit:contain;
             }
@@ -181,7 +179,8 @@ def google_login(
             </style>
         """, unsafe_allow_html=True)
 
-        # --------- Layout: 2 columnas (izq = contenido, der = media) ----------
+        # --------- Layout: 2 columnas ----------
+        # Mantengo la proporción; si quieres más espacio para la imagen, sube 5->6.
         col_left, col_right = st.columns([7, 5], gap="large")
 
         with col_left:
@@ -194,7 +193,7 @@ def google_login(
             st.markdown('<div class="cta">', unsafe_allow_html=True)
             st.markdown('<div class="pill">GESTIÓN DE TAREAS ENI 2025</div>', unsafe_allow_html=True)
 
-            # Botón OAuth (hereda el ancho de .cta => igual a la píldora y al título)
+            # Botón OAuth (hereda el ancho de .cta)
             result = None
             try:
                 result = oauth2.authorize_button(
@@ -243,7 +242,7 @@ def google_login(
                                 use_container_width=False,
                                 scope="openid email profile",
                             )
-            st.markdown('</div></div>', unsafe_allow_html=True)  # /cta, /left
+            st.markdown('</div></div>', unsafe_allow_html=True)
 
         with col_right:
             st.markdown('<div class="right">', unsafe_allow_html=True)
@@ -258,7 +257,6 @@ def google_login(
                 st.markdown(f'<img class="hero-media" src="{fallback}" alt="ENI 2025">', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-    # ----- Si todavía no se hizo clic en el botón -----
     if not result:
         return None
 
@@ -309,7 +307,6 @@ def google_login(
 
     st.session_state["user"] = user
 
-    # Limpia el login y redirige/recarga
     login_ph.empty()
     if redirect_page:
         _switch_page(redirect_page)
