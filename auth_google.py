@@ -86,77 +86,70 @@ def google_login(
             token_endpoint=cfg["token_uri"],
         )
 
-        # ====== CSS: sin scroll + alineado perfecto ======
+        # ====== CSS: sin scroll + alineado por la base ======
         st.markdown("""
             <style>
-            /* Aplastar header/toolbar en Streamlit Cloud (sin offsets raros) */
+            /* Aplastar header/toolbar (sin offsets) */
             header[data-testid="stHeader"]{
-              height:0 !important;
-              min-height:0 !important;
-              padding:0 !important;
-              box-shadow:none !important;
-              border:none !important;
-              background:transparent !important;
+              height:0 !important; min-height:0 !important; padding:0 !important;
+              box-shadow:none !important; border:none !important; background:transparent !important;
             }
             [data-testid="stToolbar"]{display:none !important;}
-            #MainMenu{visibility:hidden;}
-            footer{display:none !important;}
+            #MainMenu{visibility:hidden;} footer{display:none !important;}
 
             html, body { height:100%; }
             [data-testid="stAppViewContainer"]{ height:100vh; }
             [data-testid="stAppViewContainer"] > .main { padding-top: 0 !important; }
             .block-container{
               max-width:1180px;
-              padding-top:.25rem !important;
+              padding-top:.2rem !important;
               padding-bottom:0 !important;
             }
 
             :root{
-              --gap: 2.6rem;
+              --gap: 2.2rem;                 /* gap un poco menor para que todo quepa */
               --col-left: clamp(420px, 46vw, 560px);
-              --pill-h: 46px;
-              --btn-h: 48px;
+              --pill-h: 44px;
+              --btn-h: 46px;
             }
 
             .hero-area{
-              min-height:100vh;              /* todo en una pantalla */
+              min-height:100vh;              /* todo en 1 pantalla */
               display:flex;
               align-items:center;
-              overflow:hidden;               /* evita micro-scroll */
+              overflow:hidden;
+              padding: 2vh 0;               /* micro respiro arriba/abajo */
             }
 
             .row{
               width:100%;
               display:flex;
-              align-items:center;
+              align-items:flex-end;          /* 👈 alinea por la base de ambos lados */
               justify-content:space-between;
               gap: var(--gap);
             }
 
-            /* Izquierda */
+            /* Izquierda (título + pill + botón) */
             .left{ width: var(--col-left); max-width: var(--col-left); }
             .title{
-              font-weight:900;
-              color:#B38BE3;
-              line-height:.95;
-              letter-spacing:.4px;
-              font-size: clamp(60px, 8vw, 92px);
-              margin: 0 0 18px 0;
+              font-weight:900; color:#B38BE3;
+              line-height:.93; letter-spacing:.3px;
+              font-size: clamp(56px, 7.2vw, 88px);  /* un toque más compacto */
+              margin: 0 0 10px 0;                  /* menos margen bajo el título */
             }
             .title .line{ display:block; }
 
             .equal-wrap{ width:100%; max-width:520px; }
 
             .pill{
-              width:100% !important;
-              height: var(--pill-h) !important;
+              width:100% !important; height: var(--pill-h) !important;
               display:flex; align-items:center; justify-content:center;
               border-radius:12px; background:#EEF2FF; border:1px solid #DBE4FF;
               color:#2B4C7E; font-weight:800; letter-spacing:.2px; font-size:16px;
-              margin:0 0 16px 0; box-sizing:border-box;
+              margin:0 0 10px 0; box-sizing:border-box;   /* margen más corto */
             }
 
-            /* Botón Google = mismo ancho que la pill */
+            /* Botón Google = ancho de la pill */
             .google-btn,
             .google-btn > div,
             .google-btn .row-widget.stButton,
@@ -176,41 +169,46 @@ def google_login(
               box-shadow:0 8px 22px rgba(139,92,246,.18) !important;
             }
 
-            /* Derecha */
-            .right{ flex: 1 1 auto; display:flex; justify-content:center; }
+            /* Derecha (imagen/video) */
+            .right{
+              flex: 1 1 auto;
+              display:flex;
+              justify-content:center;
+              align-items:flex-end;          /* 👈 asegura “pies” al mismo nivel */
+            }
             .hero-image, .hero-video{
               display:block;
-              width: min(44vw, 560px);
+              width: min(44vw, 520px);       /* un pelín más angosta */
               height:auto;
-              max-height: 62vh;             /* clave: no empuja hacia abajo */
+              max-height: 54vh;              /* 👈 clave: ya no empuja hacia abajo */
               object-fit:contain;
             }
 
             /* Responsivo */
             @media (max-width: 1200px){
-              :root{ --gap: 2rem; }
-              .hero-image, .hero-video{ max-height: 60vh; }
+              :root{ --gap: 1.8rem; }
+              .hero-image, .hero-video{ max-height: 52vh; }
             }
             @media (max-width: 980px){
               .row{
                 flex-direction:column;
                 align-items:center;
                 justify-content:flex-start;
-                gap: 1.2rem;
+                gap: 1rem;
               }
               .left{ width:100%; max-width:680px; }
               .equal-wrap{ max-width:680px; }
-              .title{ font-size: clamp(46px, 11vw, 72px); margin-bottom: 12px; }
-              .pill{ height:44px !important; margin-bottom:12px; }
+              .title{ font-size: clamp(42px, 11vw, 70px); margin-bottom: 8px; }
+              .pill{ height:42px !important; margin-bottom:10px; }
               .hero-image, .hero-video{
-                width: min(86vw, 560px);
-                max-height: 40vh;          /* entra sin scroll en móvil */
+                width: min(86vw, 520px);
+                max-height: 38vh;            /* cabe perfecto en móvil sin scroll */
               }
             }
             </style>
         """, unsafe_allow_html=True)
 
-        # --- Layout (usamos columns solo para ubicar el botón en su lado) ---
+        # --- Layout ---
         st.markdown('<div class="hero-area"><div class="row">', unsafe_allow_html=True)
 
         col_left, col_right = st.columns([1,1], gap="large")
