@@ -107,7 +107,7 @@ def google_login(
 
             /* 👉 Ajusta SOLO estos 3 valores para afinar la maqueta */
             :root{
-              --left-w:   560px;   /* ANCHO maestro: título + píldora + botón */
+              --left-w:   360px;   /* ANCHO maestro: título + píldora + botón */
               --title-max: 112px;  /* Tamaño máximo del título */
               --media-max: 640px;  /* Ancho máximo de la imagen/video */
             }
@@ -323,3 +323,4 @@ def google_login(
 def logout():
     st.session_state.pop("user", None)
     _safe_rerun()
+
