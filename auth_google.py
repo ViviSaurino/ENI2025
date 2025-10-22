@@ -99,37 +99,52 @@ def google_login(
 
             [data-testid="stAppViewContainer"]{{ height:100vh; overflow:hidden; }}
             [data-testid="stMain"]{{ height:100%; padding-top:0 !important; padding-bottom:0 !important; }}
-            .block-container{{ height:100%; max-width:1280px; padding:0 16px !important; margin:0 auto !important; }}
+
+            /* 👉 Centrado vertical real del contenido */
+            .block-container{{
+              height:100vh;
+              max-width:1280px;
+              padding:0 16px !important;
+              margin:0 auto !important;
+              display:flex;
+              flex-direction:column;
+              justify-content:center;   /* centra vertical */
+            }}
 
             /* 👇 Control maestro del ancho (VENIDOS + píldora + botón) */
             :root{{
               --left-w: {LEFT_W}px;  /* Mantener igual que LEFT_W arriba */
-              --title-max: 112px;
+              --title-max: 112px;    /* límite superior del tamaño del título */
               --media-max: 640px;
             }}
 
-            [data-testid="stHorizontalBlock"]{{ height:100vh !important; }}
-            [data-testid="column"] > div{{ height:100%; display:flex; flex-direction:column; justify-content:center; }}
+            [data-testid="stHorizontalBlock"]{{ height:100%; }}
+            [data-testid="column"] > div{{
+              display:flex; flex-direction:column; justify-content:center;
+            }}
 
             .left{{ width:var(--left-w); max-width:100%; }}
 
-            /* ===== BLOQUE AJUSTADO ===== */
+            /* ===== TÍTULO AJUSTADO AL ANCHO =====
+               coef 0.145: toca solo este número si quieres afinar el tamaño del título
+            */
             .title{{
               width:var(--left-w);
               max-width:var(--left-w);
               display:block;
               font-weight:900; color:#B38BE3;
               line-height:.92; letter-spacing:.4px;
-
-              /* Tamaño del título ligado al ancho maestro */
-              font-size: clamp(36px, calc(var(--left-w) * 0.18), var(--title-max));
-
+              font-size: clamp(28px, calc(var(--left-w) * 0.145), var(--title-max));
               margin:0 0 18px 0;
-              overflow-wrap:anywhere;
               box-sizing:border-box;
             }}
-            .title .line{{ display:block; }}
-            /* ===== FIN AJUSTE ===== */
+            .title .line{{
+              display:block;
+              width:100%;
+              word-break: break-word;      /* fuerza cortes dentro de VENIDOS */
+              overflow-wrap: anywhere;     /* y asegura que respete el ancho */
+            }}
+            /* ===== FIN TÍTULO ===== */
 
             .cta{{ width:var(--left-w) !important; max-width:var(--left-w) !important; }}
 
@@ -179,10 +194,8 @@ def google_login(
             }}
 
             @media (max-width:980px){{
-              [data-testid="stHorizontalBlock"]{{ height:auto !important; }}
-              [data-testid="column"] > div{{ height:auto; }}
               .left{{ width:min(86vw, var(--left-w)); }}
-              .title{{ width:min(86vw, var(--left-w)); font-size:clamp(32px, calc(var(--left-w) * 0.18), var(--title-max)); }}
+              .title{{ width:min(86vw, var(--left-w)); font-size:clamp(26px, calc(var(--left-w) * 0.145), var(--title-max)); }}
               .cta, .pill, .left .row-widget.stButton{{ width:min(86vw, var(--left-w)) !important; max-width:min(86vw, var(--left-w)) !important; }}
               .hero-media{{ max-width:min(86vw, var(--media-max)); max-height:40vh; }}
             }}
@@ -204,13 +217,13 @@ def google_login(
             # Contenedor común (mismo ancho)
             st.markdown('<div class="cta">', unsafe_allow_html=True)
 
-            # --- PÍLDORA con ancho fijo desde Python (sin JS) ---
+            # PÍLDORA (mismo ancho)
             st.markdown(
                 f'<div class="pill" style="width:{LEFT_W}px !important;">GESTIÓN DE TAREAS ENI 2025</div>',
                 unsafe_allow_html=True
             )
 
-            # --- Botón OAuth envuelto en un DIV del MISMO ancho ---
+            # Botón (mismo ancho)
             st.markdown(f'<div style="width:{LEFT_W}px !important;">', unsafe_allow_html=True)
 
             result = None
@@ -219,7 +232,7 @@ def google_login(
                     name="Continuar con Google",
                     icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                     pkce="S256",
-                    use_container_width=False,   # No lo estiramos a toda la columna
+                    use_container_width=False,
                     scopes=["openid","email","profile"],
                     redirect_uri=cfg["redirect_uri"],
                 )
@@ -262,9 +275,9 @@ def google_login(
                                 scope="openid email profile",
                             )
 
-            st.markdown('</div>', unsafe_allow_html=True)  # fin wrapper del botón
-            st.markdown('</div>', unsafe_allow_html=True)  # fin .cta
-            st.markdown('</div>', unsafe_allow_html=True)  # fin .left
+            st.markdown('</div>', unsafe_allow_html=True)  # wrapper del botón
+            st.markdown('</div>', unsafe_allow_html=True)  # .cta
+            st.markdown('</div>', unsafe_allow_html=True)  # .left
 
         with col_right:
             st.markdown('<div class="right">', unsafe_allow_html=True)
