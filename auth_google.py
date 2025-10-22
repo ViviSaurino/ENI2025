@@ -114,7 +114,7 @@ def google_login(
             /* 👇 Control maestro del ancho (VENIDOS + píldora + botón) */
             :root{{
               --left-w: {LEFT_W}px;  /* Mantener igual que LEFT_W arriba */
-              --title-max: 140px;    /* ← súbelo/bájalo para limitar el tamaño máximo del título */
+              --title-max: 40px;    /* ← súbelo/bájalo para limitar el tamaño máximo del título */
               --media-max: 640px;
             }}
 
@@ -355,6 +355,7 @@ def google_login(
 def logout():
     st.session_state.pop("user", None)
     _safe_rerun()
+
 
 
 
