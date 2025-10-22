@@ -86,7 +86,7 @@ def google_login(
             token_endpoint=cfg["token_uri"],
         )
 
-        # ====== CSS: mismo ancho 100% sincronizado ======
+        # ====== CSS ======
         st.markdown("""
             <style>
             html, body { height:100%; overflow:hidden; }
@@ -100,7 +100,7 @@ def google_login(
 
             /* 👇 Control maestro del ancho (VENIDOS + píldora + botón) */
             :root{
-              --left-w: 520px;   /* AJUSTA AQUÍ (ej. 500, 540, 560...) */
+              --left-w: 520px;   /* AJUSTA AQUÍ: 500 / 540 / 560… */
               --title-max: 112px;
               --media-max: 640px;
             }
@@ -108,64 +108,71 @@ def google_login(
             [data-testid="stHorizontalBlock"]{ height:100vh !important; }
             [data-testid="column"] > div{ height:100%; display:flex; flex-direction:column; justify-content:center; }
 
-            .left { width: var(--left-w); max-width:100%; }
+            .left{ width:var(--left-w); max-width:100%; }
+
             .title{
-              width: var(--left-w);
+              width:var(--left-w);
               font-weight:900; color:#B38BE3; line-height:.92; letter-spacing:.4px;
               font-size: clamp(56px, 9vw, var(--title-max));
-              margin: 0 0 18px 0;
+              margin:0 0 18px 0;
             }
             .title .line{ display:block; }
 
-            /* Contenedor común (misma anchura) */
-            .cta{ width: var(--left-w) !important; max-width: var(--left-w) !important; }
+            .cta{ width:var(--left-w) !important; max-width:var(--left-w) !important; }
 
             .pill{
-              width: var(--left-w) !important; max-width: var(--left-w) !important;
+              width:var(--left-w) !important; max-width:var(--left-w) !important;
               height:46px; display:flex; align-items:center; justify-content:center;
               border-radius:12px; background:#EEF2FF; border:1px solid #DBE4FF;
               color:#2B4C7E; font-weight:800; letter-spacing:.2px; font-size:16px;
               margin:0 0 14px 0; box-sizing:border-box;
             }
 
-            /* —— Forzar ancho exacto del botón —— */
-            .btn-wrap{
-              width: var(--left-w) !important;
-              max-width: var(--left-w) !important;
-              margin: 0 !important; padding: 0 !important;
+            /* ========= CLAVE: forzar el widget de BOTÓN a px exactos ========= */
+            /* El botón es un widget dentro de .left; lo fijamos aquí con alta especificidad */
+            .left .row-widget.stButton{ 
+              width:var(--left-w) !important; 
+              max-width:var(--left-w) !important; 
+              align-self:flex-start !important;   /* evita estiramiento por flex */
+              padding:0 !important; 
+              margin:0 !important;
+              box-sizing:border-box !important;
             }
-            .btn-wrap [data-testid="baseButton-primary"],
-            .btn-wrap [data-testid="baseButton-secondary"],
-            .btn-wrap .stButton,                  /* compat */
-            .btn-wrap .row-widget.stButton{ width:100% !important; max-width:100% !important; margin:0 !important; padding:0 !important; }
-
-            .btn-wrap .stButton > div,
-            .btn-wrap .stButton > div > div{ width:100% !important; margin:0 !important; padding:0 !important; display:block !important; }
-
-            .btn-wrap button{
-              width:100% !important; min-width:0 !important; height:48px !important;
+            .left .row-widget.stButton > div{ 
+              width:100% !important; 
+              max-width:100% !important; 
+              padding:0 !important; 
+              margin:0 !important; 
+              display:block !important; 
+              box-sizing:border-box !important;
+            }
+            .left .row-widget.stButton > div > button{
+              width:100% !important; 
+              min-width:0 !important; 
+              height:48px !important;
               border-radius:12px !important; border:1px solid #D5DBEF !important;
-              background:#fff !important; font-size:15px !important; box-sizing:border-box !important; padding:0 .95rem !important;
+              background:#fff !important; font-size:15px !important;
+              box-sizing:border-box !important; padding:0 .95rem !important;
             }
-            .btn-wrap button:hover{ border-color:#8B5CF6 !important; box-shadow:0 8px 22px rgba(139,92,246,.18) !important; }
+            .left .row-widget.stButton > div > button:hover{
+              border-color:#8B5CF6 !important;
+              box-shadow:0 8px 22px rgba(139,92,246,.18) !important;
+            }
+            /* ========= FIN CLAVE ========= */
 
-            /* Media derecha */
             .right{ display:flex; justify-content:center; }
             .hero-media{
               display:block; width:auto;
-              max-width: min(var(--media-max), 45vw);
-              max-height: 62vh; height:auto; object-fit:contain;
+              max-width:min(var(--media-max), 45vw);
+              max-height:62vh; height:auto; object-fit:contain;
             }
 
-            /* Responsivo */
-            @media (max-width: 980px){
+            @media (max-width:980px){
               [data-testid="stHorizontalBlock"]{ height:auto !important; }
               [data-testid="column"] > div{ height:auto; }
               .left{ width:min(86vw, var(--left-w)); }
-              .title{ width:min(86vw, var(--left-w)); font-size: clamp(44px, 12vw, var(--title-max)); }
-              .cta, .btn-wrap, .pill{
-                width:min(86vw, var(--left-w)) !important; max-width:min(86vw, var(--left-w)) !important;
-              }
+              .title{ width:min(86vw, var(--left-w)); font-size:clamp(44px, 12vw, var(--title-max)); }
+              .cta, .pill, .left .row-widget.stButton{ width:min(86vw, var(--left-w)) !important; max-width:min(86vw, var(--left-w)) !important; }
               .hero-media{ max-width:min(86vw, var(--media-max)); max-height:40vh; }
             }
             </style>
@@ -176,6 +183,7 @@ def google_login(
 
         with col_left:
             st.markdown('<div class="left">', unsafe_allow_html=True)
+
             st.markdown(
                 '<div class="title"><span class="line">BIEN</span><span class="line">VENIDOS</span></div>',
                 unsafe_allow_html=True
@@ -184,15 +192,14 @@ def google_login(
             st.markdown('<div class="cta">', unsafe_allow_html=True)
             st.markdown('<div class="pill">GESTIÓN DE TAREAS ENI 2025</div>', unsafe_allow_html=True)
 
-            # Wrapper de ancho fijo para el botón (igual a --left-w)
-            st.markdown('<div class="btn-wrap">', unsafe_allow_html=True)
+            # Botón OAuth – SIN estirarlo a toda la columna
             result = None
             try:
                 result = oauth2.authorize_button(
                     name="Continuar con Google",
                     icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                     pkce="S256",
-                    use_container_width=True,   # llena el wrapper .btn-wrap (de ancho fijo)
+                    use_container_width=False,   # <<< importante
                     scopes=["openid","email","profile"],
                     redirect_uri=cfg["redirect_uri"],
                 )
@@ -202,7 +209,7 @@ def google_login(
                         name="Continuar con Google",
                         icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                         pkce="S256",
-                        use_container_width=True,
+                        use_container_width=False,
                         scope="openid email profile",
                         redirect_uri=cfg["redirect_uri"],
                     )
@@ -212,7 +219,7 @@ def google_login(
                             name="Continuar con Google",
                             icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                             pkce="S256",
-                            use_container_width=True,
+                            use_container_width=False,
                             scopes=["openid","email","profile"],
                             redirect_to=cfg["redirect_uri"],
                         )
@@ -222,7 +229,7 @@ def google_login(
                                 name="Continuar con Google",
                                 icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                                 pkce="S256",
-                                use_container_width=True,
+                                use_container_width=False,
                                 scope="openid email profile",
                                 redirect_to=cfg["redirect_uri"],
                             )
@@ -231,12 +238,11 @@ def google_login(
                                 name="Continuar con Google",
                                 icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                                 pkce="S256",
-                                use_container_width=True,
+                                use_container_width=False,
                                 scope="openid email profile",
                             )
-            st.markdown('</div>', unsafe_allow_html=True)  # /btn-wrap
-            st.markdown('</div>', unsafe_allow_html=True)   # /cta
-            st.markdown('</div>', unsafe_allow_html=True)   # /left
+            st.markdown('</div>', unsafe_allow_html=True)  # /cta
+            st.markdown('</div>', unsafe_allow_html=True)  # /left
 
         with col_right:
             st.markdown('<div class="right">', unsafe_allow_html=True)
