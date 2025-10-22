@@ -127,7 +127,7 @@ def google_login(
             .title .line{ display:block; }
 
             /* Mismo ancho para pill + botón */
-            .cta{ width: min(520px, 40vw); max-width: 520px; }
+            .cta{ width: min(120px, 40vw); max-width: 520px; }
             .pill{
               width:100%; height:46px;
               display:flex; align-items:center; justify-content:center;
@@ -314,3 +314,4 @@ def google_login(
 def logout():
     st.session_state.pop("user", None)
     _safe_rerun()
+
