@@ -126,7 +126,7 @@ def google_login(
             .left{{ width:var(--left-w); max-width:100%; }}
 
             /* ===== TÍTULO AJUSTADO AL ANCHO =====
-               coef 0.20: toca solo este número si quieres afinar el tamaño del título
+               coef 1.20: toca solo este número si quieres afinar el tamaño del título
             */
             .title{{
               width:var(--left-w);
@@ -355,5 +355,6 @@ def google_login(
 def logout():
     st.session_state.pop("user", None)
     _safe_rerun()
+
 
 
