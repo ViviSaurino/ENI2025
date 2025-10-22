@@ -287,100 +287,122 @@ if "df_main" not in st.session_state:
 # ---------- CSS (estilos + tabla legible) ----------
 st.markdown("""
 <style>
-/* 1) Elimina las “tarjetas lilas” (fondo, borde, sombra) */
-.form-card{
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-  margin: 0 0 12px 0 !important;
+/* ====== Layout base del hero (todo visible sin scroll) ====== */
+html, body { height: 100%; }
+[data-testid="stAppViewContainer"] { height: 100vh; }
+[data-testid="stMain"] { height: 100%; }
+.block-container{
+  height: 100%;
+  max-width: 1180px;
+  padding-top: 0.5rem !important;
+  padding-bottom: 0 !important;
 }
-/* 2) Título de sección en celeste suave */
-.form-title{
-  display: flex !important;
-  align-items: center !important;
-  gap: 10px !important;
-  background: #EEF6FF !important;
-  border: 1px solid #DBE7FF !important;
-  color: #1E3A8A !important;
+
+/* Contenedor del hero */
+.hero-area{
+  min-height: 100vh;                /* ocupa toda la pantalla */
+  display: flex;
+  align-items: center;              /* centra verticalmente el contenido */
+}
+
+/* Grid de dos columnas */
+:root{
+  --gap: 3rem;
+  --leftw: clamp(420px, 44vw, 560px);   /* ancho ideal del bloque izquierdo */
+}
+.row{
+  width: 100%;
+  display: flex;
+  align-items: center;               /* centrar ambos bloques verticalmente */
+  justify-content: space-between;
+  gap: var(--gap);
+}
+
+/* ====== Columna izquierda: título + pastilla + botón ====== */
+.left{
+  width: var(--leftw);
+  max-width: var(--leftw);
+}
+
+.title{
+  font-weight: 900;
+  color: #B38BE3;
+  line-height: .95;
+  letter-spacing: .4px;
+  /* tamaño responsivo para que entre en 100vh */
+  font-size: clamp(52px, 9.2vw, 96px);
+  margin: 0 0 18px 0;
+}
+.title .line{ display:block; }
+
+.equal-wrap{ width: 100%; max-width: 520px; }
+
+/* “Pastilla” */
+.pill{
+  width: 100% !important;
+  height: 46px !important;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 12px;
+  background:#EEF2FF; border:1px solid #DBE4FF;
+  color:#2B4C7E; font-weight: 800; letter-spacing:.2px;
+  font-size: 16px;
+  margin: 0 0 16px 0;
+}
+
+/* Botón Google: mismo ancho que la pastilla */
+.google-btn,
+.google-btn .stButton,
+.google-btn .stButton > div,
+.google-btn .stButton > button{
+  width: 100% !important; max-width: 520px !important;
+}
+.google-btn .stButton > button{
+  height: 48px !important;
   border-radius: 12px !important;
-  padding: 10px 14px !important;
-  font-weight: 900 !important;
-  font-size: 1.05rem !important;
-  margin: 0 0 10px 0 !important;
+  border: 1px solid #D5DBEF !important;
+  background: #fff !important;
+  font-size: 15px !important;
+  box-sizing: border-box !important;
 }
-.form-title .plus{ color:#7C3AED!important; font-size:1.15rem!important; }
-/* 3) Indicaciones sin rectángulo */
-.help-strip{
-  background: transparent !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  padding: 0 !important;
-  margin: 6px 0 10px 0 !important;
-  color: inherit !important;
-  line-height: 1.35 !important;
-}
-/* 4) Sidebar lila suave */
-.stApp [data-testid="stSidebar"]{
-  background: #F6F2FF !important;
-  border-right: 1px solid #E8DEF8 !important;
-}
-.stApp [data-testid="stSidebar"] *{ color:#1E1B4B !important; }
-.stApp [data-testid="stSidebar"] a{ color:#6B21A8 !important; text-decoration:none!important; }
-.stApp [data-testid="stSidebar"] a:hover{ color:#7C3AED!important; text-decoration:underline!important; }
-.stApp [data-testid="stSidebar"] .stButton > button{
-  background:#F3E8FF!important; border:1px solid #E9D5FF!important; color:#4C1D95!important; border-radius:10px!important;
-}
-.stApp [data-testid="stSidebar"] .stButton > button:hover{ background:#E9D5FF!important; }
-
-/* 5) AG Grid: encabezados HORIZONTALES y celdas legibles */
-/* ——— Encabezado sin saltos, centrado vertical y con buen padding ——— */
-.ag-theme-balham .ag-header,
-.ag-theme-balham .ag-header-viewport{
-  overflow: visible !important;                /* evita recortes de texto/íconos */
-}
-.ag-theme-balham .ag-header-cell,
-.ag-theme-balham .ag-header-group-cell{
-  padding: 8px 10px !important;                /* algo más de aire */
-  min-height: 48px !important;                 /* altura consistente del header */
-  line-height: 1.2 !important;
-}
-.ag-theme-balham .ag-header-cell-label{
-  display:flex !important;
-  align-items:center !important;               /* centra verticalmente */
-  gap: 6px !important;                          /* separa texto de iconos */
-  white-space: nowrap !important;               /* 👈 sin salto en header */
-}
-.ag-theme-balham .ag-header-cell-text{
-  white-space: nowrap !important;               /* 👈 sin salto en header */
-  overflow: visible !important;                 /* deja que el texto respire */
+.google-btn .stButton > button:hover{
+  border-color:#8B5CF6 !important;
+  box-shadow: 0 8px 22px rgba(139,92,246,.18) !important;
 }
 
-/* Opcional: mejora de contraste leve en el header */
-.ag-theme-balham .ag-header{
-  background: #ffffff !important;
-  border-bottom: 1px solid #eef1f5 !important;
+/* ====== Columna derecha: imagen/video ====== */
+.right{ flex: 1 1 auto; display: flex; justify-content: center; }
+.hero-image, .hero-video{
+  display: block;
+  width: min(44vw, 560px);           /* limita ancho y hace que entre en 100vh */
+  height: auto;
+  max-height: 72vh;                  /* evita que empuje el scroll */
+  object-fit: contain;
 }
 
-/* Celdas: legibles y con wrap para contenido largo */
-.ag-theme-balham .ag-cell{
-  white-space: normal !important;
-  word-break: break-word !important;
-  line-height: 1.25 !important;
-  padding-top: 6px !important;
-  padding-bottom: 6px !important;
+/* ====== Ajustes para pantallas medianas/pequeñas ====== */
+@media (max-width: 1200px){
+  :root{ --gap: 2.2rem; }
+  .hero-image, .hero-video{ max-height: 66vh; }
+}
+@media (max-width: 980px){
+  .row{
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 1.6rem;
+  }
+  .left{ width: 100%; max-width: 640px; }
+  .equal-wrap{ max-width: 640px; }
+  .hero-image, .hero-video{
+    width: min(86vw, 560px);
+    max-height: 42vh;               /* que todo quepa sin scroll en móviles */
+  }
+  .title{ font-size: clamp(44px, 12vw, 72px); margin-bottom: 14px; }
+  .pill{ height: 44px !important; margin-bottom: 12px; }
 }
 
-/* Filas: alternado, hover y selección */
-.ag-theme-balham .ag-row{ border-bottom: 1px solid #eef1f5 !important; }
-.ag-theme-balham .ag-row-odd .ag-cell{ background: #FAFBFD !important; }
-.ag-theme-balham .ag-row-hover .ag-cell{ background:#eef6ff!important; }
-.ag-theme-balham .ag-row-selected .ag-cell{ background:#e6f0ff!important; }
-
-/* Ajuste sutil de los íconos de ordenamiento/menú para que no empujen el texto */
-.ag-theme-balham .ag-header-icon{
-  transform: translateY(0.5px);                 /* alineación fina */
-}
+/* ====== (Opcional) reduce el margen superior “de seguridad” de Streamlit ====== */
+header[data-testid="stHeader"] { height: 0; min-height: 0; }
 </style>
 """, unsafe_allow_html=True)
 
