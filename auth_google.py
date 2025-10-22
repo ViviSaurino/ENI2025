@@ -103,7 +103,7 @@ def google_login(
             /* 👉 Centrado vertical y horizontal del bloque principal */
             .block-container{{
               height:100vh;
-              max-width:880px;
+              max-width:900px;
               padding:0 16px !important;
               margin:0 auto !important;
               display:flex;
@@ -350,6 +350,7 @@ def google_login(
 def logout():
     st.session_state.pop("user", None)
     _safe_rerun()
+
 
 
 
