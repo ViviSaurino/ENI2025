@@ -100,9 +100,9 @@ def google_login(
             [data-testid="stMain"]{ height:100%; padding-top:0 !important; padding-bottom:0 !important; }
             .block-container{ height:100%; max-width:1280px; padding:0 16px !important; margin:0 auto !important; }
 
-            /* 👉 controla aquí el ancho de VENIDOS + píldora + botón */
+            /* 👉 ANCHO maestro compartido por VENIDOS + píldora + botón */
             :root{
-              --left-w: 520px;     /* AJUSTA ESTE VALOR */
+              --left-w:   520px;    /* ajusta aquí: 480, 500, 540, etc. */
               --title-max: 112px;
               --media-max: 640px;
             }
@@ -123,48 +123,50 @@ def google_login(
             }
             .title .line{ display:block; }
 
-            /* Contenedor común */
+            /* Contenedor maestro — TODO lo de dentro mide 100% de este ancho */
             .cta{
               width: var(--left-w) !important;
               max-width: var(--left-w) !important;
-              display: inline-block;           /* evita que ocupe toda la fila */
+              margin: 0 !important;
+              padding: 0 !important;
+              overflow: hidden;                  /* corta cualquier desborde */
+              box-sizing: border-box !important;
             }
+            .cta *{ box-sizing: border-box !important; }
 
             .pill{
-              width: var(--left-w) !important;
-              max-width: var(--left-w) !important;
+              width: 100% !important;            /* <- toma exactamente el ancho de .cta */
               height:46px;
               display:flex; align-items:center; justify-content:center;
               border-radius:12px; background:#EEF2FF; border:1px solid #DBE4FF;
               color:#2B4C7E; font-weight:800; letter-spacing:.2px; font-size:16px;
-              margin:0 0 14px 0; box-sizing:border-box;
+              margin:0 0 14px 0; padding:0 12px;  /* padding interno sin afectar ancho */
             }
 
-            /* Fuerza TODOS los wrappers del botón al mismo ancho exacto */
+            /* Fuerza TODOS los wrappers del botón a 100% del contenedor .cta */
             .cta .row-widget.stButton,
             .cta .stButton{
-              width: var(--left-w) !important;
-              max-width: var(--left-w) !important;
+              width: 100% !important;
+              max-width: 100% !important;
               margin: 0 !important;
               padding: 0 !important;
-              display: inline-block !important;
-              box-sizing: border-box !important;
+              display: block !important;
             }
             .cta .stButton > div,
             .cta .stButton > div > div{
               width: 100% !important;
+              max-width: 100% !important;
               margin: 0 !important;
               padding: 0 !important;
-              display: inline-block !important;
-              box-sizing: border-box !important;
+              display: block !important;
             }
             .cta .stButton > div > button,
             .cta .stButton button{
-              width: 100% !important;
+              width: 100% !important;            /* <- idéntico a la píldora */
               height:48px !important;
               border-radius:12px !important; border:1px solid #D5DBEF !important;
               background:#fff !important; font-size:15px !important;
-              box-sizing:border-box !important; padding:0 .95rem !important;
+              margin: 0 !important; padding:0 .95rem !important;
             }
             .cta .stButton > div > button:hover,
             .cta .stButton button:hover{
@@ -188,12 +190,12 @@ def google_login(
               .left{ width:min(86vw, var(--left-w)); }
               .title{ width:min(86vw, var(--left-w)); font-size: clamp(44px, 12vw, var(--title-max)); }
               .cta{ width:min(86vw, var(--left-w)); max-width:min(86vw, var(--left-w)); }
-              .pill{ width:min(86vw, var(--left-w)) !important; max-width:min(86vw, var(--left-w)) !important; }
+              .pill{ width:100% !important; }
               .cta .row-widget.stButton,
               .cta .stButton,
               .cta .stButton > div,
               .cta .stButton > div > div{
-                width:min(86vw, var(--left-w)) !important; max-width:min(86vw, var(--left-w)) !important;
+                width:100% !important; max-width:100% !important;
               }
               .hero-media{ max-width:min(86vw, var(--media-max)); max-height:40vh; }
             }
@@ -213,14 +215,14 @@ def google_login(
             st.markdown('<div class="cta">', unsafe_allow_html=True)
             st.markdown('<div class="pill">GESTIÓN DE TAREAS ENI 2025</div>', unsafe_allow_html=True)
 
-            # Botón OAuth: SIN use_container_width para no estirar
+            # Botón OAuth: dejamos False (se ajusta con nuestro CSS a 100% del contenedor)
             result = None
             try:
                 result = oauth2.authorize_button(
                     name="Continuar con Google",
                     icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                     pkce="S256",
-                    use_container_width=False,   # ← clave para no ocupar toda la fila
+                    use_container_width=False,
                     scopes=["openid","email","profile"],
                     redirect_uri=cfg["redirect_uri"],
                 )
