@@ -121,7 +121,7 @@ def google_login(
             :root{{
               --left-w: {LEFT_W}px;   /* Mantener igual que LEFT_W arriba */
               --title-max: 80.9px;     /* límite superior del tamaño del título */
-              --media-max: 40px;
+              --media-max: 740px;
               --stack-gap: 10px;      /* separación entre píldora y botón */
               --title-bottom: 10px;   /* separación bajo el título */
             }}
@@ -349,6 +349,7 @@ def google_login(
 def logout():
     st.session_state.pop("user", None)
     _safe_rerun()
+
 
 
 
