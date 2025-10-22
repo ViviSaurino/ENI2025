@@ -285,49 +285,89 @@ if "df_main" not in st.session_state:
     st.session_state["df_main"] = base[COLS + ["__DEL__"]].copy()
 
 # ---------- CSS (estilos + tabla legible) ----------
+# ---------- CSS (estilos + tabla legible) ----------
 st.markdown("""
 <style>
-/* =====================  ENI Gestión — Tema Lila + Celeste  ===================== */
+/* ===================== Tema ENI — Gestión ===================== */
 :root{
-  --brand-lilac: #B38BE3;
-  --brand-blue:  #60A5FA;
-  --blue-600:    #3B82F6;
-  --blue-700:    #2563EB;
-  --ink-900:     #0f172a;
-  --ink-700:     #334155;
-  --ink-500:     #64748B;
-  --bg-soft:     #F7F7FB;
-  --card:        #FFFFFF;
-  --border:      #E5E7EB;
-  --shadow:      0 6px 20px rgba(2, 8, 23, .06);
+  --lilac:   #B38BE3;      /* lila marca */
+  --lilac-50:#F6EEFF;      /* fondo sidebar suave */
+  --lilac-600:#8B5CF6;
+  --ink:     #111827;      /* negro / near-black para títulos */
+  --muted:   #64748B;
+  --card:    #FFFFFF;
+  --border:  #E5E7EB;
+  --shadow:  0 6px 20px rgba(2,8,23,.06);
+
+  --blue-pill-bg:  #EAF2FF;  /* pastilla celeste */
+  --blue-pill-bd:  #BFDBFE;
+  --blue-pill-fg:  #0B3B76;
 }
 
-/* Layout general */
-[data-testid="stAppViewContainer"] {background: linear-gradient(180deg, #ffffff 0%, #fbfbfe 100%)}
-.block-container{max-width: 1100px;}
-section.main > div {padding-top: 10px !important;}
+/* Ancho del contenido principal */
+.block-container{ max-width: 1100px; }
 
-/* ========== Encabezados ========== */
+/* ===== Título principal: negro ===== */
 h1, .stMarkdown h1{
+  color: var(--ink) !important;
   font-weight: 900 !important;
-  letter-spacing: .4px;
-  line-height: 1.1;
-  margin: 8px 0 18px 0 !important;
-  background: linear-gradient(90deg, var(--brand-lilac), var(--brand-blue));
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
-h2, .stMarkdown h2{
-  color: var(--ink-900) !important; font-weight: 800 !important; margin: 6px 0 14px 0 !important;
+  letter-spacing: .3px;
+  margin: 6px 0 18px 0 !important;
 }
 
-/* ========== Tarjetas/Secciones (containers con borde) ========== */
-div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]) { /* contenedores compuestos */
-  background: var(--card); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow);
-  padding: 14px 14px 10px 14px; margin-bottom: 16px;
+/* ===== Sidebar lila ===== */
+[data-testid="stSidebar"]{
+  background: var(--lilac-50) !important;
+  border-right: 1px solid #ECE6FF !important;
 }
-.stMarkdown div:has(table) {background: transparent; border: 0; box-shadow: none;}
+[data-testid="stSidebar"] a{
+  color: var(--lilac-600) !important;
+  font-weight: 600;
+  text-decoration: none;
+}
+[data-testid="stSidebar"] .stButton > button{
+  border-radius: 12px !important;
+  background: var(--lilac) !important;
+  border: 1px solid var(--lilac) !important;
+  color:#fff !important; font-weight:800 !important;
+  box-shadow: 0 8px 18px rgba(179,139,227,.25) !important;
+}
+[data-testid="stSidebar"] .stButton > button:hover{
+  filter: brightness(.96);
+}
 
-/* ========== Inputs / Selects / Textareas (BaseWeb) ========== */
+/* ===== Tarjetas de sección ===== */
+div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]) {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 14px 14px 10px 14px;
+  margin-bottom: 16px;
+}
+
+/* ===== Subtítulos “Nueva tarea / Nueva alerta” en pastilla celeste ===== */
+/* tienes estos contenedores en tu HTML: .form-card y .form-title */
+.form-card{
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 10px 12px 12px 12px;
+  margin: 10px 0 18px 0;
+}
+.form-title{
+  display: inline-flex; align-items: center; gap:.5rem;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: var(--blue-pill-bg);
+  border: 1px solid var(--blue-pill-bd);
+  color: var(--blue-pill-fg);
+  font-weight: 800; letter-spacing: .2px;
+  margin-bottom: 10px;
+}
+
+/* ===== Inputs y selects (bordes y foco) ===== */
 [data-baseweb="input"] > div, 
 [data-baseweb="textarea"] > div,
 [data-baseweb="select"] > div{
@@ -340,81 +380,27 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]) { /* contenedores com
 [data-baseweb="input"] > div:has(input:focus),
 [data-baseweb="textarea"] > div:has(textarea:focus),
 [data-baseweb="select"] > div:focus-within{
-  border-color: var(--brand-blue) !important;
+  border-color: #60A5FA !important;
   box-shadow: 0 0 0 3px rgba(96,165,250,.25) !important;
 }
-[data-baseweb="input"] input::placeholder,
-[data-baseweb="textarea"] textarea::placeholder{color: #9AA4B2 !important}
 
-/* Select “pill” de tag */
-[data-baseweb="tag"]{
-  background: rgba(96,165,250,.14) !important;
-  color: #0b3b76 !important;
-  border: 1px solid rgba(96,165,250,.35) !important;
-  border-radius: 999px !important;
-}
-
-/* ========== Radio & Checkbox ========== */
-[data-baseweb="radio"] input:checked + div:before,
-[data-baseweb="checkbox"] input:checked + div:before{
-  background: var(--brand-blue) !important;
-  border-color: var(--brand-blue) !important;
-  box-shadow: 0 0 0 3px rgba(96,165,250,.15) !important;
-}
-
-/* ========== Badges / Etiquetas pequeñas ========== */
-.badge, .st-emotion-cache-1h7okuk{  /* si usas chips/badges propios */
-  display:inline-flex; align-items:center; gap:.4rem;
-  padding:.22rem .5rem; font-size:.78rem; font-weight:700;
-  border-radius:999px; background: rgba(179,139,227,.18); color:#4f2f7a; border:1px solid rgba(179,139,227,.35);
-}
-
-/* ========== Botones ========== */
+/* ===== Botones generales (fuera de la sidebar) ===== */
 .stButton > button,
 .row-widget.stButton > div > button{
-  width:auto; min-height: 44px;
   border-radius: 12px !important;
-  border: 1px solid var(--brand-blue) !important;
-  background: var(--brand-blue) !important;
-  color:#fff !important; font-weight:800 !important; letter-spacing:.2px;
-  padding: 0 16px !important;
+  min-height: 44px;
+  border: 1px solid #60A5FA !important;
+  background: #60A5FA !important;
+  color:#fff !important; font-weight:800 !important;
   box-shadow: 0 6px 18px rgba(96,165,250,.20) !important;
-  transition: transform .06s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
 }
 .stButton > button:hover,
 .row-widget.stButton > div > button:hover{
-  background: var(--blue-600) !important; border-color: var(--blue-600) !important;
-  box-shadow: 0 10px 24px rgba(59,130,246,.28) !important;
-}
-.stButton > button:active,
-.row-widget.stButton > div > button:active{
-  background: var(--blue-700) !important; border-color: var(--blue-700) !important;
-  transform: translateY(1px);
+  filter: brightness(.96);
 }
 
-/* Botón secundario “fantasma” si lo usas (ej: gris claro) */
-.button-ghost, .stButton.ghost > button{
-  background:#fff !important; color: var(--ink-700) !important; border:1px solid var(--border) !important;
-  box-shadow:none !important;
-}
-.button-ghost:hover, .stButton.ghost > button:hover{
-  border-color: var(--brand-lilac) !important;
-  box-shadow: 0 6px 18px rgba(179,139,227,.18) !important;
-}
-
-/* ========== Botón de acción dentro de formularios (ej: “Agregar y guardar”) ========== */
-div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]) .stButton > button{
-  min-width: 160px;
-}
-
-/* ========== Pequeños iconos de estado (verde/amarillo/rojo) si usas emoji/markers ========== */
-.status-green{color:#059669 !important}
-.status-amber{color:#B45309 !important}
-.status-red{color:#DC2626 !important}
-
-/* ========== Tooltips / Foco accesible extra ========== */
-*:focus-visible{outline: none !important; box-shadow: 0 0 0 3px rgba(179,139,227,.28) !important;}
-/* ================================================================== */
+/* Accesibilidad foco */
+*:focus-visible{ outline: none !important; box-shadow: 0 0 0 3px rgba(179,139,227,.28) !important; }
 </style>
 """, unsafe_allow_html=True)
 
