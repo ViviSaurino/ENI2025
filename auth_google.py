@@ -3,8 +3,8 @@ import base64
 import streamlit as st
 from streamlit_oauth import OAuth2Component
 
-# ========== Configuración de ancho maestro ==========
-LEFT_W = 320  # px -> ancho de VENIDOS + píldora + botón
+# ========== Configuración de ancho maestro (un único lugar) ==========
+LEFT_W = 320  # px -> ancho de VENIDOS + píldora + botón (mantener igual que --left-w)
 
 # ================== Utilidades ==================
 def _safe_rerun():
@@ -109,27 +109,27 @@ def google_login(
               display:flex;
               flex-direction:column;
               justify-content:center;   /* centro vertical */
-              transform: translateY(0.3vh); /* baja un pelín todo el bloque */
+              transform: translateY(0.3vh); /* ⬅️ BAJA TODO EL BLOQUE (ajusta 0.3vh a tu gusto) */
             }}
             [data-testid="stHorizontalBlock"]{{
               height:100%;
               display:flex;
               align-items:center;       /* alinea verticalmente las dos columnas */
-              gap: 1px !important;      /* separación entre columnas */
+              gap: 1px !important;      /* ⬅️ SEPARACIÓN ENTRE COLUMNAS */
             }}
 
             /* 👇 Control maestro del ancho (VENIDOS + píldora + botón) y separaciones */
             :root{{
-              --left-w: {LEFT_W}px;
-              --title-max: 80.9px;
+              --left-w: {LEFT_W}px;   /* Mantener igual que LEFT_W arriba */
+              --title-max: 80.9px;     /* límite superior del tamaño del título */
               --media-max: 1000px;
-              --stack-gap: 10px;
-              --title-bottom: 10px;
+              --stack-gap: 10px;      /* separación entre píldora y botón */
+              --title-bottom: 10px;   /* separación bajo el título */
             }}
 
             .left{{ width:var(--left-w); max-width:100%; }}
 
-            /* ===== TÍTULO ===== */
+            /* ===== TÍTULO AJUSTADO AL ANCHO ===== */
             .title{{
               width:var(--left-w);
               max-width:var(--left-w);
@@ -137,18 +137,18 @@ def google_login(
               font-weight:930; color:#B38BE3;
               line-height:.92; letter-spacing:.10px;
               font-size: clamp(40px, calc(var(--left-w) * 0.38), var(--title-max)) !important;
-              margin:0 0 var(--title-bottom) 0;
+              margin:0 0 var(--title-bottom) 0;    /* menos espacio abajo */
               box-sizing:border-box;
             }}
             .title .line{{ display:block; width:100%; word-break:break-word; overflow-wrap:anywhere; }}
 
-            /* Contenedor de píldora + botón */
+            /* Contenedor de píldora + botón, con gap cortito */
             .cta{{
               width:var(--left-w) !important;
               max-width:var(--left-w) !important;
               display:flex;
               flex-direction:column;
-              gap:var(--stack-gap);
+              gap:var(--stack-gap);   /* ← aquí controlas lo juntos que están */
             }}
 
             .pill{{
@@ -159,14 +159,14 @@ def google_login(
               margin:0; box-sizing:border-box;
             }}
 
-            /* Botón: base */
-            .left .row-widget.stButton{{
+            /* Fuerza el widget de BOTÓN al mismo ancho */
+            .left .row-widget.stButton{{ 
               width:var(--left-w) !important;
               max-width:var(--left-w) !important;
               align-self:flex-start !important;
               padding:0 !important; margin:0 !important; box-sizing:border-box !important;
             }}
-            .left .row-widget.stButton > div{{
+            .left .row-widget.stButton > div{{ 
               width:100% !important; max-width:100% !important; padding:0 !important; margin:0 !important;
               display:block !important; box-sizing:border-box !important;
             }}
@@ -177,9 +177,31 @@ def google_login(
               background-image:none !important;
             }}
 
-            /* ====== OVERRIDES DUROS PARA EVITAR ROJOS ====== */
+            /* === OVERRIDES: QUE EL HOVER NUNCA SEA ROJO, SIEMPRE #60A5FA === */
+            /* (1) Selectores de alta cobertura dentro de .left */
+            .left .row-widget.stButton > div > button:hover,
+            .left .row-widget.stButton > div > button:focus,
+            .left .row-widget.stButton > div > button:focus-visible,
+            .left .row-widget.stButton > div > button:active,
+            .left .stButton button:hover,
+            .left .stButton button:focus,
+            .left .stButton button:active,
+            .left [data-testid="stBaseButton-secondary"] > button:hover,
+            .left [data-testid="stBaseButton-secondary"] > button:focus,
+            .left [data-testid="stBaseButton-secondary"] > button:active,
+            .left button[kind="secondary"]:hover,
+            .left button[kind="secondary"]:focus,
+            .left button[kind="secondary"]:active,
+            .left button:not(:disabled):hover{{
+              background:#60A5FA !important;
+              border-color:#60A5FA !important;
+              color:#ffffff !important;
+              background-image:none !important;
+              outline:none !important;
+              box-shadow:0 0 0 3px rgba(96,165,250,.35) !important, 0 8px 22px rgba(96,165,250,.25) !important;
+            }}
 
-            /* 1) Fuerza tema/variables a celeste */
+            /* (2) Variables del tema por si el rojo viene de theme vars */
             :root{{
               --primary-color:#60A5FA !important;
               --accent-color:#60A5FA !important;
@@ -191,40 +213,7 @@ def google_login(
               --button-secondary-pressed-border:#60A5FA !important;
             }}
 
-            /* 2) Estados de botón (todos) */
-            .left .row-widget.stButton > div > button:hover,
-            .left .row-widget.stButton > div > button:focus,
-            .left .row-widget.stButton > div > button:focus-visible,
-            .left .row-widget.stButton > div > button:active,
-            .left [data-testid="baseButton-secondary"] > button:hover,
-            .left [data-testid="baseButton-secondary"] > button:focus,
-            .left [data-testid="baseButton-secondary"] > button:focus-visible,
-            .left [data-testid="baseButton-secondary"] > button:active,
-            .left [data-testid="stBaseButton-secondary"] > button:hover,
-            .left [data-testid="stBaseButton-secondary"] > button:focus,
-            .left [data-testid="stBaseButton-secondary"] > button:focus-visible,
-            .left [data-testid="stBaseButton-secondary"] > button:active{{
-              background:#60A5FA !important;
-              border-color:#60A5FA !important;
-              color:#ffffff !important;
-              background-image:none !important;
-              outline:none !important;
-              box-shadow:0 0 0 3px rgba(96,165,250,.35) !important, 0 8px 22px rgba(96,165,250,.25) !important;
-            }}
-
-            /* 3) Si el nuevo UI usa “secondary” por atributo o rol */
-            .left button[kind="secondary"]:hover,
-            .left button[kind="secondary"]:focus,
-            .left button[kind="secondary"]:active,
-            .left button[role="button"]:hover,
-            .left button[role="button"]:focus,
-            .left button[role="button"]:active{{
-              background:#60A5FA !important;
-              border-color:#60A5FA !important;
-              color:#ffffff !important;
-            }}
-
-            /* 4) Color de selección de texto (si el “rojo” era el highlight) */
+            /* (3) Selección de texto dentro del botón (por si se veía rojo) */
             .left .row-widget.stButton *::selection {{
               background:#60A5FA !important;
               color:#ffffff !important;
@@ -234,7 +223,7 @@ def google_login(
               color:#ffffff !important;
             }}
 
-            /* Columna derecha: media */
+            /* Columna derecha: media centrada y con altura contenida */
             .right{{ display:flex; justify-content:center; }}
             .hero-media{{
               display:block; width:auto;
