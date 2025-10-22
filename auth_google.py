@@ -103,13 +103,13 @@ def google_login(
 
             [data-testid="stAppViewContainer"]{ height:100vh; overflow:hidden; }
             [data-testid="stMain"]{ height:100%; padding-top:0 !important; padding-bottom:0 !important; }
-            .block-container{ height:100%; max-width:1180px; padding:0 16px !important; margin:0 auto !important; }
+            .block-container{ height:100%; max-width:1280px; padding:0 16px !important; margin:0 auto !important; }
 
             /* 👉 Ajusta SOLO estos 3 valores para afinar la maqueta */
             :root{
               --left-w:   560px;   /* ANCHO maestro: título + píldora + botón */
-              --title-max: 100px;  /* Tamaño máximo del título */
-              --media-max: 600px;  /* Ancho máximo de la imagen/video */
+              --title-max: 112px;  /* Tamaño máximo del título */
+              --media-max: 640px;  /* Ancho máximo de la imagen/video */
             }
 
             /* Forzar altura de viewport para alinear verticalmente */
@@ -145,6 +145,10 @@ def google_login(
             .cta .stButton, .cta .row-widget.stButton, .cta > div{
               width:100% !important; margin:0 !important; padding:0 !important;
             }
+            /* 👇 fuerza el wrapper interno del botón para que ocupe el 100% */
+            .cta .stButton > div{
+              width:100% !important;
+            }
             .cta .stButton > button{
               width:100% !important; height:48px !important;
               border-radius:12px !important; border:1px solid #D5DBEF !important;
@@ -161,8 +165,8 @@ def google_login(
             .hero-media{
               display:block;
               width:auto;
-              max-width: min(var(--media-max), 46vw);
-              max-height: 64vh;   /* un poco menos para evitar cualquier scroll */
+              max-width: min(var(--media-max), 45vw);
+              max-height: 62vh;   /* un poco menos para evitar cualquier scroll */
               height:auto;
               object-fit:contain;
             }
@@ -180,7 +184,6 @@ def google_login(
         """, unsafe_allow_html=True)
 
         # --------- Layout: 2 columnas ----------
-        # Mantengo la proporción; si quieres más espacio para la imagen, sube 5->6.
         col_left, col_right = st.columns([7, 5], gap="large")
 
         with col_left:
