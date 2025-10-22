@@ -3,8 +3,6 @@ import base64
 import streamlit as st
 from streamlit_oauth import OAuth2Component
 
-# ⚠️ No llames st.set_page_config aquí. Hazlo en el script principal.
-
 # ================== Compat (rerun & query params) ==================
 def _safe_rerun():
     if hasattr(st, "rerun"):
@@ -69,10 +67,6 @@ def google_login(
     allowed_domains=None,
     redirect_page: str | None = None,
 ):
-    """
-    Muestra login SOLO cuando no hay sesión.
-    Tras autenticarse: borra por completo el UI del login y recarga/redirige.
-    """
     login_ph = st.empty()
 
     u = st.session_state.get("user")
@@ -83,7 +77,6 @@ def google_login(
             st.stop()
         return u
 
-    # ----- Render del login dentro del placeholder -----
     with login_ph.container():
         cfg = _get_oauth_cfg()
         oauth2 = OAuth2Component(
@@ -93,36 +86,45 @@ def google_login(
             token_endpoint=cfg["token_uri"],
         )
 
-        # ====== ESTILOS: sin scroll inicial + layout alineado ======
+        # ====== CSS: sin scroll + alineado perfecto ======
         st.markdown("""
             <style>
-            /* Oculta header/toolbar de Streamlit Cloud y quita el padding compensatorio */
-            header[data-testid="stHeader"]{display:none !important;}
+            /* Aplastar header/toolbar en Streamlit Cloud (sin offsets raros) */
+            header[data-testid="stHeader"]{
+              height:0 !important;
+              min-height:0 !important;
+              padding:0 !important;
+              box-shadow:none !important;
+              border:none !important;
+              background:transparent !important;
+            }
             [data-testid="stToolbar"]{display:none !important;}
             #MainMenu{visibility:hidden;}
             footer{display:none !important;}
 
-            /* Quita padding superior de la app que deja un “espacio fantasma” */
-            [data-testid="stAppViewContainer"] > .main { padding-top: 0 !important; }
-            .main .block-container{ padding-top: .5rem !important; padding-bottom: 0 !important; }
-
-            /* Lienzo principal al 100% de alto */
             html, body { height:100%; }
             [data-testid="stAppViewContainer"]{ height:100vh; }
+            [data-testid="stAppViewContainer"] > .main { padding-top: 0 !important; }
+            .block-container{
+              max-width:1180px;
+              padding-top:.25rem !important;
+              padding-bottom:0 !important;
+            }
 
-            /* GRID principal */
             :root{
               --gap: 2.6rem;
               --col-left: clamp(420px, 46vw, 560px);
               --pill-h: 46px;
               --btn-h: 48px;
             }
+
             .hero-area{
-              min-height: 100vh;           /* ocupa toda la pantalla */
-              display: flex;
-              align-items: center;         /* centra verticalmente */
-              overflow: hidden;
+              min-height:100vh;              /* todo en una pantalla */
+              display:flex;
+              align-items:center;
+              overflow:hidden;               /* evita micro-scroll */
             }
+
             .row{
               width:100%;
               display:flex;
@@ -131,19 +133,20 @@ def google_login(
               gap: var(--gap);
             }
 
-            /* Columna izquierda (texto + pill + botón) */
+            /* Izquierda */
             .left{ width: var(--col-left); max-width: var(--col-left); }
             .title{
               font-weight:900;
               color:#B38BE3;
               line-height:.95;
               letter-spacing:.4px;
-              font-size: clamp(56px, 8.4vw, 92px);   /* grande pero no rompe */
+              font-size: clamp(60px, 8vw, 92px);
               margin: 0 0 18px 0;
             }
             .title .line{ display:block; }
 
-            .equal-wrap{ width:100%; max-width: 520px; }
+            .equal-wrap{ width:100%; max-width:520px; }
+
             .pill{
               width:100% !important;
               height: var(--pill-h) !important;
@@ -153,7 +156,7 @@ def google_login(
               margin:0 0 16px 0; box-sizing:border-box;
             }
 
-            /* Botón Google del mismo ancho que la pastilla */
+            /* Botón Google = mismo ancho que la pill */
             .google-btn,
             .google-btn > div,
             .google-btn .row-widget.stButton,
@@ -173,13 +176,13 @@ def google_login(
               box-shadow:0 8px 22px rgba(139,92,246,.18) !important;
             }
 
-            /* Columna derecha: imagen/video limitado para no crear scroll */
+            /* Derecha */
             .right{ flex: 1 1 auto; display:flex; justify-content:center; }
             .hero-image, .hero-video{
               display:block;
               width: min(44vw, 560px);
               height:auto;
-              max-height: 64vh;            /* << evita que empuje hacia abajo */
+              max-height: 62vh;             /* clave: no empuja hacia abajo */
               object-fit:contain;
             }
 
@@ -197,16 +200,17 @@ def google_login(
               }
               .left{ width:100%; max-width:680px; }
               .equal-wrap{ max-width:680px; }
-              .title{ font-size: clamp(44px, 11vw, 72px); margin-bottom: 12px; }
+              .title{ font-size: clamp(46px, 11vw, 72px); margin-bottom: 12px; }
               .pill{ height:44px !important; margin-bottom:12px; }
               .hero-image, .hero-video{
                 width: min(86vw, 560px);
-                max-height: 40vh;          /* todo entra sin scroll en móvil */
+                max-height: 40vh;          /* entra sin scroll en móvil */
               }
             }
             </style>
         """, unsafe_allow_html=True)
 
+        # --- Layout (usamos columns solo para ubicar el botón en su lado) ---
         st.markdown('<div class="hero-area"><div class="row">', unsafe_allow_html=True)
 
         col_left, col_right = st.columns([1,1], gap="large")
@@ -275,7 +279,6 @@ def google_login(
             st.markdown('<div class="right">', unsafe_allow_html=True)
             vid = _video("assets/hero.mp4")
             img = _img("assets/hero.png")
-            # Fallback por si aún no subiste assets
             fallback = "https://raw.githubusercontent.com/filipedeschamps/tabnews.com.br/main/public/apple-touch-icon.png"
             if vid:
                 st.markdown(f'<video class="hero-video" src="{vid}" autoplay loop muted playsinline></video>', unsafe_allow_html=True)
@@ -287,7 +290,7 @@ def google_login(
 
         st.markdown('</div></div>', unsafe_allow_html=True)  # row + hero-area
 
-    # ----- Si no se obtuvo resultado del botón aún -----
+    # ----- Si no hay resultado aún -----
     if not result:
         return None
 
