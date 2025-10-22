@@ -120,7 +120,7 @@ def google_login(
             /* 👇 Control maestro del ancho (VENIDOS + píldora + botón) y separaciones */
             :root{{
               --left-w: {LEFT_W}px;   /* Mantener igual que LEFT_W arriba */
-              --title-max: 84px;     /* límite superior del tamaño del título */
+              --title-max: 82px;     /* límite superior del tamaño del título */
               --media-max: 640px;
               --stack-gap: 10px;      /* separación entre píldora y botón */
               --title-bottom: 10px;   /* separación bajo el título */
@@ -349,6 +349,7 @@ def google_login(
 def logout():
     st.session_state.pop("user", None)
     _safe_rerun()
+
 
 
 
