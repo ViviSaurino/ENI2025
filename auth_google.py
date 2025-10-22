@@ -3,8 +3,10 @@ import base64
 import streamlit as st
 from streamlit_oauth import OAuth2Component
 
-LEFT_W = 320  # px
+# ========== Configuración de ancho maestro ==========
+LEFT_W = 320  # px -> ancho de VENIDOS + píldora + botón
 
+# ================== Utilidades ==================
 def _safe_rerun():
     if hasattr(st, "rerun"):
         st.rerun()
@@ -25,6 +27,7 @@ def _set_query_params(**kwargs):
     elif hasattr(st, "experimental_set_query_params"):
         st.experimental_set_query_params(**kwargs)
 
+# -------------------- secrets --------------------
 def _get_oauth_cfg():
     cfg = st.secrets.get("oauth_client", {})
     return {
@@ -42,6 +45,7 @@ def _is_allowed(email: str, allowed_emails, allowed_domains) -> bool:
     dom = email.split("@")[-1] if "@" in email else ""
     return dom in {d.lower().strip() for d in (allowed_domains or [])}
 
+# -------------------- assets helpers ---------------------
 def _b64(path: str, mime: str) -> str | None:
     try:
         with open(path, "rb") as f:
@@ -52,6 +56,7 @@ def _b64(path: str, mime: str) -> str | None:
 def _img(path: str) -> str | None:   return _b64(path, "image/png")
 def _video(path: str) -> str | None: return _b64(path, "video/mp4")
 
+# -------------------- navigation helper --------------------
 def _switch_page(target: str):
     if hasattr(st, "switch_page"):
         st.switch_page(target)
@@ -59,6 +64,7 @@ def _switch_page(target: str):
         _set_query_params(go=target)
         _safe_rerun()
 
+# ================== LOGIN ==================
 def google_login(
     allowed_emails=None,
     allowed_domains=None,
@@ -94,27 +100,7 @@ def google_login(
             [data-testid="stAppViewContainer"]{{ height:100vh; overflow:hidden; }}
             [data-testid="stMain"]{{ height:100%; padding-top:0 !important; padding-bottom:0 !important; }}
 
-            /* —— Forzar tema/vars a celeste (algunas builds de Streamlit usan estas vars) —— */
-            :root{{
-              --primary-color: #60A5FA !important;
-              --accent-color: #60A5FA !important;
-              --secondary-background-color: #60A5FA !important; /* fallback para :active de botones secundarios */
-              --brand-color: #60A5FA !important;
-
-              /* posibles vars internas de botones base */
-              --button-secondary-hover-bg: #60A5FA !important;
-              --button-secondary-hover-border: #60A5FA !important;
-              --button-secondary-pressed-bg: #60A5FA !important;
-              --button-secondary-pressed-border: #60A5FA !important;
-
-              --left-w: {LEFT_W}px;
-              --title-max: 80.9px;
-              --media-max: 1000px;
-              --stack-gap: 10px;
-              --title-bottom: 10px;
-            }}
-
-            /* 👉 Centrado vertical/horizontal del bloque principal */
+            /* 👉 Centrado vertical y horizontal del bloque principal */
             .block-container{{
               height:100vh;
               max-width:800px;
@@ -122,18 +108,28 @@ def google_login(
               margin:0 auto !important;
               display:flex;
               flex-direction:column;
-              justify-content:center;
-              transform: translateY(0.3vh);
+              justify-content:center;   /* centro vertical */
+              transform: translateY(0.3vh); /* baja un pelín todo el bloque */
             }}
             [data-testid="stHorizontalBlock"]{{
               height:100%;
               display:flex;
-              align-items:center;
-              gap: 1px !important;
+              align-items:center;       /* alinea verticalmente las dos columnas */
+              gap: 1px !important;      /* separación entre columnas */
+            }}
+
+            /* 👇 Control maestro del ancho (VENIDOS + píldora + botón) y separaciones */
+            :root{{
+              --left-w: {LEFT_W}px;
+              --title-max: 80.9px;
+              --media-max: 1000px;
+              --stack-gap: 10px;
+              --title-bottom: 10px;
             }}
 
             .left{{ width:var(--left-w); max-width:100%; }}
 
+            /* ===== TÍTULO ===== */
             .title{{
               width:var(--left-w);
               max-width:var(--left-w);
@@ -146,6 +142,7 @@ def google_login(
             }}
             .title .line{{ display:block; width:100%; word-break:break-word; overflow-wrap:anywhere; }}
 
+            /* Contenedor de píldora + botón */
             .cta{{
               width:var(--left-w) !important;
               max-width:var(--left-w) !important;
@@ -162,6 +159,7 @@ def google_login(
               margin:0; box-sizing:border-box;
             }}
 
+            /* Botón: base */
             .left .row-widget.stButton{{
               width:var(--left-w) !important;
               max-width:var(--left-w) !important;
@@ -179,30 +177,33 @@ def google_login(
               background-image:none !important;
             }}
 
-            /* === Estados HOVER/FOCUS/ACTIVE: celeste #60A5FA === */
+            /* ====== OVERRIDES DUROS PARA EVITAR ROJOS ====== */
+
+            /* 1) Fuerza tema/variables a celeste */
+            :root{{
+              --primary-color:#60A5FA !important;
+              --accent-color:#60A5FA !important;
+              --brand-color:#60A5FA !important;
+              --secondary-background-color:#60A5FA !important;
+              --button-secondary-hover-bg:#60A5FA !important;
+              --button-secondary-hover-border:#60A5FA !important;
+              --button-secondary-pressed-bg:#60A5FA !important;
+              --button-secondary-pressed-border:#60A5FA !important;
+            }}
+
+            /* 2) Estados de botón (todos) */
             .left .row-widget.stButton > div > button:hover,
             .left .row-widget.stButton > div > button:focus,
             .left .row-widget.stButton > div > button:focus-visible,
-            .left .row-widget.stButton > div > button:active{{
-              background:#60A5FA !important;
-              border-color:#60A5FA !important;
-              color:#FFFFFF !important;
-              background-image:none !important;
-              outline:none !important;
-              box-shadow:0 0 0 3px rgba(96,165,250,.35) !important, 0 8px 22px rgba(96,165,250,.25) !important;
-            }}
-
-            /* —— Refuerzo contra el botón “baseButton-secondary” del nuevo UI —— */
-            .left [data-testid="baseButton-secondary"] > button{{
-              background:#fff !important;
-              border:1px solid #D5DBEF !important;
-              color:#111827 !important;
-              background-image:none !important;
-            }}
+            .left .row-widget.stButton > div > button:active,
             .left [data-testid="baseButton-secondary"] > button:hover,
             .left [data-testid="baseButton-secondary"] > button:focus,
             .left [data-testid="baseButton-secondary"] > button:focus-visible,
-            .left [data-testid="baseButton-secondary"] > button:active{{
+            .left [data-testid="baseButton-secondary"] > button:active,
+            .left [data-testid="stBaseButton-secondary"] > button:hover,
+            .left [data-testid="stBaseButton-secondary"] > button:focus,
+            .left [data-testid="stBaseButton-secondary"] > button:focus-visible,
+            .left [data-testid="stBaseButton-secondary"] > button:active{{
               background:#60A5FA !important;
               border-color:#60A5FA !important;
               color:#ffffff !important;
@@ -211,7 +212,29 @@ def google_login(
               box-shadow:0 0 0 3px rgba(96,165,250,.35) !important, 0 8px 22px rgba(96,165,250,.25) !important;
             }}
 
-            /* Columna derecha */
+            /* 3) Si el nuevo UI usa “secondary” por atributo o rol */
+            .left button[kind="secondary"]:hover,
+            .left button[kind="secondary"]:focus,
+            .left button[kind="secondary"]:active,
+            .left button[role="button"]:hover,
+            .left button[role="button"]:focus,
+            .left button[role="button"]:active{{
+              background:#60A5FA !important;
+              border-color:#60A5FA !important;
+              color:#ffffff !important;
+            }}
+
+            /* 4) Color de selección de texto (si el “rojo” era el highlight) */
+            .left .row-widget.stButton *::selection {{
+              background:#60A5FA !important;
+              color:#ffffff !important;
+            }}
+            .left .row-widget.stButton *::-moz-selection {{
+              background:#60A5FA !important;
+              color:#ffffff !important;
+            }}
+
+            /* Columna derecha: media */
             .right{{ display:flex; justify-content:center; }}
             .hero-media{{
               display:block; width:auto;
@@ -233,15 +256,23 @@ def google_login(
 
         with col_left:
             st.markdown('<div class="left">', unsafe_allow_html=True)
+
+            # Título
             st.markdown(
                 '<div class="title"><span class="line">BIEN</span><span class="line">VENIDOS</span></div>',
                 unsafe_allow_html=True
             )
+
+            # Contenedor común (mismo ancho y con gap corto)
             st.markdown('<div class="cta">', unsafe_allow_html=True)
+
+            # PÍLDORA
             st.markdown(
                 f'<div class="pill" style="width:{LEFT_W}px !important;">GESTIÓN DE TAREAS ENI 2025</div>',
                 unsafe_allow_html=True
             )
+
+            # Botón
             st.markdown(f'<div style="width:{LEFT_W}px !important;">', unsafe_allow_html=True)
 
             result = None
@@ -313,6 +344,7 @@ def google_login(
     if not result:
         return None
 
+    # ---------- Procesa token ----------
     token = result.get("token") if isinstance(result, dict) else result
     if not token:
         st.error("No se recibió el token de Google. Intenta nuevamente.")
