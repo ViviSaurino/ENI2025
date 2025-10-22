@@ -115,7 +115,7 @@ def google_login(
               height:100%;
               display:flex;
               align-items:center;       /* alinea verticalmente las dos columnas */
-              gap: 80px !important;      /* ⬅️ SEPARACIÓN ENTRE COLUMNAS (ajusta 4px, 6px, 8px, etc.) */
+              gap: 20px !important;      /* ⬅️ SEPARACIÓN ENTRE COLUMNAS (ajusta 4px, 6px, 8px, etc.) */
             }}
 
             /* 👇 Control maestro del ancho (VENIDOS + píldora + botón) y separaciones */
@@ -350,5 +350,6 @@ def google_login(
 def logout():
     st.session_state.pop("user", None)
     _safe_rerun()
+
 
 
