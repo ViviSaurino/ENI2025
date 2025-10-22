@@ -109,13 +109,13 @@ def google_login(
               display:flex;
               flex-direction:column;
               justify-content:center;   /* centro vertical */
-              transform: translateY(0.3vh); /* ⬅️ BAJA TODO EL BLOQUE (ajusta 0.3vh a tu gusto) */
+              transform: translateY(0.3vh); /* ⬅️ BAJA TODO EL BLOQUE */
             }}
             [data-testid="stHorizontalBlock"]{{
               height:100%;
               display:flex;
               align-items:center;       /* alinea verticalmente las dos columnas */
-              gap: 1px !important;      /* ⬅️ SEPARACIÓN ENTRE COLUMNAS */
+              gap: 1px !important;      /* separación entre columnas */
             }}
 
             /* 👇 Control maestro del ancho (VENIDOS + píldora + botón) y separaciones */
@@ -137,7 +137,7 @@ def google_login(
               font-weight:930; color:#B38BE3;
               line-height:.92; letter-spacing:.10px;
               font-size: clamp(40px, calc(var(--left-w) * 0.38), var(--title-max)) !important;
-              margin:0 0 var(--title-bottom) 0;    /* menos espacio abajo */
+              margin:0 0 var(--title-bottom) 0;
               box-sizing:border-box;
             }}
             .title .line{{ display:block; width:100%; word-break:break-word; overflow-wrap:anywhere; }}
@@ -148,7 +148,7 @@ def google_login(
               max-width:var(--left-w) !important;
               display:flex;
               flex-direction:column;
-              gap:var(--stack-gap);   /* ← aquí controlas lo juntos que están */
+              gap:var(--stack-gap);
             }}
 
             .pill{{
@@ -177,22 +177,12 @@ def google_login(
               background-image:none !important;
             }}
 
-            /* === OVERRIDES: QUE EL HOVER NUNCA SEA ROJO, SIEMPRE #60A5FA === */
-            /* (1) Selectores de alta cobertura dentro de .left */
-            .left .row-widget.stButton > div > button:hover,
-            .left .row-widget.stButton > div > button:focus,
-            .left .row-widget.stButton > div > button:focus-visible,
-            .left .row-widget.stButton > div > button:active,
-            .left .stButton button:hover,
-            .left .stButton button:focus,
-            .left .stButton button:active,
-            .left [data-testid="stBaseButton-secondary"] > button:hover,
-            .left [data-testid="stBaseButton-secondary"] > button:focus,
-            .left [data-testid="stBaseButton-secondary"] > button:active,
-            .left button[kind="secondary"]:hover,
-            .left button[kind="secondary"]:focus,
-            .left button[kind="secondary"]:active,
-            .left button:not(:disabled):hover{{
+            /* =============== ANTI-ROJO: overrides súper agresivos =============== */
+            /* Caso general: cualquier botón de Streamlit */
+            .stButton > button:hover,
+            .stButton > button:focus,
+            .stButton > button:focus-visible,
+            .stButton > button:active {{
               background:#60A5FA !important;
               border-color:#60A5FA !important;
               color:#ffffff !important;
@@ -201,27 +191,44 @@ def google_login(
               box-shadow:0 0 0 3px rgba(96,165,250,.35) !important, 0 8px 22px rgba(96,165,250,.25) !important;
             }}
 
-            /* (2) Variables del tema por si el rojo viene de theme vars */
+            /* Dentro de la columna izquierda (por si cambia la estructura) */
+            .left .stButton > button:hover,
+            .left .stButton > button:focus,
+            .left .stButton > button:active,
+            .left .row-widget.stButton > div > button:hover,
+            .left .row-widget.stButton > div > button:focus,
+            .left .row-widget.stButton > div > button:active {{
+              background:#60A5FA !important;
+              border-color:#60A5FA !important;
+              color:#ffffff !important;
+              background-image:none !important;
+              outline:none !important;
+              box-shadow:0 0 0 3px rgba(96,165,250,.35) !important, 0 8px 22px rgba(96,165,250,.25) !important;
+            }}
+
+            /* Algunos builds usan data-testid en un contenedor "baseButton-secondary" */
+            [data-testid="baseButton-secondary"] button:hover,
+            [data-testid="baseButton-secondary"] button:focus,
+            [data-testid="baseButton-secondary"] button:active {{
+              background:#60A5FA !important;
+              border-color:#60A5FA !important;
+              color:#ffffff !important;
+              background-image:none !important;
+              box-shadow:0 0 0 3px rgba(96,165,250,.35) !important, 0 8px 22px rgba(96,165,250,.25) !important;
+            }}
+
+            /* Variables de tema por si el color venía de ahí */
             :root{{
               --primary-color:#60A5FA !important;
               --accent-color:#60A5FA !important;
               --brand-color:#60A5FA !important;
-              --secondary-background-color:#60A5FA !important;
               --button-secondary-hover-bg:#60A5FA !important;
               --button-secondary-hover-border:#60A5FA !important;
               --button-secondary-pressed-bg:#60A5FA !important;
               --button-secondary-pressed-border:#60A5FA !important;
             }}
 
-            /* (3) Selección de texto dentro del botón (por si se veía rojo) */
-            .left .row-widget.stButton *::selection {{
-              background:#60A5FA !important;
-              color:#ffffff !important;
-            }}
-            .left .row-widget.stButton *::-moz-selection {{
-              background:#60A5FA !important;
-              color:#ffffff !important;
-            }}
+            /* =============== FIN ANTI-ROJO =============== */
 
             /* Columna derecha: media centrada y con altura contenida */
             .right{{ display:flex; justify-content:center; }}
