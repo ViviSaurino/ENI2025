@@ -127,13 +127,13 @@ def google_login(
             .title .line{ display:block; }
 
             /* Mismo ancho para pill + botón */
-            .cta{ width: min(920px, 40vw); max-width: 920px; }
+            .cta{ width: min(320px, 40vw); max-width: 320px; }
             .pill{
               width:100%; height:46px;
               display:flex; align-items:center; justify-content:center;
               border-radius:12px; background:#EEF2FF; border:1px solid #DBE4FF;
               color:#2B4C7E; font-weight:800; letter-spacing:.2px; font-size:16px;
-              margin:0 0 14px 0; box-sizing:border-box;
+              margin:0 0 19px 0; box-sizing:border-box;
             }
             .cta .stButton, .cta .row-widget.stButton, .cta > div{
               width:100% !important; margin:0 !important; padding:0 !important;
@@ -314,6 +314,7 @@ def google_login(
 def logout():
     st.session_state.pop("user", None)
     _safe_rerun()
+
 
 
 
