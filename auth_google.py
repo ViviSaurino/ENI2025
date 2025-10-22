@@ -102,77 +102,68 @@ def google_login(
             token_endpoint=cfg["token_uri"],
         )
 
+        # ====== ESTILOS Y LAYOUT AJUSTADOS (como tu imagen 2) ======
         st.markdown("""
             <style>
-            html, body { height:100%; overflow:hidden; }
-            [data-testid="stAppViewContainer"]{ height:100vh; overflow:hidden; }
-            [data-testid="stMain"]{ height:100%; overflow:hidden; }
-            .block-container{ height:100%; max-width:1180px; padding-top:.6rem; overflow:hidden; }
+            html, body { height:100%; }
+            [data-testid="stAppViewContainer"]{ height:100vh; }
+            .block-container{ max-width:1180px; padding-top:1.2rem; }
 
-            .hero-area{ height:100%; display:flex; align-items:center; }
+            /* GRID principal: dos columnas centradas verticalmente */
+            .hero-area{ min-height:76vh; display:flex; align-items:center; }
+            .row{ width:100%; display:flex; align-items:center; justify-content:space-between; gap:40px; }
 
-            :root{
-              --leftw: 520px;
-              --ctl-w: 320px;
-              --row-gap: 2rem;
-              --ctl-h: 41px;
+            /* Columna izquierda (texto + pill + botón) */
+            .left{ width:560px; max-width:560px; }
+            .title{
+              font-weight:900; color:#B38BE3; line-height:.9; letter-spacing:.5px;
+              font-size:84px; margin:0 0 14px 0;
             }
-
-            .row{ width:100%; display:flex; gap:var(--row-gap); align-items:center; justify-content:center; }
-
-            .left{ width:var(--leftw); margin-top: 25vh; }
-            .title{ font-weight:900; color:#B38BE3; line-height:.9; letter-spacing:.5px; font-size:080px; margin:.2rem 0 .9rem 0; }
             .title .line{ display:block; }
 
-            .equal-wrap{ width:var(--ctl-w); max-width:var(--ctl-w); min-width:var(--ctl-w); }
-
+            .equal-wrap{ width:360px; max-width:360px; }
             .pill{
-              width:var(--ctl-w)!important; max-width:var(--ctl-w)!important; min-width:var(--ctl-w)!important;
-              height:var(--ctl-h)!important; display:flex; align-items:center; justify-content:center;
-              border-radius:05px; background:#EEF2FF; border:0px solid #DBE4FF;
-              color:#2B4C7E; font-weight:950; letter-spacing:.01px; text-transform:uppercase; font-size:19px;
-              margin:0 0 01px 0; box-sizing:border-box;
+              width:100%!important; height:44px!important; display:flex; align-items:center; justify-content:center;
+              border-radius:12px; background:#EEF2FF; border:1px solid #DBE4FF;
+              color:#2B4C7E; font-weight:800; font-size:15px; letter-spacing:.3px;
+              box-sizing:border-box; margin:0 0 14px 0;
             }
 
+            /* Botón Google “cuadrado” al 100% */
             .equal-wrap .google-btn,
             .equal-wrap .google-btn > div,
             .equal-wrap .google-btn .row-widget.stButton,
             .equal-wrap .google-btn .stButton,
-            .equal-wrap .google-btn .stButton > div {
-              width: var(--ctl-w)!important; max-width: var(--ctl-w)!important; min-width: var(--ctl-w)!important;
-              margin:0!important; padding:0!important; display:block!important;
-            }
-
+            .equal-wrap .google-btn .stButton > div{ width:100%!important; margin:0!important; padding:0!important; }
             .equal-wrap .google-btn .stButton > button,
-            .equal-wrap .google-btn button[data-testid="baseButton-secondary"],
-            .equal-wrap .google-btn button[kind="secondary"],
-            .equal-wrap .google-btn button {
-              width: var(--ctl-w)!important; max-width: var(--ctl-w)!important; min-width: var(--ctl-w)!important;
-              height: var(--ctl-h)!important; display:block!important; margin:0!important; padding:0 .95rem!important;
-              border-radius:12px!important; border:1px solid #D5DBEF!important; background:#fff!important; font-size:14px!important;
-              box-sizing:border-box!important;
+            .equal-wrap .google-btn button{
+              width:100%!important; height:44px!important; border-radius:12px!important;
+              border:1px solid #D5DBEF!important; background:#fff!important;
+              font-size:15px!important; box-sizing:border-box!important; padding:0 .95rem!important;
             }
-
             .equal-wrap .google-btn .stButton > button:hover,
-            .equal-wrap .google-btn button[data-testid="baseButton-secondary"]:hover,
-            .equal-wrap .google-btn button[kind="secondary"]:hover,
-            .equal-wrap .google-btn button:hover {
+            .equal-wrap .google-btn button:hover{
               border-color:#8B5CF6!important; box-shadow:0 8px 22px rgba(139,92,246,.20)!important;
             }
 
-            .right{ max-width:520px; width:100%; }
-            .hero-image, .hero-video{ width:100%; height:auto; object-fit:contain; display:block; max-height:90vh; }
+            /* Columna derecha (imagen / video) */
+            .right{ max-width:560px; width:100%; display:flex; justify-content:center; }
+            .hero-video, .hero-image{
+              width:auto; height:auto; max-width:560px; max-height:70vh; display:block; object-fit:contain;
+            }
 
-            @media (max-width: 980px){
-              :root{ --leftw: 320px; --ctl-w: 320px; --ctl-h: 42px; }
-              .title{ font-size:80px; }
-              .right .hero-image, .right .hero-video{ max-height:50vh; }
+            /* Responsive */
+            @media (max-width: 1024px){
+              .row{ flex-direction:column; gap:32px; }
+              .left, .right{ width:100%; max-width:100%; }
+              .title{ font-size:64px; }
+              .equal-wrap{ width:100%; max-width:420px; }
+              .hero-video, .hero-image{ max-height:42vh; max-width:90%; }
             }
             </style>
         """, unsafe_allow_html=True)
 
-        st.markdown('<div class="hero-area">', unsafe_allow_html=True)
-        st.markdown('<div class="row">', unsafe_allow_html=True)
+        st.markdown('<div class="hero-area"><div class="row">', unsafe_allow_html=True)
 
         col_left, col_right = st.columns([1,1], gap="large")
 
@@ -240,16 +231,17 @@ def google_login(
             st.markdown('<div class="right">', unsafe_allow_html=True)
             vid = _video("assets/hero.mp4")
             img = _img("assets/hero.png")
+            # Fallback elegante si aún no subiste assets
+            fallback = "https://raw.githubusercontent.com/filipedeschamps/tabnews.com.br/main/public/apple-touch-icon.png"
             if vid:
                 st.markdown(f'<video class="hero-video" src="{vid}" autoplay loop muted playsinline></video>', unsafe_allow_html=True)
             elif img:
                 st.markdown(f'<img class="hero-image" src="{img}" alt="ENI 2025">', unsafe_allow_html=True)
             else:
-                st.write("🖼️ Coloca tu video en `assets/hero.mp4` o imagen en `assets/hero.png`.")
+                st.markdown(f'<img class="hero-image" src="{fallback}" alt="ENI 2025">', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-        st.markdown('</div>', unsafe_allow_html=True)   # row
-        st.markdown('</div>', unsafe_allow_html=True)   # hero-area
+        st.markdown('</div></div>', unsafe_allow_html=True)   # row + hero-area
 
     # ----- Si no se obtuvo resultado del botón aún -----
     if not result:
