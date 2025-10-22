@@ -3,14 +3,19 @@ import base64
 import streamlit as st
 from streamlit_oauth import OAuth2Component
 
+# ⚠️ Importante: NO llamar st.set_page_config aquí.
+# (El set_page_config debe ejecutarse sólo en el script principal)
+
 # ================== Compatibilidad Streamlit (rerun & query params) ==================
 def _safe_rerun():
+    """Usa st.rerun si existe; si no, cae a experimental_rerun en versiones antiguas."""
     if hasattr(st, "rerun"):
         st.rerun()
     elif hasattr(st, "experimental_rerun"):
         st.experimental_rerun()
 
 def _get_query_params():
+    """Obtiene query params en forma de dict, compatible con versiones antiguas."""
     if hasattr(st, "query_params"):
         return dict(st.query_params)
     elif hasattr(st, "experimental_get_query_params"):
@@ -18,6 +23,7 @@ def _get_query_params():
     return {}
 
 def _set_query_params(**kwargs):
+    """Setea query params limpiamente, compatible con versiones antiguas."""
     if hasattr(st, "query_params"):
         st.query_params.clear()
         st.query_params.update({k: v for k, v in kwargs.items() if v is not None})
@@ -55,6 +61,7 @@ def _video(path: str) -> str | None: return _b64(path, "video/mp4")
 
 # -------------------- navigation helper --------------------
 def _switch_page(target: str):
+    """Cambia de página (nombre visible o ruta) si hay multipágina."""
     if hasattr(st, "switch_page"):
         st.switch_page(target)
     else:
@@ -73,6 +80,7 @@ def google_login(
     """
     login_ph = st.empty()
 
+    # Si ya hay sesión válida: NO pintes login; borra si hubiera algo y devuelve
     u = st.session_state.get("user")
     if u and _is_allowed(u.get("email"), allowed_emails, allowed_domains):
         login_ph.empty()
@@ -81,9 +89,7 @@ def google_login(
             st.stop()
         return u
 
-    # --- IMPORTANTE: inicializa result para evitar pantallas en blanco ---
-    result = None
-
+    # ----- Render del login dentro del placeholder -----
     with login_ph.container():
         cfg = _get_oauth_cfg()
         oauth2 = OAuth2Component(
@@ -93,52 +99,73 @@ def google_login(
             token_endpoint=cfg["token_uri"],
         )
 
-        # ====== ESTILOS (más conservadores, sin ocultar header) ======
+        # ====== ESTILOS: todo visible sin scroll + alineado ======
         st.markdown("""
             <style>
+            /* Reset/normalización para aprovechar el alto completo */
+            html, body { height:100%; margin:0; }
+            header[data-testid="stHeader"]{ height:0; min-height:0; visibility:hidden; }
+            [data-testid="stToolbar"]{ display:none; } /* barra superior del viewer */
+            [data-testid="stAppViewContainer"]{ height:100vh; padding-top:0; }
+            [data-testid="stMain"]{ height:100%; padding-top:0; padding-bottom:0; }
             .block-container{
+              height:100%;
               max-width:1180px;
-              padding-top:1.0rem !important;
-              padding-bottom:0 !important;
+              padding:0 !important;
+              margin:0 auto !important;
+              display:flex;
             }
 
             :root{
-              --gap: 2.4rem;
-              --leftw: clamp(420px, 45vw, 560px);
+              --gap: 2.6rem;
+              --leftw: clamp(420px, 46vw, 560px);
               --pill-h: 46px;
               --btn-h: 48px;
             }
 
+            /* Contenedor de la portada */
             .hero-area{
-              min-height:86vh;                 /* alto visible sin scroll */
-              display:flex; align-items:center;
+              width:100%;
+              min-height: calc(100vh - 2px); /* evita overflows por barras finas */
+              display:flex;
+              align-items:center;      /* centra verticalmente */
+              justify-content:center;
+              overflow:hidden;         /* sin scroll inicial */
             }
 
             .row{
-              width:100%; display:flex;
-              align-items:center; justify-content:space-between;
+              width:100%;
+              display:flex;
+              align-items:center;
+              justify-content:space-between;
               gap: var(--gap);
             }
 
-            /* Izquierda */
+            /* ========= Columna izquierda ========= */
             .left{ width:var(--leftw); max-width:var(--leftw); }
             .title{
-              font-weight:900; color:#B38BE3;
-              line-height:.95; letter-spacing:.4px;
-              font-size: clamp(56px, 9vw, 96px);
+              font-weight:900;
+              color:#B38BE3;
+              line-height:.95;
+              letter-spacing:.4px;
+              font-size: clamp(56px, 8.8vw, 96px);
               margin: 0 0 18px 0;
             }
             .title .line{ display:block; }
+
             .equal-wrap{ width:100%; max-width:520px; }
 
             .pill{
-              width:100% !important; height: var(--pill-h) !important;
+              width:100% !important;
+              height: var(--pill-h) !important;
               display:flex; align-items:center; justify-content:center;
               border-radius:12px; background:#EEF2FF; border:1px solid #DBE4FF;
-              color:#2B4C7E; font-weight:800; font-size:16px; letter-spacing:.2px;
-              margin:0 0 16px 0; box-sizing:border-box;
+              color:#2B4C7E; font-weight:800; letter-spacing:.2px; font-size:16px;
+              margin:0 0 16px 0;
+              box-sizing:border-box;
             }
 
+            /* Botón Google 100% del ancho de la pastilla */
             .google-btn,
             .google-btn > div,
             .google-btn .row-widget.stButton,
@@ -158,26 +185,41 @@ def google_login(
               box-shadow:0 8px 22px rgba(139,92,246,.18) !important;
             }
 
-            /* Derecha */
-            .right{ flex:1 1 auto; display:flex; justify-content:center; }
+            /* ========= Columna derecha ========= */
+            .right{
+              flex:1 1 auto;
+              display:flex;
+              justify-content:center;
+              align-items:center;
+              min-width: 420px;
+            }
             .hero-image, .hero-video{
               display:block;
               width: min(44vw, 560px);
               height:auto;
-              max-height: 68vh;
+              max-height: 64vh;   /* 👈 clave para que nunca empuje scroll */
               object-fit:contain;
             }
 
-            /* Responsive */
+            /* ====== Responsivo ====== */
+            @media (max-width: 1200px){
+              :root{ --gap: 2rem; }
+              .hero-image, .hero-video{ max-height: 60vh; }
+            }
             @media (max-width: 980px){
-              .row{ flex-direction:column; gap: 1.4rem; }
+              .row{
+                flex-direction:column;
+                align-items:center;
+                justify-content:flex-start;
+                gap: 1.2rem;
+              }
               .left{ width:100%; max-width:640px; }
               .equal-wrap{ max-width:640px; }
-              .title{ font-size: clamp(44px, 12vw, 72px); margin-bottom: 12px; }
+              .title{ font-size: clamp(44px, 12vw, 72px); margin-bottom: 10px; }
               .pill{ height:44px !important; margin-bottom:12px; }
               .hero-image, .hero-video{
                 width: min(86vw, 560px);
-                max-height: 40vh;
+                max-height: 40vh;   /* todo entra en móviles sin scroll */
               }
             }
             </style>
@@ -195,6 +237,7 @@ def google_login(
             st.markdown('<div class="pill">GESTIÓN DE TAREAS ENI 2025</div>', unsafe_allow_html=True)
 
             st.markdown('<div class="google-btn">', unsafe_allow_html=True)
+            result = None
             try:
                 result = oauth2.authorize_button(
                     name="Continuar con Google",
@@ -250,6 +293,7 @@ def google_login(
             st.markdown('<div class="right">', unsafe_allow_html=True)
             vid = _video("assets/hero.mp4")
             img = _img("assets/hero.png")
+            # Fallback mínimo si aún no subiste assets
             fallback = "https://raw.githubusercontent.com/filipedeschamps/tabnews.com.br/main/public/apple-touch-icon.png"
             if vid:
                 st.markdown(f'<video class="hero-video" src="{vid}" autoplay loop muted playsinline></video>', unsafe_allow_html=True)
@@ -310,7 +354,10 @@ def google_login(
         st.error("Tu cuenta no está autorizada. Consulta con el administrador.")
         return None
 
+    # Guarda sesión
     st.session_state["user"] = user
+
+    # *** BORRA el login de la vista y navega/recarga ***
     login_ph.empty()
     if redirect_page:
         _switch_page(redirect_page)
