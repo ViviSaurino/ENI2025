@@ -113,11 +113,6 @@ def google_login(
               justify-content:center;
             }
 
-            /* Ajustes de columnas de Streamlit para centrar verticalmente */
-            .stHorizontalBlock, [data-testid="column"] > div {
-              display:flex; flex-direction:column; justify-content:center;
-            }
-
             :root{
               --left-max: 560px;
               --controls-w: 520px;   /* ancho compartido pill + botón */
@@ -147,7 +142,7 @@ def google_login(
               margin:0 0 14px 0; box-sizing:border-box;
             }
 
-            /* Forzamos el botón OAuth al MISMO ancho y alto de la pill */
+            /* Botón OAuth = mismo ancho/alto que la pill */
             .equal-wrap .stButton, .equal-wrap .row-widget.stButton, .equal-wrap > div {
               width:100% !important; max-width:100% !important; margin:0 !important; padding:0 !important;
             }
@@ -167,7 +162,7 @@ def google_login(
               display:block;
               width: min(46vw, 620px);
               height:auto;
-              max-height: 60vh;      /* evita empujar el scroll en pantallas chicas */
+              max-height: 58vh;      /* evita empujar el scroll en pantallas chicas */
               object-fit:contain;
             }
 
@@ -181,7 +176,7 @@ def google_login(
             </style>
         """, unsafe_allow_html=True)
 
-        # --------- Layout 2 columnas estable (usamos columnas de Streamlit) ----------
+        # --------- Layout 2 columnas estable ----------
         st.markdown('<div class="hero-full">', unsafe_allow_html=True)
         col_left, col_right = st.columns([1,1], gap="large")
 
