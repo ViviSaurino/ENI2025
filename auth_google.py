@@ -90,80 +90,77 @@ def google_login(
             token_endpoint=cfg["token_uri"],
         )
 
-        # ====== ESTILOS y LAYOUT: sin scroll y alineado ======
+        # ====== CSS: overlay fijo, sin scroll y layout alineado ======
         st.markdown("""
             <style>
-            /* Pantalla completa y sin scroll */
+            /* Sin scroll en toda la página */
             html, body { height:100%; overflow:hidden; }
-            [data-testid="stAppViewContainer"]{ height:100vh; overflow:hidden; }
 
-            /* Quitamos altura extra del main y paddings para ganar espacio útil */
-            [data-testid="stMain"]{ height:100%; padding-top:0 !important; padding-bottom:0 !important; }
-            .block-container{
-              height:100%;
-              max-width:1180px;
-              padding-top:.2rem !important;
-              padding-bottom:.2rem !important;
-            }
-            /* Oculta la barra superior de Streamlit (no imprescindible, pero ayuda) */
+            /* Oculta header/footer de Streamlit y quita rellenos */
             header[data-testid="stHeader"]{ height:0; min-height:0; visibility:hidden; }
+            footer, .stDeployButton, .viewerBadge_container__1QSob,
+            .styles_viewerBadge__1yB5_, .viewerBadge_link__1S137 { display:none !important; }
 
-            :root{
-              --gap: 2.4rem;
-              --leftw: clamp(420px, 44vw, 560px);
-              --controls-w: clamp(360px, 34vw, 520px);
-              --pill-h: 46px;
-              --btn-h: 48px;
+            [data-testid="stAppViewContainer"]{ height:100vh; overflow:hidden; }
+            [data-testid="stMain"]{ height:100%; padding-top:0 !important; padding-bottom:0 !important; }
+            .block-container{ height:100%; max-width:1180px; padding:0 !important; margin:0 auto !important; }
+
+            /* Overlay a pantalla completa que contiene TODO el hero */
+            .hero-wrap{
+              position: fixed; inset: 0;           /* top:0 right:0 bottom:0 left:0 */
+              display:flex; align-items:center;    /* centra verticalmente */
+              justify-content:center;
+              overflow:hidden;                     /* evita scroll */
+              background: transparent;
             }
 
-            .hero-area{
-              min-height:100vh;
-              display:flex;
-              align-items:center;           /* centra verticalmente */
-              overflow:hidden;               /* evita que aparezca scroll */
-            }
-            .row{
-              width:100%;
+            /* Contenido interno con ancho máximo y grid de 2 columnas */
+            .hero-inner{
+              width: min(1180px, 96vw);
               display:flex;
               align-items:center;
-              justify-content:space-between; /* texto a la izq, imagen a la der */
-              gap: var(--gap);
+              justify-content:space-between;
+              gap: 3rem;
+              padding: 0 1rem;
             }
 
-            /* === Columna izquierda === */
-            .left{ width:var(--leftw); max-width:var(--leftw); }
+            /* Columna izquierda */
+            .left{
+              width: clamp(420px, 44vw, 560px);
+              max-width: 560px;
+            }
             .title{
               font-weight:900;
               color:#B38BE3;
               line-height:.92;
               letter-spacing:.4px;
-              font-size: clamp(56px, 9vw, 96px); /* grande pero responsivo */
+              font-size: clamp(56px, 9vw, 96px);
               margin: 0 0 18px 0;
             }
             .title .line{ display:block; }
 
-            .equal-wrap{ width:var(--controls-w); max-width:var(--controls-w); }
+            .equal-wrap{ width: clamp(360px, 34vw, 520px); max-width:520px; }
 
             .pill{
-              width:100% !important;
-              height: var(--pill-h) !important;
+              width:100% !important; height:46px !important;
               display:flex; align-items:center; justify-content:center;
               border-radius:12px; background:#EEF2FF; border:1px solid #DBE4FF;
               color:#2B4C7E; font-weight:800; letter-spacing:.2px; font-size:16px;
               margin:0 0 14px 0; box-sizing:border-box;
             }
 
-            /* Botón Google con exactamente el mismo ancho de la pill */
+            /* Forzamos el botón de Google al mismo ancho que la pill */
             .google-btn,
             .google-btn > div,
             .google-btn .row-widget.stButton,
             .google-btn .stButton,
             .google-btn .stButton > div{
-              width:100% !important; max-width:var(--controls-w) !important;
+              width:100% !important;
+              max-width: clamp(360px, 34vw, 520px) !important;
               margin:0 !important; padding:0 !important;
             }
             .google-btn .stButton > button{
-              width:100% !important; height: var(--btn-h) !important;
+              width:100% !important; height:48px !important;
               border-radius:12px !important; border:1px solid #D5DBEF !important;
               background:#fff !important; font-size:15px !important;
               box-sizing:border-box !important; padding:0 .95rem !important;
@@ -173,42 +170,35 @@ def google_login(
               box-shadow:0 8px 22px rgba(139,92,246,.18) !important;
             }
 
-            /* === Columna derecha (imagen/video) === */
+            /* Columna derecha (imagen/video) */
             .right{ flex:1 1 auto; display:flex; justify-content:center; }
             .hero-image, .hero-video{
               display:block;
               width: min(44vw, 560px);
               height:auto;
-              max-height: 66vh;          /* clave: nunca más de ~2/3 del alto */
+              max-height: 60vh;   /* <= más bajo para eliminar el scroll en todos los casos */
               object-fit:contain;
             }
 
-            /* ====== Responsivo ====== */
-            @media (max-width: 1200px){
-              :root{ --gap: 2rem; }
-              .hero-image, .hero-video{ max-height: 62vh; }
-            }
+            /* Responsive */
             @media (max-width: 980px){
-              .row{
-                flex-direction:column;
-                align-items:center;
-                justify-content:flex-start;
-                gap: 1.2rem;
-              }
+              .hero-inner{ flex-direction:column; gap: 1.2rem; }
               .left{ width:100%; max-width:640px; }
               .equal-wrap{ max-width:640px; }
               .title{ font-size: clamp(44px, 12vw, 72px); margin-bottom: 10px; }
               .pill{ height:44px !important; margin-bottom:10px; }
               .hero-image, .hero-video{
                 width: min(86vw, 560px);
-                max-height: 40vh;          /* asegura que TODO quepa sin scroll */
+                max-height: 40vh;
               }
             }
             </style>
         """, unsafe_allow_html=True)
 
-        st.markdown('<div class="hero-area"><div class="row">', unsafe_allow_html=True)
+        # Estructura del overlay
+        st.markdown('<div class="hero-wrap"><div class="hero-inner">', unsafe_allow_html=True)
 
+        # Usamos columns para alojar el botón (porque es un widget), pero dentro del overlay
         col_left, col_right = st.columns([1,1], gap="large")
 
         with col_left:
@@ -267,15 +257,12 @@ def google_login(
                                 use_container_width=False,
                                 scope="openid email profile",
                             )
-            st.markdown('</div>', unsafe_allow_html=True)  # google-btn
-            st.markdown('</div>', unsafe_allow_html=True)  # equal-wrap
-            st.markdown('</div>', unsafe_allow_html=True)  # left
+            st.markdown('</div></div>', unsafe_allow_html=True)  # google-btn + left
 
         with col_right:
             st.markdown('<div class="right">', unsafe_allow_html=True)
             vid = _video("assets/hero.mp4")
             img = _img("assets/hero.png")
-            # Fallback si aún no subiste assets
             fallback = "https://raw.githubusercontent.com/filipedeschamps/tabnews.com.br/main/public/apple-touch-icon.png"
             if vid:
                 st.markdown(f'<video class="hero-video" src="{vid}" autoplay loop muted playsinline></video>', unsafe_allow_html=True)
@@ -285,7 +272,7 @@ def google_login(
                 st.markdown(f'<img class="hero-image" src="{fallback}" alt="ENI 2025">', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-        st.markdown('</div></div>', unsafe_allow_html=True)   # row + hero-area
+        st.markdown('</div></div>', unsafe_allow_html=True)  # hero-inner + hero-wrap
 
     # ----- Si no se obtuvo resultado del botón aún -----
     if not result:
