@@ -67,10 +67,6 @@ def google_login(
     allowed_domains=None,
     redirect_page: str | None = None,
 ):
-    """
-    Muestra login SOLO cuando no hay sesión.
-    Tras autenticarse: borra el UI del login y recarga/redirige.
-    """
     login_ph = st.empty()
 
     u = st.session_state.get("user")
@@ -93,7 +89,6 @@ def google_login(
         # ====== CSS: sin scroll + 2 columnas + un ancho maestro ======
         st.markdown("""
             <style>
-            /* Sin scroll y ocultar cabeceras/footers de Streamlit */
             html, body { height:100%; overflow:hidden; }
             header[data-testid="stHeader"]{ height:0; min-height:0; visibility:hidden; }
             footer, .stDeployButton,
@@ -105,25 +100,22 @@ def google_login(
             [data-testid="stMain"]{ height:100%; padding-top:0 !important; padding-bottom:0 !important; }
             .block-container{ height:100%; max-width:1280px; padding:0 16px !important; margin:0 auto !important; }
 
-            /* 👉 Ajusta SOLO este valor para ancho común de TÍTULO + PÍLDORA + BOTÓN */
+            /* 👉 controla aquí el ancho de VENIDOS + píldora + botón */
             :root{
-              --left-w:   520px;   /* <— cambia aquí si quieres 500, 540, etc. */
-              --title-max: 112px;  /* Tamaño máximo del título */
-              --media-max: 640px;  /* Ancho máximo de la imagen/video */
+              --left-w: 520px;     /* AJUSTA ESTE VALOR */
+              --title-max: 112px;
+              --media-max: 640px;
             }
 
-            /* Forzar altura de viewport para alinear verticalmente */
             [data-testid="stHorizontalBlock"]{ height:100vh !important; }
             [data-testid="column"] > div{
               height:100%;
               display:flex; flex-direction:column; justify-content:center;
             }
 
-            /* Columna izquierda */
-            .left { width: var(--left-w); max-width: 100%; }
+            .left { width: var(--left-w); max-width:100%; }
             .title{
-              width: var(--left-w); /* mismo ancho que píldora/botón */
-              max-width: 100%;
+              width: var(--left-w);
               font-weight:900; color:#B38BE3;
               line-height:.92; letter-spacing:.4px;
               font-size: clamp(56px, 9vw, var(--title-max));
@@ -131,10 +123,11 @@ def google_login(
             }
             .title .line{ display:block; }
 
-            /* Bloque de controles: todos al mismo ancho exacto */
+            /* Contenedor común */
             .cta{
               width: var(--left-w) !important;
               max-width: var(--left-w) !important;
+              display: inline-block;           /* evita que ocupe toda la fila */
             }
 
             .pill{
@@ -147,20 +140,23 @@ def google_login(
               margin:0 0 14px 0; box-sizing:border-box;
             }
 
-            /* === AJUSTE CLAVE: forzar todos los wrappers del botón al MISMO ancho y sin padding === */
+            /* Fuerza TODOS los wrappers del botón al mismo ancho exacto */
             .cta .row-widget.stButton,
             .cta .stButton{
               width: var(--left-w) !important;
               max-width: var(--left-w) !important;
               margin: 0 !important;
               padding: 0 !important;
+              display: inline-block !important;
+              box-sizing: border-box !important;
             }
             .cta .stButton > div,
             .cta .stButton > div > div{
               width: 100% !important;
               margin: 0 !important;
               padding: 0 !important;
-              display: block !important;
+              display: inline-block !important;
+              box-sizing: border-box !important;
             }
             .cta .stButton > div > button,
             .cta .stButton button{
@@ -175,9 +171,7 @@ def google_login(
               border-color:#8B5CF6 !important;
               box-shadow:0 8px 22px rgba(139,92,246,.18) !important;
             }
-            /* === FIN AJUSTE === */
 
-            /* Columna derecha: media sin empujar scroll */
             .right{ display:flex; justify-content:center; }
             .hero-media{
               display:block;
@@ -188,7 +182,6 @@ def google_login(
               object-fit:contain;
             }
 
-            /* Responsivo */
             @media (max-width: 980px){
               [data-testid="stHorizontalBlock"]{ height:auto !important; }
               [data-testid="column"] > div{ height:auto; }
@@ -201,7 +194,6 @@ def google_login(
               .cta .stButton > div,
               .cta .stButton > div > div{
                 width:min(86vw, var(--left-w)) !important; max-width:min(86vw, var(--left-w)) !important;
-                padding:0 !important; margin:0 !important;
               }
               .hero-media{ max-width:min(86vw, var(--media-max)); max-height:40vh; }
             }
@@ -221,14 +213,14 @@ def google_login(
             st.markdown('<div class="cta">', unsafe_allow_html=True)
             st.markdown('<div class="pill">GESTIÓN DE TAREAS ENI 2025</div>', unsafe_allow_html=True)
 
-            # Botón OAuth (100% del contenedor)
+            # Botón OAuth: SIN use_container_width para no estirar
             result = None
             try:
                 result = oauth2.authorize_button(
                     name="Continuar con Google",
                     icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                     pkce="S256",
-                    use_container_width=True,
+                    use_container_width=False,   # ← clave para no ocupar toda la fila
                     scopes=["openid","email","profile"],
                     redirect_uri=cfg["redirect_uri"],
                 )
@@ -238,7 +230,7 @@ def google_login(
                         name="Continuar con Google",
                         icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                         pkce="S256",
-                        use_container_width=True,
+                        use_container_width=False,
                         scope="openid email profile",
                         redirect_uri=cfg["redirect_uri"],
                     )
@@ -248,7 +240,7 @@ def google_login(
                             name="Continuar con Google",
                             icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                             pkce="S256",
-                            use_container_width=True,
+                            use_container_width=False,
                             scopes=["openid","email","profile"],
                             redirect_to=cfg["redirect_uri"],
                         )
@@ -258,7 +250,7 @@ def google_login(
                                 name="Continuar con Google",
                                 icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                                 pkce="S256",
-                                use_container_width=True,
+                                use_container_width=False,
                                 scope="openid email profile",
                                 redirect_to=cfg["redirect_uri"],
                             )
@@ -267,7 +259,7 @@ def google_login(
                                 name="Continuar con Google",
                                 icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                                 pkce="S256",
-                                use_container_width=True,
+                                use_container_width=False,
                                 scope="openid email profile",
                             )
             st.markdown('</div></div>', unsafe_allow_html=True)
