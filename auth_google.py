@@ -4,7 +4,7 @@ import streamlit as st
 from streamlit_oauth import OAuth2Component
 
 # ========== Configuración de ancho maestro (un único lugar) ==========
-LEFT_W = 520  # px -> ancho de VENIDOS + píldora + botón (mantener igual que --left-w)
+LEFT_W = 20  # px -> ancho de VENIDOS + píldora + botón (mantener igual que --left-w)
 
 # ================== Utilidades ==================
 def _safe_rerun():
@@ -332,3 +332,4 @@ def google_login(
 def logout():
     st.session_state.pop("user", None)
     _safe_rerun()
+
