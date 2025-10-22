@@ -334,15 +334,35 @@ st.markdown("""
 .stApp [data-testid="stSidebar"] .stButton > button:hover{ background:#E9D5FF!important; }
 
 /* 5) AG Grid: encabezados HORIZONTALES y celdas legibles */
-.ag-theme-balham .ag-header-cell-label{
-  display:flex !important;
-  align-items:center !important;
-  white-space: nowrap !important;     /* 👈 sin salto en header */
+/* ——— Encabezado sin saltos, centrado vertical y con buen padding ——— */
+.ag-theme-balham .ag-header,
+.ag-theme-balham .ag-header-viewport{
+  overflow: visible !important;                /* evita recortes de texto/íconos */
+}
+.ag-theme-balham .ag-header-cell,
+.ag-theme-balham .ag-header-group-cell{
+  padding: 8px 10px !important;                /* algo más de aire */
+  min-height: 48px !important;                 /* altura consistente del header */
   line-height: 1.2 !important;
 }
-.ag-theme-balham .ag-header-cell-text{
-  white-space: nowrap !important;     /* 👈 sin salto en header */
+.ag-theme-balham .ag-header-cell-label{
+  display:flex !important;
+  align-items:center !important;               /* centra verticalmente */
+  gap: 6px !important;                          /* separa texto de iconos */
+  white-space: nowrap !important;               /* 👈 sin salto en header */
 }
+.ag-theme-balham .ag-header-cell-text{
+  white-space: nowrap !important;               /* 👈 sin salto en header */
+  overflow: visible !important;                 /* deja que el texto respire */
+}
+
+/* Opcional: mejora de contraste leve en el header */
+.ag-theme-balham .ag-header{
+  background: #ffffff !important;
+  border-bottom: 1px solid #eef1f5 !important;
+}
+
+/* Celdas: legibles y con wrap para contenido largo */
 .ag-theme-balham .ag-cell{
   white-space: normal !important;
   word-break: break-word !important;
@@ -350,10 +370,17 @@ st.markdown("""
   padding-top: 6px !important;
   padding-bottom: 6px !important;
 }
+
+/* Filas: alternado, hover y selección */
 .ag-theme-balham .ag-row{ border-bottom: 1px solid #eef1f5 !important; }
 .ag-theme-balham .ag-row-odd .ag-cell{ background: #FAFBFD !important; }
 .ag-theme-balham .ag-row-hover .ag-cell{ background:#eef6ff!important; }
 .ag-theme-balham .ag-row-selected .ag-cell{ background:#e6f0ff!important; }
+
+/* Ajuste sutil de los íconos de ordenamiento/menú para que no empujen el texto */
+.ag-theme-balham .ag-header-icon{
+  transform: translateY(0.5px);                 /* alineación fina */
+}
 </style>
 """, unsafe_allow_html=True)
 
