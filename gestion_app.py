@@ -287,122 +287,134 @@ if "df_main" not in st.session_state:
 # ---------- CSS (estilos + tabla legible) ----------
 st.markdown("""
 <style>
-/* ====== Layout base del hero (todo visible sin scroll) ====== */
-html, body { height: 100%; }
-[data-testid="stAppViewContainer"] { height: 100vh; }
-[data-testid="stMain"] { height: 100%; }
-.block-container{
-  height: 100%;
-  max-width: 1180px;
-  padding-top: 0.5rem !important;
-  padding-bottom: 0 !important;
-}
-
-/* Contenedor del hero */
-.hero-area{
-  min-height: 100vh;                /* ocupa toda la pantalla */
-  display: flex;
-  align-items: center;              /* centra verticalmente el contenido */
-}
-
-/* Grid de dos columnas */
+/* =====================  ENI Gestión — Tema Lila + Celeste  ===================== */
 :root{
-  --gap: 3rem;
-  --leftw: clamp(420px, 44vw, 560px);   /* ancho ideal del bloque izquierdo */
-}
-.row{
-  width: 100%;
-  display: flex;
-  align-items: center;               /* centrar ambos bloques verticalmente */
-  justify-content: space-between;
-  gap: var(--gap);
-}
-
-/* ====== Columna izquierda: título + pastilla + botón ====== */
-.left{
-  width: var(--leftw);
-  max-width: var(--leftw);
+  --brand-lilac: #B38BE3;
+  --brand-blue:  #60A5FA;
+  --blue-600:    #3B82F6;
+  --blue-700:    #2563EB;
+  --ink-900:     #0f172a;
+  --ink-700:     #334155;
+  --ink-500:     #64748B;
+  --bg-soft:     #F7F7FB;
+  --card:        #FFFFFF;
+  --border:      #E5E7EB;
+  --shadow:      0 6px 20px rgba(2, 8, 23, .06);
 }
 
-.title{
-  font-weight: 900;
-  color: #B38BE3;
-  line-height: .95;
+/* Layout general */
+[data-testid="stAppViewContainer"] {background: linear-gradient(180deg, #ffffff 0%, #fbfbfe 100%)}
+.block-container{max-width: 1100px;}
+section.main > div {padding-top: 10px !important;}
+
+/* ========== Encabezados ========== */
+h1, .stMarkdown h1{
+  font-weight: 900 !important;
   letter-spacing: .4px;
-  /* tamaño responsivo para que entre en 100vh */
-  font-size: clamp(52px, 9.2vw, 96px);
-  margin: 0 0 18px 0;
+  line-height: 1.1;
+  margin: 8px 0 18px 0 !important;
+  background: linear-gradient(90deg, var(--brand-lilac), var(--brand-blue));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-.title .line{ display:block; }
+h2, .stMarkdown h2{
+  color: var(--ink-900) !important; font-weight: 800 !important; margin: 6px 0 14px 0 !important;
+}
 
-.equal-wrap{ width: 100%; max-width: 520px; }
+/* ========== Tarjetas/Secciones (containers con borde) ========== */
+div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]) { /* contenedores compuestos */
+  background: var(--card); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow);
+  padding: 14px 14px 10px 14px; margin-bottom: 16px;
+}
+.stMarkdown div:has(table) {background: transparent; border: 0; box-shadow: none;}
 
-/* “Pastilla” */
-.pill{
-  width: 100% !important;
-  height: 46px !important;
-  display: flex; align-items: center; justify-content: center;
+/* ========== Inputs / Selects / Textareas (BaseWeb) ========== */
+[data-baseweb="input"] > div, 
+[data-baseweb="textarea"] > div,
+[data-baseweb="select"] > div{
+  background: #fff;
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background:#EEF2FF; border:1px solid #DBE4FF;
-  color:#2B4C7E; font-weight: 800; letter-spacing:.2px;
-  font-size: 16px;
-  margin: 0 0 16px 0;
+  box-shadow: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+[data-baseweb="input"] > div:has(input:focus),
+[data-baseweb="textarea"] > div:has(textarea:focus),
+[data-baseweb="select"] > div:focus-within{
+  border-color: var(--brand-blue) !important;
+  box-shadow: 0 0 0 3px rgba(96,165,250,.25) !important;
+}
+[data-baseweb="input"] input::placeholder,
+[data-baseweb="textarea"] textarea::placeholder{color: #9AA4B2 !important}
+
+/* Select “pill” de tag */
+[data-baseweb="tag"]{
+  background: rgba(96,165,250,.14) !important;
+  color: #0b3b76 !important;
+  border: 1px solid rgba(96,165,250,.35) !important;
+  border-radius: 999px !important;
 }
 
-/* Botón Google: mismo ancho que la pastilla */
-.google-btn,
-.google-btn .stButton,
-.google-btn .stButton > div,
-.google-btn .stButton > button{
-  width: 100% !important; max-width: 520px !important;
+/* ========== Radio & Checkbox ========== */
+[data-baseweb="radio"] input:checked + div:before,
+[data-baseweb="checkbox"] input:checked + div:before{
+  background: var(--brand-blue) !important;
+  border-color: var(--brand-blue) !important;
+  box-shadow: 0 0 0 3px rgba(96,165,250,.15) !important;
 }
-.google-btn .stButton > button{
-  height: 48px !important;
+
+/* ========== Badges / Etiquetas pequeñas ========== */
+.badge, .st-emotion-cache-1h7okuk{  /* si usas chips/badges propios */
+  display:inline-flex; align-items:center; gap:.4rem;
+  padding:.22rem .5rem; font-size:.78rem; font-weight:700;
+  border-radius:999px; background: rgba(179,139,227,.18); color:#4f2f7a; border:1px solid rgba(179,139,227,.35);
+}
+
+/* ========== Botones ========== */
+.stButton > button,
+.row-widget.stButton > div > button{
+  width:auto; min-height: 44px;
   border-radius: 12px !important;
-  border: 1px solid #D5DBEF !important;
-  background: #fff !important;
-  font-size: 15px !important;
-  box-sizing: border-box !important;
+  border: 1px solid var(--brand-blue) !important;
+  background: var(--brand-blue) !important;
+  color:#fff !important; font-weight:800 !important; letter-spacing:.2px;
+  padding: 0 16px !important;
+  box-shadow: 0 6px 18px rgba(96,165,250,.20) !important;
+  transition: transform .06s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
 }
-.google-btn .stButton > button:hover{
-  border-color:#8B5CF6 !important;
-  box-shadow: 0 8px 22px rgba(139,92,246,.18) !important;
+.stButton > button:hover,
+.row-widget.stButton > div > button:hover{
+  background: var(--blue-600) !important; border-color: var(--blue-600) !important;
+  box-shadow: 0 10px 24px rgba(59,130,246,.28) !important;
 }
-
-/* ====== Columna derecha: imagen/video ====== */
-.right{ flex: 1 1 auto; display: flex; justify-content: center; }
-.hero-image, .hero-video{
-  display: block;
-  width: min(44vw, 560px);           /* limita ancho y hace que entre en 100vh */
-  height: auto;
-  max-height: 72vh;                  /* evita que empuje el scroll */
-  object-fit: contain;
+.stButton > button:active,
+.row-widget.stButton > div > button:active{
+  background: var(--blue-700) !important; border-color: var(--blue-700) !important;
+  transform: translateY(1px);
 }
 
-/* ====== Ajustes para pantallas medianas/pequeñas ====== */
-@media (max-width: 1200px){
-  :root{ --gap: 2.2rem; }
-  .hero-image, .hero-video{ max-height: 66vh; }
+/* Botón secundario “fantasma” si lo usas (ej: gris claro) */
+.button-ghost, .stButton.ghost > button{
+  background:#fff !important; color: var(--ink-700) !important; border:1px solid var(--border) !important;
+  box-shadow:none !important;
 }
-@media (max-width: 980px){
-  .row{
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 1.6rem;
-  }
-  .left{ width: 100%; max-width: 640px; }
-  .equal-wrap{ max-width: 640px; }
-  .hero-image, .hero-video{
-    width: min(86vw, 560px);
-    max-height: 42vh;               /* que todo quepa sin scroll en móviles */
-  }
-  .title{ font-size: clamp(44px, 12vw, 72px); margin-bottom: 14px; }
-  .pill{ height: 44px !important; margin-bottom: 12px; }
+.button-ghost:hover, .stButton.ghost > button:hover{
+  border-color: var(--brand-lilac) !important;
+  box-shadow: 0 6px 18px rgba(179,139,227,.18) !important;
 }
 
-/* ====== (Opcional) reduce el margen superior “de seguridad” de Streamlit ====== */
-header[data-testid="stHeader"] { height: 0; min-height: 0; }
+/* ========== Botón de acción dentro de formularios (ej: “Agregar y guardar”) ========== */
+div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]) .stButton > button{
+  min-width: 160px;
+}
+
+/* ========== Pequeños iconos de estado (verde/amarillo/rojo) si usas emoji/markers ========== */
+.status-green{color:#059669 !important}
+.status-amber{color:#B45309 !important}
+.status-red{color:#DC2626 !important}
+
+/* ========== Tooltips / Foco accesible extra ========== */
+*:focus-visible{outline: none !important; box-shadow: 0 0 0 3px rgba(179,139,227,.28) !important;}
+/* ================================================================== */
 </style>
 """, unsafe_allow_html=True)
 
