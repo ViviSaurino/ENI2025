@@ -90,32 +90,28 @@ def google_login(
             token_endpoint=cfg["token_uri"],
         )
 
-        # ====== CSS: SIN SCROLL y layout 2 columnas bien alineado ======
+        # ====== CSS: layout 2 col sin tocar html/body global ======
         st.markdown("""
             <style>
-            /* Sin scroll y ocultamos cabecera/footers de Streamlit */
-            html, body { height:100%; overflow:hidden; }
-            header[data-testid="stHeader"]{ height:0; min-height:0; visibility:hidden; }
-            footer, .stDeployButton,
-            .viewerBadge_container__1QSob, .styles_viewerBadge__1yB5_, .viewerBadge_link__1S137 {
-              display:none !important;
-            }
+            /* Dejamos el header por defecto (evita colapsos).
+               Solo limpiamos paddings para más alto útil. */
+            [data-testid="stMain"]{ padding-top:.25rem !important; padding-bottom:0 !important; }
+            .block-container{ max-width:1180px; padding:0 12px !important; margin:0 auto !important; }
 
-            [data-testid="stAppViewContainer"]{ height:100vh; overflow:hidden; }
-            [data-testid="stMain"]{ height:100%; padding-top:0 !important; padding-bottom:0 !important; }
-            .block-container{ height:100%; max-width:1180px; padding:0 12px !important; margin:0 auto !important; }
-
-            /* Contenedor principal a altura de viewport */
-            .hero-full {
-              min-height:100vh;
-              display:flex;
-              align-items:center;
-              justify-content:center;
+            /* Hero ocupa la altura visible y centra el contenido */
+            .hero-grid{
+              height: 100vh;
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              align-items: center;
+              justify-items: center;
+              gap: 3rem;
+              box-sizing: border-box;
             }
 
             :root{
               --left-max: 560px;
-              --controls-w: 520px;   /* ancho compartido pill + botón */
+              --controls-w: 520px;   /* mismo ancho pill + botón */
               --pill-h: 46px;
               --btn-h: 48px;
             }
@@ -129,10 +125,7 @@ def google_login(
             }
             .title .line{ display:block; }
 
-            .equal-wrap{
-              width: var(--controls-w);
-              max-width: 100%;
-            }
+            .equal-wrap{ width: var(--controls-w); max-width: 100%; }
 
             .pill{
               width:100% !important; height:var(--pill-h) !important;
@@ -162,12 +155,21 @@ def google_login(
               display:block;
               width: min(46vw, 620px);
               height:auto;
-              max-height: 58vh;      /* evita empujar el scroll en pantallas chicas */
+              max-height: 56vh;                /* evita que nazca scroll */
               object-fit:contain;
             }
 
+            /* Móvil / pantallas angostas */
             @media (max-width: 980px){
+              .hero-grid{
+                grid-template-columns: 1fr;
+                gap: 1.2rem;
+                height: 100vh;
+              }
+              .left-wrap{ width:min(86vw, 640px); }
               .equal-wrap{ width:min(86vw, 560px); }
+              .title{ font-size: clamp(44px, 12vw, 72px); margin-bottom: 10px; }
+              .pill{ height:44px !important; margin-bottom:10px; }
               .hero-image, .hero-video{
                 width:min(86vw, 560px);
                 max-height:40vh;
@@ -176,27 +178,34 @@ def google_login(
             </style>
         """, unsafe_allow_html=True)
 
-        # --------- Layout 2 columnas estable ----------
-        st.markdown('<div class="hero-full">', unsafe_allow_html=True)
-        col_left, col_right = st.columns([1,1], gap="large")
+        # --------- Layout 2 columnas en grid (estable y visible) ----------
+        st.markdown('<div class="hero-grid">', unsafe_allow_html=True)
 
-        with col_left:
-            st.markdown('<div class="left-wrap">', unsafe_allow_html=True)
-            st.markdown('<div class="title"><span class="line">BIEN</span><span class="line">VENIDOS</span></div>',
-                        unsafe_allow_html=True)
+        # Columna izquierda
+        st.markdown('<div class="left-wrap">', unsafe_allow_html=True)
+        st.markdown('<div class="title"><span class="line">BIEN</span><span class="line">VENIDOS</span></div>',
+                    unsafe_allow_html=True)
+        st.markdown('<div class="equal-wrap">', unsafe_allow_html=True)
+        st.markdown('<div class="pill">GESTIÓN DE TAREAS ENI 2025</div>', unsafe_allow_html=True)
 
-            st.markdown('<div class="equal-wrap">', unsafe_allow_html=True)
-            st.markdown('<div class="pill">GESTIÓN DE TAREAS ENI 2025</div>', unsafe_allow_html=True)
-
-            # Botón OAuth dentro de equal-wrap (hereda el mismo ancho)
-            result = None
+        result = None
+        try:
+            result = oauth2.authorize_button(
+                name="Continuar con Google",
+                icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
+                pkce="S256",
+                use_container_width=False,
+                scopes=["openid","email","profile"],
+                redirect_uri=cfg["redirect_uri"],
+            )
+        except TypeError:
             try:
                 result = oauth2.authorize_button(
                     name="Continuar con Google",
                     icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                     pkce="S256",
                     use_container_width=False,
-                    scopes=["openid","email","profile"],
+                    scope="openid email profile",
                     redirect_uri=cfg["redirect_uri"],
                 )
             except TypeError:
@@ -206,8 +215,8 @@ def google_login(
                         icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                         pkce="S256",
                         use_container_width=False,
-                        scope="openid email profile",
-                        redirect_uri=cfg["redirect_uri"],
+                        scopes=["openid","email","profile"],
+                        redirect_to=cfg["redirect_uri"],
                     )
                 except TypeError:
                     try:
@@ -216,45 +225,34 @@ def google_login(
                             icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                             pkce="S256",
                             use_container_width=False,
-                            scopes=["openid","email","profile"],
+                            scope="openid email profile",
                             redirect_to=cfg["redirect_uri"],
                         )
                     except TypeError:
-                        try:
-                            result = oauth2.authorize_button(
-                                name="Continuar con Google",
-                                icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
-                                pkce="S256",
-                                use_container_width=False,
-                                scope="openid email profile",
-                                redirect_to=cfg["redirect_uri"],
-                            )
-                        except TypeError:
-                            result = oauth2.authorize_button(
-                                name="Continuar con Google",
-                                icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
-                                pkce="S256",
-                                use_container_width=False,
-                                scope="openid email profile",
-                            )
-            st.markdown('</div>', unsafe_allow_html=True)   # /equal-wrap
-            st.markdown('</div>', unsafe_allow_html=True)   # /left-wrap
+                        result = oauth2.authorize_button(
+                            name="Continuar con Google",
+                            icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
+                            pkce="S256",
+                            use_container_width=False,
+                            scope="openid email profile",
+                        )
+        st.markdown('</div></div>', unsafe_allow_html=True)  # /equal-wrap + /left-wrap
 
-        with col_right:
-            st.markdown('<div class="right-wrap">', unsafe_allow_html=True)
-            vid = _video("assets/hero.mp4")
-            img = _img("assets/hero.png")
-            fallback = "https://raw.githubusercontent.com/filipedeschamps/tabnews.com.br/main/public/apple-touch-icon.png"
-            if vid:
-                st.markdown(f'<video class="hero-video" src="{vid}" autoplay loop muted playsinline></video>',
-                            unsafe_allow_html=True)
-            elif img:
-                st.markdown(f'<img class="hero-image" src="{img}" alt="ENI 2025">', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<img class="hero-image" src="{fallback}" alt="ENI 2025">', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)   # /right-wrap
+        # Columna derecha
+        st.markdown('<div class="right-wrap">', unsafe_allow_html=True)
+        vid = _video("assets/hero.mp4")
+        img = _img("assets/hero.png")
+        fallback = "https://raw.githubusercontent.com/filipedeschamps/tabnews.com.br/main/public/apple-touch-icon.png"
+        if vid:
+            st.markdown(f'<video class="hero-video" src="{vid}" autoplay loop muted playsinline></video>',
+                        unsafe_allow_html=True)
+        elif img:
+            st.markdown(f'<img class="hero-image" src="{img}" alt="ENI 2025">', unsafe_allow_html=True)
+        else:
+            st.markdown(f'<img class="hero-image" src="{fallback}" alt="ENI 2025">', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)  # /right-wrap
 
-        st.markdown('</div>', unsafe_allow_html=True)       # /hero-full
+        st.markdown('</div>', unsafe_allow_html=True)    # /hero-grid
 
     # ----- Si no se obtuvo resultado del botón aún -----
     if not result:
