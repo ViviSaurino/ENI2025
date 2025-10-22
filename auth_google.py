@@ -109,7 +109,7 @@ def google_login(
               display:flex;
               flex-direction:column;
               justify-content:center;   /* centro vertical */
-              transform: translateY(1.5vh); /* ⬅️ BAJA TODO EL BLOQUE (ajusta 3vh a tu gusto) */
+              transform: translateY(1.8vh); /* ⬅️ BAJA TODO EL BLOQUE (ajusta 3vh a tu gusto) */
             }}
             [data-testid="stHorizontalBlock"]{{
               height:100%;
@@ -349,6 +349,7 @@ def google_login(
 def logout():
     st.session_state.pop("user", None)
     _safe_rerun()
+
 
 
 
