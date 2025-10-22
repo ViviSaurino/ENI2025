@@ -147,29 +147,35 @@ def google_login(
               margin:0 0 14px 0; box-sizing:border-box;
             }
 
-            /* Normalmente Streamlit envuelve el botón con varios divs.
-               Forzamos TODOS los niveles a tomar el mismo ancho exacto. */
-            .cta .stButton,
-            .cta .stButton > div,
-            .cta .stButton > div > div,
-            .cta .stButton > div > button,
-            .cta .stButton button{
+            /* === AJUSTE CLAVE: forzar todos los wrappers del botón al MISMO ancho y sin padding === */
+            .cta .row-widget.stButton,
+            .cta .stButton{
               width: var(--left-w) !important;
               max-width: var(--left-w) !important;
+              margin: 0 !important;
+              padding: 0 !important;
             }
-
-            .cta .stButton > button,
+            .cta .stButton > div,
+            .cta .stButton > div > div{
+              width: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              display: block !important;
+            }
+            .cta .stButton > div > button,
             .cta .stButton button{
+              width: 100% !important;
               height:48px !important;
               border-radius:12px !important; border:1px solid #D5DBEF !important;
               background:#fff !important; font-size:15px !important;
               box-sizing:border-box !important; padding:0 .95rem !important;
             }
-            .cta .stButton > button:hover,
+            .cta .stButton > div > button:hover,
             .cta .stButton button:hover{
               border-color:#8B5CF6 !important;
               box-shadow:0 8px 22px rgba(139,92,246,.18) !important;
             }
+            /* === FIN AJUSTE === */
 
             /* Columna derecha: media sin empujar scroll */
             .right{ display:flex; justify-content:center; }
@@ -190,9 +196,12 @@ def google_login(
               .title{ width:min(86vw, var(--left-w)); font-size: clamp(44px, 12vw, var(--title-max)); }
               .cta{ width:min(86vw, var(--left-w)); max-width:min(86vw, var(--left-w)); }
               .pill{ width:min(86vw, var(--left-w)) !important; max-width:min(86vw, var(--left-w)) !important; }
-              .cta .stButton, .cta .stButton > div, .cta .stButton > div > div,
-              .cta .stButton > div > button, .cta .stButton button{
+              .cta .row-widget.stButton,
+              .cta .stButton,
+              .cta .stButton > div,
+              .cta .stButton > div > div{
                 width:min(86vw, var(--left-w)) !important; max-width:min(86vw, var(--left-w)) !important;
+                padding:0 !important; margin:0 !important;
               }
               .hero-media{ max-width:min(86vw, var(--media-max)); max-height:40vh; }
             }
@@ -212,14 +221,14 @@ def google_login(
             st.markdown('<div class="cta">', unsafe_allow_html=True)
             st.markdown('<div class="pill">GESTIÓN DE TAREAS ENI 2025</div>', unsafe_allow_html=True)
 
-            # Botón OAuth (hereda el ancho de .cta)
+            # Botón OAuth (100% del contenedor)
             result = None
             try:
                 result = oauth2.authorize_button(
                     name="Continuar con Google",
                     icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                     pkce="S256",
-                    use_container_width=False,
+                    use_container_width=True,
                     scopes=["openid","email","profile"],
                     redirect_uri=cfg["redirect_uri"],
                 )
@@ -229,7 +238,7 @@ def google_login(
                         name="Continuar con Google",
                         icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                         pkce="S256",
-                        use_container_width=False,
+                        use_container_width=True,
                         scope="openid email profile",
                         redirect_uri=cfg["redirect_uri"],
                     )
@@ -239,7 +248,7 @@ def google_login(
                             name="Continuar con Google",
                             icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                             pkce="S256",
-                            use_container_width=False,
+                            use_container_width=True,
                             scopes=["openid","email","profile"],
                             redirect_to=cfg["redirect_uri"],
                         )
@@ -249,7 +258,7 @@ def google_login(
                                 name="Continuar con Google",
                                 icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                                 pkce="S256",
-                                use_container_width=False,
+                                use_container_width=True,
                                 scope="openid email profile",
                                 redirect_to=cfg["redirect_uri"],
                             )
@@ -258,7 +267,7 @@ def google_login(
                                 name="Continuar con Google",
                                 icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                                 pkce="S256",
-                                use_container_width=False,
+                                use_container_width=True,
                                 scope="openid email profile",
                             )
             st.markdown('</div></div>', unsafe_allow_html=True)
