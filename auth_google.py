@@ -3,10 +3,8 @@ import base64
 import streamlit as st
 from streamlit_oauth import OAuth2Component
 
-# ========== Configuración de ancho maestro (un único lugar) ==========
-LEFT_W = 320  # px -> ancho de VENIDOS + píldora + botón (mantener igual que --left-w)
+LEFT_W = 320  # px
 
-# ================== Utilidades ==================
 def _safe_rerun():
     if hasattr(st, "rerun"):
         st.rerun()
@@ -27,7 +25,6 @@ def _set_query_params(**kwargs):
     elif hasattr(st, "experimental_set_query_params"):
         st.experimental_set_query_params(**kwargs)
 
-# -------------------- secrets --------------------
 def _get_oauth_cfg():
     cfg = st.secrets.get("oauth_client", {})
     return {
@@ -45,7 +42,6 @@ def _is_allowed(email: str, allowed_emails, allowed_domains) -> bool:
     dom = email.split("@")[-1] if "@" in email else ""
     return dom in {d.lower().strip() for d in (allowed_domains or [])}
 
-# -------------------- assets helpers ---------------------
 def _b64(path: str, mime: str) -> str | None:
     try:
         with open(path, "rb") as f:
@@ -56,7 +52,6 @@ def _b64(path: str, mime: str) -> str | None:
 def _img(path: str) -> str | None:   return _b64(path, "image/png")
 def _video(path: str) -> str | None: return _b64(path, "video/mp4")
 
-# -------------------- navigation helper --------------------
 def _switch_page(target: str):
     if hasattr(st, "switch_page"):
         st.switch_page(target)
@@ -64,7 +59,6 @@ def _switch_page(target: str):
         _set_query_params(go=target)
         _safe_rerun()
 
-# ================== LOGIN ==================
 def google_login(
     allowed_emails=None,
     allowed_domains=None,
@@ -100,7 +94,27 @@ def google_login(
             [data-testid="stAppViewContainer"]{{ height:100vh; overflow:hidden; }}
             [data-testid="stMain"]{{ height:100%; padding-top:0 !important; padding-bottom:0 !important; }}
 
-            /* 👉 Centrado vertical y horizontal del bloque principal */
+            /* —— Forzar tema/vars a celeste (algunas builds de Streamlit usan estas vars) —— */
+            :root{{
+              --primary-color: #60A5FA !important;
+              --accent-color: #60A5FA !important;
+              --secondary-background-color: #60A5FA !important; /* fallback para :active de botones secundarios */
+              --brand-color: #60A5FA !important;
+
+              /* posibles vars internas de botones base */
+              --button-secondary-hover-bg: #60A5FA !important;
+              --button-secondary-hover-border: #60A5FA !important;
+              --button-secondary-pressed-bg: #60A5FA !important;
+              --button-secondary-pressed-border: #60A5FA !important;
+
+              --left-w: {LEFT_W}px;
+              --title-max: 80.9px;
+              --media-max: 1000px;
+              --stack-gap: 10px;
+              --title-bottom: 10px;
+            }}
+
+            /* 👉 Centrado vertical/horizontal del bloque principal */
             .block-container{{
               height:100vh;
               max-width:800px;
@@ -108,28 +122,18 @@ def google_login(
               margin:0 auto !important;
               display:flex;
               flex-direction:column;
-              justify-content:center;   /* centro vertical */
-              transform: translateY(0.3vh); /* ⬅️ BAJA TODO EL BLOQUE (ajusta 0.3vh a tu gusto) */
+              justify-content:center;
+              transform: translateY(0.3vh);
             }}
             [data-testid="stHorizontalBlock"]{{
               height:100%;
               display:flex;
-              align-items:center;       /* alinea verticalmente las dos columnas */
-              gap: 1px !important;      /* ⬅️ SEPARACIÓN ENTRE COLUMNAS (ajusta 4px, 6px, 8px, etc.) */
-            }}
-
-            /* 👇 Control maestro del ancho (VENIDOS + píldora + botón) y separaciones */
-            :root{{
-              --left-w: {LEFT_W}px;   /* Mantener igual que LEFT_W arriba */
-              --title-max: 80.9px;     /* límite superior del tamaño del título */
-              --media-max: 1000px;
-              --stack-gap: 10px;      /* separación entre píldora y botón */
-              --title-bottom: 10px;   /* separación bajo el título */
+              align-items:center;
+              gap: 1px !important;
             }}
 
             .left{{ width:var(--left-w); max-width:100%; }}
 
-            /* ===== TÍTULO AJUSTADO AL ANCHO ===== */
             .title{{
               width:var(--left-w);
               max-width:var(--left-w);
@@ -137,18 +141,17 @@ def google_login(
               font-weight:930; color:#B38BE3;
               line-height:.92; letter-spacing:.10px;
               font-size: clamp(40px, calc(var(--left-w) * 0.38), var(--title-max)) !important;
-              margin:0 0 var(--title-bottom) 0;    /* menos espacio abajo */
+              margin:0 0 var(--title-bottom) 0;
               box-sizing:border-box;
             }}
             .title .line{{ display:block; width:100%; word-break:break-word; overflow-wrap:anywhere; }}
 
-            /* Contenedor de píldora + botón, con gap cortito */
             .cta{{
               width:var(--left-w) !important;
               max-width:var(--left-w) !important;
               display:flex;
               flex-direction:column;
-              gap:var(--stack-gap);   /* ← aquí controlas lo juntos que están */
+              gap:var(--stack-gap);
             }}
 
             .pill{{
@@ -159,14 +162,13 @@ def google_login(
               margin:0; box-sizing:border-box;
             }}
 
-            /* Fuerza el widget de BOTÓN al mismo ancho */
-            .left .row-widget.stButton{{ 
+            .left .row-widget.stButton{{
               width:var(--left-w) !important;
               max-width:var(--left-w) !important;
               align-self:flex-start !important;
               padding:0 !important; margin:0 !important; box-sizing:border-box !important;
             }}
-            .left .row-widget.stButton > div{{ 
+            .left .row-widget.stButton > div{{
               width:100% !important; max-width:100% !important; padding:0 !important; margin:0 !important;
               display:block !important; box-sizing:border-box !important;
             }}
@@ -174,38 +176,42 @@ def google_login(
               width:100% !important; min-width:0 !important; height:48px !important;
               border-radius:12px !important; border:1px solid #D5DBEF !important; background:#fff !important;
               font-size:15px !important; box-sizing:border-box !important; padding:0 .95rem !important;
+              background-image:none !important;
             }}
 
-            /* === HOVER/FOCUS/ACTIVE: celeste #60A5FA === */
+            /* === Estados HOVER/FOCUS/ACTIVE: celeste #60A5FA === */
             .left .row-widget.stButton > div > button:hover,
             .left .row-widget.stButton > div > button:focus,
+            .left .row-widget.stButton > div > button:focus-visible,
             .left .row-widget.stButton > div > button:active{{
-              background:#60A5FA !important;     /* fondo celeste */
-              border-color:#60A5FA !important;    /* borde celeste */
-              color:#FFFFFF !important;           /* texto blanco */
-              box-shadow:0 8px 22px rgba(96,165,250,.25) !important; /* halo celeste */
+              background:#60A5FA !important;
+              border-color:#60A5FA !important;
+              color:#FFFFFF !important;
+              background-image:none !important;
+              outline:none !important;
+              box-shadow:0 0 0 3px rgba(96,165,250,.35) !important, 0 8px 22px rgba(96,165,250,.25) !important;
             }}
 
-            /* ===== Refuerzo de especificidad contra estilos internos de Streamlit ===== */
-            .left .stButton button,
-            .left [data-testid="baseButton-secondary"] > button {{
+            /* —— Refuerzo contra el botón “baseButton-secondary” del nuevo UI —— */
+            .left [data-testid="baseButton-secondary"] > button{{
               background:#fff !important;
               border:1px solid #D5DBEF !important;
               color:#111827 !important;
               background-image:none !important;
-              transition: background-color .15s ease, border-color .15s ease, color .15s ease !important;
             }}
-            .left .stButton button:is(:hover,:focus,:focus-visible,:active),
-            .left [data-testid="baseButton-secondary"] > button:is(:hover,:focus,:focus-visible,:active) {{
+            .left [data-testid="baseButton-secondary"] > button:hover,
+            .left [data-testid="baseButton-secondary"] > button:focus,
+            .left [data-testid="baseButton-secondary"] > button:focus-visible,
+            .left [data-testid="baseButton-secondary"] > button:active{{
               background:#60A5FA !important;
               border-color:#60A5FA !important;
               color:#ffffff !important;
               background-image:none !important;
-              box-shadow:0 8px 22px rgba(96,165,250,.25) !important;
               outline:none !important;
+              box-shadow:0 0 0 3px rgba(96,165,250,.35) !important, 0 8px 22px rgba(96,165,250,.25) !important;
             }}
 
-            /* Columna derecha: media centrada y con altura contenida */
+            /* Columna derecha */
             .right{{ display:flex; justify-content:center; }}
             .hero-media{{
               display:block; width:auto;
@@ -223,28 +229,19 @@ def google_login(
         """, unsafe_allow_html=True)
 
         # --------- Layout: 2 columnas ----------
-        # Más cerca entre texto e ilustración (antes gap="large"):
         col_left, col_right = st.columns([6, 6], gap="small")
 
         with col_left:
             st.markdown('<div class="left">', unsafe_allow_html=True)
-
-            # Título
             st.markdown(
                 '<div class="title"><span class="line">BIEN</span><span class="line">VENIDOS</span></div>',
                 unsafe_allow_html=True
             )
-
-            # Contenedor común (mismo ancho y con gap corto)
             st.markdown('<div class="cta">', unsafe_allow_html=True)
-
-            # PÍLDORA
             st.markdown(
                 f'<div class="pill" style="width:{LEFT_W}px !important;">GESTIÓN DE TAREAS ENI 2025</div>',
                 unsafe_allow_html=True
             )
-
-            # Botón
             st.markdown(f'<div style="width:{LEFT_W}px !important;">', unsafe_allow_html=True)
 
             result = None
@@ -316,7 +313,6 @@ def google_login(
     if not result:
         return None
 
-    # ---------- Procesa token ----------
     token = result.get("token") if isinstance(result, dict) else result
     if not token:
         st.error("No se recibió el token de Google. Intenta nuevamente.")
@@ -371,7 +367,6 @@ def google_login(
         _safe_rerun()
 
     return user
-
 
 def logout():
     st.session_state.pop("user", None)
