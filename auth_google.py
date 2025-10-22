@@ -3,7 +3,7 @@ import base64
 import streamlit as st
 from streamlit_oauth import OAuth2Component
 
-# ================== Utilidades básicas ==================
+# ================== Utilidades ==================
 def _safe_rerun():
     if hasattr(st, "rerun"):
         st.rerun()
@@ -42,7 +42,7 @@ def _is_allowed(email: str, allowed_emails, allowed_domains) -> bool:
     dom = email.split("@")[-1] if "@" in email else ""
     return dom in {d.lower().strip() for d in (allowed_domains or [])}
 
-# -------------------- assets ---------------------
+# -------------------- assets helpers ---------------------
 def _b64(path: str, mime: str) -> str | None:
     try:
         with open(path, "rb") as f:
@@ -61,7 +61,7 @@ def _switch_page(target: str):
         _set_query_params(go=target)
         _safe_rerun()
 
-# -------------------- login ----------------------
+# ================== LOGIN ==================
 def google_login(
     allowed_emails=None,
     allowed_domains=None,
@@ -90,10 +90,10 @@ def google_login(
             token_endpoint=cfg["token_uri"],
         )
 
-        # ====== CSS: sin scroll + 2 columnas alineadas ======
+        # ====== CSS: sin scroll + 2 columnas + un solo ancho maestro ======
         st.markdown("""
             <style>
-            /* Eliminar scroll global y limpiar header/footer de Streamlit */
+            /* Sin scroll y ocultar cabeceras/footers de Streamlit */
             html, body { height:100%; overflow:hidden; }
             header[data-testid="stHeader"]{ height:0; min-height:0; visibility:hidden; }
             footer, .stDeployButton,
@@ -101,39 +101,48 @@ def google_login(
               display:none !important;
             }
 
-            /* Contenedor principal a pantalla completa */
             [data-testid="stAppViewContainer"]{ height:100vh; overflow:hidden; }
             [data-testid="stMain"]{ height:100%; padding-top:0 !important; padding-bottom:0 !important; }
             .block-container{ height:100%; max-width:1180px; padding:0 16px !important; margin:0 auto !important; }
 
-            /* Forzar que el bloque de columnas ocupe todo el alto del viewport */
-            [data-testid="stHorizontalBlock"]{
-              height:100vh !important;
+            /* Variables de diseño (ajusta solo estas 3 para afinar) */
+            :root{
+              --left-w: 520px;          /* 👈 ANCHO maestro para TÍTULO + PÍLDORA + BOTÓN */
+              --title-max: 96px;        /* tamaño máximo del título */
+              --media-max: 620px;       /* ancho máximo de la imagen/video */
             }
-            /* Cada columna: centrar verticalmente su contenido */
+
+            /* Forzar que el bloque de columnas ocupe todo el alto del viewport */
+            [data-testid="stHorizontalBlock"]{ height:100vh !important; }
+            /* Cada columna centrada verticalmente */
             [data-testid="column"] > div{
               height:100%;
               display:flex; flex-direction:column; justify-content:center;
             }
 
             /* Columna izquierda */
-            .left { max-width: 560px; width: min(560px, 46vw); }
+            .left { width: var(--left-w); max-width: 100%; }
             .title{
+              width: var(--left-w);           /* 👈 mismo ancho que la pill/botón */
+              max-width: 100%;
               font-weight:900; color:#B38BE3;
               line-height:.92; letter-spacing:.4px;
-              font-size: clamp(56px, 9vw, 96px);
+              font-size: clamp(56px, 9vw, var(--title-max));
               margin: 0 0 18px 0;
             }
             .title .line{ display:block; }
 
-            /* Mismo ancho para pill + botón */
-            .cta{ width: min(320px, 40vw); max-width: 320px; }
+            /* Bloque que comparte el mismo ancho */
+            .cta{
+              width: var(--left-w);           /* 👈 mismo ancho */
+              max-width: 100%;
+            }
             .pill{
               width:100%; height:46px;
               display:flex; align-items:center; justify-content:center;
               border-radius:12px; background:#EEF2FF; border:1px solid #DBE4FF;
               color:#2B4C7E; font-weight:800; letter-spacing:.2px; font-size:16px;
-              margin:0 0 19px 0; box-sizing:border-box;
+              margin:0 0 14px 0; box-sizing:border-box;
             }
             .cta .stButton, .cta .row-widget.stButton, .cta > div{
               width:100% !important; margin:0 !important; padding:0 !important;
@@ -149,30 +158,30 @@ def google_login(
               box-shadow:0 8px 22px rgba(139,92,246,.18) !important;
             }
 
-            /* Columna derecha: imagen/video sin empujar scroll */
+            /* Columna derecha: imagen/video */
             .right{ display:flex; justify-content:center; }
             .hero-media{
               display:block;
-              width: auto;
-              max-width: min(600px, 46vw);
-              max-height: 70vh;
-              height: auto;
-              object-fit: contain;
+              width:auto;
+              max-width: min(var(--media-max), 46vw);
+              max-height: 68vh;
+              height:auto;
+              object-fit:contain;
             }
 
             /* Responsivo */
             @media (max-width: 980px){
               [data-testid="stHorizontalBlock"]{ height:auto !important; }
               [data-testid="column"] > div{ height:auto; }
-              .left{ width:100%; max-width:640px; }
-              .cta{ width: min(86vw, 560px); }
-              .hero-media{ max-width:min(86vw, 560px); max-height:40vh; }
+              .left{ width:min(86vw, var(--left-w)); }
+              .title{ width:min(86vw, var(--left-w)); font-size: clamp(44px, 12vw, var(--title-max)); }
+              .cta{ width:min(86vw, var(--left-w)); }
+              .hero-media{ max-width:min(86vw, var(--media-max)); max-height:40vh; }
             }
             </style>
         """, unsafe_allow_html=True)
 
-        # --------- Layout: 2 columnas estables ----------
-        # Izquierda más ancha para replicar tu maqueta
+        # --------- Layout: 2 columnas (izq = contenido, der = media) ----------
         col_left, col_right = st.columns([7, 5], gap="large")
 
         with col_left:
@@ -185,7 +194,7 @@ def google_login(
             st.markdown('<div class="cta">', unsafe_allow_html=True)
             st.markdown('<div class="pill">GESTIÓN DE TAREAS ENI 2025</div>', unsafe_allow_html=True)
 
-            # Botón OAuth (hereda ancho de .cta)
+            # Botón OAuth (hereda el ancho de .cta => igual a la píldora y al título)
             result = None
             try:
                 result = oauth2.authorize_button(
@@ -234,7 +243,7 @@ def google_login(
                                 use_container_width=False,
                                 scope="openid email profile",
                             )
-            st.markdown('</div></div>', unsafe_allow_html=True)  # cierra .cta y .left
+            st.markdown('</div></div>', unsafe_allow_html=True)  # /cta, /left
 
         with col_right:
             st.markdown('<div class="right">', unsafe_allow_html=True)
@@ -249,7 +258,7 @@ def google_login(
                 st.markdown(f'<img class="hero-media" src="{fallback}" alt="ENI 2025">', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-    # ----- Si aún no se hizo clic en el botón -----
+    # ----- Si todavía no se hizo clic en el botón -----
     if not result:
         return None
 
@@ -314,8 +323,3 @@ def google_login(
 def logout():
     st.session_state.pop("user", None)
     _safe_rerun()
-
-
-
-
-
