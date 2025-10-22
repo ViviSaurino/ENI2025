@@ -102,63 +102,117 @@ def google_login(
             token_endpoint=cfg["token_uri"],
         )
 
-        # ====== ESTILOS Y LAYOUT AJUSTADOS (como tu imagen 2) ======
+        # ====== ESTILOS Y LAYOUT: todo visible sin scroll + alineado ======
         st.markdown("""
             <style>
             html, body { height:100%; }
+            /* quita la barra superior de Streamlit para ganar alto útil */
+            header[data-testid="stHeader"]{ height:0; min-height:0; }
             [data-testid="stAppViewContainer"]{ height:100vh; }
-            .block-container{ max-width:1180px; padding-top:1.2rem; }
+            [data-testid="stMain"]{ height:100%; }
+            .block-container{
+              height:100%;
+              max-width:1180px;
+              padding-top:.4rem !important;
+              padding-bottom:0 !important;
+            }
 
-            /* GRID principal: dos columnas centradas verticalmente */
-            .hero-area{ min-height:76vh; display:flex; align-items:center; }
-            .row{ width:100%; display:flex; align-items:center; justify-content:space-between; gap:40px; }
+            :root{
+              --gap: 2.8rem;
+              --leftw: clamp(420px, 45vw, 560px);
+              --pill-h: 46px;
+              --btn-h: 48px;
+            }
 
-            /* Columna izquierda (texto + pill + botón) */
-            .left{ width:560px; max-width:560px; }
+            .hero-area{
+              min-height:100vh;                 /* ocupa toda la pantalla */
+              display:flex;
+              align-items:center;               /* centra verticalmente */
+              overflow:hidden;                  /* evita pequeños scrolls */
+            }
+
+            .row{
+              width:100%;
+              display:flex;
+              align-items:center;
+              justify-content:space-between;
+              gap: var(--gap);
+            }
+
+            /* ========= Columna izquierda ========= */
+            .left{ width:var(--leftw); max-width:var(--leftw); }
             .title{
-              font-weight:900; color:#B38BE3; line-height:.9; letter-spacing:.5px;
-              font-size:84px; margin:0 0 14px 0;
+              font-weight:900;
+              color:#B38BE3;
+              line-height:.95;
+              letter-spacing:.4px;
+              font-size: clamp(56px, 9vw, 96px);
+              margin: 0 0 18px 0;
             }
             .title .line{ display:block; }
 
-            .equal-wrap{ width:360px; max-width:360px; }
+            .equal-wrap{ width:100%; max-width:520px; }
+
             .pill{
-              width:100%!important; height:44px!important; display:flex; align-items:center; justify-content:center;
+              width:100% !important;
+              height: var(--pill-h) !important;
+              display:flex; align-items:center; justify-content:center;
               border-radius:12px; background:#EEF2FF; border:1px solid #DBE4FF;
-              color:#2B4C7E; font-weight:800; font-size:15px; letter-spacing:.3px;
-              box-sizing:border-box; margin:0 0 14px 0;
+              color:#2B4C7E; font-weight:800; letter-spacing:.2px; font-size:16px;
+              margin:0 0 16px 0;
+              box-sizing:border-box;
             }
 
-            /* Botón Google “cuadrado” al 100% */
-            .equal-wrap .google-btn,
-            .equal-wrap .google-btn > div,
-            .equal-wrap .google-btn .row-widget.stButton,
-            .equal-wrap .google-btn .stButton,
-            .equal-wrap .google-btn .stButton > div{ width:100%!important; margin:0!important; padding:0!important; }
-            .equal-wrap .google-btn .stButton > button,
-            .equal-wrap .google-btn button{
-              width:100%!important; height:44px!important; border-radius:12px!important;
-              border:1px solid #D5DBEF!important; background:#fff!important;
-              font-size:15px!important; box-sizing:border-box!important; padding:0 .95rem!important;
+            /* Botón Google 100% del ancho de la pastilla */
+            .google-btn,
+            .google-btn > div,
+            .google-btn .row-widget.stButton,
+            .google-btn .stButton,
+            .google-btn .stButton > div{
+              width:100% !important; max-width:520px !important;
+              margin:0 !important; padding:0 !important;
             }
-            .equal-wrap .google-btn .stButton > button:hover,
-            .equal-wrap .google-btn button:hover{
-              border-color:#8B5CF6!important; box-shadow:0 8px 22px rgba(139,92,246,.20)!important;
+            .google-btn .stButton > button{
+              width:100% !important; height: var(--btn-h) !important;
+              border-radius:12px !important; border:1px solid #D5DBEF !important;
+              background:#fff !important; font-size:15px !important;
+              box-sizing:border-box !important; padding:0 .95rem !important;
             }
-
-            /* Columna derecha (imagen / video) */
-            .right{ max-width:560px; width:100%; display:flex; justify-content:center; }
-            .hero-video, .hero-image{
-              width:auto; height:auto; max-width:560px; max-height:70vh; display:block; object-fit:contain;
+            .google-btn .stButton > button:hover{
+              border-color:#8B5CF6 !important;
+              box-shadow:0 8px 22px rgba(139,92,246,.18) !important;
             }
 
-            /* Responsive */
-            @media (max-width: 1024px){
-              .row{ flex-direction:column; gap:32px; }
-              .left, .right{ width:100%; max-width:100%; }
-              .title{ font-size:64px; }
-              .equal-wrap{ width:100%; max-width:420px; }
-              .hero-video, .hero-image{ max-height:42vh; max-width:90%; }
+            /* ========= Columna derecha ========= */
+            .right{ flex:1 1 auto; display:flex; justify-content:center; }
+            .hero-image, .hero-video{
+              display:block;
+              width: min(44vw, 560px);
+              height:auto;
+              max-height: 68vh;               /* clave para que no empuje scroll */
+              object-fit:contain;
+            }
+
+            /* ====== Responsivo ====== */
+            @media (max-width: 1200px){
+              :root{ --gap: 2rem; }
+              .hero-image, .hero-video{ max-height: 64vh; }
+            }
+            @media (max-width: 980px){
+              .row{
+                flex-direction:column;
+                align-items:center;
+                justify-content:flex-start;
+                gap: 1.4rem;
+              }
+              .left{ width:100%; max-width:640px; }
+              .equal-wrap{ max-width:640px; }
+              .title{ font-size: clamp(44px, 12vw, 72px); margin-bottom: 12px; }
+              .pill{ height:44px !important; margin-bottom:12px; }
+              .hero-image, .hero-video{
+                width: min(86vw, 560px);
+                max-height: 40vh;            /* todo entra en móviles sin scroll */
+              }
             }
             </style>
         """, unsafe_allow_html=True)
