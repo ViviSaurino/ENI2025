@@ -105,9 +105,9 @@ def google_login(
             [data-testid="stMain"]{ height:100%; padding-top:0 !important; padding-bottom:0 !important; }
             .block-container{ height:100%; max-width:1280px; padding:0 16px !important; margin:0 auto !important; }
 
-            /* 👉 Ajusta SOLO estos 3 valores para afinar la maqueta */
+            /* 👉 Ajusta SOLO este valor para ancho común de TÍTULO + PÍLDORA + BOTÓN */
             :root{
-              --left-w:   360px;   /* ANCHO maestro: título + píldora + botón */
+              --left-w:   520px;   /* <— cambia aquí si quieres 500, 540, etc. */
               --title-max: 112px;  /* Tamaño máximo del título */
               --media-max: 640px;  /* Ancho máximo de la imagen/video */
             }
@@ -131,31 +131,42 @@ def google_login(
             }
             .title .line{ display:block; }
 
+            /* Bloque de controles: todos al mismo ancho exacto */
             .cta{
-              width: var(--left-w); /* mismo ancho */
-              max-width: 100%;
+              width: var(--left-w) !important;
+              max-width: var(--left-w) !important;
             }
+
             .pill{
-              width:100%; height:46px;
+              width: var(--left-w) !important;
+              max-width: var(--left-w) !important;
+              height:46px;
               display:flex; align-items:center; justify-content:center;
               border-radius:12px; background:#EEF2FF; border:1px solid #DBE4FF;
               color:#2B4C7E; font-weight:800; letter-spacing:.2px; font-size:16px;
               margin:0 0 14px 0; box-sizing:border-box;
             }
-            .cta .stButton, .cta .row-widget.stButton, .cta > div{
-              width:100% !important; margin:0 !important; padding:0 !important;
+
+            /* Normalmente Streamlit envuelve el botón con varios divs.
+               Forzamos TODOS los niveles a tomar el mismo ancho exacto. */
+            .cta .stButton,
+            .cta .stButton > div,
+            .cta .stButton > div > div,
+            .cta .stButton > div > button,
+            .cta .stButton button{
+              width: var(--left-w) !important;
+              max-width: var(--left-w) !important;
             }
-            /* 👇 fuerza el wrapper interno del botón para que ocupe el 100% */
-            .cta .stButton > div{
-              width:100% !important;
-            }
-            .cta .stButton > button{
-              width:100% !important; height:48px !important;
+
+            .cta .stButton > button,
+            .cta .stButton button{
+              height:48px !important;
               border-radius:12px !important; border:1px solid #D5DBEF !important;
               background:#fff !important; font-size:15px !important;
               box-sizing:border-box !important; padding:0 .95rem !important;
             }
-            .cta .stButton > button:hover{
+            .cta .stButton > button:hover,
+            .cta .stButton button:hover{
               border-color:#8B5CF6 !important;
               box-shadow:0 8px 22px rgba(139,92,246,.18) !important;
             }
@@ -166,7 +177,7 @@ def google_login(
               display:block;
               width:auto;
               max-width: min(var(--media-max), 45vw);
-              max-height: 62vh;   /* un poco menos para evitar cualquier scroll */
+              max-height: 62vh;
               height:auto;
               object-fit:contain;
             }
@@ -177,7 +188,12 @@ def google_login(
               [data-testid="column"] > div{ height:auto; }
               .left{ width:min(86vw, var(--left-w)); }
               .title{ width:min(86vw, var(--left-w)); font-size: clamp(44px, 12vw, var(--title-max)); }
-              .cta{ width:min(86vw, var(--left-w)); }
+              .cta{ width:min(86vw, var(--left-w)); max-width:min(86vw, var(--left-w)); }
+              .pill{ width:min(86vw, var(--left-w)) !important; max-width:min(86vw, var(--left-w)) !important; }
+              .cta .stButton, .cta .stButton > div, .cta .stButton > div > div,
+              .cta .stButton > div > button, .cta .stButton button{
+                width:min(86vw, var(--left-w)) !important; max-width:min(86vw, var(--left-w)) !important;
+              }
               .hero-media{ max-width:min(86vw, var(--media-max)); max-height:40vh; }
             }
             </style>
@@ -323,4 +339,3 @@ def google_login(
 def logout():
     st.session_state.pop("user", None)
     _safe_rerun()
-
