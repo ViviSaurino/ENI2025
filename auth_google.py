@@ -186,6 +186,25 @@ def google_login(
               box-shadow:0 8px 22px rgba(96,165,250,.25) !important; /* halo celeste */
             }}
 
+            /* ===== Refuerzo de especificidad contra estilos internos de Streamlit ===== */
+            .left .stButton button,
+            .left [data-testid="baseButton-secondary"] > button {{
+              background:#fff !important;
+              border:1px solid #D5DBEF !important;
+              color:#111827 !important;
+              background-image:none !important;
+              transition: background-color .15s ease, border-color .15s ease, color .15s ease !important;
+            }}
+            .left .stButton button:is(:hover,:focus,:focus-visible,:active),
+            .left [data-testid="baseButton-secondary"] > button:is(:hover,:focus,:focus-visible,:active) {{
+              background:#60A5FA !important;
+              border-color:#60A5FA !important;
+              color:#ffffff !important;
+              background-image:none !important;
+              box-shadow:0 8px 22px rgba(96,165,250,.25) !important;
+              outline:none !important;
+            }}
+
             /* Columna derecha: media centrada y con altura contenida */
             .right{{ display:flex; justify-content:center; }}
             .hero-media{{
