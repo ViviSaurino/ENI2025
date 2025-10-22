@@ -100,7 +100,7 @@ def google_login(
             [data-testid="stAppViewContainer"]{{ height:100vh; overflow:hidden; }}
             [data-testid="stMain"]{{ height:100%; padding-top:0 !important; padding-bottom:0 !important; }}
 
-            /* 👉 Centrado vertical real del contenido */
+            /* 👉 Centrado vertical y horizontal del bloque principal */
             .block-container{{
               height:100vh;
               max-width:1280px;
@@ -108,26 +108,26 @@ def google_login(
               margin:0 auto !important;
               display:flex;
               flex-direction:column;
-              justify-content:center;   /* centra vertical */
+              justify-content:center;   /* centro vertical */
+            }}
+            [data-testid="stHorizontalBlock"]{{
+              height:100%;
+              display:flex;
+              align-items:center;       /* alinea verticalmente las dos columnas */
             }}
 
-            /* 👇 Control maestro del ancho (VENIDOS + píldora + botón) */
+            /* 👇 Control maestro del ancho (VENIDOS + píldora + botón) y separaciones */
             :root{{
-              --left-w: {LEFT_W}px;  /* Mantener igual que LEFT_W arriba */
-              --title-max: 90px;    /* ← súbelo/bájalo para limitar el tamaño máximo del título */
+              --left-w: {LEFT_W}px;   /* Mantener igual que LEFT_W arriba */
+              --title-max: 120px;     /* límite superior del tamaño del título */
               --media-max: 640px;
-            }}
-
-            [data-testid="stHorizontalBlock"]{{ height:100%; }}
-            [data-testid="column"] > div{{
-              display:flex; flex-direction:column; justify-content:center;
+              --stack-gap: 10px;      /* separación entre píldora y botón */
+              --title-bottom: 10px;   /* separación bajo el título */
             }}
 
             .left{{ width:var(--left-w); max-width:100%; }}
 
-            /* ===== TÍTULO AJUSTADO AL ANCHO =====
-               coef 0.38: toca este número para afinar el tamaño relativo al ancho
-            */
+            /* ===== TÍTULO AJUSTADO AL ANCHO ===== */
             .title{{
               width:var(--left-w);
               max-width:var(--left-w);
@@ -135,62 +135,54 @@ def google_login(
               font-weight:900; color:#B38BE3;
               line-height:.92; letter-spacing:.4px;
               font-size: clamp(40px, calc(var(--left-w) * 0.38), var(--title-max)) !important;
-              margin:0 0 18px 0;
+              margin:0 0 var(--title-bottom) 0;    /* menos espacio abajo */
               box-sizing:border-box;
             }}
-            .title .line{{
-              display:block;
-              width:100%;
-              word-break: break-word;
-              overflow-wrap: anywhere;
-            }}
-            /* ===== FIN TÍTULO ===== */
+            .title .line{{ display:block; width:100%; word-break:break-word; overflow-wrap:anywhere; }}
 
-            .cta{{ width:var(--left-w) !important; max-width:var(--left-w) !important; }}
+            /* Contenedor de píldora + botón, con gap cortito */
+            .cta{{
+              width:var(--left-w) !important;
+              max-width:var(--left-w) !important;
+              display:flex;
+              flex-direction:column;
+              gap:var(--stack-gap);   /* ← aquí controlas lo juntos que están */
+            }}
 
             .pill{{
               width:var(--left-w) !important; max-width:var(--left-w) !important;
               height:46px; display:flex; align-items:center; justify-content:center;
               border-radius:12px; background:#EEF2FF; border:1px solid #DBE4FF;
               color:#2B4C7E; font-weight:800; letter-spacing:.2px; font-size:16px;
-              margin:0 0 14px 0; box-sizing:border-box;
+              margin:0; box-sizing:border-box;
             }}
 
-            /* Fuerza el widget de BOTÓN al mismo ancho sin estirarlo por flex */
+            /* Fuerza el widget de BOTÓN al mismo ancho */
             .left .row-widget.stButton{{ 
               width:var(--left-w) !important;
               max-width:var(--left-w) !important;
               align-self:flex-start !important;
-              padding:0 !important;
-              margin:0 !important;
-              box-sizing:border-box !important;
+              padding:0 !important; margin:0 !important; box-sizing:border-box !important;
             }}
             .left .row-widget.stButton > div{{ 
-              width:100% !important;
-              max-width:100% !important;
-              padding:0 !important;
-              margin:0 !important;
-              display:block !important;
-              box-sizing:border-box !important;
+              width:100% !important; max-width:100% !important; padding:0 !important; margin:0 !important;
+              display:block !important; box-sizing:border-box !important;
             }}
             .left .row-widget.stButton > div > button{{
-              width:100% !important;
-              min-width:0 !important;
-              height:48px !important;
-              border-radius:12px !important; border:1px solid #D5DBEF !important;
-              background:#fff !important; font-size:15px !important;
-              box-sizing:border-box !important; padding:0 .95rem !important;
+              width:100% !important; min-width:0 !important; height:48px !important;
+              border-radius:12px !important; border:1px solid #D5DBEF !important; background:#fff !important;
+              font-size:15px !important; box-sizing:border-box !important; padding:0 .95rem !important;
             }}
             .left .row-widget.stButton > div > button:hover{{
-              border-color:#8B5CF6 !important;
-              box-shadow:0 8px 22px rgba(139,92,246,.18) !important;
+              border-color:#8B5CF6 !important; box-shadow:0 8px 22px rgba(139,92,246,.18) !important;
             }}
 
+            /* Columna derecha: media centrada y con altura contenida */
             .right{{ display:flex; justify-content:center; }}
             .hero-media{{
               display:block; width:auto;
               max-width:min(var(--media-max), 45vw);
-              max-height:62vh; height:auto; object-fit:contain;
+              max-height:60vh; height:auto; object-fit:contain;
             }}
 
             @media (max-width:980px){{
@@ -203,7 +195,8 @@ def google_login(
         """, unsafe_allow_html=True)
 
         # --------- Layout: 2 columnas ----------
-        col_left, col_right = st.columns([7, 5], gap="large")
+        # Más cerca entre texto e ilustración (antes gap="large"):
+        col_left, col_right = st.columns([6, 6], gap="small")
 
         with col_left:
             st.markdown('<div class="left">', unsafe_allow_html=True)
@@ -214,16 +207,16 @@ def google_login(
                 unsafe_allow_html=True
             )
 
-            # Contenedor común (mismo ancho)
+            # Contenedor común (mismo ancho y con gap corto)
             st.markdown('<div class="cta">', unsafe_allow_html=True)
 
-            # PÍLDORA (mismo ancho)
+            # PÍLDORA
             st.markdown(
                 f'<div class="pill" style="width:{LEFT_W}px !important;">GESTIÓN DE TAREAS ENI 2025</div>',
                 unsafe_allow_html=True
             )
 
-            # Botón (mismo ancho)
+            # Botón
             st.markdown(f'<div style="width:{LEFT_W}px !important;">', unsafe_allow_html=True)
 
             result = None
@@ -355,10 +348,3 @@ def google_login(
 def logout():
     st.session_state.pop("user", None)
     _safe_rerun()
-
-
-
-
-
-
-
