@@ -114,7 +114,7 @@ def google_login(
             /* 👇 Control maestro del ancho (VENIDOS + píldora + botón) */
             :root{{
               --left-w: {LEFT_W}px;  /* Mantener igual que LEFT_W arriba */
-              --title-max: 112px;    /* límite superior del tamaño del título */
+              --title-max: 140px;    /* ← súbelo/bájalo para limitar el tamaño máximo del título */
               --media-max: 640px;
             }}
 
@@ -126,7 +126,7 @@ def google_login(
             .left{{ width:var(--left-w); max-width:100%; }}
 
             /* ===== TÍTULO AJUSTADO AL ANCHO =====
-               coef 10: toca solo este número si quieres afinar el tamaño del título
+               coef 0.38: toca este número para afinar el tamaño relativo al ancho
             */
             .title{{
               width:var(--left-w);
@@ -134,15 +134,15 @@ def google_login(
               display:block;
               font-weight:900; color:#B38BE3;
               line-height:.92; letter-spacing:.4px;
-              font-size: clamp(28px, calc(var(--left-w) * 0.145), var(--title-max));
+              font-size: clamp(40px, calc(var(--left-w) * 0.38), var(--title-max)) !important;
               margin:0 0 18px 0;
               box-sizing:border-box;
             }}
             .title .line{{
               display:block;
               width:100%;
-              word-break: break-word;      /* fuerza cortes dentro de VENIDOS */
-              overflow-wrap: anywhere;     /* y asegura que respete el ancho */
+              word-break: break-word;
+              overflow-wrap: anywhere;
             }}
             /* ===== FIN TÍTULO ===== */
 
@@ -195,7 +195,7 @@ def google_login(
 
             @media (max-width:980px){{
               .left{{ width:min(86vw, var(--left-w)); }}
-              .title{{ width:min(86vw, var(--left-w)); font-size:clamp(26px, calc(var(--left-w) * 0.145), var(--title-max)); }}
+              .title{{ width:min(86vw, var(--left-w)); font-size:clamp(32px, calc(var(--left-w) * 0.38), var(--title-max)) !important; }}
               .cta, .pill, .left .row-widget.stButton{{ width:min(86vw, var(--left-w)) !important; max-width:min(86vw, var(--left-w)) !important; }}
               .hero-media{{ max-width:min(86vw, var(--media-max)); max-height:40vh; }}
             }}
@@ -355,7 +355,3 @@ def google_login(
 def logout():
     st.session_state.pop("user", None)
     _safe_rerun()
-
-
-
-
