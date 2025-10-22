@@ -109,6 +109,7 @@ def google_login(
               display:flex;
               flex-direction:column;
               justify-content:center;   /* centro vertical */
+              transform: translateY(3vh); /* ⬅️ BAJA TODO EL BLOQUE (ajusta 3vh a tu gusto) */
             }}
             [data-testid="stHorizontalBlock"]{{
               height:100%;
