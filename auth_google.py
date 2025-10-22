@@ -175,8 +175,15 @@ def google_login(
               border-radius:12px !important; border:1px solid #D5DBEF !important; background:#fff !important;
               font-size:15px !important; box-sizing:border-box !important; padding:0 .95rem !important;
             }}
-            .left .row-widget.stButton > div > button:hover{{
-              border-color:#8B5CF6 !important; box-shadow:0 8px 22px rgba(139,92,246,.18) !important;
+
+            /* === HOVER/FOCUS/ACTIVE: celeste #60A5FA === */
+            .left .row-widget.stButton > div > button:hover,
+            .left .row-widget.stButton > div > button:focus,
+            .left .row-widget.stButton > div > button:active{{
+              background:#60A5FA !important;     /* fondo celeste */
+              border-color:#60A5FA !important;    /* borde celeste */
+              color:#FFFFFF !important;           /* texto blanco */
+              box-shadow:0 8px 22px rgba(96,165,250,.25) !important; /* halo celeste */
             }}
 
             /* Columna derecha: media centrada y con altura contenida */
@@ -350,14 +357,3 @@ def google_login(
 def logout():
     st.session_state.pop("user", None)
     _safe_rerun()
-
-
-
-
-
-
-
-
-
-
-
