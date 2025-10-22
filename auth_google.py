@@ -90,38 +90,42 @@ def google_login(
             token_endpoint=cfg["token_uri"],
         )
 
-        # ====== CSS: overlay fijo, sin scroll y alineado exacto ======
+        # ====== CSS: SIN SCROLL y layout 2 columnas bien alineado ======
         st.markdown("""
             <style>
-            /* Sin scroll y sin cabecera/footers de Streamlit */
+            /* Sin scroll y ocultamos cabecera/footers de Streamlit */
             html, body { height:100%; overflow:hidden; }
             header[data-testid="stHeader"]{ height:0; min-height:0; visibility:hidden; }
-            footer, .stDeployButton, .viewerBadge_container__1QSob,
-            .styles_viewerBadge__1yB5_, .viewerBadge_link__1S137 { display:none !important; }
+            footer, .stDeployButton,
+            .viewerBadge_container__1QSob, .styles_viewerBadge__1yB5_, .viewerBadge_link__1S137 {
+              display:none !important;
+            }
 
             [data-testid="stAppViewContainer"]{ height:100vh; overflow:hidden; }
             [data-testid="stMain"]{ height:100%; padding-top:0 !important; padding-bottom:0 !important; }
-            .block-container{ height:100%; max-width:1180px; padding:0 !important; margin:0 auto !important; }
+            .block-container{ height:100%; max-width:1180px; padding:0 12px !important; margin:0 auto !important; }
 
-            /* Overlay a pantalla completa */
-            .hero-wrap{
-              position: fixed; inset: 0;
-              display:flex; align-items:center; justify-content:center;
-              overflow:hidden; background: transparent;
+            /* Contenedor principal a altura de viewport */
+            .hero-full {
+              min-height:100vh;
+              display:flex;
+              align-items:center;
+              justify-content:center;
             }
 
-            /* Grid 2 columnas centradas */
-            .hero-inner{
-              width: min(1180px, 96vw);
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              align-items: center;
-              gap: 3.2rem;
-              padding: 0 1rem;
+            /* Ajustes de columnas de Streamlit para centrar verticalmente */
+            .stHorizontalBlock, [data-testid="column"] > div {
+              display:flex; flex-direction:column; justify-content:center;
             }
 
-            /* Columna izquierda */
-            .left{ width: clamp(420px, 44vw, 560px); }
+            :root{
+              --left-max: 560px;
+              --controls-w: 520px;   /* ancho compartido pill + botón */
+              --pill-h: 46px;
+              --btn-h: 48px;
+            }
+
+            .left-wrap { width:min(var(--left-max), 44vw); }
             .title{
               font-weight:900; color:#B38BE3;
               line-height:.92; letter-spacing:.4px;
@@ -130,89 +134,74 @@ def google_login(
             }
             .title .line{ display:block; }
 
-            .equal-wrap{ width: clamp(360px, 34vw, 520px); }
+            .equal-wrap{
+              width: var(--controls-w);
+              max-width: 100%;
+            }
 
             .pill{
-              width:100% !important; height:46px !important;
+              width:100% !important; height:var(--pill-h) !important;
               display:flex; align-items:center; justify-content:center;
               border-radius:12px; background:#EEF2FF; border:1px solid #DBE4FF;
               color:#2B4C7E; font-weight:800; letter-spacing:.2px; font-size:16px;
               margin:0 0 14px 0; box-sizing:border-box;
             }
 
-            /* IMPORTANTÍSIMO:
-               El botón es un bloque independiente. Usamos el hermano adyacente
-               para forzar su ancho/alto y quede EXACTO bajo la pastilla. */
-            .google-btn + div .stButton>button{
-              width:100% !important; height:48px !important;
+            /* Forzamos el botón OAuth al MISMO ancho y alto de la pill */
+            .equal-wrap .stButton, .equal-wrap .row-widget.stButton, .equal-wrap > div {
+              width:100% !important; max-width:100% !important; margin:0 !important; padding:0 !important;
+            }
+            .equal-wrap .stButton > button{
+              width:100% !important; height:var(--btn-h) !important;
               border-radius:12px !important; border:1px solid #D5DBEF !important;
               background:#fff !important; font-size:15px !important;
               box-sizing:border-box !important; padding:0 .95rem !important;
             }
-            .google-btn + div{ width: clamp(360px, 34vw, 520px) !important; }
-
-            .google-btn + div .stButton>button:hover{
+            .equal-wrap .stButton > button:hover{
               border-color:#8B5CF6 !important;
               box-shadow:0 8px 22px rgba(139,92,246,.18) !important;
             }
 
-            /* Columna derecha (imagen/video) */
-            .right{ display:flex; justify-content:center; }
+            .right-wrap{ display:flex; justify-content:center; }
             .hero-image, .hero-video{
               display:block;
               width: min(46vw, 620px);
               height:auto;
-              max-height: 58vh;   /* clave para que no empuje scroll */
+              max-height: 60vh;      /* evita empujar el scroll en pantallas chicas */
               object-fit:contain;
             }
 
-            /* Responsive */
             @media (max-width: 980px){
-              .hero-inner{
-                grid-template-columns: 1fr;
-                gap: 1.2rem;
-              }
-              .left{ width:100%; max-width:640px; }
-              .equal-wrap{ max-width:640px; }
-              .title{ font-size: clamp(44px, 12vw, 72px); margin-bottom: 10px; }
-              .pill{ height:44px !important; margin-bottom:10px; }
-              .google-btn + div{ width: min(86vw, 560px) !important; }
+              .equal-wrap{ width:min(86vw, 560px); }
               .hero-image, .hero-video{
-                width: min(86vw, 560px);
-                max-height: 40vh;
+                width:min(86vw, 560px);
+                max-height:40vh;
               }
             }
             </style>
         """, unsafe_allow_html=True)
 
-        # --------- Overlay + grid (2 columnas) ----------
-        st.markdown('<div class="hero-wrap"><div class="hero-inner">', unsafe_allow_html=True)
+        # --------- Layout 2 columnas estable (usamos columnas de Streamlit) ----------
+        st.markdown('<div class="hero-full">', unsafe_allow_html=True)
+        col_left, col_right = st.columns([1,1], gap="large")
 
-        # Columna izquierda (todo en flujo; el botón se estila con el selector adyacente)
-        st.markdown('<div class="left">', unsafe_allow_html=True)
-        st.markdown('<div class="title"><span class="line">BIEN</span><span class="line">VENIDOS</span></div>', unsafe_allow_html=True)
-        st.markdown('<div class="equal-wrap"><div class="pill">GESTIÓN DE TAREAS ENI 2025</div></div>', unsafe_allow_html=True)
+        with col_left:
+            st.markdown('<div class="left-wrap">', unsafe_allow_html=True)
+            st.markdown('<div class="title"><span class="line">BIEN</span><span class="line">VENIDOS</span></div>',
+                        unsafe_allow_html=True)
 
-        # marcador para aplicar el selector adyacente al botón
-        st.markdown('<div class="google-btn"></div>', unsafe_allow_html=True)
-        result = None
-        try:
-            result = oauth2.authorize_button(
-                name="Continuar con Google",
-                icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
-                pkce="S256",
-                use_container_width=False,
-                scopes=["openid","email","profile"],
-                redirect_uri=cfg["redirect_uri"],
-            )
-        except TypeError:
+            st.markdown('<div class="equal-wrap">', unsafe_allow_html=True)
+            st.markdown('<div class="pill">GESTIÓN DE TAREAS ENI 2025</div>', unsafe_allow_html=True)
+
+            # Botón OAuth dentro de equal-wrap (hereda el mismo ancho)
+            result = None
             try:
                 result = oauth2.authorize_button(
                     name="Continuar con Google",
                     icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                     pkce="S256",
                     use_container_width=False,
-                    scope="openid email profile",
+                    scopes=["openid","email","profile"],
                     redirect_uri=cfg["redirect_uri"],
                 )
             except TypeError:
@@ -222,8 +211,8 @@ def google_login(
                         icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                         pkce="S256",
                         use_container_width=False,
-                        scopes=["openid","email","profile"],
-                        redirect_to=cfg["redirect_uri"],
+                        scope="openid email profile",
+                        redirect_uri=cfg["redirect_uri"],
                     )
                 except TypeError:
                     try:
@@ -232,33 +221,45 @@ def google_login(
                             icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                             pkce="S256",
                             use_container_width=False,
-                            scope="openid email profile",
+                            scopes=["openid","email","profile"],
                             redirect_to=cfg["redirect_uri"],
                         )
                     except TypeError:
-                        result = oauth2.authorize_button(
-                            name="Continuar con Google",
-                            icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
-                            pkce="S256",
-                            use_container_width=False,
-                            scope="openid email profile",
-                        )
-        st.markdown('</div>', unsafe_allow_html=True)  # cierra .left
+                        try:
+                            result = oauth2.authorize_button(
+                                name="Continuar con Google",
+                                icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
+                                pkce="S256",
+                                use_container_width=False,
+                                scope="openid email profile",
+                                redirect_to=cfg["redirect_uri"],
+                            )
+                        except TypeError:
+                            result = oauth2.authorize_button(
+                                name="Continuar con Google",
+                                icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
+                                pkce="S256",
+                                use_container_width=False,
+                                scope="openid email profile",
+                            )
+            st.markdown('</div>', unsafe_allow_html=True)   # /equal-wrap
+            st.markdown('</div>', unsafe_allow_html=True)   # /left-wrap
 
-        # Columna derecha (imagen / video)
-        st.markdown('<div class="right">', unsafe_allow_html=True)
-        vid = _video("assets/hero.mp4")
-        img = _img("assets/hero.png")
-        fallback = "https://raw.githubusercontent.com/filipedeschamps/tabnews.com.br/main/public/apple-touch-icon.png"
-        if vid:
-            st.markdown(f'<video class="hero-video" src="{vid}" autoplay loop muted playsinline></video>', unsafe_allow_html=True)
-        elif img:
-            st.markdown(f'<img class="hero-image" src="{img}" alt="ENI 2025">', unsafe_allow_html=True)
-        else:
-            st.markdown(f'<img class="hero-image" src="{fallback}" alt="ENI 2025">', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)  # cierra .right
+        with col_right:
+            st.markdown('<div class="right-wrap">', unsafe_allow_html=True)
+            vid = _video("assets/hero.mp4")
+            img = _img("assets/hero.png")
+            fallback = "https://raw.githubusercontent.com/filipedeschamps/tabnews.com.br/main/public/apple-touch-icon.png"
+            if vid:
+                st.markdown(f'<video class="hero-video" src="{vid}" autoplay loop muted playsinline></video>',
+                            unsafe_allow_html=True)
+            elif img:
+                st.markdown(f'<img class="hero-image" src="{img}" alt="ENI 2025">', unsafe_allow_html=True)
+            else:
+                st.markdown(f'<img class="hero-image" src="{fallback}" alt="ENI 2025">', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)   # /right-wrap
 
-        st.markdown('</div></div>', unsafe_allow_html=True)  # cierra hero-inner + hero-wrap
+        st.markdown('</div>', unsafe_allow_html=True)       # /hero-full
 
     # ----- Si no se obtuvo resultado del botón aún -----
     if not result:
