@@ -109,12 +109,13 @@ def google_login(
               display:flex;
               flex-direction:column;
               justify-content:center;   /* centro vertical */
-              transform: translateY(0.3vh); /* ⬅️ BAJA TODO EL BLOQUE (ajusta 3vh a tu gusto) */
+              transform: translateY(0.3vh); /* ⬅️ BAJA TODO EL BLOQUE (ajusta 0.3vh a tu gusto) */
             }}
             [data-testid="stHorizontalBlock"]{{
               height:100%;
               display:flex;
               align-items:center;       /* alinea verticalmente las dos columnas */
+              gap: 8px !important;      /* ⬅️ SEPARACIÓN ENTRE COLUMNAS (ajusta 4px, 6px, 8px, etc.) */
             }}
 
             /* 👇 Control maestro del ancho (VENIDOS + píldora + botón) y separaciones */
