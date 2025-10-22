@@ -332,14 +332,16 @@ st.markdown("""
   background:#F3E8FF!important; border:1px solid #E9D5FF!important; color:#4C1D95!important; border-radius:10px!important;
 }
 .stApp [data-testid="stSidebar"] .stButton > button:hover{ background:#E9D5FF!important; }
-/* 5) AG Grid: que encabezados y celdas no se corten */
+
+/* 5) AG Grid: encabezados HORIZONTALES y celdas legibles */
 .ag-theme-balham .ag-header-cell-label{
-  display:block !important;
-  white-space: normal !important;
+  display:flex !important;
+  align-items:center !important;
+  white-space: nowrap !important;     /* 👈 sin salto en header */
   line-height: 1.2 !important;
 }
 .ag-theme-balham .ag-header-cell-text{
-  white-space: normal !important;
+  white-space: nowrap !important;     /* 👈 sin salto en header */
 }
 .ag-theme-balham .ag-cell{
   white-space: normal !important;
@@ -535,7 +537,7 @@ df_view = df_view[grid_cols + ["__DEL__"]]
 # === GRID OPTIONS ===
 gob = GridOptionsBuilder.from_dataframe(df_view)
 
-# que TODAS las columnas sean redimensionables, con wrap y alto automático
+# que TODAS las columnas sean redimensionables, con wrap y alto automático en celdas (no en header)
 gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True)
 
 gob.configure_grid_options(
@@ -543,9 +545,7 @@ gob.configure_grid_options(
     suppressRowClickSelection=True,
     domLayout="normal",
     rowHeight=38,
-    headerHeight=72,           # ← más alto para títulos en 2–3 líneas
-    wrapHeaderText=True,       # ← permitir saltos en encabezado
-    autoHeaderHeight=True,     # ← calcular alto automáticamente
+    headerHeight=42,          # encabezado compacto sin wrap
     enableRangeSelection=True,
     enableCellTextSelection=True,
     singleClickEdit=True,
@@ -651,9 +651,33 @@ gob.configure_column("Días hábiles", editable=False, valueGetter=bd_getter, va
 for col in df_view.columns:
     gob.configure_column(col, headerTooltip=col)
 
+# === Autosize callbacks para que los headers se vean completos y horizontales ===
+autosize_on_ready = JsCode("""
+function(params){
+  const all = params.columnApi.getAllDisplayedColumns();
+  params.columnApi.autoSizeColumns(all, true); // true => tamaño por texto del HEADER
+}
+""")
+
+autosize_on_data = JsCode("""
+function(params){
+  if (params.api && params.api.getDisplayedRowCount() > 0){
+    const all = params.columnApi.getAllDisplayedColumns();
+    params.columnApi.autoSizeColumns(all, true);
+  }
+}
+""")
+
+# Inyecta los eventos al gridOptions ya construido
+grid_opts = gob.build()
+grid_opts["onGridReady"] = autosize_on_ready.js_code
+grid_opts["onFirstDataRendered"] = autosize_on_data.js_code
+grid_opts["onColumnEverythingChanged"] = autosize_on_data.js_code
+
 grid = AgGrid(
-    df_view, key="grid_historial", gridOptions=gob.build(), height=500,
-    fit_columns_on_grid_load=True, data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+    df_view, key="grid_historial", gridOptions=grid_opts, height=500,
+    fit_columns_on_grid_load=False,   # respeta autosize; no force fit
+    data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
     update_mode=(GridUpdateMode.VALUE_CHANGED | GridUpdateMode.MODEL_CHANGED | GridUpdateMode.FILTERING_CHANGED | GridUpdateMode.SORTING_CHANGED | GridUpdateMode.SELECTION_CHANGED),
     allow_unsafe_jscode=True, theme="balham",
 )
