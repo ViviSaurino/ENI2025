@@ -133,7 +133,7 @@ def google_login(
               width:var(--left-w);
               max-width:var(--left-w);
               display:block;
-              font-weight:500; color:#B38BE3;
+              font-weight:950; color:#B38BE3;
               line-height:.92; letter-spacing:.4px;
               font-size: clamp(40px, calc(var(--left-w) * 0.38), var(--title-max)) !important;
               margin:0 0 var(--title-bottom) 0;    /* menos espacio abajo */
@@ -349,6 +349,7 @@ def google_login(
 def logout():
     st.session_state.pop("user", None)
     _safe_rerun()
+
 
 
 
