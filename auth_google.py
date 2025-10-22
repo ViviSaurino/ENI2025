@@ -109,13 +109,13 @@ def google_login(
               display:flex;
               flex-direction:column;
               justify-content:center;   /* centro vertical */
-              transform: translateY(0.3vh); /* ⬅️ BAJA TODO EL BLOQUE */
+              transform: translateY(0.3vh); /* ⬅️ BAJA TODO EL BLOQUE (ajusta a gusto) */
             }}
             [data-testid="stHorizontalBlock"]{{
               height:100%;
               display:flex;
               align-items:center;       /* alinea verticalmente las dos columnas */
-              gap: 1px !important;      /* separación entre columnas */
+              gap: 1px !important;      /* ⬅️ separación entre columnas */
             }}
 
             /* 👇 Control maestro del ancho (VENIDOS + píldora + botón) y separaciones */
@@ -177,12 +177,11 @@ def google_login(
               background-image:none !important;
             }}
 
-            /* =============== ANTI-ROJO: overrides súper agresivos =============== */
-            /* Caso general: cualquier botón de Streamlit */
-            .stButton > button:hover,
-            .stButton > button:focus,
-            .stButton > button:focus-visible,
-            .stButton > button:active {{
+            /* ===================== ANTI-ROJO: overrides globales ===================== */
+            /* Streamlit moderno usa BaseWeb: data-baseweb="button" */
+            [data-baseweb="button"]:hover,
+            [data-baseweb="button"]:focus,
+            [data-baseweb="button"]:active {{
               background:#60A5FA !important;
               border-color:#60A5FA !important;
               color:#ffffff !important;
@@ -191,7 +190,19 @@ def google_login(
               box-shadow:0 0 0 3px rgba(96,165,250,.35) !important, 0 8px 22px rgba(96,165,250,.25) !important;
             }}
 
-            /* Dentro de la columna izquierda (por si cambia la estructura) */
+            /* Cualquier botón HTML genérico (por si el widget cambia) */
+            button:hover,
+            button:focus,
+            button:active {{
+              background:#60A5FA !important;
+              border-color:#60A5FA !important;
+              color:#ffffff !important;
+              background-image:none !important;
+              outline:none !important;
+              box-shadow:0 0 0 3px rgba(96,165,250,.35) !important, 0 8px 22px rgba(96,165,250,.25) !important;
+            }}
+
+            /* Botón dentro del contenedor de la izquierda (máxima especificidad práctica) */
             .left .stButton > button:hover,
             .left .stButton > button:focus,
             .left .stButton > button:active,
@@ -206,7 +217,7 @@ def google_login(
               box-shadow:0 0 0 3px rgba(96,165,250,.35) !important, 0 8px 22px rgba(96,165,250,.25) !important;
             }}
 
-            /* Algunos builds usan data-testid en un contenedor "baseButton-secondary" */
+            /* Contenedores de botón secundarios que algunos builds usan */
             [data-testid="baseButton-secondary"] button:hover,
             [data-testid="baseButton-secondary"] button:focus,
             [data-testid="baseButton-secondary"] button:active {{
@@ -217,7 +228,7 @@ def google_login(
               box-shadow:0 0 0 3px rgba(96,165,250,.35) !important, 0 8px 22px rgba(96,165,250,.25) !important;
             }}
 
-            /* Variables de tema por si el color venía de ahí */
+            /* Variables de tema (si el rojo venía del primary del tema) */
             :root{{
               --primary-color:#60A5FA !important;
               --accent-color:#60A5FA !important;
@@ -227,8 +238,7 @@ def google_login(
               --button-secondary-pressed-bg:#60A5FA !important;
               --button-secondary-pressed-border:#60A5FA !important;
             }}
-
-            /* =============== FIN ANTI-ROJO =============== */
+            /* =================== FIN ANTI-ROJO =================== */
 
             /* Columna derecha: media centrada y con altura contenida */
             .right{{ display:flex; justify-content:center; }}
@@ -395,6 +405,7 @@ def google_login(
         _safe_rerun()
 
     return user
+
 
 def logout():
     st.session_state.pop("user", None)
