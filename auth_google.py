@@ -197,7 +197,7 @@ def google_login(
 
         # --------- Layout: 2 columnas ----------
         # Más cerca entre texto e ilustración (antes gap="large"):
-        col_left, col_right = st.columns([6, 6], gap="small")
+        col_left, col_right = st.columns([7, 5], gap="small")
 
         with col_left:
             st.markdown('<div class="left">', unsafe_allow_html=True)
@@ -349,6 +349,7 @@ def google_login(
 def logout():
     st.session_state.pop("user", None)
     _safe_rerun()
+
 
 
 
