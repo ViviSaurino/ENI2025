@@ -90,139 +90,44 @@ def google_login(
         )
 
         # ====== CSS ======
-st.markdown(f"""
-    <style>
-    html, body {{ height:100%; overflow:hidden; }}
-    header[data-testid="stHeader"]{{ height:0; min-height:0; visibility:hidden; }}
-    footer, .stDeployButton,
-    .viewerBadge_container__1QSob, .styles_viewerBadge__1yB5_, .viewerBadge_link__1S137 {{ display:none !important; }}
+        st.markdown(f"""
+            <style>
+            html, body {{ height:100%; overflow:hidden; }}
+            header[data-testid="stHeader"]{{ height:0; min-height:0; visibility:hidden; }}
+            footer, .stDeployButton,
+            .viewerBadge_container__1QSob, .styles_viewerBadge__1yB5_, .viewerBadge_link__1S137 {{ display:none !important; }}
 
-    [data-testid="stAppViewContainer"]{{ height:100vh; overflow:hidden; }}
-    [data-testid="stMain"]{{ height:100%; padding-top:0 !important; padding-bottom:0 !important; }}
+            [data-testid="stAppViewContainer"]{{ height:100vh; overflow:hidden; }}
+            [data-testid="stMain"]{{ height:100%; padding-top:0 !important; padding-bottom:0 !important; }}
 
-    /* 👉 Centrado vertical y horizontal del bloque principal */
-    .block-container{{
-      height:100vh;
-      max-width:800px;
-      padding:0 16px !important;
-      margin:0 auto !important;
-      display:flex;
-      flex-direction:column;
-      justify-content:center;   /* centro vertical */
-      transform: translateY(0.3vh); /* ⬅️ BAJA TODO EL BLOQUE (ajusta 0.3vh a tu gusto) */
-    }}
-    [data-testid="stHorizontalBlock"]{{
-      height:100%;
-      display:flex;
-      align-items:center;       /* alinea verticalmente las dos columnas */
-      gap: 1px !important;      /* ⬅️ SEPARACIÓN ENTRE COLUMNAS (ajusta 4px, 6px, 8px, etc.) */
-    }}
+            /* 👉 Centrado vertical y horizontal del bloque principal */
+            .block-container{{
+              height:100vh;
+              max-width:800px;
+              padding:0 16px !important;
+              margin:0 auto !important;
+              display:flex;
+              flex-direction:column;
+              justify-content:center;   /* centro vertical */
+              transform: translateY(0.3vh); /* ⬅️ BAJA TODO EL BLOQUE (ajusta 0.3vh a tu gusto) */
+            }}
+            [data-testid="stHorizontalBlock"]{{
+              height:100%;
+              display:flex;
+              align-items:center;       /* alinea verticalmente las dos columnas */
+              gap: 1px !important;      /* ⬅️ SEPARACIÓN ENTRE COLUMNAS (ajusta 4px, 6px, 8px, etc.) */
+            }}
 
-    /* 👇 Control maestro del ancho (VENIDOS + píldora + botón) y separaciones */
-    :root{{
-      --left-w: {LEFT_W}px;   /* Mantener igual que LEFT_W arriba */
-      --title-max: 80.9px;     /* límite superior del tamaño del título */
-      --media-max: 1000px;
-      --stack-gap: 10px;      /* separación entre píldora y botón */
-      --title-bottom: 10px;   /* separación bajo el título */
-    }}
+            /* 👇 Control maestro del ancho (VENIDOS + píldora + botón) y separaciones */
+            :root{{
+              --left-w: {LEFT_W}px;   /* Mantener igual que LEFT_W arriba */
+              --title-max: 80.9px;     /* límite superior del tamaño del título */
+              --media-max: 1000px;
+              --stack-gap: 10px;      /* separación entre píldora y botón */
+              --title-bottom: 10px;   /* separación bajo el título */
+            }}
 
-    .left{{ width:var(--left-w); max-width:100%; }}
-
-    /* ===== TÍTULO AJUSTADO AL ANCHO ===== */
-    .title{{
-      width:var(--left-w);
-      max-width:var(--left-w);
-      display:block;
-      font-weight:930; color:#B38BE3;
-      line-height:.92; letter-spacing:.10px;
-      font-size: clamp(40px, calc(var(--left-w) * 0.38), var(--title-max)) !important;
-      margin:0 0 var(--title-bottom) 0;    /* menos espacio abajo */
-      box-sizing:border-box;
-    }}
-    .title .line{{ display:block; width:100%; word-break:break-word; overflow-wrap:anywhere; }}
-
-    /* Contenedor de píldora + botón, con gap cortito */
-    .cta{{
-      width:var(--left-w) !important;
-      max-width:var(--left-w) !important;
-      display:flex;
-      flex-direction:column;
-      gap:var(--stack-gap);   /* ← aquí controlas lo juntos que están */
-    }}
-
-    .pill{{
-      width:var(--left-w) !important; max-width:var(--left-w) !important;
-      height:46px; display:flex; align-items:center; justify-content:center;
-      border-radius:12px; background:#EEF2FF; border:1px solid #DBE4FF;
-      color:#2B4C7E; font-weight:800; letter-spacing:.2px; font-size:16px;
-      margin:0; box-sizing:border-box;
-    }}
-
-    /* Fuerza el widget de BOTÓN al mismo ancho */
-    .left .row-widget.stButton{{ 
-      width:var(--left-w) !important;
-      max-width:var(--left-w) !important;
-      align-self:flex-start !important;
-      padding:0 !important; margin:0 !important; box-sizing:border-box !important;
-    }}
-    .left .row-widget.stButton > div{{ 
-      width:100% !important; max-width:100% !important; padding:0 !important; margin:0 !important;
-      display:block !important; box-sizing:border-box !important;
-    }}
-    .left .row-widget.stButton > div > button{{
-      width:100% !important; min-width:0 !important; height:48px !important;
-      border-radius:12px !important; border:1px solid #D5DBEF !important; background:#fff !important;
-      font-size:15px !important; box-sizing:border-box !important; padding:0 .95rem !important;
-    }}
-
-    /* === HOVER/FOCUS/ACTIVE: celeste #60A5FA === */
-    .left .row-widget.stButton > div > button:hover,
-    .left .row-widget.stButton > div > button:focus,
-    .left .row-widget.stButton > div > button:active{{
-      background:#60A5FA !important;     /* fondo celeste */
-      border-color:#60A5FA !important;    /* borde celeste */
-      color:#FFFFFF !important;           /* texto blanco */
-      box-shadow:0 8px 22px rgba(96,165,250,.25) !important; /* halo celeste */
-    }}
-
-    /* ====== Refuerzo de especificidad para streamlit ======
-       (cuando usa el wrapper baseButton-secondary) */
-    .left .stButton button,
-    .left [data-testid="baseButton-secondary"] > button {{
-      background:#fff !important;
-      border-color:#D5DBEF !important;
-      color:#111827 !important;
-      background-image:none !important;
-      transition: background-color .15s ease, border-color .15s ease, color .15s ease !important;
-    }}
-    .left .stButton button:is(:hover,:focus,:focus-visible,:active),
-    .left [data-testid="baseButton-secondary"] > button:is(:hover,:focus,:focus-visible,:active) {{
-      background:#60A5FA !important;
-      border-color:#60A5FA !important;
-      color:#ffffff !important;
-      background-image:none !important;
-      box-shadow:0 8px 22px rgba(96,165,250,.25) !important;
-      outline:none !important;
-    }}
-
-    /* Columna derecha: media centrada y con altura contenida */
-    .right{{ display:flex; justify-content:center; }}
-    .hero-media{{
-      display:block; width:auto;
-      max-width:min(var(--media-max), 45vw);
-      max-height:60vh; height:auto; object-fit:contain;
-    }}
-
-    @media (max-width:980px){{
-      .left{{ width:min(86vw, var(--left-w)); }}
-      .title{{ width:min(86vw, var(--left-w)); font-size:clamp(32px, calc(var(--left-w) * 0.38), var(--title-max)) !important; }}
-      .cta, .pill, .left .row-widget.stButton{{ width:min(86vw, var(--left-w)) !important; max-width:min(86vw, var(--left-w)) !important; }}
-      .hero-media{{ max-width:min(86vw, var(--media-max)); max-height:40vh; }}
-    }}
-    </style>
-""", unsafe_allow_html=True)
-
+            .left{{ width:var(--left-w); max-width:100%; }}
 
             /* ===== TÍTULO AJUSTADO AL ANCHO ===== */
             .title{{
@@ -452,4 +357,3 @@ st.markdown(f"""
 def logout():
     st.session_state.pop("user", None)
     _safe_rerun()
-
