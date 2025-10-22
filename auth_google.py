@@ -113,13 +113,23 @@ def google_login(
 
             .left{{ width:var(--left-w); max-width:100%; }}
 
+            /* ===== BLOQUE AJUSTADO ===== */
             .title{{
               width:var(--left-w);
-              font-weight:900; color:#B38BE3; line-height:.92; letter-spacing:.4px;
-              font-size: clamp(56px, 9vw, var(--title-max));
+              max-width:var(--left-w);
+              display:block;
+              font-weight:900; color:#B38BE3;
+              line-height:.92; letter-spacing:.4px;
+
+              /* Tamaño del título ligado al ancho maestro */
+              font-size: clamp(36px, calc(var(--left-w) * 0.18), var(--title-max));
+
               margin:0 0 18px 0;
+              overflow-wrap:anywhere;
+              box-sizing:border-box;
             }}
             .title .line{{ display:block; }}
+            /* ===== FIN AJUSTE ===== */
 
             .cta{{ width:var(--left-w) !important; max-width:var(--left-w) !important; }}
 
@@ -172,7 +182,7 @@ def google_login(
               [data-testid="stHorizontalBlock"]{{ height:auto !important; }}
               [data-testid="column"] > div{{ height:auto; }}
               .left{{ width:min(86vw, var(--left-w)); }}
-              .title{{ width:min(86vw, var(--left-w)); font-size:clamp(44px, 12vw, var(--title-max)); }}
+              .title{{ width:min(86vw, var(--left-w)); font-size:clamp(32px, calc(var(--left-w) * 0.18), var(--title-max)); }}
               .cta, .pill, .left .row-widget.stButton{{ width:min(86vw, var(--left-w)) !important; max-width:min(86vw, var(--left-w)) !important; }}
               .hero-media{{ max-width:min(86vw, var(--media-max)); max-height:40vh; }}
             }}
@@ -332,5 +342,3 @@ def google_login(
 def logout():
     st.session_state.pop("user", None)
     _safe_rerun()
-
-
