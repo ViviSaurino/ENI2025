@@ -299,8 +299,6 @@ st.markdown("""
 }
 
 /* ======= Separaciones fuertes dentro del formulario ======= */
-
-/* Filas (los bloques creados por st.columns) */
 .form-card [data-testid="stHorizontalBlock"]{
   display: grid !important;
   grid-auto-flow: row dense !important;
@@ -314,26 +312,25 @@ st.markdown("""
   padding-right: 12px !important;
   box-sizing: border-box !important;
 }
-/* La última columna no necesita padding extra */
 .form-card [data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child{
   padding-right: 0 !important;
 }
 
-/* Sub-bloques anidados (p. ej., Prioridad + Fecha inicio) con su propio hueco */
+/* Sub-bloques anidados */
 .form-card [data-testid="stHorizontalBlock"] [data-testid="stHorizontalBlock"]{
   display: grid !important;
   grid-column-gap: 16px !important;
   grid-row-gap: 12px !important;
 }
 
-/* Margen inferior mínimo para que cada control “respire” */
+/* Margen inferior */
 .form-card [data-baseweb],
 .form-card [data-testid="stWidgetLabel"],
 .form-card [data-baseweb] > div{
   margin-bottom: 6px !important;
 }
 
-/* ===== Controles: altura/tamaño normalizados ===== */
+/* ===== Controles ===== */
 .form-card [data-baseweb="input"] > div,
 .form-card [data-baseweb="textarea"] > div,
 .form-card [data-baseweb="select"] > div,
@@ -352,7 +349,7 @@ st.markdown("""
   font-size: 15px !important;
 }
 
-/* Foco azul agradable */
+/* Foco */
 .form-card [data-baseweb="input"] > div:has(input:focus),
 .form-card [data-baseweb="textarea"] > div:has(textarea:focus),
 .form-card [data-baseweb="select"] > div:focus-within,
@@ -361,11 +358,11 @@ st.markdown("""
   box-shadow: 0 0 0 3px rgba(96,165,250,.25) !important;
 }
 
-/* ===== Sidebar lila (correo a la izquierda) ===== */
+/* ===== Sidebar ===== */
 [data-testid="stSidebar"]{
   background: var(--lilac-50) !important;
   border-right: 1px solid #ECE6FF !important;
-  width: 200px !important;     /* ajusta aquí si quieres 190/210/etc */
+  width: 200px !important;
   min-width: 200px !important;
 }
 [data-testid="stSidebar"] > div{ width: 200px !important; }
@@ -383,7 +380,7 @@ st.markdown("""
 }
 [data-testid="stSidebar"] .stButton > button:hover{ filter: brightness(.96); }
 
-/* ===== Píldoras celestes para subtítulos (.form-title) ===== */
+/* ===== Píldoras celestes ===== */
 .form-title{
   display:inline-flex; align-items:center; gap:.5rem;
   padding: 6px 12px;
@@ -395,13 +392,13 @@ st.markdown("""
   margin: 6px 0 10px 0;
 }
 
-/* ===== Mostrar texto en SELECTs (regla general) ===== */
+/* ===== SELECTs (regla general) ===== */
 .form-card [data-baseweb="select"] > div{
   overflow: visible !important;
   white-space: nowrap !important;
   text-overflow: clip !important;
-  width: fit-content !important;   /* que crezca según el contenido */
-  min-width: 240px !important;     /* ancho cómodo general */
+  width: fit-content !important;
+  min-width: 240px !important;
 }
 .form-card [data-baseweb="select"] [role="combobox"]{
   overflow: visible !important;
@@ -417,7 +414,7 @@ st.markdown("""
   max-width: none !important;
 }
 
-/* ===== SOLO Área (fila 1, col 1) y Estado (fila 2, col 1) más anchos ===== */
+/* ===== SOLO Área y Estado más anchos ===== */
 .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1)
   > [data-testid="column"]:first-child [data-baseweb="select"] > div{
   min-width: 300px !important;   /* Área */
@@ -427,7 +424,7 @@ st.markdown("""
   min-width: 300px !important;   /* Estado */
 }
 
-/* En pantallas pequeñas reduce ligeramente el mínimo general */
+/* Responsive */
 @media (max-width: 980px){
   .form-card [data-baseweb="select"] > div{
     min-width: 200px !important;
@@ -436,11 +433,8 @@ st.markdown("""
 
 /* ===================================================================== */
 /* ====== Tarjeta de Alertas (anclada con .alertas-grid) =============== */
-/* Requiere:
-   st.markdown('<div class="form-card alertas-grid">', unsafe_allow_html=True)
-   ...dos filas (ID/Tarea/Resp) y (¿Generó?/Tipo/Fecha/¿Se corrige?/F. corregida)...
-   st.markdown('</div>', unsafe_allow_html=True)
-   Mapeo de anchos: 1 | 3 | 1 en ambas filas. */
+/* 1–3–1 entre filas:
+   ID = ¿Generó? | Tarea = Tipo+Fecha+¿Se corrigió? | Responsable = Fecha corregida */
 /* ===================================================================== */
 
 .form-card.alertas-grid{
@@ -451,26 +445,28 @@ st.markdown("""
   align-items: start;
 }
 
-/* Aplana los st.columns para posicionar directamente en la rejilla */
-.form-card.alertas-grid [data-testid="stHorizontalBlock"]{
+/* MUY IMPORTANTE: sobreescribe la regla global y aplana SOLO
+   las dos filas-directas de esta tarjeta mediante hijo directo '>' */
+.form-card.alertas-grid > [data-testid="stHorizontalBlock"]{
   display: contents !important;
 }
 
+/* Detecta Fila 1 (exactamente 3 columnas) y Fila 2 (exactamente 5) como hijas directas */
+.form-card.alertas-grid > [data-testid="stHorizontalBlock"]:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))) { display: contents !important; }
+.form-card.alertas-grid > [data-testid="stHorizontalBlock"]:has(> [data-testid="column"]:nth-of-type(5)):not(:has(> [data-testid="column"]:nth-of-type(6))) { display: contents !important; }
+
 /* Fila 1 (orden actual: 1=ID, 2=Tarea, 3=Responsable) -> A | B..D | E */
-.form-card.alertas-grid [data-testid="stHorizontalBlock"]:nth-of-type(1) > [data-testid="column"]:nth-of-type(1){
-  grid-column: 1;     /* ID -> A (1 unidad) */
+.form-card.alertas-grid > [data-testid="stHorizontalBlock"]:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))) > [data-testid="column"]:nth-of-type(1){
+  grid-column: 1;        /* ID -> A (1) */
 }
-.form-card.alertas-grid [data-testid="stHorizontalBlock"]:nth-of-type(1) > [data-testid="column"]:nth-of-type(2){
-  grid-column: 2 / 5; /* Tarea -> B+C+D (3 unidades) */
+.form-card.alertas-grid > [data-testid="stHorizontalBlock"]:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))) > [data-testid="column"]:nth-of-type(2){
+  grid-column: 2 / 5;    /* Tarea -> B+C+D (3) */
 }
-.form-card.alertas-grid [data-testid="stHorizontalBlock"]:nth-of-type(1) > [data-testid="column"]:nth-of-type(3){
-  grid-column: 5;     /* Responsable -> E (1 unidad) */
+.form-card.alertas-grid > [data-testid="stHorizontalBlock"]:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))) > [data-testid="column"]:nth-of-type(3){
+  grid-column: 5;        /* Responsable -> E (1) */
 }
 
-/* Fila 2 ya está en A B C D E:
-   ¿Generó? (A) | Tipo (B) | Fecha (C) | ¿Se corrigió? (D) | Fecha corregida (E) */
-
-/* Inputs 100% del ancho en esta tarjeta (anula fit-content general) */
+/* Inputs al 100% SOLO dentro de esta tarjeta (anula fit-content general) */
 .form-card.alertas-grid [data-baseweb="select"] > div,
 .form-card.alertas-grid [data-baseweb="input"] > div,
 .form-card.alertas-grid [data-baseweb="datepicker"] > div{
