@@ -432,9 +432,9 @@ st.markdown("""
 }
 
 /* ===================================================================== */
-/* ====== Tarjeta de Alertas (anclada con .alertas-grid) =============== */
-/* 1–3–1 entre filas:
-   ID = ¿Generó? | Tarea = Tipo+Fecha+¿Se corrigió? | Responsable = Fecha corregida */
+/* ====== Tarjeta de Alertas (anclada con .alertas-grid) — 1|3|1 ======= */
+/* ID = ¿Generó? (1) | Tarea = Tipo+Fecha+¿Se corrigió? (3) |            */
+/* Responsable = Fecha corregida (1)                                     */
 /* ===================================================================== */
 
 .form-card.alertas-grid{
@@ -445,28 +445,35 @@ st.markdown("""
   align-items: start;
 }
 
-/* MUY IMPORTANTE: sobreescribe la regla global y aplana SOLO
-   las dos filas-directas de esta tarjeta mediante hijo directo '>' */
-.form-card.alertas-grid > [data-testid="stHorizontalBlock"]{
+/* Aplana TODOS los st.columns dentro de esta tarjeta */
+.form-card.alertas-grid [data-testid="stHorizontalBlock"]{
   display: contents !important;
 }
 
-/* Detecta Fila 1 (exactamente 3 columnas) y Fila 2 (exactamente 5) como hijas directas */
-.form-card.alertas-grid > [data-testid="stHorizontalBlock"]:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))) { display: contents !important; }
-.form-card.alertas-grid > [data-testid="stHorizontalBlock"]:has(> [data-testid="column"]:nth-of-type(5)):not(:has(> [data-testid="column"]:nth-of-type(6))) { display: contents !important; }
+/* Posiciona por orden absoluto de aparición (8 campos):
+   1: ID
+   2: Tarea
+   3: Responsable
+   4: ¿Generó alerta?
+   5: Tipo de alerta
+   6: Fecha de alerta
+   7: ¿Se corrigió la alerta?
+   8: Fecha alerta corregida
+*/
 
-/* Fila 1 (orden actual: 1=ID, 2=Tarea, 3=Responsable) -> A | B..D | E */
-.form-card.alertas-grid > [data-testid="stHorizontalBlock"]:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))) > [data-testid="column"]:nth-of-type(1){
-  grid-column: 1;        /* ID -> A (1) */
-}
-.form-card.alertas-grid > [data-testid="stHorizontalBlock"]:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))) > [data-testid="column"]:nth-of-type(2){
-  grid-column: 2 / 5;    /* Tarea -> B+C+D (3) */
-}
-.form-card.alertas-grid > [data-testid="stHorizontalBlock"]:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))) > [data-testid="column"]:nth-of-type(3){
-  grid-column: 5;        /* Responsable -> E (1) */
-}
+/* Fila “virtual” 1: 1|3|1  ->  A | B..D | E */
+.form-card.alertas-grid > [data-testid="column"]:nth-of-type(1){ grid-column: 1; }      /* ID -> A */
+.form-card.alertas-grid > [data-testid="column"]:nth-of-type(2){ grid-column: 2 / 5; }  /* Tarea -> B+C+D */
+.form-card.alertas-grid > [data-testid="column"]:nth-of-type(3){ grid-column: 5; }      /* Responsable -> E */
 
-/* Inputs al 100% SOLO dentro de esta tarjeta (anula fit-content general) */
+/* Fila “virtual” 2: A B C D E */
+.form-card.alertas-grid > [data-testid="column"]:nth-of-type(4){ grid-column: 1; }      /* ¿Generó? -> A */
+.form-card.alertas-grid > [data-testid="column"]:nth-of-type(5){ grid-column: 2; }      /* Tipo -> B */
+.form-card.alertas-grid > [data-testid="column"]:nth-of-type(6){ grid-column: 3; }      /* Fecha alerta -> C */
+.form-card.alertas-grid > [data-testid="column"]:nth-of-type(7){ grid-column: 4; }      /* ¿Se corrigió? -> D */
+.form-card.alertas-grid > [data-testid="column"]:nth-of-type(8){ grid-column: 5; }      /* Fecha corregida -> E */
+
+/* Inputs al 100% SOLO en esta tarjeta (anula el fit-content general) */
 .form-card.alertas-grid [data-baseweb="select"] > div,
 .form-card.alertas-grid [data-baseweb="input"] > div,
 .form-card.alertas-grid [data-baseweb="datepicker"] > div{
