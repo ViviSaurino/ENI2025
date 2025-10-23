@@ -287,7 +287,7 @@ if "df_main" not in st.session_state:
 # ---------- CSS ----------
 st.markdown("""
 <style>
-/* ===== Colores que usamos abajo ===== */
+/* ===== Colores base ===== */
 :root{
   --lilac:      #B38BE3;
   --lilac-50:   #F6EEFF;
@@ -298,42 +298,42 @@ st.markdown("""
   --blue-pill-fg: #0B3B76;
 }
 
-/* ======= separaciones fuertes dentro del formulario ======= */
+/* ======= Separaciones fuertes dentro del formulario ======= */
 
-/* Bloques de columnas (las filas que crea st.columns) */
+/* Filas (los bloques creados por st.columns) */
 .form-card [data-testid="stHorizontalBlock"]{
-  display: grid !important;            /* forzamos grid */
+  display: grid !important;
   grid-auto-flow: row dense !important;
   grid-row-gap: 16px !important;       /* espacio entre FILAS */
   grid-column-gap: 20px !important;    /* espacio entre COLUMNAS */
   align-items: start !important;
 }
 
-/* Además, cada columna aporta un padding de seguridad */
+/* Cada columna aporta un padding de seguridad */
 .form-card [data-testid="column"]{
   padding-right: 12px !important;
   box-sizing: border-box !important;
 }
-/* la última columna de la fila no necesita padding extra */
+/* La última columna no necesita padding extra */
 .form-card [data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child{
   padding-right: 0 !important;
 }
 
-/* Sub-bloques anidados (p. ej., Prioridad + Fecha inicio) con hueco propio */
+/* Sub-bloques anidados (p. ej., Prioridad + Fecha inicio) con su propio hueco */
 .form-card [data-testid="stHorizontalBlock"] [data-testid="stHorizontalBlock"]{
   display: grid !important;
   grid-column-gap: 16px !important;
   grid-row-gap: 12px !important;
 }
 
-/* Pequeño margen inferior en cada control para que “respire” */
+/* Margen inferior mínimo para que cada control “respire” */
 .form-card [data-baseweb],
 .form-card [data-testid="stWidgetLabel"],
 .form-card [data-baseweb] > div{
   margin-bottom: 6px !important;
 }
 
-/* Altura/tamaño de inputs/combos normalizados */
+/* ===== Controles: altura/tamaño normalizados ===== */
 .form-card [data-baseweb="input"] > div,
 .form-card [data-baseweb="textarea"] > div,
 .form-card [data-baseweb="select"] > div,
@@ -352,7 +352,7 @@ st.markdown("""
   font-size: 15px !important;
 }
 
-/* Foco azul */
+/* Foco azul agradable */
 .form-card [data-baseweb="input"] > div:has(input:focus),
 .form-card [data-baseweb="textarea"] > div:has(textarea:focus),
 .form-card [data-baseweb="select"] > div:focus-within,
@@ -365,16 +365,13 @@ st.markdown("""
 [data-testid="stSidebar"]{
   background: var(--lilac-50) !important;
   border-right: 1px solid #ECE6FF !important;
-
-  /* ⬇️ AJUSTE DE ANCHO DEL SIDEBAR (puedes cambiar 200px por 190/210, etc.) */
-  width: 200px !important;
+  width: 200px !important;     /* ⬅️ ajusta aquí si quieres 190/210/etc */
   min-width: 200px !important;
 }
-/* Asegura que el contenedor interno respete el ancho fijado */
+/* Asegura que el contenedor interno respete el ancho */
 [data-testid="stSidebar"] > div{
   width: 200px !important;
 }
-
 [data-testid="stSidebar"] a{
   color: var(--lilac-600) !important;
   font-weight: 600 !important;
@@ -404,22 +401,34 @@ st.markdown("""
   margin: 6px 0 10px 0;
 }
 
-/* ===== Mostrar texto completo en los SELECT (Área, Estado, etc.) ===== */
+/* ===== Mostrar texto COMPLETO en los SELECT (Área, Estado, etc.) ===== */
+
+/* Contenedor visible del select */
 .form-card [data-baseweb="select"] > div{
   overflow: visible !important;
   white-space: nowrap !important;
   text-overflow: clip !important;
 
-  /* ancho cómodo para etiquetas largas como "Planeamiento" */
+  /* ancho cómodo para etiquetas largas como “Planeamiento”, “No iniciado” */
   width: fit-content !important;
   min-width: 240px !important;
 }
 
-/* El valor renderizado dentro del select tampoco debe recortarse */
+/* El valor renderizado no debe truncarse */
 .form-card [data-baseweb="select"] [role="combobox"]{
   overflow: visible !important;
   white-space: nowrap !important;
   text-overflow: clip !important;
+}
+
+/* Refuerzo interno para cualquier texto dentro del select */
+.form-card [data-baseweb="select"] span,
+.form-card [data-baseweb="select"] label,
+.form-card [data-baseweb="select"] div div{
+  white-space: nowrap !important;
+  text-overflow: clip !important;
+  overflow: visible !important;
+  max-width: none !important;
 }
 
 /* En pantallas pequeñas reduce ligeramente el mínimo */
@@ -547,6 +556,7 @@ with st.form("form_nueva_tarea", clear_on_submit=True):
 st.markdown('</div>', unsafe_allow_html=True)
 
 # ================== Nueva alerta ==================
+# ================== Nueva alerta ==================
 st.markdown('<div class="form-card">', unsafe_allow_html=True)
 st.markdown('<div class="form-title"><span class="plus">➕</span><span class="secico">⚠️</span> Nueva alerta</div>', unsafe_allow_html=True)
 
@@ -557,31 +567,38 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 with st.form("form_nueva_alerta", clear_on_submit=True):
-    # Fila: Colocar ID | Tarea (auto)
+    # -------- Fila 1: Colocar ID | Tarea (auto) | Responsable (auto) --------
     df_ids = st.session_state["df_main"].copy()
-    col_id, col_tarea = st.columns([1.0, 3.0])
-    id_target = col_id.text_input("Colocar ID", value="", placeholder="Ej: G1")
+    col_id, col_tarea, col_resp = st.columns([1.0, 3.0, 1.1])
+
+    id_target = col_id.text_input("Colocar ID", value="", placeholder="Ej: G1", key="alerta_id")
+
     tarea_auto = ""
+    resp_auto  = ""
     if id_target:
         m = df_ids["Id"].astype(str) == str(id_target).strip()
         if m.any():
-            tarea_auto = df_ids.loc[m, "Tarea"].astype(str).iloc[0]
-    col_tarea.text_input("Tarea", value=tarea_auto, disabled=True)
+            tarea_auto = df_ids.loc[m, "Tarea"].astype(str).iloc[0] if "Tarea" in df_ids.columns else ""
+            resp_auto  = df_ids.loc[m, "Responsable"].astype(str).iloc[0] if "Responsable" in df_ids.columns else ""
 
-    # Resto de campos
+    col_tarea.text_input("Tarea", value=tarea_auto, disabled=True, key="alerta_tarea_auto")
+    col_resp.text_input("Responsable", value=resp_auto, disabled=True, key="alerta_responsable_auto")
+
+    # -------- Fila 2: resto de campos (alineados) --------
     c1, c2, c3, c4, c5 = st.columns([1.0, 1.6, 1.4, 1.0, 1.6])
     genero_alerta = _opt_map(c1, "¿Generó alerta?", EMO_SI_NO, "No")
-    tipo_alerta   = c2.text_input("Tipo de alerta", placeholder="(opcional)")
+    tipo_alerta   = c2.text_input("Tipo de alerta", placeholder="(opcional)", key="alerta_tipo")
 
     # Calendarios en alerta
-    fa_d = c3.date_input("Fecha de alerta (fecha)", value=None)
-    fa_t = c3.time_input("Hora alerta", value=None, step=60, label_visibility="collapsed") if fa_d else None
+    fa_d = c3.date_input("Fecha de alerta (fecha)", value=None, key="alerta_fa_d")
+    fa_t = c3.time_input("Hora alerta", value=None, step=60, label_visibility="collapsed", key="alerta_fa_t") if fa_d else None
 
     corr_alerta   = _opt_map(c4, "¿Se corrigió la alerta?", EMO_SI_NO, "No")
 
-    fc_d = c5.date_input("Fecha alerta corregida (fecha)", value=None)
-    fc_t = c5.time_input("Hora alerta corregida", value=None, step=60, label_visibility="collapsed") if fc_d else None
+    fc_d = c5.date_input("Fecha alerta corregida (fecha)", value=None, key="alerta_fc_d")
+    fc_t = c5.time_input("Hora alerta corregida", value=None, step=60, label_visibility="collapsed", key="alerta_fc_t") if fc_d else None
 
+    # -------- Botón guardar --------
     sub_alerta = st.form_submit_button("Vincular alerta a tarea")
     if sub_alerta:
         if not id_target or id_target not in st.session_state["df_main"]["Id"].astype(str).values:
@@ -589,6 +606,7 @@ with st.form("form_nueva_alerta", clear_on_submit=True):
         else:
             df = st.session_state["df_main"].copy()
             m = df["Id"].astype(str) == str(id_target)
+
             df.loc[m, "¿Generó alerta?"] = genero_alerta
             df.loc[m, "Tipo de alerta"]  = tipo_alerta
             df.loc[m, "Fecha detectada"] = combine_dt(fa_d, fa_t)
