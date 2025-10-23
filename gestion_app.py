@@ -944,7 +944,7 @@ b_del, b_xlsx, b_csv, b_save, _spacer = st.columns(
 # 1) Borrar seleccionados
 with b_del:
     sel_rows = grid.get("selected_rows", []) if isinstance(grid, dict) else []
-    if st.button("🗑️ Borrar seleccionados", use_container_width=True):
+    if st.button("🗑️ Borrar", use_container_width=True):
         ids = pd.DataFrame(sel_rows)["Id"].astype(str).tolist() if sel_rows else []
         if ids:
             df0 = st.session_state["df_main"]
@@ -979,3 +979,4 @@ with b_save:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
