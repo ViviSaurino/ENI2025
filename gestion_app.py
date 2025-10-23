@@ -565,6 +565,12 @@ st.markdown("""
   display: inline-block !important;
 }
 
+/* Compacta el encabezado vacío de los expanders sin título */
+.st-expanderHeader:has(> div:empty) {
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -810,7 +816,7 @@ with st.expander("Actualizar estado", expanded=True):
     st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
 
 # ================== Nueva alerta ==================
-with st.expander("Nueva alerta", expanded=True):
+with st.expander("", expanded=True):
     # Píldora celeste (igual estilo que las otras secciones)
     st.markdown(
         '<div class="form-title"><span class="plus">➕</span><span class="secico">⚠️</span> Nueva alerta</div>',
