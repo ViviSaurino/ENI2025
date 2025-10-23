@@ -377,28 +377,30 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
   margin-bottom: 10px;
 }
 
-/* ===== Layout del formulario – SEPARACIÓN ENTRE CELDAS ===== */
-/* (1) Espaciado vertical entre filas */
+/* =========================================================
+   Layout del formulario – SEPARACIÓN ENTRE CELDAS
+   ========================================================= */
+
+/* (1) Espaciado entre columnas y entre filas del bloque principal */
 .form-card [data-testid="stHorizontalBlock"]{
-  row-gap: 14px !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  column-gap: 18px !important;   /* ← separa columnas */
+  row-gap: 14px !important;      /* ← separa filas   */
   align-items: flex-start !important;
 }
 
-/* (2) Espaciado horizontal entre columnas reales de Streamlit */
-.form-card [data-testid="column"]{
-  padding-right: 18px !important;   /* separa columnas */
-  box-sizing: border-box !important;
-}
-/* La última columna de cada fila no necesita padding-right extra */
-.form-card [data-testid="stHorizontalBlock"] > div[data-testid="column"]:last-child{
-  padding-right: 0 !important;
+/* (2) Los sub-bloques anidados (p.ej. Prioridad + Fecha inicio) también con gap */
+.form-card [data-testid="stHorizontalBlock"] [data-testid="stHorizontalBlock"]{
+  column-gap: 16px !important;
+  row-gap: 12px !important;
 }
 
-/* (3) Margen inferior uniforme de cada widget */
+/* (3) Pequeño margen inferior en cada control para que “respiren” */
 .form-card [data-baseweb],
 .form-card [data-testid="stWidgetLabel"],
 .form-card [data-baseweb] > div{
-  margin-bottom: 8px !important;
+  margin-bottom: 6px !important;
 }
 
 /* ===== Inputs / Selects: bordes, foco y tamaños ===== */
@@ -512,7 +514,10 @@ EMO_SI_NO       = {"✅ Sí": "Sí", "🚫 No": "No"}
 
 # ================== Formulario ==================
 st.markdown('<div class="form-card">', unsafe_allow_html=True)
-st.markdown('<div class="form-title"><span class="plus">➕</span><span class="secico">📝</span> Nueva tarea</div>', unsafe_allow_html=True)
+st.markdown(
+    '<div class="form-title"><span class="plus">➕</span><span class="secico">📝</span> Nueva tarea</div>',
+    unsafe_allow_html=True
+)
 
 st.markdown("""
 <div class="help-strip">
@@ -523,7 +528,7 @@ st.markdown("""
 with st.form("form_nueva_tarea", clear_on_submit=True):
     # -------- Fila 1: Área | Fase | Tarea | Tipo | Responsable --------
     COLS_FORM = [1.1, 1.1, 2.8, 1.1, 1.1]
-    r1c1, r1c2, r1c3, r1c4, r1c5 = st.columns(COLS_FORM)
+    r1c1, r1c2, r1c3, r1c4, r1c5 = st.columns(COLS_FORM, gap="medium")
 
     area = _opt_map(r1c1, "Área", EMO_AREA, "Planeamiento")
     fase  = r1c2.text_input("Fase", placeholder="Etapa")
@@ -532,30 +537,42 @@ with st.form("form_nueva_tarea", clear_on_submit=True):
     resp  = r1c5.text_input("Responsable", placeholder="Nombre")
 
     # -------- Fila 2: Estado | Complejidad | [Prioridad + Fecha inicio] | Vencimiento | Fecha fin --------
-    s2c1, s2c2, s2c3, s2c4, s2c5 = st.columns(COLS_FORM)
+    s2c1, s2c2, s2c3, s2c4, s2c5 = st.columns(COLS_FORM, gap="medium")
+
     estado = _opt_map(s2c1, "Estado", EMO_ESTADO, "No iniciado")
     compl  = _opt_map(s2c2, "Complejidad", EMO_COMPLEJIDAD, "Media")
 
     # La columna 3 (2.8) se reparte en 1.0 + 1.8  -> igual al ancho de "Tarea"
-    p_col, fi_col = s2c3.columns([1.0, 1.8])
+    p_col, fi_col = s2c3.columns([1.0, 1.8], gap="medium")
 
-    with p_col:
-        prio = _opt_map(st, "Prioridad", EMO_PRIORIDAD, "Media")
+    prio = _opt_map(p_col, "Prioridad", EMO_PRIORIDAD, "Media")
 
-    with fi_col:
-        fi_d = st.date_input("Fecha inicio (fecha)", value=None, key="fi_d")
-        fi_t = st.time_input("Hora inicio", value=None, step=60,
-                             label_visibility="collapsed", key="fi_t") if fi_d else None
+    fi_d = fi_col.date_input("Fecha inicio (fecha)", value=None, key="fi_d")
+    fi_t = fi_col.time_input(
+        "Hora inicio",
+        value=None,
+        step=60,
+        label_visibility="collapsed",
+        key="fi_t"
+    ) if fi_d else None
 
-    with s2c4:
-        v_d = st.date_input("Vencimiento (fecha)", value=None, key="v_d")
-        v_t = st.time_input("Hora vencimiento", value=None, step=60,
-                            label_visibility="collapsed", key="v_t") if v_d else None
+    v_d = s2c4.date_input("Vencimiento (fecha)", value=None, key="v_d")
+    v_t = s2c4.time_input(
+        "Hora vencimiento",
+        value=None,
+        step=60,
+        label_visibility="collapsed",
+        key="v_t"
+    ) if v_d else None
 
-    with s2c5:
-        ff_d = st.date_input("Fecha fin (fecha)", value=None, key="ff_d")
-        ff_t = st.time_input("Hora fin", value=None, step=60,
-                             label_visibility="collapsed", key="ff_t") if ff_d else None
+    ff_d = s2c5.date_input("Fecha fin (fecha)", value=None, key="ff_d")
+    ff_t = s2c5.time_input(
+        "Hora fin",
+        value=None,
+        step=60,
+        label_visibility="collapsed",
+        key="ff_t"
+    ) if ff_d else None
 
     submitted = st.form_submit_button("Agregar y guardar")
     if submitted:
@@ -577,7 +594,9 @@ with st.form("form_nueva_tarea", clear_on_submit=True):
         st.session_state["df_main"] = df.copy()
         path_ok = os.path.join("data", "tareas.csv")
         os.makedirs("data", exist_ok=True)
-        df.reindex(columns=COLS, fill_value=None).to_csv(path_ok, index=False, encoding="utf-8-sig", mode="w")
+        df.reindex(columns=COLS, fill_value=None).to_csv(
+            path_ok, index=False, encoding="utf-8-sig", mode="w"
+        )
         ok, msg = _write_sheet_tab(df[COLS].copy())
         st.success(f"✔ Tarea agregada ({new['Id']}). {msg}") if ok else st.warning(f"Agregado localmente. {msg}")
 
