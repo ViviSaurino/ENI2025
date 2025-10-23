@@ -677,11 +677,11 @@ with st.form("form_nueva_alerta", clear_on_submit=True):
 
     tipo_alerta = r2_tipo.text_input("Tipo de alerta", placeholder="(opcional)", key="alerta_tipo")
 
-    fa_d = r2_fa.date_input("Fecha de alerta (fecha)", value=None, key="alerta_fa_d")
+    fa_d = r2_fa.date_input("Fecha de alerta", value=None, key="alerta_fa_d")
     fa_t = r2_fa.time_input("Hora alerta", value=None, step=60,
                             label_visibility="collapsed", key="alerta_fa_t") if fa_d else None
 
-    fc_d = r2_fc.date_input("Fecha alerta corregida (fecha)", value=None, key="alerta_fc_d")
+    fc_d = r2_fc.date_input("Fecha alerta corregida", value=None, key="alerta_fc_d")
     fc_t = r2_fc.time_input("Hora alerta corregida", value=None, step=60,
                             label_visibility="collapsed", key="alerta_fc_t") if fc_d else None
 
@@ -926,3 +926,4 @@ with b3:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
