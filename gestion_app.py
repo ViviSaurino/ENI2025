@@ -565,18 +565,39 @@ st.markdown("""
   display: inline-block !important;
 }
 
-/* ===== Botón-píldora que actúa como toggle (misma estética de .form-title) ===== */
-.pill-btn{ margin: 8px 0 6px 0; }  /* separa un poco la píldora del borde/ayuda */
-.pill-btn .stButton > button{
-  display:inline-flex; align-items:center; gap:8px;
-  padding: 6px 12px !important;
+/* ===== Botón-píldora toggle (misma estética y ancho que "Estado") ===== */
+.pill-btn{ margin: 8px 0 6px 0; }
+
+/* Cubre todas las variantes de botón que usa Streamlit dentro del contenedor */
+.pill-btn .stButton > button,
+.pill-btn [data-testid="baseButton-secondary"],
+.pill-btn [data-testid="baseButton-primary"]{
+  display:inline-flex !important;
+  align-items:center !important;
+  gap:8px !important;
+  padding: 8px 14px !important;
   border-radius: 12px !important;
   background: var(--pill-azul) !important;
   border: 1px solid var(--pill-azul-bord) !important;
-  color: #fff !important; font-weight:700 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
   box-shadow: 0 6px 16px rgba(148,190,234,.30) !important;
+  min-width: 300px !important;   /* = ancho de "Estado" */
+  width: fit-content !important;
 }
-.pill-btn .stButton > button:hover{ filter: brightness(.97); }
+
+/* Asegura texto e íconos en blanco */
+.pill-btn .stButton > button *,
+.pill-btn [data-testid="baseButton-secondary"] *,
+.pill-btn [data-testid="baseButton-primary"] *{
+  color:#ffffff !important;
+}
+
+.pill-btn .stButton > button:hover,
+.pill-btn [data-testid="baseButton-secondary"]:hover,
+.pill-btn [data-testid="baseButton-primary"]:hover{
+  filter: brightness(.97);
+}
 
 </style>
 """, unsafe_allow_html=True)
