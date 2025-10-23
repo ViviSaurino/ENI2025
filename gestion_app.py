@@ -285,89 +285,6 @@ if "df_main" not in st.session_state:
     st.session_state["df_main"] = base[COLS + ["__DEL__"]].copy()
 
 # ---------- CSS (estilos + tabla legible) ----------
-# ---------- CSS (estilos + tema ENI) ----------
-st.markdown("""
-<style>
-:root{
-  --lilac:#B38BE3;        /* marca */
-  --lilac-50:#F6EEFF;     /* fondo sidebar suave */
-  --lilac-600:#8B5CF6;
-  --ink:#111827;          /* negro títulos */
-  --muted:#64748B;
-  --blue-pill-bg:#EAF2FF; /* pastilla celeste */
-  --blue-pill-bd:#BFDBFE;
-  --blue-pill-fg:#0B3B76;
-}
-
-/* ===== Sidebar más delgada y lila ===== */
-[data-testid="stSidebar"]{
-  min-width:220px !important;
-  width:220px !important;
-  background:var(--lilac-50) !important;
-  border-right:1px solid #ECE6FF !important;
-}
-[data-testid="stSidebar"] a{ color:var(--lilac-600) !important; font-weight:600; text-decoration:none; }
-[data-testid="stSidebar"] .stButton > button{
-  border-radius:12px !important; background:var(--lilac) !important; border:1px solid var(--lilac) !important;
-  color:#fff !important; font-weight:800 !important; box-shadow:0 8px 18px rgba(179,139,227,.25) !important;
-}
-
-/* ===== Contenido principal ===== */
-.block-container{ max-width:1100px; }
-
-/* Título negro */
-h1, .stMarkdown h1{ color:var(--ink) !important; font-weight:900 !important; letter-spacing:.3px; }
-
-/* ---------- QUITAR “rectángulos plomos” (marcos/cajas) ---------- */
-/* Cualquier tarjeta contenedora que Streamlit genere alrededor de bloques */
-div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]),
-.form-card{
-  background:transparent !important;
-  border:none !important;
-  box-shadow:none !important;
-  padding:0 !important;
-  margin:0 0 10px 0 !important;
-}
-
-/* “Bandas” grises sueltas (inputs/containers fuera de las tarjetas) */
-.block-container > div:has(> [data-testid="stHorizontalBlock"] > div [data-baseweb="input"]){
-  display:none !important;
-}
-
-/* ---------- Pastillas celestes de subtítulos ---------- */
-.form-title{
-  display:inline-flex; align-items:center; gap:.5rem;
-  padding:6px 12px; border-radius:12px;
-  background:var(--blue-pill-bg); border:1px solid var(--blue-pill-bd);
-  color:var(--blue-pill-fg); font-weight:800; letter-spacing:.2px;
-  margin:6px 0 10px 0;
-}
-
-/* Inputs/Selects (foco) */
-[data-baseweb="input"] > div, [data-baseweb="textarea"] > div, [data-baseweb="select"] > div{
-  border-radius:12px; border:1px solid #E5E7EB; background:#fff; box-shadow:none;
-}
-[data-baseweb="input"] > div:has(input:focus),
-[data-baseweb="textarea"] > div:has(textarea:focus),
-[data-baseweb="select"] > div:focus-within{
-  border-color:#60A5FA !important; box-shadow:0 0 0 3px rgba(96,165,250,.25) !important;
-}
-
-/* Botones en el contenido (no sidebar) */
-.stButton > button, .row-widget.stButton > div > button{
-  border-radius:12px !important; min-height:44px; border:1px solid #60A5FA !important;
-  background:#60A5FA !important; color:#fff !important; font-weight:800 !important;
-  box-shadow:0 6px 18px rgba(96,165,250,.20) !important;
-}
-.stButton > button:hover, .row-widget.stButton > div > button:hover{ filter:brightness(.96); }
-
-/* Accesibilidad foco */
-*:focus-visible{ outline:none !important; box-shadow:0 0 0 3px rgba(179,139,227,.28) !important; }
-</style>
-""", unsafe_allow_html=True)
-
-
-# ---------- CSS (estilos + tabla legible) ----------
 st.markdown("""
 <style>
 /* ===================== Tema ENI — Gestión ===================== */
@@ -386,8 +303,11 @@ st.markdown("""
   --blue-pill-fg:  #0B3B76;
 }
 
-/* Ancho del contenido principal */
-.block-container{ max-width: 1100px; }
+/* Ancho del contenido principal (más ancho) */
+.block-container{
+  max-width: 1500px;
+  width: min(96vw, 1500px);
+}
 
 /* ===== Título principal: negro ===== */
 h1, .stMarkdown h1{
