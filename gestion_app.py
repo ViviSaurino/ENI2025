@@ -542,49 +542,36 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 with st.form("form_nueva_tarea", clear_on_submit=True):
-    # -------- Fila 1: Área | Fase | Tarea | Tipo | Responsable --------
-    COLS_FORM = [1.1, 1.1, 2.8, 1.1, 1.1]
-    r1c1, r1c2, r1c3, r1c4, r1c5 = st.columns(COLS_FORM, gap="medium")
+    # -------- Fila 1: Área | Fase | Tarea | Detalle --------
+    # (reemplaza "Tipo" y "Responsable" por una sola celda "Detalle")
+    r1c1, r1c2, r1c3, r1c4 = st.columns([1.1, 1.1, 2.8, 2.0], gap="medium")
 
-    area = _opt_map(r1c1, "Área", EMO_AREA, "Planeamiento")
-    fase  = r1c2.text_input("Fase", placeholder="Etapa")
-    tarea = r1c3.text_input("Tarea", placeholder="Describe la tarea")
-    tipo  = r1c4.text_input("Tipo", placeholder="Tipo o categoría")
-    resp  = r1c5.text_input("Responsable", placeholder="Nombre")
+    area    = _opt_map(r1c1, "Área", EMO_AREA, "Planeamiento")
+    fase    = r1c2.text_input("Fase", placeholder="Etapa")
+    tarea   = r1c3.text_input("Tarea", placeholder="Describe la tarea")
+    detalle = r1c4.text_input("Detalle", placeholder="Información adicional (opcional)")
 
-    # -------- Fila 2: Estado | Complejidad | Fecha inicio | Vencimiento | Fecha fin --------
-    s2c1, s2c2, s2c3, s2c4, s2c5 = st.columns(COLS_FORM, gap="medium")
+    # -------- Fila 2: Tipo | Responsable | Estado | Complejidad | Fecha inicio | Vencimiento | Fecha fin --------
+    c2_1, c2_2, c2_3, c2_4, c2_5, c2_6, c2_7 = st.columns([1.1, 1.2, 1.1, 1.1, 1.4, 1.4, 1.4], gap="medium")
 
-    estado = _opt_map(s2c1, "Estado", EMO_ESTADO, "No iniciado")
-    compl  = _opt_map(s2c2, "Complejidad", EMO_COMPLEJIDAD, "Media")
+    tipo = c2_1.text_input("Tipo", placeholder="Tipo o categoría")
+    resp = c2_2.text_input("Responsable", placeholder="Nombre")
 
-    # (Sin 'Prioridad') -> usamos TODA la col 3 para la fecha de inicio
-    fi_d = s2c3.date_input("Fecha inicio (fecha)", value=None, key="fi_d")
-    fi_t = s2c3.time_input(
-        "Hora inicio",
-        value=None,
-        step=60,
-        label_visibility="collapsed",
-        key="fi_t"
-    ) if fi_d else None
+    estado = _opt_map(c2_3, "Estado", EMO_ESTADO, "No iniciado")
+    compl  = _opt_map(c2_4, "Complejidad", EMO_COMPLEJIDAD, "Media")
 
-    v_d = s2c4.date_input("Vencimiento (fecha)", value=None, key="v_d")
-    v_t = s2c4.time_input(
-        "Hora vencimiento",
-        value=None,
-        step=60,
-        label_visibility="collapsed",
-        key="v_t"
-    ) if v_d else None
+    # Fechas (sin "(fecha)" en la etiqueta). Hora colapsada en la misma columna.
+    fi_d = c2_5.date_input("Fecha inicio", value=None, key="fi_d")
+    fi_t = c2_5.time_input("Hora inicio", value=None, step=60,
+                           label_visibility="collapsed", key="fi_t") if fi_d else None
 
-    ff_d = s2c5.date_input("Fecha fin (fecha)", value=None, key="ff_d")
-    ff_t = s2c5.time_input(
-        "Hora fin",
-        value=None,
-        step=60,
-        label_visibility="collapsed",
-        key="ff_t"
-    ) if ff_d else None
+    v_d = c2_6.date_input("Vencimiento", value=None, key="v_d")
+    v_t = c2_6.time_input("Hora vencimiento", value=None, step=60,
+                          label_visibility="collapsed", key="v_t") if v_d else None
+
+    ff_d = c2_7.date_input("Fecha fin", value=None, key="ff_d")
+    ff_t = c2_7.time_input("Hora fin", value=None, step=60,
+                           label_visibility="collapsed", key="ff_t") if ff_d else None
 
     # -------- Botón Agregar y guardar (alineado a la derecha con emoji) --------
     _, _, btn_col = st.columns([1, 1, 0.32], gap="medium")
@@ -598,12 +585,24 @@ with st.form("form_nueva_tarea", clear_on_submit=True):
         f_ven = combine_dt(v_d,  v_t)
         f_fin = combine_dt(ff_d, ff_t)
         new.update({
-            "Área": area, "Id": next_id(df), "Tarea": tarea, "Tipo": tipo,
-            "Responsable": resp, "Fase": fase,
-            "Complejidad": compl, "Estado": estado,
-            "Fecha inicio": f_ini, "Vencimiento": f_ven, "Fecha fin": f_fin,
-            # 👇 NOTA: No tocamos 'Prioridad' aquí. Queda con su valor por defecto (lo define el jefe).
+            "Área": area,
+            "Id": next_id(df),
+            "Tarea": tarea,
+            "Tipo": tipo,
+            "Responsable": resp,
+            "Fase": fase,
+            "Complejidad": compl,
+            "Estado": estado,
+            "Fecha inicio": f_ini,
+            "Vencimiento": f_ven,
+            "Fecha fin": f_fin,
+            # Guardamos el detalle en una columna existente si quieres:
+            # Si ya tienes una columna "Fase" / "Tipo" / "Responsable", no la pisamos.
+            # Puedes crear una columna nueva "Detalle" en el Sheet para persistirlo.
         })
+        # Si quieres persistir "Detalle" en Sheets, asegúrate que tu lista COLS incluya "Detalle":
+        # new["Detalle"] = detalle
+
         new["Duración"]     = duration_days(new["Fecha inicio"], new["Vencimiento"])
         new["Días hábiles"] = business_days(new["Fecha inicio"], new["Vencimiento"])
 
