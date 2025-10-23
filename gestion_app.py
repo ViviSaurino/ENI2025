@@ -512,39 +512,24 @@ st.markdown("""
   padding-bottom: 10px !important;
 }
 
-            /* === Acciones inferiores: Borrar / Exportar / Guardar === */
-:root{
-  /* Ajusta aquí el tamaño global para los 3 botones */
-  --actions-font: 12px;          /* prueba 12px, 11.5px, 11px si aún no entra */
-  --actions-pad-y: 6px;
-  --actions-pad-x: 12px;
-}
-
-/* st.button (Borrar y Guardar) */
-div.stButton > button,
-div.stButton > button *{
-  font-size: var(--actions-font) !important;
-  line-height: 1.05 !important;
-  white-space: nowrap !important;     /* no saltar de línea */
-}
-div.stButton > button{
-  padding: var(--actions-pad-y) var(--actions-pad-x) !important;
-}
-
-/* st.download_button (Exportar) */
-a[data-testid="stDownloadButton"],
-a[data-testid="stDownloadButton"] *{
-  font-size: var(--actions-font) !important;
+/* === Exportar (st.download_button) — cubrir todas las variantes === */
+[data-testid="stDownloadButton"] a,
+[data-testid="stDownloadButton"] button,
+[data-testid="stDownloadButton"] a *,
+[data-testid="stDownloadButton"] button *{
+  font-size: var(--actions-font) !important;  /* usa la misma var que definiste */
   line-height: 1.05 !important;
   white-space: nowrap !important;
 }
-a[data-testid="stDownloadButton"]{
+
+[data-testid="stDownloadButton"] a,
+[data-testid="stDownloadButton"] button{
   padding: var(--actions-pad-y) var(--actions-pad-x) !important;
   border-radius: 12px !important;
   border: 1px solid #E5E7EB !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 6px !important;               /* menos espacio entre icono y texto */
+  gap: 6px !important;
 }
 
 </style>
