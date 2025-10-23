@@ -436,56 +436,52 @@ st.markdown("""
 
 /* ===================================================================== */
 /* ============  AJUSTE ESPECÍFICO: TARJETA DE ALERTAS (SIN CLASE) ===== */
-/* Detecta filas por su número de columnas y las mapea a 5 columnas.     */
-/* Fila 1: 3 columnas (ID, Tarea, Responsable)                           */
-/* Fila 2: 5 columnas (¿Generó?, Tipo, Fecha, ¿Se corrigió?, Fecha corr.)*/
+/* F1: 3 columnas (ID, Tarea, Responsable) -> A | C..E | B               */
+/* F2: 5 columnas (¿Generó?, Tipo, Fecha, ¿Se corrigió?, Fecha corr.)    */
 /* ===================================================================== */
 
-/* --- Fila 1: si el bloque tiene EXACTAMENTE 3 columnas --- */
+/* --- Fila 1: EXACTAMENTE 3 columnas --- */
 .form-card [data-testid="stHorizontalBlock"]
-  :is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4)))){
+:is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4)))){
+  display: grid !important;
+  grid-template-columns: repeat(5, 1fr) !important; /* A B C D E */
+  grid-column-gap: 20px !important;
+}
+/* 1->A (ID) | 2->C..E (Tarea) | 3->B (Responsable) */
+.form-card [data-testid="stHorizontalBlock"]
+:is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))))
+> [data-testid="column"]:nth-of-type(1){ grid-column: 1 !important; }
+.form-card [data-testid="stHorizontalBlock"]
+:is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))))
+> [data-testid="column"]:nth-of-type(2){ grid-column: 3 / 6 !important; }
+.form-card [data-testid="stHorizontalBlock"]
+:is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))))
+> [data-testid="column"]:nth-of-type(3){ grid-column: 2 !important; }
+
+/* --- Fila 2: EXACTAMENTE 5 columnas --- */
+.form-card [data-testid="stHorizontalBlock"]
+:is(:has(> [data-testid="column"]:nth-of-type(5)):not(:has(> [data-testid="column"]:nth-of-type(6)))){
   display: grid !important;
   grid-template-columns: repeat(5, 1fr) !important; /* A B C D E */
   grid-column-gap: 20px !important;
 }
 
-/* Reubicación: 1->A (ID), 2->C..E (Tarea), 3->B (Responsable) */
+/* Inputs y selects al 100% del ancho en ambas filas */
 .form-card [data-testid="stHorizontalBlock"]
-  :is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))))
-  > [data-testid="column"]:nth-of-type(1){ grid-column: 1 !important; }
-.form-card [data-testid="stHorizontalBlock"]
-  :is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))))
-  > [data-testid="column"]:nth-of-type(2){ grid-column: 3 / 6 !important; }
-.form-card [data-testid="stHorizontalBlock"]
-  :is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))))
-  > [data-testid="column"]:nth-of-type(3){ grid-column: 2 !important; }
-
-/* --- Fila 2: si el bloque tiene EXACTAMENTE 5 columnas --- */
-.form-card [data-testid="stHorizontalBlock"]
-  :is(:has(> [data-testid="column"]:nth-of-type(5)):not(:has(> [data-testid="column"]:nth-of-type(6)))){
-  display: grid !important;
-  grid-template-columns: repeat(5, 1fr) !important; /* A B C D E */
-  grid-column-gap: 20px !important;
-}
-
-/* Anchos consistentes y selects al 100% dentro de estas filas */
-.form-card [data-testid="stHorizontalBlock"]
-  :is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))),
-      :has(> [data-testid="column"]:nth-of-type(5)):not(:has(> [data-testid="column"]:nth-of-type(6))))
+:is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))),
+    :has(> [data-testid="column"]:nth-of-type(5)):not(:has(> [data-testid="column"]:nth-of-type(6))))
   [data-baseweb="select"] > div{
     min-width: 0 !important;
     width: 100% !important;
     white-space: normal !important;
 }
-
-/* Inputs en estas filas ocupan todo el ancho de su celda */
 .form-card [data-testid="stHorizontalBlock"]
-  :is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))),
-      :has(> [data-testid="column"]:nth-of-type(5)):not(:has(> [data-testid="column"]:nth-of-type(6))))
+:is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))),
+    :has(> [data-testid="column"]:nth-of-type(5)):not(:has(> [data-testid="column"]:nth-of-type(6))))
   [data-baseweb="input"] > div,
 .form-card [data-testid="stHorizontalBlock"]
-  :is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))),
-      :has(> [data-testid="column"]:nth-of-type(5)):not(:has(> [data-testid="column"]:nth-of-type(6))))
+:is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))),
+    :has(> [data-testid="column"]:nth-of-type(5)):not(:has(> [data-testid="column"]:nth-of-type(6))))
   [data-baseweb="datepicker"] > div{
     width: 100% !important;
 }
