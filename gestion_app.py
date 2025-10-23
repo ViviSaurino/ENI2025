@@ -365,13 +365,10 @@ st.markdown("""
 [data-testid="stSidebar"]{
   background: var(--lilac-50) !important;
   border-right: 1px solid #ECE6FF !important;
-  width: 200px !important;     /* ⬅️ ajusta aquí si quieres 190/210/etc */
+  width: 200px !important;     /* ajusta aquí si quieres 190/210/etc */
   min-width: 200px !important;
 }
-/* Asegura que el contenedor interno respete el ancho */
-[data-testid="stSidebar"] > div{
-  width: 200px !important;
-}
+[data-testid="stSidebar"] > div{ width: 200px !important; }
 [data-testid="stSidebar"] a{
   color: var(--lilac-600) !important;
   font-weight: 600 !important;
@@ -381,13 +378,10 @@ st.markdown("""
   border-radius: 12px !important;
   background: var(--lilac) !important;
   border: 1px solid var(--lilac) !important;
-  color:#fff !important;
-  font-weight:800 !important;
+  color:#fff !important; font-weight:800 !important;
   box-shadow: 0 8px 18px rgba(179,139,227,.25) !important;
 }
-[data-testid="stSidebar"] .stButton > button:hover{
-  filter: brightness(.96);
-}
+[data-testid="stSidebar"] .stButton > button:hover{ filter: brightness(.96); }
 
 /* ===== Píldoras celestes para subtítulos (.form-title) ===== */
 .form-title{
@@ -401,25 +395,19 @@ st.markdown("""
   margin: 6px 0 10px 0;
 }
 
-/* ===== Mostrar texto COMPLETO en los SELECT (Área, Estado, etc.) ===== */
-
-/* Contenedor visible del select */
+/* ===== Mostrar texto en SELECTs (regla general) ===== */
 .form-card [data-baseweb="select"] > div{
   overflow: visible !important;
   white-space: nowrap !important;
   text-overflow: clip !important;
   width: fit-content !important;   /* que crezca según el contenido */
-  min-width: 300px !important;     /* ← subido: 240 → 300 para que quepan ‘Planeamiento’/‘No iniciado’ */
+  min-width: 240px !important;     /* ancho cómodo general */
 }
-
-/* El valor renderizado no debe truncarse */
 .form-card [data-baseweb="select"] [role="combobox"]{
   overflow: visible !important;
   white-space: nowrap !important;
   text-overflow: clip !important;
 }
-
-/* Refuerzo interno para cualquier texto dentro del select */
 .form-card [data-baseweb="select"] span,
 .form-card [data-baseweb="select"] label,
 .form-card [data-baseweb="select"] div div{
@@ -429,10 +417,20 @@ st.markdown("""
   max-width: none !important;
 }
 
-/* En pantallas pequeñas reduce ligeramente el mínimo */
+/* ===== SOLO Área (fila 1, col 1) y Estado (fila 2, col 1) más anchos ===== */
+.form-card [data-testid="stHorizontalBlock"]:nth-of-type(1)
+  > [data-testid="column"]:first-child [data-baseweb="select"] > div{
+  min-width: 300px !important;   /* Área */
+}
+.form-card [data-testid="stHorizontalBlock"]:nth-of-type(2)
+  > [data-testid="column"]:first-child [data-baseweb="select"] > div{
+  min-width: 300px !important;   /* Estado */
+}
+
+/* En pantallas pequeñas reduce ligeramente el mínimo general */
 @media (max-width: 980px){
   .form-card [data-baseweb="select"] > div{
-    min-width: 240px !important;
+    min-width: 200px !important;
   }
 }
 </style>
