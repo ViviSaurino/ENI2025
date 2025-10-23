@@ -302,7 +302,7 @@ st.markdown("""
   --blue-pill-bd: #BFDBFE;
   --blue-pill-fg: #0B3B76;
 
-  --field-min: 210px; /* ancho mínimo genérico de campos */
+  --field-min: 210px; /* ancho mínimo de campos */
 }
 
 /* ===== Ancho del contenido principal ===== */
@@ -326,7 +326,7 @@ h1, .stMarkdown h1{
 .form-card [data-baseweb="input"]{ display: block !important; }
 .form-card [data-baseweb="input"] > div{ display: flex !important; }
 
-/* ===== Sidebar lila (más angosta) ===== */
+/* ===== Sidebar lila angosta ===== */
 [data-testid="stSidebar"]{
   background: var(--lilac-50) !important;
   border-right: 1px solid #ECE6FF !important;
@@ -347,7 +347,7 @@ h1, .stMarkdown h1{
 }
 [data-testid="stSidebar"] .stButton > button:hover{ filter: brightness(.96); }
 
-/* ===== Tarjetas de sección ===== */
+/* ===== Tarjetas ===== */
 div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
   background: var(--card);
   border: 1px solid var(--border);
@@ -357,7 +357,7 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
   margin-bottom: 16px;
 }
 
-/* ===== Subtítulos (pastilla celeste) ===== */
+/* ===== Subtítulos (pastilla) ===== */
 .form-card{
   background: var(--card);
   border: 1px solid var(--border);
@@ -377,31 +377,31 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
   margin-bottom: 10px;
 }
 
-/* ===== Layout del formulario (SEPARACIONES BONITAS) ===== */
+/* ===== Layout del formulario – SEPARACIÓN ENTRE CELDAS ===== */
+/* (1) Espaciado vertical entre filas */
 .form-card [data-testid="stHorizontalBlock"]{
-  display: flex !important;
-  column-gap: 18px !important;   /* espacio entre columnas de la MISMA fila */
-  row-gap: 14px !important;      /* espacio vertical entre filas */
+  row-gap: 14px !important;
   align-items: flex-start !important;
 }
 
-/* Columna: acolchado lateral para que nunca se peguen */
-.form-card [data-testid="stHorizontalBlock"] > div{
-  padding-right: 10px !important;
+/* (2) Espaciado horizontal entre columnas reales de Streamlit */
+.form-card [data-testid="column"]{
+  padding-right: 18px !important;   /* separa columnas */
   box-sizing: border-box !important;
 }
-.form-card [data-testid="stHorizontalBlock"] > div:last-child{
+/* La última columna de cada fila no necesita padding-right extra */
+.form-card [data-testid="stHorizontalBlock"] > div[data-testid="column"]:last-child{
   padding-right: 0 !important;
 }
 
-/* Margen inferior uniforme en CADA widget dentro del form */
+/* (3) Margen inferior uniforme de cada widget */
 .form-card [data-baseweb],
 .form-card [data-testid="stWidgetLabel"],
 .form-card [data-baseweb] > div{
   margin-bottom: 8px !important;
 }
 
-/* ===== Inputs y selects: bordes, foco y tamaños ===== */
+/* ===== Inputs / Selects: bordes, foco y tamaños ===== */
 [data-baseweb="input"] > div,
 [data-baseweb="textarea"] > div,
 [data-baseweb="select"] > div{
@@ -418,7 +418,7 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
   box-sizing: border-box !important;
 }
 
-/* ❗ Evitar recortes en SELECTS (ver todo el texto sin elipsis) */
+/* Evitar recortes en SELECTS (ver todo el texto) */
 [data-baseweb="select"] > div{ overflow: visible !important; }
 [data-baseweb="select"] *{
   text-overflow: clip !important;
