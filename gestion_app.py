@@ -475,30 +475,36 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 with st.form("form_nueva_tarea", clear_on_submit=True):
+    # ---- Fila 1: Área | Fase | Tarea | Tipo | Responsable ----
     COLS_FORM = [1.1, 1.1, 2.8, 1.1, 1.1]
     r1c1, r1c2, r1c3, r1c4, r1c5 = st.columns(COLS_FORM)
     area = _opt_map(r1c1, "Área", EMO_AREA, "Planeamiento")
-    fase = r1c2.text_input("Fase", placeholder="Etapa")
+    fase  = r1c2.text_input("Fase", placeholder="Etapa")
     tarea = r1c3.text_input("Tarea", placeholder="Describe la tarea")
     tipo  = r1c4.text_input("Tipo", placeholder="Tipo o categoría")
     resp  = r1c5.text_input("Responsable", placeholder="Nombre")
 
+    # ---- Fila 2: Estado | Complejidad | [Prioridad + Fecha inicio] | Vencimiento | Fecha fin ----
     s2c1, s2c2, s2c3, s2c4, s2c5 = st.columns(COLS_FORM)
     estado = _opt_map(s2c1, "Estado", EMO_ESTADO, "No iniciado")
     compl  = _opt_map(s2c2, "Complejidad", EMO_COMPLEJIDAD, "Media")
 
-    sub3a, sub3b, sub3c = s2c3.columns([0.9, 1.3, 0.6])
-    prio   = _opt_map(sub3a, "Prioridad", EMO_PRIORIDAD, "Media")
+    # TERCERA COLUMNA (2.8) DIVIDIDA EN 1.0 + 1.8  -> mismo ancho que "Tarea"
+    p_col, fi_col = s2c3.columns([1.0, 1.8])
+    prio = _opt_map(p_col, "Prioridad", EMO_PRIORIDAD, "Media")
 
-    # Calendarios: Fecha + Hora
-    fi_d = sub3b.date_input("Fecha inicio (fecha)", value=None)
-    fi_t = sub3c.time_input("Hora inicio", value=None, step=60) if fi_d else None
+    # Calendarios: Fecha + Hora (hora con label oculto)
+    fi_d = fi_col.date_input("Fecha inicio (fecha)", value=None)
+    fi_t = fi_col.time_input("Hora inicio", value=None, step=60,
+                             label_visibility="collapsed") if fi_d else None
 
     v_d  = s2c4.date_input("Vencimiento (fecha)", value=None)
-    v_t  = s2c4.time_input("Hora vencimiento", value=None, step=60, label_visibility="collapsed") if v_d else None
+    v_t  = s2c4.time_input("Hora vencimiento", value=None, step=60,
+                           label_visibility="collapsed") if v_d else None
 
     ff_d = s2c5.date_input("Fecha fin (fecha)", value=None)
-    ff_t = s2c5.time_input("Hora fin", value=None, step=60, label_visibility="collapsed") if ff_d else None
+    ff_t = s2c5.time_input("Hora fin", value=None, step=60,
+                           label_visibility="collapsed") if ff_d else None
 
     submitted = st.form_submit_button("Agregar y guardar")
     if submitted:
