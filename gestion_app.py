@@ -487,8 +487,12 @@ with st.form("form_nueva_tarea", clear_on_submit=True):
     estado = _opt_map(s2c1, "Estado", EMO_ESTADO, "No iniciado")
     compl  = _opt_map(s2c2, "Complejidad", EMO_COMPLEJIDAD, "Media")
 
-    sub3a, sub3b, sub3c = s2c3.columns([0.9, 1.3, 0.6])
-    prio   = _opt_map(sub3a, "Prioridad", EMO_PRIORIDAD, "Media")
+    # 👉 Prioridad (1.0) + Fecha inicio (1.8) = 2.8  → igual al ancho de "Tarea"
+    prio_col, fecha_col = s2c3.columns([1.0, 1.8])
+    prio   = _opt_map(prio_col, "Prioridad", EMO_PRIORIDAD, "Media")
+    fi_d   = fecha_col.date_input("Fecha inicio (fecha)", value=None)
+    fi_t   = fecha_col.time_input("Hora inicio", value=None, step=60, label_visibility="collapsed") if fi_d else None
+
 
     # Calendarios: Fecha + Hora
     fi_d = sub3b.date_input("Fecha inicio (fecha)", value=None)
