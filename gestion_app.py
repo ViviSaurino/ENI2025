@@ -545,10 +545,23 @@ st.markdown("""
   gap: 6px !important;
 }
 
-/* === Separación extra entre las indicaciones y las secciones === */
-.stMarkdown p strong {
-  margin-top: 10px !important;   /* separa un poco del borde inferior de la píldora */
-  margin-bottom: 10px !important; /* separa del rectángulo del formulario */
+/* ===== Separación de las indicaciones respecto a la píldora y al borde ===== */
+.help-strip{
+  display: block !important;
+  margin-top: 10px !important;     /* separa de la PÍLDORA */
+  margin-bottom: 14px !important;  /* separa del RECTÁNGULO de la sección */
+  padding: 2px 0 !important;
+  line-height: 1.25 !important;
+}
+
+/* Si la indicación está dentro de .form-card, afianza la separación */
+.form-card > .help-strip{
+  margin-top: 10px !important;
+  margin-bottom: 14px !important;
+}
+
+/* (Opcional) por si usas <strong> en la indicación */
+.help-strip strong{
   display: inline-block !important;
 }
 
@@ -1134,4 +1147,3 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
