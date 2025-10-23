@@ -653,11 +653,11 @@ if submitted:
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# ================== Estado ==================
+# ==================Nuevo estado========================
 st.markdown('<div class="form-card">', unsafe_allow_html=True)
-st.markdown('<div class="form-title"><span class="plus">🔁</span><span class="secico">📌</span> Estado</div>', unsafe_allow_html=True)
+st.markdown('<div class="form-title"><span class="plus">🔁</span><span class="secico">📌</span> Nuevo estado</div>', unsafe_allow_html=True)
 
-with st.form("form_Estado", clear_on_submit=False):
+with st.form("form_Nuevo_estado", clear_on_submit=False):
     # Proporciones locales (mismas que usas arriba)
     A = 1.2   # Área / Tipo
     F = 1.2   # Fase / Responsable
