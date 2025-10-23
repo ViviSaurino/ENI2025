@@ -911,11 +911,13 @@ if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
     except Exception:
         pass
 
-# ---- Botones (más juntos y a la izquierda) ----
-b1, b2, b3, _spacer = st.columns([0.18, 0.19, 0.20, 0.43])
+# ---- Botones (alineados al ancho de "Área") ----
+# Usamos los mismos pesos que arriba: Área = A+F; el resto (T + D) queda de espaciador
+b1, b2, b3, _spacer = st.columns([(A + F)/3, (A + F)/3, (A + F)/3, T + D])
+
 with b1:
     sel_rows = grid.get("selected_rows", []) if isinstance(grid, dict) else []
-    if st.button("🗑️ Borrar seleccionadas"):
+    if st.button("🗑️ Borrar seleccionadas", use_container_width=True):
         ids = pd.DataFrame(sel_rows)["Id"].astype(str).tolist() if sel_rows else []
         if ids:
             df0 = st.session_state["df_main"]
@@ -923,15 +925,18 @@ with b1:
             st.success(f"Eliminadas {len(ids)} fila(s).")
         else:
             st.warning("No hay filas seleccionadas.")
+
 with b2:
     try:
         xlsx_b = export_excel(st.session_state["df_main"][COLS], sheet=TAB_NAME)
         st.download_button("⬇️ Exportar Excel", data=xlsx_b, file_name="tareas.xlsx",
-                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                           use_container_width=True)
     except Exception as e:
         st.error(f"No pude generar Excel: {e}")
+
 with b3:
-    if st.button("💾 Guardar en Sheets"):
+    if st.button("💾 Guardar en Sheets", use_container_width=True):
         df = st.session_state["df_main"][COLS].copy()
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
