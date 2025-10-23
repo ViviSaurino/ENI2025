@@ -552,19 +552,15 @@ with st.form("form_nueva_tarea", clear_on_submit=True):
     tipo  = r1c4.text_input("Tipo", placeholder="Tipo o categoría")
     resp  = r1c5.text_input("Responsable", placeholder="Nombre")
 
-    # -------- Fila 2: Estado | Complejidad | [Prioridad + Fecha inicio] | Vencimiento | Fecha fin --------
+    # -------- Fila 2: Estado | Complejidad | Fecha inicio | Vencimiento | Fecha fin --------
     s2c1, s2c2, s2c3, s2c4, s2c5 = st.columns(COLS_FORM, gap="medium")
 
     estado = _opt_map(s2c1, "Estado", EMO_ESTADO, "No iniciado")
     compl  = _opt_map(s2c2, "Complejidad", EMO_COMPLEJIDAD, "Media")
 
-    # La columna 3 (2.8) se reparte en 1.0 + 1.8  -> igual al ancho de "Tarea"
-    p_col, fi_col = s2c3.columns([1.0, 1.8], gap="medium")
-
-    prio = _opt_map(p_col, "Prioridad", EMO_PRIORIDAD, "Media")
-
-    fi_d = fi_col.date_input("Fecha inicio (fecha)", value=None, key="fi_d")
-    fi_t = fi_col.time_input(
+    # (Sin 'Prioridad') -> usamos TODA la col 3 para la fecha de inicio
+    fi_d = s2c3.date_input("Fecha inicio (fecha)", value=None, key="fi_d")
+    fi_t = s2c3.time_input(
         "Hora inicio",
         value=None,
         step=60,
@@ -604,8 +600,9 @@ with st.form("form_nueva_tarea", clear_on_submit=True):
         new.update({
             "Área": area, "Id": next_id(df), "Tarea": tarea, "Tipo": tipo,
             "Responsable": resp, "Fase": fase,
-            "Complejidad": compl, "Prioridad": prio, "Estado": estado,
+            "Complejidad": compl, "Estado": estado,
             "Fecha inicio": f_ini, "Vencimiento": f_ven, "Fecha fin": f_fin,
+            # 👇 NOTA: No tocamos 'Prioridad' aquí. Queda con su valor por defecto (lo define el jefe).
         })
         new["Duración"]     = duration_days(new["Fecha inicio"], new["Vencimiento"])
         new["Días hábiles"] = business_days(new["Fecha inicio"], new["Vencimiento"])
@@ -623,6 +620,7 @@ with st.form("form_nueva_tarea", clear_on_submit=True):
 st.markdown('</div>', unsafe_allow_html=True)
 
 # ================== Nueva alerta ==================
+# (sin cambios)
 st.markdown('<div class="form-card">', unsafe_allow_html=True)
 st.markdown('<div class="form-title"><span class="plus">➕</span><span class="secico">⚠️</span> Nueva alerta</div>', unsafe_allow_html=True)
 
@@ -635,8 +633,6 @@ st.markdown("""
 with st.form("form_nueva_alerta", clear_on_submit=True):
     # -------- Fila 1: Colocar ID | Tarea (auto) | Responsable (auto) --------
     df_ids = st.session_state["df_main"].copy()
-
-    # ⬅️ CAMBIO 1: anchos 1 | 3 | 1
     col_id, col_tarea, col_resp = st.columns([1, 3, 1], gap="large")
 
     id_target = col_id.text_input("Colocar ID", value="", placeholder="Ej: G1", key="alerta_id")
@@ -653,20 +649,17 @@ with st.form("form_nueva_alerta", clear_on_submit=True):
     col_resp.text_input("Responsable", value=resp_auto, disabled=True, key="alerta_responsable_auto")
 
     # -------- Fila 2: ¿Generó? | Tipo | Fecha alerta | ¿Se corrigió? | Fecha corregida --------
-    # ⬅️ CAMBIO 2: anchos 1 | 1 | 1 | 1 | 1
     c1, c2, c3, c4, c5 = st.columns([1, 1, 1, 1, 1], gap="large")
 
     genero_alerta = _opt_map(c1, "¿Generó alerta?", EMO_SI_NO, "No")
     tipo_alerta   = c2.text_input("Tipo de alerta", placeholder="(opcional)", key="alerta_tipo")
 
-    # Fecha alerta (fecha + hora en la MISMA columna)
     fa_d = c3.date_input("Fecha de alerta (fecha)", value=None, key="alerta_fa_d")
     fa_t = c3.time_input("Hora alerta", value=None, step=60,
                          label_visibility="collapsed", key="alerta_fa_t") if fa_d else None
 
     corr_alerta   = _opt_map(c4, "¿Se corrigió la alerta?", EMO_SI_NO, "No")
 
-    # Fecha corregida (fecha + hora en la MISMA columna)
     fc_d = c5.date_input("Fecha alerta corregida (fecha)", value=None, key="alerta_fc_d")
     fc_t = c5.time_input("Hora alerta corregida", value=None, step=60,
                          label_visibility="collapsed", key="alerta_fc_t") if fc_d else None
