@@ -301,12 +301,15 @@ st.markdown("""
   --blue-pill-bg: #EAF2FF;  /* pastilla celeste */
   --blue-pill-bd: #BFDBFE;
   --blue-pill-fg: #0B3B76;
+
+  /* 🔧 ancho mínimo de controles (ajústalo si deseas) */
+  --field-min: 210px;
 }
 
-/* ===== Ancho del contenido principal (más ancho) ===== */
+/* ===== Ancho del contenido principal (un poco más ancho) ===== */
 .block-container{
-  max-width: 1150px;
-  width: min(96vw, 1500px);
+  max-width: 1280px;               /* antes 1150px */
+  width: min(98vw, 1600px);
 }
 
 /* ===== Título principal: negro ===== */
@@ -317,12 +320,12 @@ h1, .stMarkdown h1{
   margin: 6px 0 18px 0 !important;
 }
 
-/* ===== Sidebar lila ===== */
+/* ===== Sidebar lila (más delgada) ===== */
 [data-testid="stSidebar"]{
   background: var(--lilac-50) !important;
   border-right: 1px solid #ECE6FF !important;
-  width: 220px !important;        /* reduce el ancho */
-  min-width: 220px !important;    /* asegura que no se estire */
+  width: 220px !important;
+  min-width: 220px !important;
 }
 [data-testid="stSidebar"] a{
   color: var(--lilac-600) !important;
@@ -337,9 +340,7 @@ h1, .stMarkdown h1{
   font-weight: 800 !important;
   box-shadow: 0 8px 18px rgba(179,139,227,.25) !important;
 }
-[data-testid="stSidebar"] .stButton > button:hover{
-  filter: brightness(.96);
-}
+[data-testid="stSidebar"] .stButton > button:hover{ filter: brightness(.96); }
 
 /* ===== Tarjetas de sección ===== */
 div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
@@ -352,7 +353,6 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
 }
 
 /* ===== Subtítulos “Nueva tarea / Nueva alerta” (pastilla celeste) ===== */
-/* Contenedores de tu HTML: .form-card y .form-title */
 .form-card{
   background: var(--card);
   border: 1px solid var(--border);
@@ -362,16 +362,13 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
   margin: 10px 0 18px 0;
 }
 .form-title{
-  display: inline-flex;
-  align-items: center;
-  gap: .5rem;
+  display: inline-flex; align-items: center; gap:.5rem;
   padding: 6px 12px;
   border-radius: 12px;
   background: var(--blue-pill-bg);
   border: 1px solid var(--blue-pill-bd);
   color: var(--blue-pill-fg);
-  font-weight: 800;
-  letter-spacing: .2px;
+  font-weight: 800; letter-spacing: .2px;
   margin-bottom: 10px;
 }
 
@@ -384,15 +381,31 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
   border-radius: 12px;
   box-shadow: none;
   transition: border-color .15s ease, box-shadow .15s ease;
-  padding-top: 6px !important;      /* un poco menos de alto */
+  padding-top: 6px !important;
   padding-bottom: 6px !important;
+  width: 100% !important;
+  min-width: var(--field-min) !important;   /* ⬅️ evita que se recorte el texto */
 }
-/* texto interno un poco más pequeño */
+
+/* ❗ Evitar que el texto dentro del select se corte/ellipse */
+[data-baseweb="select"] > div{
+  overflow: visible !important;
+}
+[data-baseweb="select"] [aria-live="polite"],
+[data-baseweb="select"] [data-baseweb="tag"]{
+  white-space: nowrap !important;
+  text-overflow: clip !important;
+  overflow: visible !important;
+}
+
+/* texto interno un poco más claro y tamaño legible */
 [data-baseweb="input"] input,
 [data-baseweb="textarea"] textarea,
 [data-baseweb="select"] div{
-  font-size: 14px !important;
+  font-size: 15px !important;        /* subimos a 15 para legibilidad */
 }
+
+/* Estado de foco */
 [data-baseweb="input"] > div:has(input:focus),
 [data-baseweb="textarea"] > div:has(textarea:focus),
 [data-baseweb="select"] > div:focus-within{
@@ -412,9 +425,7 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
   box-shadow: 0 6px 18px rgba(96,165,250,.20) !important;
 }
 .stButton > button:hover,
-.row-widget.stButton > div > button:hover{
-  filter: brightness(.96);
-}
+.row-widget.stButton > div > button:hover{ filter: brightness(.96); }
 
 /* ===== Accesibilidad: foco global ===== */
 *:focus-visible{
