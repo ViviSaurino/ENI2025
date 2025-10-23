@@ -713,53 +713,42 @@ st.markdown('</div>', unsafe_allow_html=True)
 # ================== Historial ==================
 st.subheader("📝 Tareas recientes")
 
-# ---- FILA DE 5 FILTROS: Área, Responsable, Estado, Desde, Hasta ----
 df_view = st.session_state["df_main"].copy()
 
-# Proporciones tomadas del formulario superior / alerta:
+# Mismas proporciones que usas arriba
 A = 1.2   # Área
 F = 1.2   # Fase
-T = 3.2   # Tarea
-D = 2.4   # Detalle (mismo ancho que "Responsable" de la alerta)
+T = 3.2   # Tarea / Tipo de alerta
+D = 2.4   # Detalle / (Fecha alerta + Fecha corregida)
 
-# Lista de responsables antes de filtrar
+# Responsables (antes de filtrar)
 responsables = sorted([x for x in df_view["Responsable"].astype(str).unique() if x and x != "nan"])
 
-# Anchos: Área(A+F) | Responsable(T) | Estado(T) | Desde(D) | Hasta(D)
-cA, cR, cE, cD, cH = st.columns([A + F, T, T, D, D], gap="medium")
+# ---- FILA DE 5 FILTROS (ancho sincronizado con la tarjeta de alertas) ----
+# Área = A+F | Responsable = T/2 | Estado = T/2 | Desde = D/2 | Hasta = D/2
+cA, cR, cE, cD, cH = st.columns([A + F, T/2, T/2, D/2, D/2], gap="medium")
 
 area_sel = cA.selectbox("Área", options=["Todas"] + AREAS_OPC, index=0)
 resp_sel = cR.selectbox("Responsable", options=["Todos"] + responsables, index=0)
 estado_sel = cE.selectbox("Estado", options=["Todos"] + ESTADO, index=0)
 
-# Fechas (calendario) para filtrar por rango (sobre 'Fecha inicio')
+# Calendarios (rango de fechas)
 f_desde = cD.date_input("Desde", value=None, key="f_desde")
 f_hasta = cH.date_input("Hasta",  value=None, key="f_hasta")
 
-# Convertir 'Fecha inicio' a datetime para el filtrado por rango
+# ---- Filtros de datos ----
 df_view["Fecha inicio"] = pd.to_datetime(df_view.get("Fecha inicio"), errors="coerce")
 
-# Aplicar filtros
 if area_sel != "Todas":
     df_view = df_view[df_view["Área"] == area_sel]
 if resp_sel != "Todos":
     df_view = df_view[df_view["Responsable"].astype(str) == resp_sel]
 if estado_sel != "Todos":
     df_view = df_view[df_view["Estado"] == estado_sel]
-
-# Filtro por rango de fechas (sobre 'Fecha inicio')
 if f_desde:
     df_view = df_view[df_view["Fecha inicio"].dt.date >= f_desde]
 if f_hasta:
     df_view = df_view[df_view["Fecha inicio"].dt.date <= f_hasta]
-
-for c in COLS:
-    if c not in df_view.columns: df_view[c] = None
-if "__DEL__" not in df_view.columns: df_view["__DEL__"] = False
-df_view["__DEL__"] = df_view["__DEL__"].fillna(False).astype(bool)
-
-for c in ["Fecha inicio","Vencimiento","Fecha fin"]:
-    if c in df_view.columns: df_view[c] = pd.to_datetime(df_view[c], errors="coerce")
 
 # === ORDEN DE COLUMNAS: Id primero, luego Área y el resto ===
 grid_cols = ["Id", "Área"] + [c for c in COLS if c not in ("Id", "Área")]
