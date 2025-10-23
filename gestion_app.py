@@ -512,18 +512,22 @@ st.markdown("""
   padding-bottom: 10px !important;
 }
 
-/* === Botones inferiores (Borrar / Exportar / Guardar) === */
-/* Fuerza tamaño de letra y que el texto no se parta en 2 líneas */
-div.stButton > button,
-div.stButton > button * {
-  font-size: 14px !important;     /* ajusta aquí el tamaño */
+/* === Botón de descarga (Exportar) === */
+a[data-testid="stDownloadButton"],
+a[data-testid="stDownloadButton"] *{
+  font-size: 13px !important;      /* mismo tamaño que los otros */
   line-height: 1.1 !important;
-  white-space: nowrap !important;  /* evita salto de línea */
+  white-space: nowrap !important;   /* no partir el texto */
 }
 
-/* Un poco menos de padding para que quepa "Guardar en Sheets" en una línea */
-div.stButton > button{
+/* padding/borde para igualar look & feel de los st.button */
+a[data-testid="stDownloadButton"]{
   padding: 6px 12px !important;
+  border-radius: 12px !important;
+  border: 1px solid #E5E7EB !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;              /* separa icono y texto, opcional */
 }
 
 </style>
@@ -955,5 +959,3 @@ with b3:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
