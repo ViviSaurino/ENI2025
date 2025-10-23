@@ -573,7 +573,7 @@ with st.form("form_nueva_tarea", clear_on_submit=True):
     # Vencimiento + Fecha fin = D (2.4)             ->  1.2 + 1.2
     c2_1, c2_2, c2_3, c2_4, c2_5, c2_6, c2_7 = st.columns([A, F, 1.1, 1.1, 1.0, 1.2, 1.2], gap="medium")
 
-    tipo = c2_1.text_input("Tipo", placeholder="Tipo o categoría")
+    tipo = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría")
     resp = c2_2.text_input("Responsable", placeholder="Nombre")
 
     estado = _opt_map(c2_3, "Estado", EMO_ESTADO, "No iniciado")
@@ -926,4 +926,5 @@ with b3:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
