@@ -657,83 +657,81 @@ st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('<div class="form-card">', unsafe_allow_html=True)
 st.markdown('<div class="form-title"><span class="plus">🔁</span><span class="secico">📌</span> Actualizar estado</div>', unsafe_allow_html=True)
 
-# Usamos las mismas proporciones base para mantener alineación visual
-A = 1.2   # Área / Responsable
+# Usamos las mismas proporciones de arriba para igualar anchos
+A = 1.2   # Área / Responsable (F)
 F = 1.2
-T = 3.2   # Tarea
-D = 2.4   # Fechas
+T = 3.2   # Tarea grande / Tipo de alerta
+D = 2.4   # Fechas arriba (se descompone en 1.2 + 1.2), pero aquí usamos 1.1 / 1.1 / 1.0 donde corresponde
 
 df_all = st.session_state["df_main"].copy()
 
-# ---------- FILA ÚNICA: Área | Responsable | Desde | Hasta | Tarea | Id | Estado ----------
-c_area, c_resp, c_desde, c_hasta, c_tarea, c_id, c_estado = st.columns(
-    [A, F, D/2, D/2, T, A, F], gap="medium"
-)
+with st.form("form_actualizar_estado", clear_on_submit=False):
+    # Fila ÚNICA con anchos pedidos:
+    # Área = T, Responsable = F, Desde = 1.1, Hasta = 1.1, Tarea = 1.0, Id = 1.2, Estado = 1.2
+    c_area, c_resp, c_desde, c_hasta, c_tarea, c_id, c_estado = st.columns(
+        [T, F, 1.1, 1.1, 1.0, 1.2, 1.2], gap="medium"
+    )
 
-# 1) Área
-upd_area = c_area.selectbox("Área", options=["Todas"] + AREAS_OPC, index=0, key="upd_area")
+    # 1) Área
+    upd_area = c_area.selectbox("Área", options=["Todas"] + AREAS_OPC, index=0, key="upd_area")
 
-# 2) Responsable (filtrable por área si aplica)
-df_filt = df_all.copy()
-if upd_area != "Todas":
-    df_filt = df_filt[df_filt["Área"] == upd_area]
-responsables_all = sorted([x for x in df_filt["Responsable"].astype(str).unique() if x and x != "nan"])
-upd_resp_sel = c_resp.selectbox("Responsable", options=["Todos"] + responsables_all, index=0, key="upd_resp_sel")
+    # 2) Responsable (filtrado por área si aplica)
+    df_filt_resp = df_all if upd_area == "Todas" else df_all[df_all["Área"] == upd_area]
+    responsables_all = sorted([x for x in df_filt_resp["Responsable"].astype(str).unique() if x and x != "nan"])
+    upd_resp_sel = c_resp.selectbox("Responsable", options=["Todos"] + responsables_all, index=0, key="upd_resp_sel")
 
-# 3) Desde / 4) Hasta
-upd_desde = c_desde.date_input("Desde", value=None, key="upd_desde")
-upd_hasta = c_hasta.date_input("Hasta",  value=None, key="upd_hasta")
+    # 3) Desde / 4) Hasta (calendarios)
+    upd_desde = c_desde.date_input("Desde", value=None, key="upd_desde")
+    upd_hasta = c_hasta.date_input("Hasta",  value=None, key="upd_hasta")
 
-# Aplicamos filtros parciales para construir la lista de tareas
-df_filt = df_all.copy()
-if upd_area != "Todas":
-    df_filt = df_filt[df_filt["Área"] == upd_area]
-if upd_resp_sel != "Todos":
-    df_filt = df_filt[df_filt["Responsable"].astype(str) == upd_resp_sel]
-if "Fecha inicio" in df_filt.columns:
-    fcol = pd.to_datetime(df_filt["Fecha inicio"], errors="coerce")
-    if upd_desde:
-        df_filt = df_filt[fcol >= pd.to_datetime(upd_desde)]
-    if upd_hasta:
-        # incluir el día completo de 'hasta'
-        df_filt = df_filt[fcol <= (pd.to_datetime(upd_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
-
-# 5) Tarea (lista desde los filtros anteriores)
-tareas_opts = ["— Selecciona —"] + sorted([t for t in df_filt["Tarea"].astype(str).unique() if t and t != "nan"])
-upd_tarea = c_tarea.selectbox("Tarea", options=tareas_opts, index=0, key="upd_tarea")
-
-# 6) Id (solo lectura, autollenado al elegir tarea)
-id_auto = ""
-if upd_tarea and upd_tarea != "— Selecciona —":
-    m = (df_all["Tarea"].astype(str) == upd_tarea)
+    # Construimos el dataset filtrado para la lista de tareas
+    df_filt = df_all.copy()
     if upd_area != "Todas":
-        m &= (df_all["Área"] == upd_area)
+        df_filt = df_filt[df_filt["Área"] == upd_area]
     if upd_resp_sel != "Todos":
-        m &= (df_all["Responsable"].astype(str) == upd_resp_sel)
-    # si hay fechas, las respetamos
-    if "Fecha inicio" in df_all.columns:
-        fcol_all = pd.to_datetime(df_all["Fecha inicio"], errors="coerce")
+        df_filt = df_filt[df_filt["Responsable"].astype(str) == upd_resp_sel]
+    if "Fecha inicio" in df_filt.columns:
+        fcol = pd.to_datetime(df_filt["Fecha inicio"], errors="coerce")
         if upd_desde:
-            m &= fcol_all >= pd.to_datetime(upd_desde)
+            df_filt = df_filt[fcol >= pd.to_datetime(upd_desde)]
         if upd_hasta:
-            m &= fcol_all <= (pd.to_datetime(upd_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))
-    hit = df_all[m]
-    if not hit.empty:
-        id_auto = str(hit.iloc[0]["Id"])
-c_id.text_input("Id", value=id_auto, disabled=True, key="upd_id_show", placeholder="—")
+            df_filt = df_filt[fcol <= (pd.to_datetime(upd_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
 
-# 7) Estado (lista)
-upd_estado = c_estado.selectbox("Estado", options=["En curso", "Terminado", "Cancelado", "Pausado"], key="upd_estado_sel")
+    # 5) Tarea (según filtros)
+    tareas_opts = ["— Selecciona —"] + sorted([t for t in df_filt["Tarea"].astype(str).unique() if t and t != "nan"])
+    upd_tarea = c_tarea.selectbox("Tarea", options=tareas_opts, index=0, key="upd_tarea")
 
-# ---------- Botón abajo a la derecha ----------
-_, btn_col = st.columns([5, 1])   # empuja el botón a la derecha
-with btn_col:
-    do_update_estado = st.button("🔄 Actualizar estado", use_container_width=True)
+    # 6) Id (solo lectura, autollenado al elegir tarea)
+    id_auto = ""
+    if upd_tarea and upd_tarea != "— Selecciona —":
+        m = (df_all["Tarea"].astype(str) == upd_tarea)
+        if upd_area != "Todas":
+            m &= (df_all["Área"] == upd_area)
+        if upd_resp_sel != "Todos":
+            m &= (df_all["Responsable"].astype(str) == upd_resp_sel)
+        if "Fecha inicio" in df_all.columns:
+            f_all = pd.to_datetime(df_all["Fecha inicio"], errors="coerce")
+            if upd_desde:
+                m &= f_all >= pd.to_datetime(upd_desde)
+            if upd_hasta:
+                m &= f_all <= (pd.to_datetime(upd_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))
+        hit = df_all[m]
+        if not hit.empty:
+            id_auto = str(hit.iloc[0]["Id"])
+    c_id.text_input("Id", value=id_auto, disabled=True, key="upd_id_show", placeholder="—")
+
+    # 7) Estado (lista)
+    upd_estado = c_estado.selectbox("Estado", options=["En curso", "Terminado", "Cancelado", "Pausado"], key="upd_estado_sel")
+
+    # Botón abajo a la derecha con el texto solicitado
+    _sp, btn_col = st.columns([5, 1])
+    with btn_col:
+        do_update_estado = st.form_submit_button("💾 Agregar y guardar", use_container_width=True)
 
 # ---------- Lógica de actualización ----------
-if do_update_estado:
+if 'do_update_estado' in locals() and do_update_estado:
     if not id_auto:
-        st.warning("Selecciona una tarea para obtener su Id antes de actualizar el estado.")
+        st.warning("Selecciona una tarea para obtener su Id antes de guardar.")
     else:
         df = st.session_state["df_main"].copy()
         m = df["Id"].astype(str).str.strip().str.lower() == id_auto.strip().lower()
