@@ -303,7 +303,7 @@ st.markdown("""
   --blue-pill-fg: #0B3B76;
 
   /* 🔧 ancho mínimo de controles (ajústalo si deseas) */
-  --field-min: 210px;
+  --field-min: 250px;
 }
 
 /* ===== Ancho del contenido principal (un poco más ancho) ===== */
@@ -794,3 +794,4 @@ with b3:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
