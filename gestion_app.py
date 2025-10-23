@@ -289,21 +289,21 @@ st.markdown("""
 <style>
 /* ===================== Tema ENI — Gestión ===================== */
 :root{
-  --lilac:   #B38BE3;      /* lila marca */
-  --lilac-50:#F6EEFF;      /* fondo sidebar suave */
-  --lilac-600:#8B5CF6;
-  --ink:     #111827;      /* negro / near-black para títulos */
-  --muted:   #64748B;
-  --card:    #FFFFFF;
-  --border:  #E5E7EB;
-  --shadow:  0 6px 20px rgba(2,8,23,.06);
+  --lilac:      #B38BE3;  /* lila marca */
+  --lilac-50:   #F6EEFF;  /* fondo sidebar suave */
+  --lilac-600:  #8B5CF6;
+  --ink:        #111827;  /* negro / near-black para títulos */
+  --muted:      #64748B;
+  --card:       #FFFFFF;
+  --border:     #E5E7EB;
+  --shadow:     0 6px 20px rgba(2,8,23,.06);
 
-  --blue-pill-bg:  #EAF2FF;  /* pastilla celeste */
-  --blue-pill-bd:  #BFDBFE;
-  --blue-pill-fg:  #0B3B76;
+  --blue-pill-bg: #EAF2FF;  /* pastilla celeste */
+  --blue-pill-bd: #BFDBFE;
+  --blue-pill-fg: #0B3B76;
 }
 
-/* Ancho del contenido principal (más ancho) */
+/* ===== Ancho del contenido principal (más ancho) ===== */
 .block-container{
   max-width: 1150px;
   width: min(96vw, 1500px);
@@ -321,8 +321,8 @@ h1, .stMarkdown h1{
 [data-testid="stSidebar"]{
   background: var(--lilac-50) !important;
   border-right: 1px solid #ECE6FF !important;
-  width: 220px !important;        /* 🔹 reduce el ancho */
-  min-width: 220px !important;    /* 🔹 asegura que no se estire */
+  width: 220px !important;        /* reduce el ancho */
+  min-width: 220px !important;    /* asegura que no se estire */
 }
 [data-testid="stSidebar"] a{
   color: var(--lilac-600) !important;
@@ -333,7 +333,8 @@ h1, .stMarkdown h1{
   border-radius: 12px !important;
   background: var(--lilac) !important;
   border: 1px solid var(--lilac) !important;
-  color:#fff !important; font-weight:800 !important;
+  color: #fff !important;
+  font-weight: 800 !important;
   box-shadow: 0 8px 18px rgba(179,139,227,.25) !important;
 }
 [data-testid="stSidebar"] .stButton > button:hover{
@@ -341,7 +342,7 @@ h1, .stMarkdown h1{
 }
 
 /* ===== Tarjetas de sección ===== */
-div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]) {
+div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -350,8 +351,8 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]) {
   margin-bottom: 16px;
 }
 
-/* ===== Subtítulos “Nueva tarea / Nueva alerta” en pastilla celeste ===== */
-/* tienes estos contenedores en tu HTML: .form-card y .form-title */
+/* ===== Subtítulos “Nueva tarea / Nueva alerta” (pastilla celeste) ===== */
+/* Contenedores de tu HTML: .form-card y .form-title */
 .form-card{
   background: var(--card);
   border: 1px solid var(--border);
@@ -361,18 +362,21 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]) {
   margin: 10px 0 18px 0;
 }
 .form-title{
-  display: inline-flex; align-items: center; gap:.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
   padding: 6px 12px;
   border-radius: 12px;
   background: var(--blue-pill-bg);
   border: 1px solid var(--blue-pill-bd);
   color: var(--blue-pill-fg);
-  font-weight: 800; letter-spacing: .2px;
+  font-weight: 800;
+  letter-spacing: .2px;
   margin-bottom: 10px;
 }
 
-/* ===== Inputs y selects (bordes y foco) ===== */
-[data-baseweb="input"] > div, 
+/* ===== Inputs y selects (bordes, foco y tipografía) ===== */
+[data-baseweb="input"] > div,
 [data-baseweb="textarea"] > div,
 [data-baseweb="select"] > div{
   background: #fff;
@@ -380,6 +384,14 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]) {
   border-radius: 12px;
   box-shadow: none;
   transition: border-color .15s ease, box-shadow .15s ease;
+  padding-top: 6px !important;      /* un poco menos de alto */
+  padding-bottom: 6px !important;
+}
+/* texto interno un poco más pequeño */
+[data-baseweb="input"] input,
+[data-baseweb="textarea"] textarea,
+[data-baseweb="select"] div{
+  font-size: 14px !important;
 }
 [data-baseweb="input"] > div:has(input:focus),
 [data-baseweb="textarea"] > div:has(textarea:focus),
@@ -395,7 +407,8 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]) {
   min-height: 44px;
   border: 1px solid #60A5FA !important;
   background: #60A5FA !important;
-  color:#fff !important; font-weight:800 !important;
+  color: #fff !important;
+  font-weight: 800 !important;
   box-shadow: 0 6px 18px rgba(96,165,250,.20) !important;
 }
 .stButton > button:hover,
@@ -403,8 +416,11 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]) {
   filter: brightness(.96);
 }
 
-/* Accesibilidad foco */
-*:focus-visible{ outline: none !important; box-shadow: 0 0 0 3px rgba(179,139,227,.28) !important; }
+/* ===== Accesibilidad: foco global ===== */
+*:focus-visible{
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(179,139,227,.28) !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -767,7 +783,3 @@ with b3:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
-
