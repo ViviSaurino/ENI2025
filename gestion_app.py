@@ -657,34 +657,43 @@ st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('<div class="form-card">', unsafe_allow_html=True)
 st.markdown('<div class="form-title"><span class="plus">🔁</span><span class="secico">📌</span> Actualizar estado</div>', unsafe_allow_html=True)
 
-# Usamos las mismas proporciones de arriba para igualar anchos
-A = 1.2   # Área / Responsable (F)
-F = 1.2
-T = 3.2   # Tarea grande / Tipo de alerta
-D = 2.4   # Fechas arriba (se descompone en 1.2 + 1.2), pero aquí usamos 1.1 / 1.1 / 1.0 donde corresponde
+st.markdown("""
+<div class="help-strip">
+  🔄 <strong>Actualiza el estado</strong> de una tarea ya registrada usando los filtros y seleccionando la tarea.
+</div>
+""", unsafe_allow_html=True)
+
+# Reutilizamos exactamente las mismas proporciones del formulario superior:
+A = 1.2   # => igual que "Tipo de tarea"
+F = 1.2   # => igual que "Responsable"
+# Estado / Complejidad / Fecha inicio / Vencimiento / Fecha fin en el form superior
+W_ESTADO = 1.1
+W_COMP   = 1.1
+W_FINI   = 1.0
+W_VENC   = 1.2
+W_FFIN   = 1.2
 
 df_all = st.session_state["df_main"].copy()
 
 with st.form("form_actualizar_estado", clear_on_submit=False):
-    # Fila ÚNICA con anchos pedidos:
-    # Área = T, Responsable = F, Desde = 1.1, Hasta = 1.1, Tarea = 1.0, Id = 1.2, Estado = 1.2
+    # Área(A), Responsable(F), Desde(1.1), Hasta(1.1), Tarea(1.0), Id(1.2), Estado(1.2)
     c_area, c_resp, c_desde, c_hasta, c_tarea, c_id, c_estado = st.columns(
-        [T, F, 1.1, 1.1, 1.0, 1.2, 1.2], gap="medium"
+        [A, F, W_ESTADO, W_COMP, W_FINI, W_VENC, W_FFIN], gap="medium"
     )
 
-    # 1) Área
+    # Área
     upd_area = c_area.selectbox("Área", options=["Todas"] + AREAS_OPC, index=0, key="upd_area")
 
-    # 2) Responsable (filtrado por área si aplica)
-    df_filt_resp = df_all if upd_area == "Todas" else df_all[df_all["Área"] == upd_area]
-    responsables_all = sorted([x for x in df_filt_resp["Responsable"].astype(str).unique() if x and x != "nan"])
+    # Responsable (filtrado por área si aplica)
+    df_resp = df_all if upd_area == "Todas" else df_all[df_all["Área"] == upd_area]
+    responsables_all = sorted([x for x in df_resp["Responsable"].astype(str).unique() if x and x != "nan"])
     upd_resp_sel = c_resp.selectbox("Responsable", options=["Todos"] + responsables_all, index=0, key="upd_resp_sel")
 
-    # 3) Desde / 4) Hasta (calendarios)
+    # Desde / Hasta (rango de fechas sobre "Fecha inicio")
     upd_desde = c_desde.date_input("Desde", value=None, key="upd_desde")
     upd_hasta = c_hasta.date_input("Hasta",  value=None, key="upd_hasta")
 
-    # Construimos el dataset filtrado para la lista de tareas
+    # Dataset filtrado para lista de tareas
     df_filt = df_all.copy()
     if upd_area != "Todas":
         df_filt = df_filt[df_filt["Área"] == upd_area]
@@ -697,18 +706,16 @@ with st.form("form_actualizar_estado", clear_on_submit=False):
         if upd_hasta:
             df_filt = df_filt[fcol <= (pd.to_datetime(upd_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
 
-    # 5) Tarea (según filtros)
+    # Tarea
     tareas_opts = ["— Selecciona —"] + sorted([t for t in df_filt["Tarea"].astype(str).unique() if t and t != "nan"])
     upd_tarea = c_tarea.selectbox("Tarea", options=tareas_opts, index=0, key="upd_tarea")
 
-    # 6) Id (solo lectura, autollenado al elegir tarea)
+    # Id (autollenado, solo lectura)
     id_auto = ""
     if upd_tarea and upd_tarea != "— Selecciona —":
         m = (df_all["Tarea"].astype(str) == upd_tarea)
-        if upd_area != "Todas":
-            m &= (df_all["Área"] == upd_area)
-        if upd_resp_sel != "Todos":
-            m &= (df_all["Responsable"].astype(str) == upd_resp_sel)
+        if upd_area != "Todas": m &= (df_all["Área"] == upd_area)
+        if upd_resp_sel != "Todos": m &= (df_all["Responsable"].astype(str) == upd_resp_sel)
         if "Fecha inicio" in df_all.columns:
             f_all = pd.to_datetime(df_all["Fecha inicio"], errors="coerce")
             if upd_desde:
@@ -720,15 +727,15 @@ with st.form("form_actualizar_estado", clear_on_submit=False):
             id_auto = str(hit.iloc[0]["Id"])
     c_id.text_input("Id", value=id_auto, disabled=True, key="upd_id_show", placeholder="—")
 
-    # 7) Estado (lista)
+    # Estado (igual a la familia de “Fecha fin” en ancho)
     upd_estado = c_estado.selectbox("Estado", options=["En curso", "Terminado", "Cancelado", "Pausado"], key="upd_estado_sel")
 
-    # Botón abajo a la derecha con el texto solicitado
+    # Botón alineado a la derecha, texto solicitado
     _sp, btn_col = st.columns([5, 1])
     with btn_col:
-        do_update_estado = st.form_submit_button("💾 Agregar y guardar", use_container_width=True)
+        do_update_estado = st.form_submit_button("🔗 Vincular estado a tarea", use_container_width=True)
 
-# ---------- Lógica de actualización ----------
+# Lógica de guardado
 if 'do_update_estado' in locals() and do_update_estado:
     if not id_auto:
         st.warning("Selecciona una tarea para obtener su Id antes de guardar.")
@@ -741,13 +748,8 @@ if 'do_update_estado' in locals() and do_update_estado:
             old_state = str(df.loc[m, "Estado"].iloc[0]) if "Estado" in df.columns else ""
             df.loc[m, "Estado"] = upd_estado
 
-            # Timestamps de estado si existieran
-            ts_map = {
-                "En curso":  "Ts_en_curso",
-                "Terminado": "Ts_terminado",
-                "Cancelado": "Ts_cancelado",
-                "Pausado":   "Ts_pausado",
-            }
+            # Timestamps por estado (si existen en el modelo)
+            ts_map = {"En curso":"Ts_en_curso","Terminado":"Ts_terminado","Cancelado":"Ts_cancelado","Pausado":"Ts_pausado"}
             col_ts = ts_map.get(upd_estado)
             if col_ts in df.columns:
                 df.loc[m, col_ts] = now_ts()
