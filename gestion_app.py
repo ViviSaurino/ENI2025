@@ -730,7 +730,7 @@ with st.form("form_nueva_alerta", clear_on_submit=True):
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# ================== Historial ==================
+# ================== Historial ================== 
 st.subheader("📝 Tareas recientes")
 
 df_view = st.session_state["df_main"].copy()
@@ -824,10 +824,10 @@ function(p){
   else if(v==='Entregado con retraso'){bg='#00ACC1'}
   else if(v==='No entregado'){bg='#006064'}
   else if(v==='En riesgo de retraso'){bg='#0277BD'}
-  else if(v==='Aprobada'){bg='#8BC34A'; fg:'#0A2E00'}
+  else if(v==='Aprobada'){bg:'#8BC34A'; fg:'#0A2E00'}
   else if(v==='Desaprobada'){bg:'#FF8A80'}
-  else if(v==='Pendiente de revisión'){bg:'#BDBDBD'; fg:'#2B2B2B'}
-  else if(v==='Observada'){bg:'#D7A56C'}
+  else if(v==='Pendiente de revisión'){bg='#BDBDBD'; fg:'#2B2B2B'}
+  else if(v==='Observada'){bg='#D7A56C'}
   return { backgroundColor:bg, color:fg, fontWeight:'600', textAlign:'center',
            borderRadius:'10px', padding:'4px 10px' };
 }""")
