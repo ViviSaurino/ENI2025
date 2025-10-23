@@ -634,7 +634,6 @@ if submitted:
 st.markdown('</div>', unsafe_allow_html=True)
 
 # ================== Nueva alerta ==================
-# (sin cambios)
 st.markdown('<div class="form-card">', unsafe_allow_html=True)
 st.markdown('<div class="form-title"><span class="plus">➕</span><span class="secico">⚠️</span> Nueva alerta</div>', unsafe_allow_html=True)
 
@@ -645,11 +644,18 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 with st.form("form_nueva_alerta", clear_on_submit=True):
-    # -------- Fila 1: Colocar ID | Tarea (auto) | Responsable (auto) --------
-    df_ids = st.session_state["df_main"].copy()
-    col_id, col_tarea, col_resp = st.columns([1, 3, 1], gap="large")
+    # ===== Proporciones iguales a las del formulario superior =====
+    A = 1.2   # Área
+    F = 1.2   # Fase
+    T = 3.2   # Tarea
+    D = 2.4   # Detalle
 
-    id_target = col_id.text_input("Colocar ID", value="", placeholder="Ej: G1", key="alerta_id")
+    # -------- Fila 1 (conserva): ID | Tarea | Responsable --------
+    # ID = A+F   |   Tarea = T   |   Responsable = D
+    r1_id, r1_tarea, r1_resp = st.columns([A + F, T, D], gap="medium")
+
+    df_ids = st.session_state["df_main"].copy()
+    id_target = r1_id.text_input("Colocar ID", value="", placeholder="Ej: G1", key="alerta_id")
 
     tarea_auto = ""
     resp_auto  = ""
@@ -659,30 +665,32 @@ with st.form("form_nueva_alerta", clear_on_submit=True):
             tarea_auto = df_ids.loc[m, "Tarea"].astype(str).iloc[0] if "Tarea" in df_ids.columns else ""
             resp_auto  = df_ids.loc[m, "Responsable"].astype(str).iloc[0] if "Responsable" in df_ids.columns else ""
 
-    col_tarea.text_input("Tarea", value=tarea_auto, disabled=True, key="alerta_tarea_auto")
-    col_resp.text_input("Responsable", value=resp_auto, disabled=True, key="alerta_responsable_auto")
+    r1_tarea.text_input("Tarea", value=tarea_auto, disabled=True, key="alerta_tarea_auto")
+    r1_resp.text_input("Responsable", value=resp_auto, disabled=True, key="alerta_responsable_auto")
 
-    # -------- Fila 2: ¿Generó? | Tipo | Fecha alerta | ¿Se corrigió? | Fecha corregida --------
-    c1, c2, c3, c4, c5 = st.columns([1, 1, 1, 1, 1], gap="large")
+    # -------- Fila 2 (nuevo orden): ¿Generó?, ¿Se corrigió?, Tipo, Fecha, Fecha corregida --------
+    # Para cuadrar bajo los cortes verticales:
+    # (A) | (F) | (T/2) | (T/2) | (D)
+    r2_gen, r2_corr, r2_tipo, r2_fa, r2_fc = st.columns([A, F, T/2, T/2, D], gap="medium")
 
-    genero_alerta = _opt_map(c1, "¿Generó alerta?", EMO_SI_NO, "No")
-    tipo_alerta   = c2.text_input("Tipo de alerta", placeholder="(opcional)", key="alerta_tipo")
+    genero_alerta = _opt_map(r2_gen,  "¿Generó alerta?",        EMO_SI_NO, "No")
+    corr_alerta   = _opt_map(r2_corr, "¿Se corrigió la alerta?", EMO_SI_NO, "No")
 
-    fa_d = c3.date_input("Fecha de alerta (fecha)", value=None, key="alerta_fa_d")
-    fa_t = c3.time_input("Hora alerta", value=None, step=60,
-                         label_visibility="collapsed", key="alerta_fa_t") if fa_d else None
+    tipo_alerta = r2_tipo.text_input("Tipo de alerta", placeholder="(opcional)", key="alerta_tipo")
 
-    corr_alerta   = _opt_map(c4, "¿Se corrigió la alerta?", EMO_SI_NO, "No")
+    fa_d = r2_fa.date_input("Fecha de alerta (fecha)", value=None, key="alerta_fa_d")
+    fa_t = r2_fa.time_input("Hora alerta", value=None, step=60,
+                            label_visibility="collapsed", key="alerta_fa_t") if fa_d else None
 
-    fc_d = c5.date_input("Fecha alerta corregida (fecha)", value=None, key="alerta_fc_d")
-    fc_t = c5.time_input("Hora alerta corregida", value=None, step=60,
-                         label_visibility="collapsed", key="alerta_fc_t") if fc_d else None
+    fc_d = r2_fc.date_input("Fecha alerta corregida (fecha)", value=None, key="alerta_fc_d")
+    fc_t = r2_fc.time_input("Hora alerta corregida", value=None, step=60,
+                            label_visibility="collapsed", key="alerta_fc_t") if fc_d else None
 
-    # -------- Botón Vincular (alineado a la derecha con emoji) --------
-    _, _, btn_col2 = st.columns([1, 1, 0.32], gap="large")
-    with btn_col2:
+    # -------- Botón (mismo ancho que "Fecha alerta corregida") --------
+    with r2_fc:
         sub_alerta = st.form_submit_button("🔗 Vincular alerta a tarea", use_container_width=True)
 
+    # ---------- Lógica al enviar ----------
     if sub_alerta:
         if not id_target or id_target not in st.session_state["df_main"]["Id"].astype(str).values:
             st.warning("ID no encontrado en el historial de tareas.")
