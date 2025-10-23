@@ -931,13 +931,13 @@ if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
     except Exception:
         pass
 
-# ---- Botones (alineados al ancho de Área + Responsable) ----
-# Usamos las mismas proporciones definidas arriba: A, F, T, D
-total_btn_width = (A + F) + (T / 2)   # Área + Responsable
+# ---- Botones (ancho total = Área + Responsable) ----
+# Reutilizamos las mismas proporciones declaradas en el formulario: A, F, T, D
+total_btn_width = (A + F) + (T / 2)    # Área + Responsable
 btn_w = total_btn_width / 4
 
-b_del, b_xlsx, b_csv, b_save, _spacer = st.columns(
-    [btn_w, btn_w, btn_w, btn_w, (T / 2) + D],  # el resto de la fila (Estado + fechas) como espaciador
+b_del, b_xlsx, b_save_local, b_save_sheets, _spacer = st.columns(
+    [btn_w, btn_w, btn_w, btn_w, (T / 2) + D],  # el resto de la fila como espaciador
     gap="medium"
 )
 
@@ -957,26 +957,27 @@ with b_del:
 with b_xlsx:
     try:
         xlsx_b = export_excel(st.session_state["df_main"][COLS], sheet=TAB_NAME)
-        st.download_button("⬇️ Exportar Excel", data=xlsx_b, file_name="tareas.xlsx",
-                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                           use_container_width=True)
+        st.download_button(
+            "⬇️ Exportar Excel",
+            data=xlsx_b,
+            file_name="tareas.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
     except Exception as e:
         st.error(f"No pude generar Excel: {e}")
 
-# 3) Exportar CSV
-with b_csv:
-    try:
-        csv_b = st.session_state["df_main"][COLS].to_csv(index=False, encoding="utf-8-sig")
-        st.download_button("⬇️ Exportar CSV", data=csv_b, file_name="tareas.csv",
-                           mime="text/csv", use_container_width=True)
-    except Exception as e:
-        st.error(f"No pude generar CSV: {e}")
-
-# 4) Guardar en Sheets
-with b_save:
-    if st.button("💾 Guardar en Sheets", use_container_width=True):
+# 3) Guardar (tabla local)
+with b_save_local:
+    if st.button("💽 Guardar", use_container_width=True):
         df = st.session_state["df_main"][COLS].copy()
-        _save_local(df.copy())
+        _save_local(df.copy())  # guarda en data/tareas.csv
+        st.success("Datos guardados en la tabla local (CSV).")
+
+# 4) Subir a Sheets
+with b_save_sheets:
+    if st.button("📤 Subir a Sheets", use_container_width=True):
+        df = st.session_state["df_main"][COLS].copy()
+        _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
