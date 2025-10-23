@@ -302,8 +302,7 @@ st.markdown("""
   --blue-pill-bd: #BFDBFE;
   --blue-pill-fg: #0B3B76;
 
-  /* ancho mínimo genérico de campos */
-  --field-min: 210px;
+  --field-min: 210px; /* ancho mínimo genérico de campos */
 }
 
 /* ===== Ancho del contenido principal ===== */
@@ -321,11 +320,9 @@ h1, .stMarkdown h1{
 }
 
 /* ===== Ocultar SOLO la barra/rectángulo bajo el título ===== */
-/* Selecciona el contenedor que va inmediatamente después del bloque que contiene el <h1> */
 .block-container > div:has(h1) + div [data-baseweb="input"]{
   display: none !important;
 }
-/* Asegura que los inputs dentro de formularios/cartas sigan visibles */
 .form-card [data-baseweb="input"]{ display: block !important; }
 .form-card [data-baseweb="input"] > div{ display: flex !important; }
 
@@ -378,6 +375,15 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
   color: var(--blue-pill-fg);
   font-weight: 800; letter-spacing: .2px;
   margin-bottom: 10px;
+}
+
+/* ===== Layout del formulario (espaciado bonito) ===== */
+.form-card [data-testid="stHorizontalBlock"]{
+  gap: 14px !important;               /* espacio ENTRE columnas */
+  align-items: flex-start !important; /* alinear arriba todo */
+}
+.form-card [data-testid="stHorizontalBlock"] > div{
+  margin-bottom: 10px !important;     /* espacio ENTRE filas */
 }
 
 /* ===== Inputs y selects: bordes, foco y tamaños ===== */
