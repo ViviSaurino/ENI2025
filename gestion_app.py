@@ -293,9 +293,9 @@ st.markdown("""
   --lilac-50:   #F6EEFF;
   --lilac-600:  #8B5CF6;
 
-  --blue-pill-bg: #EAF2FF;
-  --blue-pill-bd: #BFDBFE;
-  --blue-pill-fg: #0B3B76;
+  --blue-pill-bg: #38BDF8
+  --blue-pill-bd: #0EA5E9
+  --blue-pill-fg: #ffffff
 }
 
 /* ======= Separaciones fuertes dentro del formulario ======= */
@@ -614,7 +614,7 @@ with st.form("form_nueva_alerta", clear_on_submit=True):
     df_ids = st.session_state["df_main"].copy()
 
     # ⬅️ CAMBIO 1: anchos 1 | 3 | 1
-    col_id, col_tarea, col_resp = st.columns([1, 2.995, 1], gap="large")
+    col_id, col_tarea, col_resp = st.columns([1, 3, 1], gap="large")
 
     id_target = col_id.text_input("Colocar ID", value="", placeholder="Ej: G1", key="alerta_id")
 
@@ -886,10 +886,3 @@ with b3:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
-
-
-
-
