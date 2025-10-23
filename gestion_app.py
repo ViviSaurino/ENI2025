@@ -716,17 +716,23 @@ st.subheader("📝 Tareas recientes")
 # ---- FILA DE 5 FILTROS: Área, Responsable, Estado, Desde, Hasta ----
 df_view = st.session_state["df_main"].copy()
 
+# Proporciones tomadas del formulario superior / alerta:
+A = 1.2   # Área
+F = 1.2   # Fase
+T = 3.2   # Tarea
+D = 2.4   # Detalle (mismo ancho que "Responsable" de la alerta)
+
 # Lista de responsables antes de filtrar
 responsables = sorted([x for x in df_view["Responsable"].astype(str).unique() if x and x != "nan"])
 
-# Controles
-cA, cR, cE, cD, cH = st.columns([1, 1.4, 1, 0.9, 0.9])
+# Anchos: Área(A+F) | Responsable(T) | Estado(T) | Desde(D) | Hasta(D)
+cA, cR, cE, cD, cH = st.columns([A + F, T, T, D, D], gap="medium")
 
 area_sel = cA.selectbox("Área", options=["Todas"] + AREAS_OPC, index=0)
 resp_sel = cR.selectbox("Responsable", options=["Todos"] + responsables, index=0)
 estado_sel = cE.selectbox("Estado", options=["Todos"] + ESTADO, index=0)
 
-# Fechas (calendario) para filtrar por rango
+# Fechas (calendario) para filtrar por rango (sobre 'Fecha inicio')
 f_desde = cD.date_input("Desde", value=None, key="f_desde")
 f_hasta = cH.date_input("Hasta",  value=None, key="f_hasta")
 
@@ -809,7 +815,7 @@ function(p){
   else if(v==='Entregado con retraso'){bg='#00ACC1'}
   else if(v==='No entregado'){bg='#006064'}
   else if(v==='En riesgo de retraso'){bg='#0277BD'}
-  else if(v==='Aprobada'){bg:'#8BC34A'; fg:'#0A2E00'}
+  else if(v==='Aprobada'){bg='#8BC34A'; fg:'#0A2E00'}
   else if(v==='Desaprobada'){bg:'#FF8A80'}
   else if(v==='Pendiente de revisión'){bg:'#BDBDBD'; fg:'#2B2B2B'}
   else if(v==='Observada'){bg:'#D7A56C'}
