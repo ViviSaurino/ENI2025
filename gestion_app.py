@@ -653,6 +653,108 @@ if submitted:
 
 st.markdown('</div>', unsafe_allow_html=True)
 
+# ================== Actualizar estado ==================
+st.markdown('<div class="form-card">', unsafe_allow_html=True)
+st.markdown('<div class="form-title"><span class="plus">🔁</span><span class="secico">📌</span> Actualizar estado</div>', unsafe_allow_html=True)
+
+with st.form("form_actualizar_estado", clear_on_submit=False):
+    # Proporciones locales (mismas que usas arriba)
+    A = 1.2   # Área / Tipo
+    F = 1.2   # Fase / Responsable
+    T = 3.2   # Tarea
+    D = 2.4   # Detalle / Fechas
+
+    # -------- Fila 1: Responsable | Id | Tarea --------
+    c1_resp, c1_id, c1_tarea, _space1 = st.columns([F, A + F, T, D], gap="medium")
+
+    df_all = st.session_state["df_main"].copy()
+
+    # Responsable (opcional para filtrar)
+    responsables_all = sorted([x for x in df_all["Responsable"].astype(str).unique() if x and x != "nan"])
+    upd_resp_sel = c1_resp.selectbox("Responsable", options=["Todos"] + responsables_all, index=0, key="upd_resp_sel")
+
+    # Id directo (si lo colocas, manda sobre el resto de filtros)
+    upd_id = c1_id.text_input("Id", value="", placeholder="Ej: G12", key="upd_id")
+
+    # Lista de tareas (filtrada por responsable si aplica)
+    df_tareas = df_all.copy()
+    if upd_resp_sel != "Todos":
+        df_tareas = df_tareas[df_tareas["Responsable"].astype(str) == upd_resp_sel]
+    tareas_opts = ["— Selecciona —"] + sorted([t for t in df_tareas["Tarea"].astype(str).unique() if t and t != "nan"])
+    upd_tarea = c1_tarea.selectbox("Tarea", options=tareas_opts, index=0, key="upd_tarea")
+
+    # -------- Fila 2: Desde | Hasta | Estado | (botón debajo) --------
+    c2_desde, c2_hasta, c2_estado, c2_btn = st.columns([D/2, D/2, F, T], gap="medium")
+
+    upd_desde = c2_desde.date_input("Desde", value=None, key="upd_desde")
+    upd_hasta = c2_hasta.date_input("Hasta",  value=None, key="upd_hasta")
+
+    # Lista desplegable de estado
+    upd_estado = c2_estado.selectbox("Estado", options=["En curso", "Terminado", "Cancelado", "Pausado"], key="upd_estado_sel")
+
+    with c2_btn:
+        do_update_estado = st.form_submit_button("🔄 Actualizar estado", use_container_width=True)
+
+    # ---------- Lógica de actualización ----------
+    if do_update_estado:
+        df = st.session_state["df_main"].copy()
+
+        # Máscara de búsqueda
+        mask = pd.Series([True] * len(df))
+        if upd_resp_sel != "Todos":
+            mask &= df["Responsable"].astype(str) == upd_resp_sel
+
+        # Filtrado por fechas (si existe la columna "Fecha inicio")
+        if "Fecha inicio" in df.columns:
+            fcol = pd.to_datetime(df["Fecha inicio"], errors="coerce")
+            if upd_desde:
+                mask &= fcol >= pd.to_datetime(upd_desde)
+            if upd_hasta:
+                mask &= fcol <= (pd.to_datetime(upd_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))
+
+        target_idx = None
+
+        # Prioridad 1: Id exacto
+        if upd_id:
+            mask_id = mask & (df["Id"].astype(str).str.strip().str.lower() == str(upd_id).strip().lower())
+            hit = df[mask_id]
+            if not hit.empty:
+                target_idx = hit.index[0]
+        # Prioridad 2: Tarea (si no se puso Id)
+        if target_idx is None and (upd_tarea and upd_tarea != "— Selecciona —"):
+            mask_tarea = mask & (df["Tarea"].astype(str) == upd_tarea)
+            hit = df[mask_tarea]
+            if not hit.empty:
+                target_idx = hit.index[0]
+
+        if target_idx is None:
+            st.warning("No se encontró una tarea que coincida con los filtros (Responsable / Id / Tarea / Fechas).")
+        else:
+            old_state = str(df.loc[target_idx, "Estado"]) if "Estado" in df.columns else ""
+            df.loc[target_idx, "Estado"] = upd_estado
+
+            # Marcar timestamps si existen las columnas
+            ts_map = {
+                "En curso":  "Ts_en_curso",
+                "Terminado": "Ts_terminado",
+                "Cancelado": "Ts_cancelado",
+                "Pausado":   "Ts_pausado",
+            }
+            now = now_ts()
+            # Inicializamos nulos a None (para evitar strings)
+            for k in ["Ts_en_curso", "Ts_terminado", "Ts_cancelado", "Ts_pausado"]:
+                if k in df.columns and pd.isna(df.loc[target_idx, k]):
+                    df.loc[target_idx, k] = None
+            # Seteamos el timestamp del nuevo estado (si la columna existe)
+            if ts_map.get(upd_estado) in df.columns:
+                df.loc[target_idx, ts_map[upd_estado]] = now
+
+            st.session_state["df_main"] = df.copy()
+            _save_local(df[COLS].copy())
+            st.success(f"✔ Estado actualizado: {old_state} → {upd_estado} (Id: {df.loc[target_idx, 'Id']}).")
+
+st.markdown('</div>', unsafe_allow_html=True)
+
 # ================== Nueva alerta ==================
 st.markdown('<div class="form-card">', unsafe_allow_html=True)
 st.markdown('<div class="form-title"><span class="plus">➕</span><span class="secico">⚠️</span> Nueva alerta</div>', unsafe_allow_html=True)
