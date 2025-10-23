@@ -409,7 +409,7 @@ st.markdown("""
   white-space: nowrap !important;
   text-overflow: clip !important;
   width: fit-content !important;   /* que crezca según el contenido */
-  min-width: 240px !important;     /* sube a 280/300 si lo necesitas */
+  min-width: 300px !important;     /* ← subido: 240 → 300 para que quepan ‘Planeamiento’/‘No iniciado’ */
 }
 
 /* El valor renderizado no debe truncarse */
@@ -432,7 +432,7 @@ st.markdown("""
 /* En pantallas pequeñas reduce ligeramente el mínimo */
 @media (max-width: 980px){
   .form-card [data-baseweb="select"] > div{
-    min-width: 200px !important;
+    min-width: 240px !important;
   }
 }
 </style>
