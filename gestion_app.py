@@ -733,7 +733,7 @@ with st.form("form_actualizar_estado", clear_on_submit=False):
     # Botón debajo de "Estado" con el mismo ancho
     with c_estado:
         st.write("")  # separador opcional
-        do_update_estado = st.form_submit_button("🔗 Vincular estado a tarea", use_container_width=True)
+        do_update_estado = st.form_submit_button("🔗 Vincular estado-tarea", use_container_width=True)
 
 # Lógica de guardado
 if 'do_update_estado' in locals() and do_update_estado:
@@ -814,7 +814,7 @@ with st.form("form_nueva_alerta", clear_on_submit=True):
 
     # Botón exactamente debajo de "Fecha alerta corregida" (mismo ancho)
     with r2_fc:
-        sub_alerta = st.form_submit_button("🔗 Vincular alerta a tarea", use_container_width=True)
+        sub_alerta = st.form_submit_button("🔗 Vincular alerta-tarea", use_container_width=True)
 
     # ---------- Lógica al enviar ----------
     if sub_alerta:
