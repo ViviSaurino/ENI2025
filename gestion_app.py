@@ -482,17 +482,21 @@ st.markdown("""
   white-space: normal !important;
 }
             
-/* ===== Píldoras de sección (Nueva tarea / Nueva alerta) azul personalizado ===== */
+/* ===== Píldoras de sección (Nueva tarea / Nueva alerta) azul pastel ===== */
 :root{
-  --pill-azul:      #639BFA;  /* tono del ejemplo */
-  --pill-azul-bord: #4A8CF8;  /* un poquito más oscuro para borde */
+  --pill-azul:      #8DD1FF;  /* tono del ejemplo (celeste pastel) */
+  --pill-azul-bord: #5CB8F8;  /* borde ligeramente más oscuro */
 }
 
 .form-title{
   background: var(--pill-azul) !important;
   border: 1px solid var(--pill-azul-bord) !important;
-  color: #ffffff !important;  /* texto blanco */
-  box-shadow: 0 6px 16px rgba(99,155,250,.25) !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 16px rgba(141,209,255,.3) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  margin-right: 10px !important;
 }
             
 </style>
