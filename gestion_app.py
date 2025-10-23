@@ -614,7 +614,7 @@ with st.form("form_nueva_alerta", clear_on_submit=True):
     df_ids = st.session_state["df_main"].copy()
 
     # ⬅️ CAMBIO 1: anchos 1 | 3 | 1
-    col_id, col_tarea, col_resp = st.columns([1, 2.98, 1], gap="large")
+    col_id, col_tarea, col_resp = st.columns([1, 2.95, 1], gap="large")
 
     id_target = col_id.text_input("Colocar ID", value="", placeholder="Ej: G1", key="alerta_id")
 
@@ -886,6 +886,7 @@ with b3:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
