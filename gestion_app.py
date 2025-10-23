@@ -917,7 +917,7 @@ b1, b2, b3, _spacer = st.columns([(A + F)/3, (A + F)/3, (A + F)/3, T + D])
 
 with b1:
     sel_rows = grid.get("selected_rows", []) if isinstance(grid, dict) else []
-    if st.button("🗑️ Borrar seleccionadas", use_container_width=True):
+    if st.button("🗑️ Borrar", use_container_width=True):
         ids = pd.DataFrame(sel_rows)["Id"].astype(str).tolist() if sel_rows else []
         if ids:
             df0 = st.session_state["df_main"]
@@ -941,3 +941,4 @@ with b3:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
