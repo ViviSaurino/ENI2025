@@ -542,9 +542,14 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 with st.form("form_nueva_tarea", clear_on_submit=True):
+    # ----- Proporciones para cuadrar anchos entre filas -----
+    A = 1.2   # Área  y  Tipo
+    F = 1.2   # Fase  y  Responsable
+    T = 3.2   # Tarea  y  (Estado + Complejidad + Fecha inicio)
+    D = 2.4   # Detalle y  (Vencimiento + Fecha fin)
+
     # -------- Fila 1: Área | Fase | Tarea | Detalle --------
-    # (reemplaza "Tipo" y "Responsable" por una sola celda "Detalle")
-    r1c1, r1c2, r1c3, r1c4 = st.columns([1.1, 1.1, 2.8, 2.0], gap="medium")
+    r1c1, r1c2, r1c3, r1c4 = st.columns([A, F, T, D], gap="medium")
 
     area    = _opt_map(r1c1, "Área", EMO_AREA, "Planeamiento")
     fase    = r1c2.text_input("Fase", placeholder="Etapa")
@@ -552,7 +557,9 @@ with st.form("form_nueva_tarea", clear_on_submit=True):
     detalle = r1c4.text_input("Detalle", placeholder="Información adicional (opcional)")
 
     # -------- Fila 2: Tipo | Responsable | Estado | Complejidad | Fecha inicio | Vencimiento | Fecha fin --------
-    c2_1, c2_2, c2_3, c2_4, c2_5, c2_6, c2_7 = st.columns([1.1, 1.2, 1.1, 1.1, 1.4, 1.4, 1.4], gap="medium")
+    # Estado + Complejidad + Fecha inicio = T (3.2)  ->  1.1 + 1.1 + 1.0
+    # Vencimiento + Fecha fin = D (2.4)             ->  1.2 + 1.2
+    c2_1, c2_2, c2_3, c2_4, c2_5, c2_6, c2_7 = st.columns([A, F, 1.1, 1.1, 1.0, 1.2, 1.2], gap="medium")
 
     tipo = c2_1.text_input("Tipo", placeholder="Tipo o categoría")
     resp = c2_2.text_input("Responsable", placeholder="Nombre")
@@ -560,7 +567,7 @@ with st.form("form_nueva_tarea", clear_on_submit=True):
     estado = _opt_map(c2_3, "Estado", EMO_ESTADO, "No iniciado")
     compl  = _opt_map(c2_4, "Complejidad", EMO_COMPLEJIDAD, "Media")
 
-    # Fechas (sin "(fecha)" en la etiqueta). Hora colapsada en la misma columna.
+    # Fechas sin "(fecha)" en la etiqueta, hora colapsada en la misma columna
     fi_d = c2_5.date_input("Fecha inicio", value=None, key="fi_d")
     fi_t = c2_5.time_input("Hora inicio", value=None, step=60,
                            label_visibility="collapsed", key="fi_t") if fi_d else None
@@ -596,12 +603,9 @@ with st.form("form_nueva_tarea", clear_on_submit=True):
             "Fecha inicio": f_ini,
             "Vencimiento": f_ven,
             "Fecha fin": f_fin,
-            # Guardamos el detalle en una columna existente si quieres:
-            # Si ya tienes una columna "Fase" / "Tipo" / "Responsable", no la pisamos.
-            # Puedes crear una columna nueva "Detalle" en el Sheet para persistirlo.
+            # (Opcional) si quieres persistir "Detalle", agrega "Detalle" a COLS y descomenta:
+            # "Detalle": detalle,
         })
-        # Si quieres persistir "Detalle" en Sheets, asegúrate que tu lista COLS incluya "Detalle":
-        # new["Detalle"] = detalle
 
         new["Duración"]     = duration_days(new["Fecha inicio"], new["Vencimiento"])
         new["Días hábiles"] = business_days(new["Fecha inicio"], new["Vencimiento"])
