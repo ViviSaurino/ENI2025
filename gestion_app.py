@@ -287,6 +287,17 @@ if "df_main" not in st.session_state:
 # ---------- CSS ----------
 st.markdown("""
 <style>
+/* ===== Colores que usamos abajo ===== */
+:root{
+  --lilac:      #B38BE3;
+  --lilac-50:   #F6EEFF;
+  --lilac-600:  #8B5CF6;
+
+  --blue-pill-bg: #EAF2FF;
+  --blue-pill-bd: #BFDBFE;
+  --blue-pill-fg: #0B3B76;
+}
+
 /* ======= separaciones fuertes dentro del formulario ======= */
 
 /* Bloques de columnas (las filas que crea st.columns) */
@@ -322,7 +333,7 @@ st.markdown("""
   margin-bottom: 6px !important;
 }
 
-/* Altura/tamaño de inputs/combos normalizados (como ya tenías) */
+/* Altura/tamaño de inputs/combos normalizados */
 .form-card [data-baseweb="input"] > div,
 .form-card [data-baseweb="textarea"] > div,
 .form-card [data-baseweb="select"] > div,
@@ -341,13 +352,47 @@ st.markdown("""
   font-size: 15px !important;
 }
 
-/* Foco azul (opcional, como ya tenías) */
+/* Foco azul */
 .form-card [data-baseweb="input"] > div:has(input:focus),
 .form-card [data-baseweb="textarea"] > div:has(textarea:focus),
 .form-card [data-baseweb="select"] > div:focus-within,
 .form-card [data-baseweb="datepicker"] > div:focus-within{
   border-color: #60A5FA !important;
   box-shadow: 0 0 0 3px rgba(96,165,250,.25) !important;
+}
+
+/* ===== Sidebar lila (correo a la izquierda) ===== */
+[data-testid="stSidebar"]{
+  background: var(--lilac-50) !important;
+  border-right: 1px solid #ECE6FF !important;
+}
+[data-testid="stSidebar"] a{
+  color: var(--lilac-600) !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+}
+[data-testid="stSidebar"] .stButton > button{
+  border-radius: 12px !important;
+  background: var(--lilac) !important;
+  border: 1px solid var(--lilac) !important;
+  color:#fff !important;
+  font-weight:800 !important;
+  box-shadow: 0 8px 18px rgba(179,139,227,.25) !important;
+}
+[data-testid="stSidebar"] .stButton > button:hover{
+  filter: brightness(.96);
+}
+
+/* ===== Píldoras celestes para subtítulos (.form-title) ===== */
+.form-title{
+  display:inline-flex; align-items:center; gap:.5rem;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: var(--blue-pill-bg);
+  border: 1px solid var(--blue-pill-bd);
+  color: var(--blue-pill-fg);
+  font-weight: 800; letter-spacing: .2px;
+  margin: 6px 0 10px 0;
 }
 </style>
 """, unsafe_allow_html=True)
