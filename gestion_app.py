@@ -444,7 +444,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 with st.form("form_nueva_tarea", clear_on_submit=True):
-    COLS_FORM = [1.1, 1.1, 2.4, 1.3, 1.3]
+    COLS_FORM = [1.1, 1.1, 2.8, 1.1, 1.1]
     r1c1, r1c2, r1c3, r1c4, r1c5 = st.columns(COLS_FORM)
     area = _opt_map(r1c1, "Área", EMO_AREA, "Planeamiento")
     fase = r1c2.text_input("Fase", placeholder="Etapa")
@@ -456,7 +456,7 @@ with st.form("form_nueva_tarea", clear_on_submit=True):
     estado = _opt_map(s2c1, "Estado", EMO_ESTADO, "No iniciado")
     compl  = _opt_map(s2c2, "Complejidad", EMO_COMPLEJIDAD, "Media")
 
-    sub3a, sub3b, sub3c = s2c3.columns([0.7, 0.8, 1.5])
+    sub3a, sub3b, sub3c = s2c3.columns([0.9, 1.3, 0.6])
     prio   = _opt_map(sub3a, "Prioridad", EMO_PRIORIDAD, "Media")
 
     # Calendarios: Fecha + Hora
@@ -767,6 +767,7 @@ with b3:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
