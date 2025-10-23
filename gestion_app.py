@@ -484,8 +484,8 @@ st.markdown("""
             
 /* ===== Píldoras (Nueva tarea / Nueva alerta) — Celeste institucional suave ===== */
 :root{
-  --pill-azul:      #94BEEA;  /* tono de la imagen */
-  --pill-azul-bord: #94BEEA;  /* borde igual */
+  --pill-azul:      #90CAF9;  /* tono de la imagen */
+  --pill-azul-bord: #90CAF9;  /* borde igual */
 }
 
 .form-title{
@@ -905,4 +905,5 @@ with b3:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
