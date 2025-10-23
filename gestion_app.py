@@ -650,7 +650,7 @@ with st.form("form_nueva_alerta", clear_on_submit=True):
     T = 3.2   # Tarea
     D = 2.4   # Detalle
 
-    # -------- Fila 1 (conserva): ID | Tarea | Responsable --------
+    # -------- Fila 1: ID | Tarea | Responsable --------
     # ID = A+F   |   Tarea = T   |   Responsable = D
     r1_id, r1_tarea, r1_resp = st.columns([A + F, T, D], gap="medium")
 
@@ -668,7 +668,7 @@ with st.form("form_nueva_alerta", clear_on_submit=True):
     r1_tarea.text_input("Tarea", value=tarea_auto, disabled=True, key="alerta_tarea_auto")
     r1_resp.text_input("Responsable", value=resp_auto, disabled=True, key="alerta_responsable_auto")
 
-    # -------- Fila 2 (ajustada): ¿Generó?, ¿Se corrigió?, Tipo (ancho T), Fechas (debajo de Responsable) --------
+    # -------- Fila 2: ¿Generó? | ¿Se corrigió? | Tipo de alerta (+ botón) | Fechas apiladas --------
     # Cortes: (A) | (F) | (T) | (D)
     r2_gen, r2_corr, r2_tipo_box, r2_dates = st.columns([A, F, T, D], gap="medium")
 
@@ -680,7 +680,7 @@ with st.form("form_nueva_alerta", clear_on_submit=True):
         tipo_alerta = st.text_input("Tipo de alerta", placeholder="(opcional)", key="alerta_tipo")
         sub_alerta  = st.form_submit_button("🔗 Vincular alerta a tarea", use_container_width=True)
 
-    # Derecha: Fechas apiladas debajo de "Responsable"
+    # Derecha: Fechas apiladas debajo de "Responsable" (misma columna D)
     with r2_dates:
         fa_d = st.date_input("Fecha de alerta (fecha)", value=None, key="alerta_fa_d")
         fa_t = st.time_input("Hora alerta", value=None, step=60,
