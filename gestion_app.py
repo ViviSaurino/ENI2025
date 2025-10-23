@@ -516,7 +516,7 @@ st.markdown("""
 .stButton > button,
 [data-testid="baseButton-secondary"],
 [data-testid="baseButton-primary"]{
-  font-size: 12px !important;      /* ↓ reduce un poco la letra */
+  font-size: 10px !important;      /* ↓ reduce un poco la letra */
   line-height: 1.15 !important;     /* línea más compacta */
   padding: 8px 14px !important;     /* menos alto */
   white-space: nowrap !important;   /* evita que se parta “Guardar en Sheets” */
@@ -951,4 +951,5 @@ with b3:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
