@@ -688,7 +688,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 # ================== Actualizar estado ==================
 st.markdown('<div class="form-card">', unsafe_allow_html=True)
-st.markdown('<div class="form-title"><span class="plus">🔁</span><span class="secico">📌</span> Actualizar estado</div>', unsafe_allow_html=True)
+st.markdown('<div class="form-title"><span class="plus">➕</span><span class="secico">📌</span> Actualizar estado</div>', unsafe_allow_html=True)
 
 st.markdown("""
 <div class="help-strip">
@@ -1147,3 +1147,4 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
