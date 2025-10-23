@@ -408,10 +408,8 @@ st.markdown("""
   overflow: visible !important;
   white-space: nowrap !important;
   text-overflow: clip !important;
-
-  /* ancho cómodo para etiquetas largas como “Planeamiento”, “No iniciado” */
-  width: fit-content !important;
-  min-width: 240px !important;
+  width: fit-content !important;   /* que crezca según el contenido */
+  min-width: 240px !important;     /* sube a 280/300 si lo necesitas */
 }
 
 /* El valor renderizado no debe truncarse */
