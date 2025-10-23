@@ -512,22 +512,39 @@ st.markdown("""
   padding-bottom: 10px !important;
 }
 
-/* === Botón de descarga (Exportar) === */
-a[data-testid="stDownloadButton"],
-a[data-testid="stDownloadButton"] *{
-  font-size: 12px !important;      /* mismo tamaño que los otros */
-  line-height: 1.1 !important;
-  white-space: nowrap !important;   /* no partir el texto */
+            /* === Acciones inferiores: Borrar / Exportar / Guardar === */
+:root{
+  /* Ajusta aquí el tamaño global para los 3 botones */
+  --actions-font: 12px;          /* prueba 12px, 11.5px, 11px si aún no entra */
+  --actions-pad-y: 6px;
+  --actions-pad-x: 12px;
 }
 
-/* padding/borde para igualar look & feel de los st.button */
+/* st.button (Borrar y Guardar) */
+div.stButton > button,
+div.stButton > button *{
+  font-size: var(--actions-font) !important;
+  line-height: 1.05 !important;
+  white-space: nowrap !important;     /* no saltar de línea */
+}
+div.stButton > button{
+  padding: var(--actions-pad-y) var(--actions-pad-x) !important;
+}
+
+/* st.download_button (Exportar) */
+a[data-testid="stDownloadButton"],
+a[data-testid="stDownloadButton"] *{
+  font-size: var(--actions-font) !important;
+  line-height: 1.05 !important;
+  white-space: nowrap !important;
+}
 a[data-testid="stDownloadButton"]{
-  padding: 6px 12px !important;
+  padding: var(--actions-pad-y) var(--actions-pad-x) !important;
   border-radius: 12px !important;
   border: 1px solid #E5E7EB !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 8px !important;              /* separa icono y texto, opcional */
+  gap: 6px !important;               /* menos espacio entre icono y texto */
 }
 
 </style>
@@ -959,4 +976,3 @@ with b3:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
