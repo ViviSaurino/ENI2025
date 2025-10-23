@@ -298,7 +298,7 @@ st.markdown("""
   --blue-pill-fg: #ffffff;
 
   /* <<< Ancho unificado para las 3 píldoras >>> */
-  --pill-width: 260px;  /* ajusta este valor para que termine donde 'Estado' */
+  --pill-width: 220px;  /* ajusta este valor para que termine donde 'Estado' */
 }
 
 /* ======= Separaciones fuertes dentro del formulario ======= */
@@ -1127,3 +1127,4 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
