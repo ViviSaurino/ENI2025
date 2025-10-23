@@ -410,10 +410,26 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
   font-size: 15px !important;
 }
 
+/* ===== Datepicker: alto, borde y padding normalizados ===== */
+[data-baseweb="datepicker"] > div{
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  min-height: 44px !important;
+  padding: 0 10px !important;
+  background: #fff !important;
+  width: 100% !important;
+  min-width: var(--field-min) !important;
+}
+[data-baseweb="datepicker"] input{
+  height: 42px !important;
+  font-size: 15px !important;
+}
+
 /* Foco azul */
 [data-baseweb="input"] > div:has(input:focus),
 [data-baseweb="textarea"] > div:has(textarea:focus),
-[data-baseweb="select"] > div:focus-within{
+[data-baseweb="select"] > div:focus-within,
+[data-baseweb="datepicker"] > div:focus-within{
   border-color: #60A5FA !important;
   box-shadow: 0 0 0 3px rgba(96,165,250,.25) !important;
 }
@@ -475,36 +491,41 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 with st.form("form_nueva_tarea", clear_on_submit=True):
-    # ---- Fila 1: Área | Fase | Tarea | Tipo | Responsable ----
+    # -------- Fila 1: Área | Fase | Tarea | Tipo | Responsable --------
     COLS_FORM = [1.1, 1.1, 2.8, 1.1, 1.1]
     r1c1, r1c2, r1c3, r1c4, r1c5 = st.columns(COLS_FORM)
+
     area = _opt_map(r1c1, "Área", EMO_AREA, "Planeamiento")
     fase  = r1c2.text_input("Fase", placeholder="Etapa")
     tarea = r1c3.text_input("Tarea", placeholder="Describe la tarea")
     tipo  = r1c4.text_input("Tipo", placeholder="Tipo o categoría")
     resp  = r1c5.text_input("Responsable", placeholder="Nombre")
 
-    # ---- Fila 2: Estado | Complejidad | [Prioridad + Fecha inicio] | Vencimiento | Fecha fin ----
+    # -------- Fila 2: Estado | Complejidad | [Prioridad + Fecha inicio] | Vencimiento | Fecha fin --------
     s2c1, s2c2, s2c3, s2c4, s2c5 = st.columns(COLS_FORM)
     estado = _opt_map(s2c1, "Estado", EMO_ESTADO, "No iniciado")
     compl  = _opt_map(s2c2, "Complejidad", EMO_COMPLEJIDAD, "Media")
 
-    # TERCERA COLUMNA (2.8) DIVIDIDA EN 1.0 + 1.8  -> mismo ancho que "Tarea"
+    # La columna 3 (2.8) se reparte en 1.0 + 1.8  -> igual al ancho de "Tarea"
     p_col, fi_col = s2c3.columns([1.0, 1.8])
-    prio = _opt_map(p_col, "Prioridad", EMO_PRIORIDAD, "Media")
 
-    # Calendarios: Fecha + Hora (hora con label oculto)
-    fi_d = fi_col.date_input("Fecha inicio (fecha)", value=None)
-    fi_t = fi_col.time_input("Hora inicio", value=None, step=60,
-                             label_visibility="collapsed") if fi_d else None
+    with p_col:
+        prio = _opt_map(st, "Prioridad", EMO_PRIORIDAD, "Media")
 
-    v_d  = s2c4.date_input("Vencimiento (fecha)", value=None)
-    v_t  = s2c4.time_input("Hora vencimiento", value=None, step=60,
-                           label_visibility="collapsed") if v_d else None
+    with fi_col:
+        fi_d = st.date_input("Fecha inicio (fecha)", value=None, key="fi_d")
+        fi_t = st.time_input("Hora inicio", value=None, step=60,
+                             label_visibility="collapsed", key="fi_t") if fi_d else None
 
-    ff_d = s2c5.date_input("Fecha fin (fecha)", value=None)
-    ff_t = s2c5.time_input("Hora fin", value=None, step=60,
-                           label_visibility="collapsed") if ff_d else None
+    with s2c4:
+        v_d = st.date_input("Vencimiento (fecha)", value=None, key="v_d")
+        v_t = st.time_input("Hora vencimiento", value=None, step=60,
+                            label_visibility="collapsed", key="v_t") if v_d else None
+
+    with s2c5:
+        ff_d = st.date_input("Fecha fin (fecha)", value=None, key="ff_d")
+        ff_t = st.time_input("Hora fin", value=None, step=60,
+                             label_visibility="collapsed", key="ff_t") if ff_d else None
 
     submitted = st.form_submit_button("Agregar y guardar")
     if submitted:
