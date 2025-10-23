@@ -484,8 +484,8 @@ st.markdown("""
             
 /* ===== Píldoras (Nueva tarea / Nueva alerta) — Celeste institucional suave ===== */
 :root{
-  --pill-azul:      #90CAF9;  /* tono de la imagen */
-  --pill-azul-bord: #90CAF9;  /* borde igual */
+  --pill-azul:      #94BEEA;  /* tono de la imagen */
+  --pill-azul-bord: #94BEEA;  /* borde igual */
 }
 
 .form-title{
@@ -590,7 +590,11 @@ with st.form("form_nueva_tarea", clear_on_submit=True):
         key="ff_t"
     ) if ff_d else None
 
-    submitted = st.form_submit_button("Agregar y guardar")
+    # -------- Botón Agregar y guardar (alineado a la derecha con emoji) --------
+    _, _, btn_col = st.columns([1, 1, 0.32], gap="medium")
+    with btn_col:
+        submitted = st.form_submit_button("💾 Agregar y guardar", use_container_width=True)
+
     if submitted:
         df = st.session_state["df_main"].copy()
         new = blank_row()
@@ -667,8 +671,11 @@ with st.form("form_nueva_alerta", clear_on_submit=True):
     fc_t = c5.time_input("Hora alerta corregida", value=None, step=60,
                          label_visibility="collapsed", key="alerta_fc_t") if fc_d else None
 
-    # -------- Botón guardar --------
-    sub_alerta = st.form_submit_button("Vincular alerta a tarea")
+    # -------- Botón Vincular (alineado a la derecha con emoji) --------
+    _, _, btn_col2 = st.columns([1, 1, 0.32], gap="large")
+    with btn_col2:
+        sub_alerta = st.form_submit_button("🔗 Vincular alerta a tarea", use_container_width=True)
+
     if sub_alerta:
         if not id_target or id_target not in st.session_state["df_main"]["Id"].astype(str).values:
             st.warning("ID no encontrado en el historial de tareas.")
@@ -905,5 +912,3 @@ with b3:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
