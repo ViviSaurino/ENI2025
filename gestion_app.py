@@ -435,59 +435,63 @@ st.markdown("""
 }
 
 /* ===================================================================== */
-/* ===============  FORMULARIO DE ALERTAS — GRID EXACTO  =============== */
-/* Añade 'alertas-grid' al contenedor de ESA tarjeta:                    */
-/* <div class="form-card alertas-grid"> ...                              */
+/* ============  AJUSTE ESPECÍFICO: TARJETA DE ALERTAS (SIN CLASE) ===== */
+/* Detecta filas por su número de columnas y las mapea a 5 columnas.     */
+/* Fila 1: 3 columnas (ID, Tarea, Responsable)                           */
+/* Fila 2: 5 columnas (¿Generó?, Tipo, Fecha, ¿Se corrigió?, Fecha corr.)*/
 /* ===================================================================== */
 
-.form-card.alertas-grid{
+/* --- Fila 1: si el bloque tiene EXACTAMENTE 3 columnas --- */
+.form-card [data-testid="stHorizontalBlock"]
+  :is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4)))){
   display: grid !important;
-  grid-template-columns: repeat(5, 1fr);   /* A B C D E */
-  grid-column-gap: 20px;
-  grid-row-gap: 16px;
-  align-items: start;
+  grid-template-columns: repeat(5, 1fr) !important; /* A B C D E */
+  grid-column-gap: 20px !important;
 }
 
-/* Aplana los st.columns para usarlos como celdas de la grilla */
-.form-card.alertas-grid [data-testid="stHorizontalBlock"]{
-  display: contents !important;
+/* Reubicación: 1->A (ID), 2->C..E (Tarea), 3->B (Responsable) */
+.form-card [data-testid="stHorizontalBlock"]
+  :is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))))
+  > [data-testid="column"]:nth-of-type(1){ grid-column: 1 !important; }
+.form-card [data-testid="stHorizontalBlock"]
+  :is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))))
+  > [data-testid="column"]:nth-of-type(2){ grid-column: 3 / 6 !important; }
+.form-card [data-testid="stHorizontalBlock"]
+  :is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))))
+  > [data-testid="column"]:nth-of-type(3){ grid-column: 2 !important; }
+
+/* --- Fila 2: si el bloque tiene EXACTAMENTE 5 columnas --- */
+.form-card [data-testid="stHorizontalBlock"]
+  :is(:has(> [data-testid="column"]:nth-of-type(5)):not(:has(> [data-testid="column"]:nth-of-type(6)))){
+  display: grid !important;
+  grid-template-columns: repeat(5, 1fr) !important; /* A B C D E */
+  grid-column-gap: 20px !important;
 }
 
-/* Inputs al 100% del ancho de su celda */
-.form-card.alertas-grid [data-baseweb="input"] > div,
-.form-card.alertas-grid [data-baseweb="textarea"] > div,
-.form-card.alertas-grid [data-baseweb="select"] > div,
-.form-card.alertas-grid [data-baseweb="datepicker"] > div{
-  width: 100% !important;
+/* Anchos consistentes y selects al 100% dentro de estas filas */
+.form-card [data-testid="stHorizontalBlock"]
+  :is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))),
+      :has(> [data-testid="column"]:nth-of-type(5)):not(:has(> [data-testid="column"]:nth-of-type(6))))
+  [data-baseweb="select"] > div{
+    min-width: 0 !important;
+    width: 100% !important;
+    white-space: normal !important;
 }
 
-/* En esta tarjeta NO queremos selects 'fit-content' */
-.form-card.alertas-grid [data-baseweb="select"] > div{
-  min-width: 0 !important;
-  width: 100% !important;
-  white-space: normal !important;
+/* Inputs en estas filas ocupan todo el ancho de su celda */
+.form-card [data-testid="stHorizontalBlock"]
+  :is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))),
+      :has(> [data-testid="column"]:nth-of-type(5)):not(:has(> [data-testid="column"]:nth-of-type(6))))
+  [data-baseweb="input"] > div,
+.form-card [data-testid="stHorizontalBlock"]
+  :is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))),
+      :has(> [data-testid="column"]:nth-of-type(5)):not(:has(> [data-testid="column"]:nth-of-type(6))))
+  [data-baseweb="datepicker"] > div{
+    width: 100% !important;
 }
 
-/* ===== Posición por orden de creación (8 campos) =====
-   1: ID, 2: Tarea, 3: Responsable,
-   4: ¿Generó alerta?, 5: Tipo de alerta, 6: Fecha de alerta,
-   7: ¿Se corrigió la alerta?, 8: Fecha alerta corregida
-*/
-
-/* Fila 1 */
-.form-card.alertas-grid [data-testid="column"]:nth-of-type(1){ grid-column: 1; }           /* ID -> A */
-.form-card.alertas-grid [data-testid="column"]:nth-of-type(2){ grid-column: 3 / span 3; }  /* Tarea -> C+D+E */
-.form-card.alertas-grid [data-testid="column"]:nth-of-type(3){ grid-column: 2; }           /* Responsable -> B */
-
-/* Fila 2 */
-.form-card.alertas-grid [data-testid="column"]:nth-of-type(4){ grid-column: 1; }           /* ¿Generó? -> A (ancho = ID) */
-.form-card.alertas-grid [data-testid="column"]:nth-of-type(5){ grid-column: 2; }           /* Tipo -> B (ancho = Responsable) */
-.form-card.alertas-grid [data-testid="column"]:nth-of-type(6){ grid-column: 3; }           /* Fecha alerta -> C */
-.form-card.alertas-grid [data-testid="column"]:nth-of-type(7){ grid-column: 4; }           /* ¿Se corrigió? -> D */
-.form-card.alertas-grid [data-testid="column"]:nth-of-type(8){ grid-column: 5; }           /* Fecha corregida -> E */
-
-/* Botón debajo ocupando todo (si existe) */
-.form-card.alertas-grid .stButton{ grid-column: 1 / -1; }
+/* (Opcional) Botón de esta tarjeta a lo ancho si está justo debajo */
+.form-card .stButton{ max-width: 100%; }
 
 </style>
 """, unsafe_allow_html=True)
