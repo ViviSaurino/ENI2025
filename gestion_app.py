@@ -403,6 +403,31 @@ st.markdown("""
   font-weight: 800; letter-spacing: .2px;
   margin: 6px 0 10px 0;
 }
+
+/* ===== Mostrar texto completo en los SELECT (Área, Estado, etc.) ===== */
+.form-card [data-baseweb="select"] > div{
+  overflow: visible !important;
+  white-space: nowrap !important;
+  text-overflow: clip !important;
+
+  /* ancho cómodo para etiquetas largas como "Planeamiento" */
+  width: fit-content !important;
+  min-width: 240px !important;
+}
+
+/* El valor renderizado dentro del select tampoco debe recortarse */
+.form-card [data-baseweb="select"] [role="combobox"]{
+  overflow: visible !important;
+  white-space: nowrap !important;
+  text-overflow: clip !important;
+}
+
+/* En pantallas pequeñas reduce ligeramente el mínimo */
+@media (max-width: 980px){
+  .form-card [data-baseweb="select"] > div{
+    min-width: 200px !important;
+  }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -793,7 +818,3 @@ with b3:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
-
