@@ -482,21 +482,22 @@ st.markdown("""
   white-space: normal !important;
 }
             
-/* ===== Píldoras de sección (Nueva tarea / Nueva alerta) azul pastel ===== */
+/* ===== Píldoras (Nueva tarea / Nueva alerta) — Celeste institucional suave ===== */
 :root{
-  --pill-azul:      #8DD1FF;  /* tono del ejemplo (celeste pastel) */
-  --pill-azul-bord: #5CB8F8;  /* borde ligeramente más oscuro */
+  --pill-azul:      #94BEEA;  /* tono de la imagen */
+  --pill-azul-bord: #7DA9D8;  /* borde ligeramente más oscuro */
 }
 
 .form-title{
   background: var(--pill-azul) !important;
   border: 1px solid var(--pill-azul-bord) !important;
-  color: #ffffff !important;
-  box-shadow: 0 6px 16px rgba(141,209,255,.3) !important;
+  color: #ffffff !important; /* letras blancas */
+  box-shadow: 0 6px 16px rgba(148,190,234,.3) !important;
   display: inline-flex !important;
   align-items: center !important;
   gap: 6px !important;
   margin-right: 10px !important;
+  font-weight: 700 !important;
 }
             
 </style>
