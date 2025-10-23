@@ -433,6 +433,62 @@ st.markdown("""
     min-width: 200px !important;
   }
 }
+
+/* ===================================================================== */
+/* ===============  FORMULARIO DE ALERTAS — GRID EXACTO  =============== */
+/* Añade 'alertas-grid' al contenedor de ESA tarjeta:                    */
+/* <div class="form-card alertas-grid"> ...                              */
+/* ===================================================================== */
+
+.form-card.alertas-grid{
+  display: grid !important;
+  grid-template-columns: repeat(5, 1fr);   /* A B C D E */
+  grid-column-gap: 20px;
+  grid-row-gap: 16px;
+  align-items: start;
+}
+
+/* Aplana los st.columns para usarlos como celdas de la grilla */
+.form-card.alertas-grid [data-testid="stHorizontalBlock"]{
+  display: contents !important;
+}
+
+/* Inputs al 100% del ancho de su celda */
+.form-card.alertas-grid [data-baseweb="input"] > div,
+.form-card.alertas-grid [data-baseweb="textarea"] > div,
+.form-card.alertas-grid [data-baseweb="select"] > div,
+.form-card.alertas-grid [data-baseweb="datepicker"] > div{
+  width: 100% !important;
+}
+
+/* En esta tarjeta NO queremos selects 'fit-content' */
+.form-card.alertas-grid [data-baseweb="select"] > div{
+  min-width: 0 !important;
+  width: 100% !important;
+  white-space: normal !important;
+}
+
+/* ===== Posición por orden de creación (8 campos) =====
+   1: ID, 2: Tarea, 3: Responsable,
+   4: ¿Generó alerta?, 5: Tipo de alerta, 6: Fecha de alerta,
+   7: ¿Se corrigió la alerta?, 8: Fecha alerta corregida
+*/
+
+/* Fila 1 */
+.form-card.alertas-grid [data-testid="column"]:nth-of-type(1){ grid-column: 1; }           /* ID -> A */
+.form-card.alertas-grid [data-testid="column"]:nth-of-type(2){ grid-column: 3 / span 3; }  /* Tarea -> C+D+E */
+.form-card.alertas-grid [data-testid="column"]:nth-of-type(3){ grid-column: 2; }           /* Responsable -> B */
+
+/* Fila 2 */
+.form-card.alertas-grid [data-testid="column"]:nth-of-type(4){ grid-column: 1; }           /* ¿Generó? -> A (ancho = ID) */
+.form-card.alertas-grid [data-testid="column"]:nth-of-type(5){ grid-column: 2; }           /* Tipo -> B (ancho = Responsable) */
+.form-card.alertas-grid [data-testid="column"]:nth-of-type(6){ grid-column: 3; }           /* Fecha alerta -> C */
+.form-card.alertas-grid [data-testid="column"]:nth-of-type(7){ grid-column: 4; }           /* ¿Se corrigió? -> D */
+.form-card.alertas-grid [data-testid="column"]:nth-of-type(8){ grid-column: 5; }           /* Fecha corregida -> E */
+
+/* Botón debajo ocupando todo (si existe) */
+.form-card.alertas-grid .stButton{ grid-column: 1 / -1; }
+
 </style>
 """, unsafe_allow_html=True)
 
