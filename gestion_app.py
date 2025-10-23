@@ -293,9 +293,9 @@ st.markdown("""
   --lilac-50:   #F6EEFF;
   --lilac-600:  #8B5CF6;
 
-  --blue-pill-bg: #38BDF8
-  --blue-pill-bd: #0EA5E9
-  --blue-pill-fg: #ffffff
+  --blue-pill-bg: #38BDF8;
+  --blue-pill-bd: #0EA5E9;
+  --blue-pill-fg: #ffffff;
 }
 
 /* ======= Separaciones fuertes dentro del formulario ======= */
@@ -499,7 +499,19 @@ st.markdown("""
   margin-right: 10px !important;
   font-weight: 700 !important;
 }
-            
+
+/* ====== Botón del formulario al 100% del ancho (igual a "Fecha fin") ====== */
+.form-card .stButton > button,
+.form-card [data-testid="baseButton-secondary"],
+.form-card [data-testid="baseButton-primary"]{
+  width: 100% !important;
+}
+/* Opcional: misma altura visual que los inputs */
+.form-card .stButton > button{
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -580,45 +592,44 @@ with st.form("form_nueva_tarea", clear_on_submit=True):
     ff_t = c2_7.time_input("Hora fin", value=None, step=60,
                            label_visibility="collapsed", key="ff_t") if ff_d else None
 
-    # -------- Botón Agregar y guardar (alineado a la derecha con emoji) --------
-    _, _, btn_col = st.columns([1, 1, 0.32], gap="medium")
-    with btn_col:
-        submitted = st.form_submit_button("💾 Agregar y guardar", use_container_width=True)
+    # -------- Botón Agregar y guardar (mismo ancho que "Fecha fin") --------
+with c2_7:
+    submitted = st.form_submit_button("💾 Agregar y guardar", use_container_width=True)
 
-    if submitted:
-        df = st.session_state["df_main"].copy()
-        new = blank_row()
-        f_ini = combine_dt(fi_d, fi_t)
-        f_ven = combine_dt(v_d,  v_t)
-        f_fin = combine_dt(ff_d, ff_t)
-        new.update({
-            "Área": area,
-            "Id": next_id(df),
-            "Tarea": tarea,
-            "Tipo": tipo,
-            "Responsable": resp,
-            "Fase": fase,
-            "Complejidad": compl,
-            "Estado": estado,
-            "Fecha inicio": f_ini,
-            "Vencimiento": f_ven,
-            "Fecha fin": f_fin,
-            # (Opcional) si quieres persistir "Detalle", agrega "Detalle" a COLS y descomenta:
-            # "Detalle": detalle,
-        })
+if submitted:
+    df = st.session_state["df_main"].copy()
+    new = blank_row()
+    f_ini = combine_dt(fi_d, fi_t)
+    f_ven = combine_dt(v_d,  v_t)
+    f_fin = combine_dt(ff_d, ff_t)
+    new.update({
+        "Área": area,
+        "Id": next_id(df),
+        "Tarea": tarea,
+        "Tipo": tipo,
+        "Responsable": resp,
+        "Fase": fase,
+        "Complejidad": compl,
+        "Estado": estado,
+        "Fecha inicio": f_ini,
+        "Vencimiento": f_ven,
+        "Fecha fin": f_fin,
+        # (Opcional) si quieres persistir "Detalle", agrega "Detalle" a COLS y descomenta:
+        # "Detalle": detalle,
+    })
 
-        new["Duración"]     = duration_days(new["Fecha inicio"], new["Vencimiento"])
-        new["Días hábiles"] = business_days(new["Fecha inicio"], new["Vencimiento"])
+    new["Duración"]     = duration_days(new["Fecha inicio"], new["Vencimiento"])
+    new["Días hábiles"] = business_days(new["Fecha inicio"], new["Vencimiento"])
 
-        df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
-        st.session_state["df_main"] = df.copy()
-        path_ok = os.path.join("data", "tareas.csv")
-        os.makedirs("data", exist_ok=True)
-        df.reindex(columns=COLS, fill_value=None).to_csv(
-            path_ok, index=False, encoding="utf-8-sig", mode="w"
-        )
-        ok, msg = _write_sheet_tab(df[COLS].copy())
-        st.success(f"✔ Tarea agregada ({new['Id']}). {msg}") if ok else st.warning(f"Agregado localmente. {msg}")
+    df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
+    st.session_state["df_main"] = df.copy()
+    path_ok = os.path.join("data", "tareas.csv")
+    os.makedirs("data", exist_ok=True)
+    df.reindex(columns=COLS, fill_value=None).to_csv(
+        path_ok, index=False, encoding="utf-8-sig", mode="w"
+    )
+    ok, msg = _write_sheet_tab(df[COLS].copy())
+    st.success(f"✔ Tarea agregada ({new['Id']}). {msg}") if ok else st.warning(f"Agregado localmente. {msg}")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
