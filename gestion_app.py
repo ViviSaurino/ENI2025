@@ -482,18 +482,18 @@ st.markdown("""
   white-space: normal !important;
 }
             
-/* ===== Píldoras de sección (Nueva tarea / Nueva alerta) en CELESTE ===== */
+/* ===== Píldoras de sección (Nueva tarea / Nueva alerta) tono celeste suave ===== */
 :root{
-  /* paleta celeste */
-  --pill-celeste:      #38BDF8; /* bg */
-  --pill-celeste-bord: #0EA5E9; /* borde */
+  /* celeste más soft */
+  --pill-celeste:      #7DD3FC; /* bg (Sky 300) */
+  --pill-celeste-bord: #38BDF8; /* borde (Sky 400) */
 }
 
 .form-title{
   background: var(--pill-celeste) !important;
   border: 1px solid var(--pill-celeste-bord) !important;
-  color: #ffffff !important;          /* texto blanco */
-  box-shadow: 0 6px 16px rgba(14,165,233,.18) !important; /* sutil */
+  color: #ffffff !important;                 /* texto blanco */
+  box-shadow: 0 6px 16px rgba(56,189,248,.18) !important;
 }
 </style>
 """, unsafe_allow_html=True)
