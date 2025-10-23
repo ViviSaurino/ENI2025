@@ -287,202 +287,67 @@ if "df_main" not in st.session_state:
 # ---------- CSS ----------
 st.markdown("""
 <style>
-/* ===================== Tema ENI — Gestión ===================== */
-:root{
-  --lilac:      #B38BE3;
-  --lilac-50:   #F6EEFF;
-  --lilac-600:  #8B5CF6;
-  --ink:        #111827;
-  --muted:      #64748B;
-  --card:       #FFFFFF;
-  --border:     #E5E7EB;
-  --shadow:     0 6px 20px rgba(2,8,23,.06);
+/* ======= separaciones fuertes dentro del formulario ======= */
 
-  --blue-pill-bg: #EAF2FF;
-  --blue-pill-bd: #BFDBFE;
-  --blue-pill-fg: #0B3B76;
-
-  --field-min: 210px; /* ancho mínimo de campos */
-}
-
-/* ===== Ancho del contenido principal ===== */
-.block-container{
-  max-width: 1280px;
-  width: min(98vw, 1600px);
-}
-
-/* ===== Título ===== */
-h1, .stMarkdown h1{
-  color: var(--ink) !important;
-  font-weight: 900 !important;
-  letter-spacing: .3px;
-  margin: 6px 0 18px 0 !important;
-}
-
-/* ===== Ocultar SOLO la barra/rectángulo bajo el título ===== */
-.block-container > div:has(h1) + div [data-baseweb="input"]{
-  display: none !important;
-}
-.form-card [data-baseweb="input"]{ display: block !important; }
-.form-card [data-baseweb="input"] > div{ display: flex !important; }
-
-/* ===== Sidebar lila angosta ===== */
-[data-testid="stSidebar"]{
-  background: var(--lilac-50) !important;
-  border-right: 1px solid #ECE6FF !important;
-  width: 220px !important;
-  min-width: 220px !important;
-}
-[data-testid="stSidebar"] a{
-  color: var(--lilac-600) !important;
-  font-weight: 600;
-  text-decoration: none;
-}
-[data-testid="stSidebar"] .stButton > button{
-  border-radius: 12px !important;
-  background: var(--lilac) !important;
-  border: 1px solid var(--lilac) !important;
-  color:#fff !important; font-weight:800 !important;
-  box-shadow: 0 8px 18px rgba(179,139,227,.25) !important;
-}
-[data-testid="stSidebar"] .stButton > button:hover{ filter: brightness(.96); }
-
-/* ===== Tarjetas ===== */
-div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: var(--shadow);
-  padding: 14px 14px 10px 14px;
-  margin-bottom: 16px;
-}
-
-/* ===== Subtítulos (pastilla) ===== */
-.form-card{
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: var(--shadow);
-  padding: 10px 12px 12px 12px;
-  margin: 10px 0 18px 0;
-}
-.form-title{
-  display: inline-flex; align-items: center; gap:.5rem;
-  padding: 6px 12px;
-  border-radius: 12px;
-  background: var(--blue-pill-bg);
-  border: 1px solid var(--blue-pill-bd);
-  color: var(--blue-pill-fg);
-  font-weight: 800; letter-spacing: .2px;
-  margin-bottom: 10px;
-}
-
-/* =========================================================
-   Layout del formulario – SEPARACIÓN ENTRE CELDAS
-   ========================================================= */
-
-/* (1) Espaciado entre columnas y entre filas del bloque principal */
+/* Bloques de columnas (las filas que crea st.columns) */
 .form-card [data-testid="stHorizontalBlock"]{
-  display: flex !important;
-  flex-wrap: wrap !important;
-  column-gap: 18px !important;   /* ← separa columnas */
-  row-gap: 14px !important;      /* ← separa filas   */
-  align-items: flex-start !important;
+  display: grid !important;            /* forzamos grid */
+  grid-auto-flow: row dense !important;
+  grid-row-gap: 16px !important;       /* espacio entre FILAS */
+  grid-column-gap: 20px !important;    /* espacio entre COLUMNAS */
+  align-items: start !important;
 }
 
-/* (2) Los sub-bloques anidados (p.ej. Prioridad + Fecha inicio) también con gap */
+/* Además, cada columna aporta un padding de seguridad */
+.form-card [data-testid="column"]{
+  padding-right: 12px !important;
+  box-sizing: border-box !important;
+}
+/* la última columna de la fila no necesita padding extra */
+.form-card [data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child{
+  padding-right: 0 !important;
+}
+
+/* Sub-bloques anidados (p. ej., Prioridad + Fecha inicio) con hueco propio */
 .form-card [data-testid="stHorizontalBlock"] [data-testid="stHorizontalBlock"]{
-  column-gap: 16px !important;
-  row-gap: 12px !important;
+  display: grid !important;
+  grid-column-gap: 16px !important;
+  grid-row-gap: 12px !important;
 }
 
-/* (3) Pequeño margen inferior en cada control para que “respiren” */
+/* Pequeño margen inferior en cada control para que “respire” */
 .form-card [data-baseweb],
 .form-card [data-testid="stWidgetLabel"],
 .form-card [data-baseweb] > div{
   margin-bottom: 6px !important;
 }
 
-/* ===== Inputs / Selects: bordes, foco y tamaños ===== */
-[data-baseweb="input"] > div,
-[data-baseweb="textarea"] > div,
-[data-baseweb="select"] > div{
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: none;
-  transition: border-color .15s ease, box-shadow .15s ease;
-  padding-top: 6px !important;
-  padding-bottom: 6px !important;
-  width: 100% !important;
-  min-width: var(--field-min) !important;
+/* Altura/tamaño de inputs/combos normalizados (como ya tenías) */
+.form-card [data-baseweb="input"] > div,
+.form-card [data-baseweb="textarea"] > div,
+.form-card [data-baseweb="select"] > div,
+.form-card [data-baseweb="datepicker"] > div{
   min-height: 44px !important;
-  box-sizing: border-box !important;
-}
-
-/* Evitar recortes en SELECTS (ver todo el texto) */
-[data-baseweb="select"] > div{ overflow: visible !important; }
-[data-baseweb="select"] *{
-  text-overflow: clip !important;
-  white-space: nowrap !important;
-  overflow: visible !important;
-  max-width: none !important;
-}
-[data-baseweb="select"] [role="combobox"]{
-  min-height: 42px !important;
-  display: flex; align-items: center;
-}
-
-/* Tipografía de campos */
-[data-baseweb="input"] input,
-[data-baseweb="textarea"] textarea,
-[data-baseweb="select"] div{
-  font-size: 15px !important;
-  line-height: 1.2 !important;
-}
-
-/* ===== Datepicker ===== */
-[data-baseweb="datepicker"] > div{
-  border: 1px solid var(--border) !important;
   border-radius: 12px !important;
-  min-height: 44px !important;
-  padding: 0 10px !important;
+  border: 1px solid #E5E7EB !important;
   background: #fff !important;
   width: 100% !important;
-  min-width: var(--field-min) !important;
   box-sizing: border-box !important;
 }
-[data-baseweb="datepicker"] input{
-  height: 42px !important;
+.form-card [data-baseweb="input"] input,
+.form-card [data-baseweb="textarea"] textarea,
+.form-card [data-baseweb="select"] div,
+.form-card [data-baseweb="datepicker"] input{
   font-size: 15px !important;
 }
 
-/* Foco azul */
-[data-baseweb="input"] > div:has(input:focus),
-[data-baseweb="textarea"] > div:has(textarea:focus),
-[data-baseweb="select"] > div:focus-within,
-[data-baseweb="datepicker"] > div:focus-within{
+/* Foco azul (opcional, como ya tenías) */
+.form-card [data-baseweb="input"] > div:has(input:focus),
+.form-card [data-baseweb="textarea"] > div:has(textarea:focus),
+.form-card [data-baseweb="select"] > div:focus-within,
+.form-card [data-baseweb="datepicker"] > div:focus-within{
   border-color: #60A5FA !important;
   box-shadow: 0 0 0 3px rgba(96,165,250,.25) !important;
-}
-
-/* ===== Botones ===== */
-.stButton > button,
-.row-widget.stButton > div > button{
-  border-radius: 12px !important;
-  min-height: 44px;
-  border: 1px solid #60A5FA !important;
-  background: #60A5FA !important;
-  color:#fff !important; font-weight:800 !important;
-  box-shadow: 0 6px 18px rgba(96,165,250,.20) !important;
-}
-.stButton > button:hover,
-.row-widget.stButton > div > button:hover{ filter: brightness(.96); }
-
-/* ===== Accesibilidad: foco global ===== */
-*:focus-visible{
-  outline: none !important;
-  box-shadow: 0 0 0 3px rgba(179,139,227,.28) !important;
 }
 </style>
 """, unsafe_allow_html=True)
