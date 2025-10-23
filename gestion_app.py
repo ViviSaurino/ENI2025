@@ -305,7 +305,7 @@ st.markdown("""
 
 /* Ancho del contenido principal (más ancho) */
 .block-container{
-  max-width: 1000px;
+  max-width: 1500px;
   width: min(96vw, 1500px);
 }
 
@@ -321,6 +321,8 @@ h1, .stMarkdown h1{
 [data-testid="stSidebar"]{
   background: var(--lilac-50) !important;
   border-right: 1px solid #ECE6FF !important;
+  width: 220px !important;        /* 🔹 reduce el ancho */
+  min-width: 220px !important;    /* 🔹 asegura que no se estire */
 }
 [data-testid="stSidebar"] a{
   color: var(--lilac-600) !important;
@@ -765,4 +767,3 @@ with b3:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
