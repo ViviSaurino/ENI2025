@@ -931,13 +931,20 @@ if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
     except Exception:
         pass
 
-# ---- Botones (alineados al ancho de "Área") ----
-# Usamos los mismos pesos que arriba: Área = A+F; el resto (T + D) queda de espaciador
-b1, b2, b3, _spacer = st.columns([(A + F)/3, (A + F)/3, (A + F)/3, T + D])
+# ---- Botones (alineados al ancho de Área + Responsable) ----
+# Usamos las mismas proporciones definidas arriba: A, F, T, D
+total_btn_width = (A + F) + (T / 2)   # Área + Responsable
+btn_w = total_btn_width / 4
 
-with b1:
+b_del, b_xlsx, b_csv, b_save, _spacer = st.columns(
+    [btn_w, btn_w, btn_w, btn_w, (T / 2) + D],  # el resto de la fila (Estado + fechas) como espaciador
+    gap="medium"
+)
+
+# 1) Borrar seleccionados
+with b_del:
     sel_rows = grid.get("selected_rows", []) if isinstance(grid, dict) else []
-    if st.button("🗑️ Borrar", use_container_width=True):
+    if st.button("🗑️ Borrar seleccionados", use_container_width=True):
         ids = pd.DataFrame(sel_rows)["Id"].astype(str).tolist() if sel_rows else []
         if ids:
             df0 = st.session_state["df_main"]
@@ -946,16 +953,27 @@ with b1:
         else:
             st.warning("No hay filas seleccionadas.")
 
-with b2:
+# 2) Exportar Excel
+with b_xlsx:
     try:
         xlsx_b = export_excel(st.session_state["df_main"][COLS], sheet=TAB_NAME)
-        st.download_button("⬇️ Exportar", data=xlsx_b, file_name="tareas.xlsx",
+        st.download_button("⬇️ Exportar Excel", data=xlsx_b, file_name="tareas.xlsx",
                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                            use_container_width=True)
     except Exception as e:
         st.error(f"No pude generar Excel: {e}")
 
-with b3:
+# 3) Exportar CSV
+with b_csv:
+    try:
+        csv_b = st.session_state["df_main"][COLS].to_csv(index=False, encoding="utf-8-sig")
+        st.download_button("⬇️ Exportar CSV", data=csv_b, file_name="tareas.csv",
+                           mime="text/csv", use_container_width=True)
+    except Exception as e:
+        st.error(f"No pude generar CSV: {e}")
+
+# 4) Guardar en Sheets
+with b_save:
     if st.button("💾 Guardar en Sheets", use_container_width=True):
         df = st.session_state["df_main"][COLS].copy()
         _save_local(df.copy())
