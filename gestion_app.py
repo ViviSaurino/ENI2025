@@ -668,27 +668,27 @@ with st.form("form_nueva_alerta", clear_on_submit=True):
     r1_tarea.text_input("Tarea", value=tarea_auto, disabled=True, key="alerta_tarea_auto")
     r1_resp.text_input("Responsable", value=resp_auto, disabled=True, key="alerta_responsable_auto")
 
-    # -------- Fila 2 (nuevo orden): ¿Generó?, ¿Se corrigió?, Tipo, Fecha, Fecha corregida --------
-    # Para cuadrar bajo los cortes verticales:
-    # (A) | (F) | (T/2) | (T/2) | (D)
-    r2_gen, r2_corr, r2_tipo, r2_fa, r2_fc = st.columns([A, F, T/2, T/2, D], gap="medium")
+    # -------- Fila 2 (ajustada): ¿Generó?, ¿Se corrigió?, Tipo (ancho T), Fechas (debajo de Responsable) --------
+    # Cortes: (A) | (F) | (T) | (D)
+    r2_gen, r2_corr, r2_tipo_box, r2_dates = st.columns([A, F, T, D], gap="medium")
 
     genero_alerta = _opt_map(r2_gen,  "¿Generó alerta?",        EMO_SI_NO, "No")
     corr_alerta   = _opt_map(r2_corr, "¿Se corrigió la alerta?", EMO_SI_NO, "No")
 
-    tipo_alerta = r2_tipo.text_input("Tipo de alerta", placeholder="(opcional)", key="alerta_tipo")
+    # Centro: Tipo de alerta (mismo ancho que "Tarea") + BOTÓN con ese mismo ancho
+    with r2_tipo_box:
+        tipo_alerta = st.text_input("Tipo de alerta", placeholder="(opcional)", key="alerta_tipo")
+        sub_alerta  = st.form_submit_button("🔗 Vincular alerta a tarea", use_container_width=True)
 
-    fa_d = r2_fa.date_input("Fecha de alerta (fecha)", value=None, key="alerta_fa_d")
-    fa_t = r2_fa.time_input("Hora alerta", value=None, step=60,
-                            label_visibility="collapsed", key="alerta_fa_t") if fa_d else None
+    # Derecha: Fechas apiladas debajo de "Responsable"
+    with r2_dates:
+        fa_d = st.date_input("Fecha de alerta (fecha)", value=None, key="alerta_fa_d")
+        fa_t = st.time_input("Hora alerta", value=None, step=60,
+                             label_visibility="collapsed", key="alerta_fa_t") if fa_d else None
 
-    fc_d = r2_fc.date_input("Fecha alerta corregida (fecha)", value=None, key="alerta_fc_d")
-    fc_t = r2_fc.time_input("Hora alerta corregida", value=None, step=60,
-                            label_visibility="collapsed", key="alerta_fc_t") if fc_d else None
-
-    # -------- Botón (mismo ancho que "Fecha alerta corregida") --------
-    with r2_fc:
-        sub_alerta = st.form_submit_button("🔗 Vincular alerta a tarea", use_container_width=True)
+        fc_d = st.date_input("Fecha alerta corregida (fecha)", value=None, key="alerta_fc_d")
+        fc_t = st.time_input("Hora alerta corregida", value=None, step=60,
+                             label_visibility="collapsed", key="alerta_fc_t") if fc_d else None
 
     # ---------- Lógica al enviar ----------
     if sub_alerta:
