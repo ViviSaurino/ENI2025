@@ -659,7 +659,7 @@ st.markdown('<div class="form-title"><span class="plus">🔁</span><span class="
 
 st.markdown("""
 <div class="help-strip">
-  🔄 <strong>Actualiza el estado</strong> de una tarea ya registrada usando los filtros y seleccionando la tarea.
+  🔄 <strong>Actualiza el estado</strong> de una tarea ya registrada usando los filtros.
 </div>
 """, unsafe_allow_html=True)
 
@@ -730,9 +730,9 @@ with st.form("form_actualizar_estado", clear_on_submit=False):
     # Estado (igual a la familia de “Fecha fin” en ancho)
     upd_estado = c_estado.selectbox("Estado", options=["En curso", "Terminado", "Cancelado", "Pausado"], key="upd_estado_sel")
 
-    # Botón alineado a la derecha, texto solicitado
-    _sp, btn_col = st.columns([5, 1])
-    with btn_col:
+    # Botón debajo de "Estado" con el mismo ancho
+    with c_estado:
+        st.write("")  # separador opcional
         do_update_estado = st.form_submit_button("🔗 Vincular estado a tarea", use_container_width=True)
 
 # Lógica de guardado
