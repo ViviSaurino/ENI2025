@@ -681,7 +681,7 @@ with st.form("form_nueva_alerta", clear_on_submit=True):
     fa_t = r2_fa.time_input("Hora alerta", value=None, step=60,
                             label_visibility="collapsed", key="alerta_fa_t") if fa_d else None
 
-    fc_d = r2_fc.date_input("Fecha alerta corregida", value=None, key="alerta_fc_d")
+    fc_d = r2_fc.date_input("Fecha alerta corregida (fecha)", value=None, key="alerta_fc_d")
     fc_t = r2_fc.time_input("Hora alerta corregida", value=None, step=60,
                             label_visibility="collapsed", key="alerta_fc_t") if fc_d else None
 
@@ -713,24 +713,39 @@ st.markdown('</div>', unsafe_allow_html=True)
 # ================== Historial ==================
 st.subheader("📝 Tareas recientes")
 
-# ---- FILA DE 3 FILTROS: Área, Estado, Responsable ----
+# ---- FILA DE 5 FILTROS: Área, Responsable, Estado, Desde, Hasta ----
 df_view = st.session_state["df_main"].copy()
 
-cA, cE, cR = st.columns([1, 1, 1.4])
+# Lista de responsables antes de filtrar
+responsables = sorted([x for x in df_view["Responsable"].astype(str).unique() if x and x != "nan"])
 
-area_sel   = cA.selectbox("Área", options=["Todas"] + AREAS_OPC, index=0)
+# Controles
+cA, cR, cE, cD, cH = st.columns([1, 1.4, 1, 0.9, 0.9])
+
+area_sel = cA.selectbox("Área", options=["Todas"] + AREAS_OPC, index=0)
+resp_sel = cR.selectbox("Responsable", options=["Todos"] + responsables, index=0)
 estado_sel = cE.selectbox("Estado", options=["Todos"] + ESTADO, index=0)
 
-responsables = sorted([x for x in df_view["Responsable"].astype(str).unique() if x and x != "nan"])
-resp_sel = cR.selectbox("Responsable", options=["Todos"] + responsables, index=0)
+# Fechas (calendario) para filtrar por rango
+f_desde = cD.date_input("Desde", value=None, key="f_desde")
+f_hasta = cH.date_input("Hasta",  value=None, key="f_hasta")
+
+# Convertir 'Fecha inicio' a datetime para el filtrado por rango
+df_view["Fecha inicio"] = pd.to_datetime(df_view.get("Fecha inicio"), errors="coerce")
 
 # Aplicar filtros
 if area_sel != "Todas":
     df_view = df_view[df_view["Área"] == area_sel]
-if estado_sel != "Todos":
-    df_view = df_view[df_view["Estado"] == estado_sel]
 if resp_sel != "Todos":
     df_view = df_view[df_view["Responsable"].astype(str) == resp_sel]
+if estado_sel != "Todos":
+    df_view = df_view[df_view["Estado"] == estado_sel]
+
+# Filtro por rango de fechas (sobre 'Fecha inicio')
+if f_desde:
+    df_view = df_view[df_view["Fecha inicio"].dt.date >= f_desde]
+if f_hasta:
+    df_view = df_view[df_view["Fecha inicio"].dt.date <= f_hasta]
 
 for c in COLS:
     if c not in df_view.columns: df_view[c] = None
@@ -926,5 +941,3 @@ with b3:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
