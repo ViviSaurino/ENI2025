@@ -516,7 +516,7 @@ st.markdown("""
 /* Fuerza tamaño de letra y que el texto no se parta en 2 líneas */
 div.stButton > button,
 div.stButton > button * {
-  font-size: 13px !important;     /* ajusta aquí el tamaño */
+  font-size: 14px !important;     /* ajusta aquí el tamaño */
   line-height: 1.1 !important;
   white-space: nowrap !important;  /* evita salto de línea */
 }
@@ -955,4 +955,5 @@ with b3:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
