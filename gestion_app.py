@@ -377,13 +377,22 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
   margin-bottom: 10px;
 }
 
-/* ===== Layout del formulario (espaciado bonito) ===== */
+/* ===== Layout del formulario (espaciado bonito y sin celdas pegadas) ===== */
 .form-card [data-testid="stHorizontalBlock"]{
-  gap: 14px !important;               /* espacio ENTRE columnas */
-  align-items: flex-start !important; /* alinear arriba todo */
+  display: flex !important;
+  flex-wrap: wrap !important;             /* evita que se monten cuando hay poco ancho */
+  column-gap: 20px !important;            /* espacio horizontal ENTRE columnas */
+  row-gap: 14px !important;               /* espacio vertical ENTRE filas */
+  align-items: flex-start !important;      /* alinear arriba todo */
+  gap: 14px 20px !important;               /* fallback combinado */
 }
+/* margen adicional por si alguna build ignora column-gap */
 .form-card [data-testid="stHorizontalBlock"] > div{
-  margin-bottom: 10px !important;     /* espacio ENTRE filas */
+  margin-bottom: 10px !important;          /* espacio ENTRE filas */
+}
+.form-card label{
+  display:block !important;
+  margin-bottom: 6px !important;           /* aire entre label y control */
 }
 
 /* ===== Inputs y selects: bordes, foco y tamaños ===== */
