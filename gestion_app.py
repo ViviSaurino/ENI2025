@@ -441,49 +441,46 @@ st.markdown("""
 /* ===================================================================== */
 
 /* --- Fila 1: EXACTAMENTE 3 columnas --- */
-.form-card [data-testid="stHorizontalBlock"]
-:is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4)))){
+.form-card [data-testid="stHorizontalBlock"]:is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4)))){
   display: grid !important;
   grid-template-columns: repeat(5, 1fr) !important; /* A B C D E */
   grid-column-gap: 20px !important;
 }
+
 /* 1->A (ID) | 2->C..E (Tarea) | 3->B (Responsable) */
-.form-card [data-testid="stHorizontalBlock"]
-:is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))))
-> [data-testid="column"]:nth-of-type(1){ grid-column: 1 !important; }
-.form-card [data-testid="stHorizontalBlock"]
-:is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))))
-> [data-testid="column"]:nth-of-type(2){ grid-column: 3 / 6 !important; }
-.form-card [data-testid="stHorizontalBlock"]
-:is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))))
-> [data-testid="column"]:nth-of-type(3){ grid-column: 2 !important; }
+.form-card [data-testid="stHorizontalBlock"]:is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4)))) > [data-testid="column"]:nth-of-type(1){
+  grid-column: 1 !important;          /* ID */
+}
+.form-card [data-testid="stHorizontalBlock"]:is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4)))) > [data-testid="column"]:nth-of-type(2){
+  grid-column: 3 / 6 !important;      /* Tarea (C+D+E) */
+}
+.form-card [data-testid="stHorizontalBlock"]:is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4)))) > [data-testid="column"]:nth-of-type(3){
+  grid-column: 2 !important;          /* Responsable */
+}
 
 /* --- Fila 2: EXACTAMENTE 5 columnas --- */
-.form-card [data-testid="stHorizontalBlock"]
-:is(:has(> [data-testid="column"]:nth-of-type(5)):not(:has(> [data-testid="column"]:nth-of-type(6)))){
+.form-card [data-testid="stHorizontalBlock"]:is(:has(> [data-testid="column"]:nth-of-type(5)):not(:has(> [data-testid="column"]:nth-of-type(6)))){
   display: grid !important;
   grid-template-columns: repeat(5, 1fr) !important; /* A B C D E */
   grid-column-gap: 20px !important;
 }
 
-/* Inputs y selects al 100% del ancho en ambas filas */
-.form-card [data-testid="stHorizontalBlock"]
-:is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))),
-    :has(> [data-testid="column"]:nth-of-type(5)):not(:has(> [data-testid="column"]:nth-of-type(6))))
-  [data-baseweb="select"] > div{
-    min-width: 0 !important;
-    width: 100% !important;
-    white-space: normal !important;
-}
-.form-card [data-testid="stHorizontalBlock"]
-:is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))),
-    :has(> [data-testid="column"]:nth-of-type(5)):not(:has(> [data-testid="column"]:nth-of-type(6))))
-  [data-baseweb="input"] > div,
-.form-card [data-testid="stHorizontalBlock"]
-:is(:has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))),
-    :has(> [data-testid="column"]:nth-of-type(5)):not(:has(> [data-testid="column"]:nth-of-type(6))))
-  [data-baseweb="datepicker"] > div{
-    width: 100% !important;
+/* Inputs y selects al 100% del ancho en ambas filas (override al fit-content general) */
+.form-card [data-testid="stHorizontalBlock"]:is(
+  :has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))),
+  :has(> [data-testid="column"]:nth-of-type(5)):not(:has(> [data-testid="column"]:nth-of-type(6)))
+) [data-baseweb="select"] > div,
+.form-card [data-testid="stHorizontalBlock"]:is(
+  :has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))),
+  :has(> [data-testid="column"]:nth-of-type(5)):not(:has(> [data-testid="column"]:nth-of-type(6)))
+) [data-baseweb="input"] > div,
+.form-card [data-testid="stHorizontalBlock"]:is(
+  :has(> [data-testid="column"]:nth-of-type(3)):not(:has(> [data-testid="column"]:nth-of-type(4))),
+  :has(> [data-testid="column"]:nth-of-type(5)):not(:has(> [data-testid="column"]:nth-of-type(6)))
+) [data-baseweb="datepicker"] > div{
+  width: 100% !important;
+  min-width: 0 !important;
+  white-space: normal !important;
 }
 
 /* (Opcional) Botón de esta tarjeta a lo ancho si está justo debajo */
