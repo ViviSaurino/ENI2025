@@ -308,7 +308,7 @@ st.markdown("""
 
 /* ===== Ancho del contenido principal (un poco más ancho) ===== */
 .block-container{
-  max-width: 1480px;               /* antes 1150px */
+  max-width: 1080px;               /* antes 1150px */
   width: min(98vw, 1600px);
 }
 
@@ -794,6 +794,7 @@ with b3:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
