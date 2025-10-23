@@ -494,39 +494,7 @@ st.markdown("""
   color: #ffffff !important;  /* texto blanco */
   box-shadow: 0 6px 16px rgba(99,155,250,.25) !important;
 }
-
-/* ===================================================== */
-/* 🌸 Botones inferiores rosados (solo los de la parte baja) */
-/* ===================================================== */
-:root{
-  --btn-rosado:      #F9A3C2;  /* tono del ejemplo */
-  --btn-rosado-bord: #E27FA8;  /* borde un poco más oscuro */
-}
-
-/* === Botones inferiores (guardar, exportar, borrar) === */
-.stButton > button[kind="secondary"],
-.stButton > button{
-  background-color: var(--btn-rosado) !important;
-  border: 1px solid var(--btn-rosado-bord) !important;
-  color: #ffffff !important;
-  font-weight: 600 !important;
-  border-radius: 12px !important;
-  padding: 8px 20px !important;
-  box-shadow: 0 4px 10px rgba(233,128,168,.25) !important;
-  transition: all 0.2s ease-in-out !important;
-}
-.stButton > button:hover{
-  filter: brightness(1.07);
-  box-shadow: 0 6px 14px rgba(233,128,168,.35) !important;
-}
-
-/* === Alinear los botones de acción a la derecha === */
-.block-container .stColumns{
-  display: flex !important;
-  justify-content: flex-end !important;
-  gap: 12px !important;
-}
-
+            
 </style>
 """, unsafe_allow_html=True)
 
