@@ -515,7 +515,7 @@ st.markdown("""
 /* === Botón de descarga (Exportar) === */
 a[data-testid="stDownloadButton"],
 a[data-testid="stDownloadButton"] *{
-  font-size: 13px !important;      /* mismo tamaño que los otros */
+  font-size: 12px !important;      /* mismo tamaño que los otros */
   line-height: 1.1 !important;
   white-space: nowrap !important;   /* no partir el texto */
 }
@@ -959,3 +959,4 @@ with b3:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
