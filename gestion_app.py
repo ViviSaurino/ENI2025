@@ -365,7 +365,16 @@ st.markdown("""
 [data-testid="stSidebar"]{
   background: var(--lilac-50) !important;
   border-right: 1px solid #ECE6FF !important;
+
+  /* ⬇️ AJUSTE DE ANCHO DEL SIDEBAR (puedes cambiar 200px por 190/210, etc.) */
+  width: 200px !important;
+  min-width: 200px !important;
 }
+/* Asegura que el contenedor interno respete el ancho fijado */
+[data-testid="stSidebar"] > div{
+  width: 200px !important;
+}
+
 [data-testid="stSidebar"] a{
   color: var(--lilac-600) !important;
   font-weight: 600 !important;
