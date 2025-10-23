@@ -367,8 +367,8 @@ st.markdown("""
   border-right: 1px solid #ECE6FF !important;
 
   /* ⬇️ AJUSTE DE ANCHO DEL SIDEBAR (puedes cambiar 200px por 190/210, etc.) */
-  width: 220px !important;
-  min-width: 220px !important;
+  width: 200px !important;
+  min-width: 200px !important;
 }
 /* Asegura que el contenedor interno respete el ancho fijado */
 [data-testid="stSidebar"] > div{
@@ -793,6 +793,7 @@ with b3:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
