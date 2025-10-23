@@ -771,33 +771,56 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 with st.form("form_nueva_alerta", clear_on_submit=True):
-    # ===== Proporciones iguales a las del formulario superior =====
+    # ===== Usamos las mismas proporciones base del formulario superior =====
     A = 1.2   # Área
-    F = 1.2   # Fase
-    T = 3.2   # Tarea
-    D = 2.4   # Detalle
+    F = 1.2   # Responsable
+    # Para igualar: Desde = 1.1 (Estado), Hasta = 1.1 (Complejidad), Tarea = 1.0 (Fecha inicio)
+    # Id = 2.4 (suma de 'Id' + 'Estado' de arriba)
+    r1_area, r1_resp, r1_desde, r1_hasta, r1_tarea, r1_id = st.columns([A, F, 1.1, 1.1, 1.0, 2.4], gap="medium")
 
-    # -------- Fila 1: ID | Tarea | Responsable --------
-    # ID = A+F   |   Tarea = T   |   Responsable = D
-    r1_id, r1_tarea, r1_resp = st.columns([A + F, T, D], gap="medium")
+    # --- Fila 1: filtros + selección de tarea e Id automático ---
+    area_filtro = _opt_map(r1_area, "Área", EMO_AREA, "Planeamiento")
 
-    df_ids = st.session_state["df_main"].copy()
-    id_target = r1_id.text_input("Colocar ID", value="", placeholder="Ej: G1", key="alerta_id")
+    # lista de responsables (según df actual)
+    df_all = st.session_state["df_main"].copy()
+    responsables_all = sorted([x for x in df_all["Responsable"].astype(str).unique() if x and x != "nan"])
+    resp_filtro = r1_resp.selectbox("Responsable", options=["Todos"] + responsables_all, index=0)
 
-    tarea_auto = ""
-    resp_auto  = ""
-    if id_target:
-        m = df_ids["Id"].astype(str) == str(id_target).strip()
+    f_desde = r1_desde.date_input("Desde", value=None, key="alerta_desde")
+    f_hasta = r1_hasta.date_input("Hasta", value=None, key="alerta_hasta")
+
+    # Filtrado para el combo de tareas
+    df_tasks = df_all.copy()
+    if area_filtro:
+        df_tasks = df_tasks[df_tasks["Área"] == area_filtro]
+    if resp_filtro != "Todos":
+        df_tasks = df_tasks[df_tasks["Responsable"].astype(str) == resp_filtro]
+    # Filtrar por rango (usamos 'Fecha inicio' cuando existe)
+    df_tasks["Fecha inicio"] = pd.to_datetime(df_tasks.get("Fecha inicio"), errors="coerce")
+    if f_desde:
+        df_tasks = df_tasks[df_tasks["Fecha inicio"].dt.date >= f_desde]
+    if f_hasta:
+        df_tasks = df_tasks[df_tasks["Fecha inicio"].dt.date <= f_hasta]
+
+    # Construimos opciones de tarea (mostramos nombre, pero mapeamos al Id)
+    df_tasks = df_tasks.dropna(subset=["Id"]).copy()
+    df_tasks["Tarea_str"] = df_tasks["Tarea"].astype(str).replace({"nan": ""})
+    opciones_tarea = ["— Selecciona —"] + df_tasks["Tarea_str"].tolist()
+    tarea_sel = r1_tarea.selectbox("Tarea", opciones_tarea, index=0, key="alerta_tarea_sel")
+
+    # Id automático (solo lectura) en base a la tarea elegida
+    id_auto = ""
+    if tarea_sel != "— Selecciona —":
+        # Si hay varias tareas con el mismo nombre, tomamos la primera visible tras el filtro
+        m = df_tasks["Tarea_str"] == tarea_sel
         if m.any():
-            tarea_auto = df_ids.loc[m, "Tarea"].astype(str).iloc[0] if "Tarea" in df_ids.columns else ""
-            resp_auto  = df_ids.loc[m, "Responsable"].astype(str).iloc[0] if "Responsable" in df_ids.columns else ""
-
-    r1_tarea.text_input("Tarea", value=tarea_auto, disabled=True, key="alerta_tarea_auto")
-    r1_resp.text_input("Responsable", value=resp_auto, disabled=True, key="alerta_responsable_auto")
+            id_auto = str(df_tasks.loc[m, "Id"].iloc[0])
+    r1_id.text_input("Id", value=id_auto, disabled=True, key="alerta_id_auto")
 
     # -------- Fila 2: ¿Generó? | ¿Se corrigió? | Tipo | Fecha | Fecha corregida (+ botón debajo) --------
-    # Cortes alineados: (A) | (F) | (T) | (D/2) | (D/2)
-    r2_gen, r2_corr, r2_tipo, r2_fa, r2_fc = st.columns([A, F, T, D/2, D/2], gap="medium")
+    # Alineamos cortes: (A) | (F) | (T) | (D/2) | (D/2)
+    # Usamos los mismos A, F y mapeos que arriba
+    r2_gen, r2_corr, r2_tipo, r2_fa, r2_fc = st.columns([A, F, 3.2, 1.2, 1.2], gap="medium")
 
     genero_alerta = _opt_map(r2_gen,  "¿Generó alerta?",        EMO_SI_NO, "No")
     corr_alerta   = _opt_map(r2_corr, "¿Se corrigió la alerta?", EMO_SI_NO, "No")
@@ -808,7 +831,7 @@ with st.form("form_nueva_alerta", clear_on_submit=True):
     fa_t = r2_fa.time_input("Hora alerta", value=None, step=60,
                             label_visibility="collapsed", key="alerta_fa_t") if fa_d else None
 
-    fc_d = r2_fc.date_input("Fecha alerta corregida (fecha)", value=None, key="alerta_fc_d")
+    fc_d = r2_fc.date_input("Fecha alerta corregida", value=None, key="alerta_fc_d")
     fc_t = r2_fc.time_input("Hora alerta corregida", value=None, step=60,
                             label_visibility="collapsed", key="alerta_fc_t") if fc_d else None
 
@@ -818,11 +841,14 @@ with st.form("form_nueva_alerta", clear_on_submit=True):
 
     # ---------- Lógica al enviar ----------
     if sub_alerta:
-        if not id_target or id_target not in st.session_state["df_main"]["Id"].astype(str).values:
-            st.warning("ID no encontrado en el historial de tareas.")
+        id_target = id_auto.strip()
+        if not id_target:
+            st.warning("Selecciona primero una tarea para obtener su Id.")
+        elif id_target not in st.session_state["df_main"]["Id"].astype(str).values:
+            st.warning("El Id seleccionado no existe en el historial.")
         else:
             df = st.session_state["df_main"].copy()
-            m = df["Id"].astype(str) == str(id_target)
+            m = df["Id"].astype(str) == id_target
 
             df.loc[m, "¿Generó alerta?"] = genero_alerta
             df.loc[m, "Tipo de alerta"]  = tipo_alerta
