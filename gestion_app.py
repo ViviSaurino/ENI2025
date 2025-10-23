@@ -284,7 +284,7 @@ if "df_main" not in st.session_state:
         base["Calificación"] = pd.to_numeric(base["Calificación"], errors="coerce").fillna(0).astype(int)
     st.session_state["df_main"] = base[COLS + ["__DEL__"]].copy()
 
-# ---------- CSS (estilos + tabla legible) ----------
+# ---------- CSS ----------
 st.markdown("""
 <style>
 /* ===================== Tema ENI — Gestión ===================== */
@@ -320,11 +320,14 @@ h1, .stMarkdown h1{
   margin: 6px 0 18px 0 !important;
 }
 
-/* ===== Ocultar la barra/rectángulo largo justo bajo el título ===== */
-/* Oculta el PRIMER text input que aparezca en la página (tu barra vacía) */
-.block-container [data-baseweb="input"]:first-of-type{
+/* ===== Ocultar SOLO la barra/rectángulo bajo el título ===== */
+/* Selecciona el contenedor que va inmediatamente después del bloque que contiene el <h1> */
+.block-container > div:has(h1) + div [data-baseweb="input"]{
   display: none !important;
 }
+/* Asegura que los inputs dentro de formularios/cartas sigan visibles */
+.form-card [data-baseweb="input"]{ display: block !important; }
+.form-card [data-baseweb="input"] > div{ display: flex !important; }
 
 /* ===== Sidebar lila (más angosta) ===== */
 [data-testid="stSidebar"]{
@@ -390,6 +393,8 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
   padding-bottom: 6px !important;
   width: 100% !important;
   min-width: var(--field-min) !important;
+  min-height: 44px !important;
+  box-sizing: border-box !important;
 }
 
 /* ❗ Evitar recortes en SELECTS (ver todo el texto sin elipsis) */
@@ -402,12 +407,17 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
   overflow: visible !important;
   max-width: none !important;
 }
+[data-baseweb="select"] [role="combobox"]{
+  min-height: 42px !important;
+  display: flex; align-items: center;
+}
 
 /* Tipografía de campos (un poco más grande) */
 [data-baseweb="input"] input,
 [data-baseweb="textarea"] textarea,
 [data-baseweb="select"] div{
   font-size: 15px !important;
+  line-height: 1.2 !important;
 }
 
 /* ===== Datepicker: alto, borde y padding normalizados ===== */
@@ -419,6 +429,7 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
   background: #fff !important;
   width: 100% !important;
   min-width: var(--field-min) !important;
+  box-sizing: border-box !important;
 }
 [data-baseweb="datepicker"] input{
   height: 42px !important;
