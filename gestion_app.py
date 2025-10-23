@@ -481,6 +481,20 @@ st.markdown("""
   min-width: 0 !important;
   white-space: normal !important;
 }
+            
+/* ===== Píldoras de sección (Nueva tarea / Nueva alerta) en CELESTE ===== */
+:root{
+  /* paleta celeste */
+  --pill-celeste:      #38BDF8; /* bg */
+  --pill-celeste-bord: #0EA5E9; /* borde */
+}
+
+.form-title{
+  background: var(--pill-celeste) !important;
+  border: 1px solid var(--pill-celeste-bord) !important;
+  color: #ffffff !important;          /* texto blanco */
+  box-shadow: 0 6px 16px rgba(14,165,233,.18) !important; /* sutil */
+}
 </style>
 """, unsafe_allow_html=True)
 
