@@ -289,30 +289,30 @@ st.markdown("""
 <style>
 /* ===================== Tema ENI — Gestión ===================== */
 :root{
-  --lilac:      #B38BE3;  /* lila marca */
-  --lilac-50:   #F6EEFF;  /* fondo sidebar suave */
+  --lilac:      #B38BE3;
+  --lilac-50:   #F6EEFF;
   --lilac-600:  #8B5CF6;
-  --ink:        #111827;  /* negro / near-black para títulos */
+  --ink:        #111827;
   --muted:      #64748B;
   --card:       #FFFFFF;
   --border:     #E5E7EB;
   --shadow:     0 6px 20px rgba(2,8,23,.06);
 
-  --blue-pill-bg: #EAF2FF;  /* pastilla celeste */
+  --blue-pill-bg: #EAF2FF;
   --blue-pill-bd: #BFDBFE;
   --blue-pill-fg: #0B3B76;
 
-  /* 🔧 ancho mínimo de controles (ajústalo si deseas) */
-  --field-min: 150px;
+  /* ancho mínimo genérico de campos */
+  --field-min: 210px;
 }
 
-/* ===== Ancho del contenido principal (un poco más ancho) ===== */
+/* ===== Ancho del contenido principal ===== */
 .block-container{
-  max-width: 1300px;               /* antes 1150px */
+  max-width: 1280px;
   width: min(98vw, 1600px);
 }
 
-/* ===== Título principal: negro ===== */
+/* ===== Título ===== */
 h1, .stMarkdown h1{
   color: var(--ink) !important;
   font-weight: 900 !important;
@@ -320,7 +320,13 @@ h1, .stMarkdown h1{
   margin: 6px 0 18px 0 !important;
 }
 
-/* ===== Sidebar lila (más delgada) ===== */
+/* ===== Ocultar la barra/rectángulo largo justo bajo el título ===== */
+/* Oculta el PRIMER text input que aparezca en la página (tu barra vacía) */
+.block-container [data-baseweb="input"]:first-of-type{
+  display: none !important;
+}
+
+/* ===== Sidebar lila (más angosta) ===== */
 [data-testid="stSidebar"]{
   background: var(--lilac-50) !important;
   border-right: 1px solid #ECE6FF !important;
@@ -336,8 +342,7 @@ h1, .stMarkdown h1{
   border-radius: 12px !important;
   background: var(--lilac) !important;
   border: 1px solid var(--lilac) !important;
-  color: #fff !important;
-  font-weight: 800 !important;
+  color:#fff !important; font-weight:800 !important;
   box-shadow: 0 8px 18px rgba(179,139,227,.25) !important;
 }
 [data-testid="stSidebar"] .stButton > button:hover{ filter: brightness(.96); }
@@ -352,7 +357,7 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
   margin-bottom: 16px;
 }
 
-/* ===== Subtítulos “Nueva tarea / Nueva alerta” (pastilla celeste) ===== */
+/* ===== Subtítulos (pastilla celeste) ===== */
 .form-card{
   background: var(--card);
   border: 1px solid var(--border);
@@ -372,7 +377,7 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
   margin-bottom: 10px;
 }
 
-/* ===== Inputs y selects (bordes, foco y tipografía) ===== */
+/* ===== Inputs y selects: bordes, foco y tamaños ===== */
 [data-baseweb="input"] > div,
 [data-baseweb="textarea"] > div,
 [data-baseweb="select"] > div{
@@ -384,28 +389,28 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
   padding-top: 6px !important;
   padding-bottom: 6px !important;
   width: 100% !important;
-  min-width: var(--field-min) !important;   /* ⬅️ evita que se recorte el texto */
+  min-width: var(--field-min) !important;
 }
 
-/* ❗ Evitar que el texto dentro del select se corte/ellipse */
+/* ❗ Evitar recortes en SELECTS (ver todo el texto sin elipsis) */
 [data-baseweb="select"] > div{
   overflow: visible !important;
 }
-[data-baseweb="select"] [aria-live="polite"],
-[data-baseweb="select"] [data-baseweb="tag"]{
-  white-space: nowrap !important;
+[data-baseweb="select"] *{
   text-overflow: clip !important;
+  white-space: nowrap !important;
   overflow: visible !important;
+  max-width: none !important;
 }
 
-/* texto interno un poco más claro y tamaño legible */
+/* Tipografía de campos (un poco más grande) */
 [data-baseweb="input"] input,
 [data-baseweb="textarea"] textarea,
 [data-baseweb="select"] div{
-  font-size: 15px !important;        /* subimos a 15 para legibilidad */
+  font-size: 15px !important;
 }
 
-/* Estado de foco */
+/* Foco azul */
 [data-baseweb="input"] > div:has(input:focus),
 [data-baseweb="textarea"] > div:has(textarea:focus),
 [data-baseweb="select"] > div:focus-within{
@@ -413,15 +418,14 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
   box-shadow: 0 0 0 3px rgba(96,165,250,.25) !important;
 }
 
-/* ===== Botones generales (fuera de la sidebar) ===== */
+/* ===== Botones ===== */
 .stButton > button,
 .row-widget.stButton > div > button{
   border-radius: 12px !important;
   min-height: 44px;
   border: 1px solid #60A5FA !important;
   background: #60A5FA !important;
-  color: #fff !important;
-  font-weight: 800 !important;
+  color:#fff !important; font-weight:800 !important;
   box-shadow: 0 6px 18px rgba(96,165,250,.20) !important;
 }
 .stButton > button:hover,
@@ -794,9 +798,3 @@ with b3:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
-
-
-
