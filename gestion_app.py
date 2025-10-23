@@ -512,6 +512,16 @@ st.markdown("""
   padding-bottom: 10px !important;
 }
 
+/* ===== Botones del bloque "Tareas recientes" ===== */
+.stButton > button,
+[data-testid="baseButton-secondary"],
+[data-testid="baseButton-primary"]{
+  font-size: 14px !important;      /* ↓ reduce un poco la letra */
+  line-height: 1.15 !important;     /* línea más compacta */
+  padding: 8px 14px !important;     /* menos alto */
+  white-space: nowrap !important;   /* evita que se parta “Guardar en Sheets” */
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -929,7 +939,7 @@ with b1:
 with b2:
     try:
         xlsx_b = export_excel(st.session_state["df_main"][COLS], sheet=TAB_NAME)
-        st.download_button("⬇️ Exportar", data=xlsx_b, file_name="tareas.xlsx",
+        st.download_button("⬇️ Exportar Excel", data=xlsx_b, file_name="tareas.xlsx",
                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                            use_container_width=True)
     except Exception as e:
@@ -941,5 +951,3 @@ with b3:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
