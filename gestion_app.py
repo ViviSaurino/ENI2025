@@ -377,22 +377,28 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
   margin-bottom: 10px;
 }
 
-/* ===== Layout del formulario (espaciado bonito y sin celdas pegadas) ===== */
+/* ===== Layout del formulario (SEPARACIONES BONITAS) ===== */
 .form-card [data-testid="stHorizontalBlock"]{
   display: flex !important;
-  flex-wrap: wrap !important;             /* evita que se monten cuando hay poco ancho */
-  column-gap: 20px !important;            /* espacio horizontal ENTRE columnas */
-  row-gap: 14px !important;               /* espacio vertical ENTRE filas */
-  align-items: flex-start !important;      /* alinear arriba todo */
-  gap: 14px 20px !important;               /* fallback combinado */
+  column-gap: 18px !important;   /* espacio entre columnas de la MISMA fila */
+  row-gap: 14px !important;      /* espacio vertical entre filas */
+  align-items: flex-start !important;
 }
-/* margen adicional por si alguna build ignora column-gap */
+
+/* Columna: acolchado lateral para que nunca se peguen */
 .form-card [data-testid="stHorizontalBlock"] > div{
-  margin-bottom: 10px !important;          /* espacio ENTRE filas */
+  padding-right: 10px !important;
+  box-sizing: border-box !important;
 }
-.form-card label{
-  display:block !important;
-  margin-bottom: 6px !important;           /* aire entre label y control */
+.form-card [data-testid="stHorizontalBlock"] > div:last-child{
+  padding-right: 0 !important;
+}
+
+/* Margen inferior uniforme en CADA widget dentro del form */
+.form-card [data-baseweb],
+.form-card [data-testid="stWidgetLabel"],
+.form-card [data-baseweb] > div{
+  margin-bottom: 8px !important;
 }
 
 /* ===== Inputs y selects: bordes, foco y tamaños ===== */
@@ -413,9 +419,7 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
 }
 
 /* ❗ Evitar recortes en SELECTS (ver todo el texto sin elipsis) */
-[data-baseweb="select"] > div{
-  overflow: visible !important;
-}
+[data-baseweb="select"] > div{ overflow: visible !important; }
 [data-baseweb="select"] *{
   text-overflow: clip !important;
   white-space: nowrap !important;
@@ -427,7 +431,7 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
   display: flex; align-items: center;
 }
 
-/* Tipografía de campos (un poco más grande) */
+/* Tipografía de campos */
 [data-baseweb="input"] input,
 [data-baseweb="textarea"] textarea,
 [data-baseweb="select"] div{
@@ -435,7 +439,7 @@ div:has(> .stMarkdown + [data-testid="stHorizontalBlock"]){
   line-height: 1.2 !important;
 }
 
-/* ===== Datepicker: alto, borde y padding normalizados ===== */
+/* ===== Datepicker ===== */
 [data-baseweb="datepicker"] > div{
   border: 1px solid var(--border) !important;
   border-radius: 12px !important;
