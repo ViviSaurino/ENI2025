@@ -296,6 +296,9 @@ st.markdown("""
   --blue-pill-bg: #38BDF8;
   --blue-pill-bd: #0EA5E9;
   --blue-pill-fg: #ffffff;
+
+  /* <<< Ancho unificado para las 3 píldoras >>> */
+  --pill-width: 260px;  /* ajusta este valor para que termine donde 'Estado' */
 }
 
 /* ======= Separaciones fuertes dentro del formulario ======= */
@@ -390,6 +393,10 @@ st.markdown("""
   color: var(--blue-pill-fg);
   font-weight: 800; letter-spacing: .2px;
   margin: 6px 0 10px 0;
+
+  /* <<< Fuerza el mismo ancho y centra contenido >>> */
+  width: var(--pill-width) !important;
+  justify-content: center !important;
 }
 
 /* ===== SELECTs (regla general) ===== */
@@ -429,6 +436,8 @@ st.markdown("""
   .form-card [data-baseweb="select"] > div{
     min-width: 200px !important;
   }
+  /* <<< En móviles, que las píldoras se ajusten al contenido >>> */
+  .form-title{ width: auto !important; }
 }
 
 /* ===================================================================== */
@@ -498,6 +507,10 @@ st.markdown("""
   gap: 6px !important;
   margin-right: 10px !important;
   font-weight: 700 !important;
+
+  /* <<< Igualar ancho y centrar >>> */
+  width: var(--pill-width) !important;
+  justify-content: center !important;
 }
 
 /* ====== Botón del formulario al 100% del ancho (igual a "Fecha fin") ====== */
@@ -569,7 +582,7 @@ st.markdown(
 
 st.markdown("""
 <div class="help-strip">
-  ✳️ <strong>Completa los campos principales</strong> para registrar una nueva tarea.
+  ✳️ <strong>Completa los campos principales</strong> para registrar una nueva tarea
 </div>
 """, unsafe_allow_html=True)
 
@@ -659,7 +672,7 @@ st.markdown('<div class="form-title"><span class="plus">🔁</span><span class="
 
 st.markdown("""
 <div class="help-strip">
-  🔄 <strong>Actualiza el estado</strong> de una tarea ya registrada usando los filtros.
+  🔄 <strong>Actualiza el estado</strong> de una tarea ya registrada usando los filtros
 </div>
 """, unsafe_allow_html=True)
 
@@ -766,7 +779,7 @@ st.markdown('<div class="form-title"><span class="plus">➕</span><span class="s
 
 st.markdown("""
 <div class="help-strip">
-  ⚠️ <strong>Vincula una alerta</strong> a una tarea ya registrada.
+  ⚠️ <strong>Vincula una alerta</strong> a una tarea ya registrada
 </div>
 """, unsafe_allow_html=True)
 
