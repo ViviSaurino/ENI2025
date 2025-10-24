@@ -1256,7 +1256,7 @@ if st.session_state["eva_visible"]:
         )
 
         # === Botón con el MISMO ancho (1.2) que "Vincular alerta-tarea" ===
-        bx1, bx2, bx3, bx4, bx5, bx6 = st.columns([A, F, 1.1, 1.1, 1.0, 1.2], gap="medium")
+        bx1, bx2, bx3, bx4, bx5, bx6 = st.columns([A, F, 1.1, 1.1, 1.0, 0.995], gap="medium")
         with bx6:
             do_save_eval = st.form_submit_button("✅ Evaluar", use_container_width=True, disabled=not CAN_EDIT)
 
@@ -1529,6 +1529,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
