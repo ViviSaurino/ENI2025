@@ -601,6 +601,14 @@ st.markdown("""
 
 /* Evitar saltos de ancho en el botón */
 .topbar .stButton{ display:inline-flex !important; align-items:center !important; }
+
+<style>
+/* SOLO la franja de indicaciones que viene justo después del botón “Nueva tarea” */
+.topbar + .help-strip{
+  margin-top: 2px !important;     /* súbelo/bájalo: prueba 0, 2, 4 px */
+  margin-bottom: 10px !important;  /* opcional: aire debajo */
+}
+
 </style>
 """, unsafe_allow_html=True)
 
