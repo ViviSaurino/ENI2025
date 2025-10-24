@@ -1216,6 +1216,7 @@ if st.session_state["pri_visible"]:
             data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
             update_mode=GridUpdateMode.VALUE_CHANGED,            # devuelve cambios en tiempo real
             allow_unsafe_jscode=True
+            eight=280  # ⬅⬅⬅ altura compacta
         )
 
         # Toma lo editado (mantiene el nombre 'edited' para no romper tu lógica de guardado)
@@ -1318,6 +1319,7 @@ if st.session_state["eva_visible"]:
             data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
             update_mode=GridUpdateMode.VALUE_CHANGED,          # devuelve cambios en tiempo real
             allow_unsafe_jscode=True
+            height=280  # ⬅⬅⬅ altura compacta
         )
 
         # Mantén el nombre edited_eval para tu lógica de guardado
