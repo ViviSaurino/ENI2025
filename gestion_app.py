@@ -298,7 +298,7 @@ st.markdown("""
   --blue-pill-fg: #ffffff;
 
   /* Ancho unificado para las 3 píldoras (igual que “Estado” / “Área”) */
-  --pill-width: 360px;
+  --pill-width: 300px; /* AJUSTE: ahora calza con Área */
 
   /* Tono celeste institucional para títulos */
   --pill-azul:      #94BEEA;
@@ -558,19 +558,21 @@ st.markdown("""
   gap:8px !important;
 }
 
-/* Forzamos que la píldora tenga la MISMA altura que el triangulito */
+/* Forzamos que la píldora tenga la MISMA altura que el triangulito
+   y la bajamos 2px para alinear perfecto */
 .form-title{
-  min-height:36px !important;     /* match altura */
+  min-height:36px !important;
   display:inline-flex !important;
   align-items:center !important;
-  padding:0 12px !important;       /* ajusta padding para respetar altura */
+  padding:0 12px !important;
   line-height:1 !important;
+  transform: translateY(2px); /* AJUSTE: baja la píldora */
 }
 
 /* Botón triangulito ya en 36px; reforzamos alineación */
 .toggle-icon{ display:flex !important; align-items:center !important; }
 .toggle-icon .stButton>button{
-  height:36px !important;          /* match altura píldora */
+  height:36px !important;
   display:inline-flex !important;
   align-items:center !important;
 }
@@ -644,7 +646,7 @@ with c_toggle:
 with c_pill:
     # Píldora celeste (DIV, no botón; siempre azul)
     st.markdown(
-        '<div class="form-title">➕&nbsp;&nbsp;📝&nbsp;&nbsp;Nueva tarea</div>',
+        '<div class="form-title">&nbsp;&nbsp;📝&nbsp;&nbsp;Nueva tarea</div>',
         unsafe_allow_html=True
     )
 st.markdown('</div>', unsafe_allow_html=True)
