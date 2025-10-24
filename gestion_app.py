@@ -297,7 +297,7 @@ st.markdown("""
   --blue-pill-bd: #0EA5E9;
   --blue-pill-fg: #ffffff;
 
-  /* Ancho de la píldora “Nueva tarea” */
+  /* Ancho de las píldoras (Nueva tarea / Actualizar estado) */
   --pill-width: 168px;
 
   /* Celeste institucional de títulos */
@@ -385,7 +385,8 @@ st.markdown("""
 [data-testid="stSidebar"] .stButton > button:hover{ filter: brightness(.96); }
 
 /* =================== Píldoras (títulos) =================== */
-.form-title{
+.form-title,
+.form-title-ux{
   display:inline-flex !important;
   align-items:center !important;
   gap:.5rem !important;
@@ -460,7 +461,7 @@ st.markdown("""
 /* =================== Responsivo =================== */
 @media (max-width: 980px){
   .form-card [data-baseweb="select"] > div{ min-width: 200px !important; }
-  .form-title{ width: auto !important; }
+  .form-title, .form-title-ux{ width: auto !important; }
 }
 
 /* =================== Tarjeta de Alertas (grid) =================== */
@@ -523,43 +524,40 @@ st.markdown("""
 }
 .help-strip strong{ display:inline-block !important; }
 
-/* SOLO la de “Nueva tarea” (usa help-strip-nt en el HTML) */
-.topbar ~ .help-strip-nt{
-  margin-top: -6px !important;   /* ← sube/baja solo esta franja */
+/* SOLO la de “Nueva tarea” (usa id="nt-help" en el HTML) */
+#nt-help{
+  position: relative !important;
+  transform: translateY(-12px) !important;
+  margin-top: 0 !important;
   margin-bottom: 10px !important;
+  display: block !important;
+}
+
+/* SOLO la de “Actualizar estado” (usa id="ux-help" en el HTML) */
+#ux-help{
+  position: relative !important;
+  transform: translateY(-12px) !important;
+  margin-top: 0 !important;
+  margin-bottom: 10px !important;
+  display: block !important;
 }
 
 /* =================== Topbar (expander + píldora) =================== */
-.topbar{
+.topbar, .topbar-ux{
   display:flex !important;
   align-items:center !important;
   gap:8px !important;
 }
-.topbar .stButton{ display:inline-flex !important; align-items:center !important; } /* evita saltos */
+.topbar .stButton,
+.topbar-ux .stButton{ display:inline-flex !important; align-items:center !important; }
 .topbar .stButton>button,
+.topbar-ux .stButton>button,
 .pill-btn .stButton>button{
   height:36px !important;
   padding:0 16px !important;
   border-radius:10px !important;
   display:inline-flex !important; align-items:center !important;
 }
-            
-<style>
-/* Forzamos mover SOLO la franja bajo “Nueva tarea” */
-#nt-help{
-  position: relative !important;
-  transform: translateY(-12px) !important;  /* súbelo más: -14, -16... */
-  margin-top: 0 !important;                 /* evita colapso de márgenes */
-  margin-bottom: 10px !important;           /* aire debajo */
-  display: block !important;
-}
-
-/* Por si algún contenedor padre tuviera overflow oculto */
-#nt-help, #nt-help *{ overflow: visible !important; }
-
-/* Máxima prioridad (por si hay colisiones) */
-.stApp #nt-help{ transform: translateY(-12px) !important; }
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -713,16 +711,46 @@ if st.session_state["nt_visible"]:
     st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
 
 # ================== Actualizar estado ==================
-with st.expander("Actualizar estado", expanded=True):
-    # Píldora celeste
+
+# Estado inicial del colapsable de esta sección
+st.session_state.setdefault("ux_visible", True)
+
+# Chevron (1 clic) para esta barra
+chev2 = "▾" if st.session_state["ux_visible"] else "▸"
+
+# ---------- Barra superior (triangulito + píldora) ALINEADA como "Nueva tarea" ----------
+st.markdown('<div class="topbar-ux">', unsafe_allow_html=True)
+c_toggle2, c_pill2 = st.columns([0.028, 0.965], gap="small")  # mismas proporciones
+
+with c_toggle2:
+    st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
+
+    def _toggle_ux():
+        st.session_state["ux_visible"] = not st.session_state["ux_visible"]
+
+    st.button(
+        chev2,
+        key="ux_toggle_icon",
+        help="Mostrar/ocultar",
+        on_click=_toggle_ux
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with c_pill2:
+    # Píldora celeste (igual estética/ancho que la otra)
     st.markdown(
-        '<div class="form-title"><span class="plus">➕</span><span class="secico">📌</span> Actualizar estado</div>',
+        '<div class="form-title-ux">&nbsp;&nbsp;🔁&nbsp;&nbsp;Actualizar estado</div>',
         unsafe_allow_html=True
     )
+st.markdown('</div>', unsafe_allow_html=True)
+# ---------- fin barra superior ----------
 
-    # Tira de ayuda
+# --- Cuerpo (solo si está visible) ---
+if st.session_state["ux_visible"]:
+
+    # Tira de ayuda SOLO para esta sección (con clase + id propios)
     st.markdown("""
-    <div class="help-strip">
+    <div class="help-strip help-strip-ux" id="ux-help">
       🔄 <strong>Actualiza el estado</strong> de una tarea ya registrada usando los filtros
     </div>
     """, unsafe_allow_html=True)
@@ -1188,7 +1216,3 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
-
