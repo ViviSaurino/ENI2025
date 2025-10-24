@@ -547,6 +547,46 @@ st.markdown("""
 /* ===== Contenedor genérico por si lo usas más adelante ===== */
 .pill-btn{ margin: 8px 0 6px 0; display:inline-block; }
 
+/* ===================================================================== */
+/* ================== AJUSTE DE ALINEACIÓN SUPERIOR ===================== */
+/* ===================================================================== */
+
+/* Contenedor para poner triangulito + “Nueva tarea” en la misma línea */
+.topbar{
+  display:flex !important;
+  align-items:center !important;  /* alinea verticalmente */
+  gap:8px !important;
+}
+
+/* Forzamos que la píldora tenga la MISMA altura que el triangulito */
+.form-title{
+  min-height:36px !important;     /* match altura */
+  display:inline-flex !important;
+  align-items:center !important;
+  padding:0 12px !important;       /* ajusta padding para respetar altura */
+  line-height:1 !important;
+}
+
+/* Botón triangulito ya en 36px; reforzamos alineación */
+.toggle-icon{ display:flex !important; align-items:center !important; }
+.toggle-icon .stButton>button{
+  height:36px !important;          /* match altura píldora */
+  display:inline-flex !important;
+  align-items:center !important;
+}
+
+/* Si usas un st.button para “Nueva tarea”, dale la misma altura */
+.topbar .stButton>button,
+.pill-btn .stButton>button{
+  height:36px !important;
+  padding:0 16px !important;
+  border-radius:10px !important;
+  display:inline-flex !important;
+  align-items:center !important;
+}
+
+/* Evitar saltos de ancho en el botón */
+.topbar .stButton{ display:inline-flex !important; align-items:center !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -582,14 +622,23 @@ st.session_state.setdefault("nt_visible", True)
 # Chevron (1 clic): ▾ abierto / ▸ cerrado
 chev = "▾" if st.session_state["nt_visible"] else "▸"
 
-# Fila: [flecha toggle] [píldora celeste] — más juntos y alineados
+# ---------- Barra superior (triangulito + píldora) alineada ----------
+st.markdown('<div class="topbar">', unsafe_allow_html=True)
 c_toggle, c_pill = st.columns([0.055, 0.945], gap="small")
 
 with c_toggle:
     # Botón pequeño SOLO para ocultar/mostrar (1 clic)
     st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
-    if st.button(chev, key="nt_toggle_icon", help="Mostrar/ocultar"):
+
+    def _toggle_nt():
         st.session_state["nt_visible"] = not st.session_state["nt_visible"]
+
+    st.button(
+        chev,
+        key="nt_toggle_icon",
+        help="Mostrar/ocultar",
+        on_click=_toggle_nt
+    )
     st.markdown('</div>', unsafe_allow_html=True)
 
 with c_pill:
@@ -598,6 +647,8 @@ with c_pill:
         '<div class="form-title">➕&nbsp;&nbsp;📝&nbsp;&nbsp;Nueva tarea</div>',
         unsafe_allow_html=True
     )
+st.markdown('</div>', unsafe_allow_html=True)
+# ---------- fin barra superior ----------
 
 # --- Cuerpo (solo si está visible) ---
 if st.session_state["nt_visible"]:
