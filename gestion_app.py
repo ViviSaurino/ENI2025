@@ -298,7 +298,7 @@ st.markdown("""
   --blue-pill-fg: #ffffff;
 
   /* Ancho unificado para las 3 píldoras (igual que “Estado” / “Área”) */
-  --pill-width: 170px; /* AJUSTE: ahora calza con Área */
+  --pill-width: 168px; /* AJUSTE: ahora calza con Área */
 
   /* Tono celeste institucional para títulos */
   --pill-azul:      #94BEEA;
@@ -1217,6 +1217,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
