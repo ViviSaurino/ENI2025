@@ -304,37 +304,22 @@ st.markdown("""
   --pill-azul:      #94BEEA;
   --pill-azul-bord: #94BEEA;
 
-  /* ===== NUEVO: color magenta para Prioridad/Evaluación ===== */
-  --pill-magenta:      #B31263;     /* puedes ajustar el tono aquí */
-  --pill-magenta-bord: #B31263;
+  /* ===== Píldoras rosadas para Prioridad / Evaluación ===== */
+:root{
+  --pill-rosa: #D69AC2;     /* color de la muestra */
+  --pill-rosa-bord: #C05AA7;/* borde un pelín más oscuro */
 }
 
-/* =================== Layout de formulario =================== */
-.form-card [data-testid="stHorizontalBlock"]{
-  display: grid !important;
-  grid-auto-flow: row dense !important;
-  grid-row-gap: 16px !important;
-  grid-column-gap: 20px !important;
-  align-items: start !important;
-}
-.form-card [data-testid="column"]{
-  padding-right: 12px !important;
-  box-sizing: border-box !important;
-}
-.form-card [data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child{
-  padding-right: 0 !important;
-}
-.form-card [data-testid="stHorizontalBlock"] [data-testid="stHorizontalBlock"]{
-  display: grid !important;
-  grid-column-gap: 16px !important;
-  grid-row-gap: 12px !important;
-}
-
-/* Margen base entre widgets */
-.form-card [data-baseweb],
-.form-card [data-testid="stWidgetLabel"],
-.form-card [data-baseweb] > div{
-  margin-bottom: 6px !important;
+.form-title-pri,
+.form-title-eval{
+  display:inline-flex!important; align-items:center!important; gap:.5rem!important;
+  padding:6px 12px!important; border-radius:12px!important;
+  background: var(--pill-rosa)!important;
+  border:1px solid var(--pill-rosa-bord)!important;
+  color:#fff!important; font-weight:800!important; letter-spacing:.2px!important;
+  margin:6px 0 10px 0!important; width: var(--pill-width)!important; justify-content:center!important;
+  box-shadow:0 6px 16px rgba(214,154,194,.30)!important;
+  min-height:36px!important; line-height:1!important; transform: translateY(11px);
 }
 
 /* =================== Inputs =================== */
@@ -1120,16 +1105,13 @@ if st.session_state["pri_visible"]:
         A, F = 1.2, 1.2
         r1_area, r1_resp, r1_desde, r1_hasta, r1_tarea, r1_ids = st.columns([A, F, 1.1, 1.1, 1.0, 2.4], gap="medium")
 
-        # Área
         areas_opts = ["Todas"] + AREAS_OPC
         area_sel = r1_area.selectbox("Área", options=areas_opts, index=0, disabled=not CAN_EDIT)
 
-        # Responsable
         df_resp = df_all if area_sel == "Todas" else df_all[df_all["Área"] == area_sel]
         responsables_all = sorted([x for x in df_resp["Responsable"].astype(str).unique() if x and x != "nan"])
         resp_sel = r1_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0, disabled=not CAN_EDIT)
 
-        # Fechas
         f_desde = r1_desde.date_input("Desde", value=None, key="pri_desde", disabled=not CAN_EDIT)
         f_hasta = r1_hasta.date_input("Hasta", value=None, key="pri_hasta", disabled=not CAN_EDIT)
 
@@ -1147,8 +1129,8 @@ if st.session_state["pri_visible"]:
             ids_sel = df_f.loc[df_f["Tarea_str"].isin(tareas_sel), "Id"].astype(str).tolist()
         r1_ids.text_input("Ids seleccionados", value=", ".join(ids_sel) if ids_sel else "—", disabled=True)
 
-        # Cuadro editable de prioridades (data_editor)
-        st.write("")  # pequeño respiro
+        # Tabla editable de prioridades
+        st.write("")
         df_tab = df_f.loc[df_f["Tarea_str"].isin(tareas_sel), ["Id", "Área", "Responsable", "Tarea", "Prioridad"]].copy() if ids_sel else pd.DataFrame(columns=["Id","Área","Responsable","Tarea","Prioridad"])
         if "Prioridad" not in df_tab.columns:
             df_tab["Prioridad"] = "Media"
@@ -1174,7 +1156,7 @@ if st.session_state["pri_visible"]:
         # === Botón con el MISMO ancho (1.2) que "Vincular alerta-tarea" ===
         b1, b2, b3, b4, b5, b6 = st.columns([A, F, 1.1, 1.1, 1.0, 1.2], gap="medium")
         with b6:
-            do_save_pri = st.form_submit_button("💾 Guardar prioridades", use_container_width=True, disabled=not CAN_EDIT)
+            do_save_pri = st.form_submit_button("🧭 Dar prioridad", use_container_width=True, disabled=not CAN_EDIT)
 
     if CAN_EDIT and 'do_save_pri' in locals() and do_save_pri:
         if edited.empty:
@@ -1213,7 +1195,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 if st.session_state["eva_visible"]:
     st.markdown("""
     <div class="help-strip" id="eva-help">
-      📝 <strong>Registra una evaluación</strong> por tarea (solo jefatura). Puedes calificar y anotar un comentario.
+      📝 <strong>Registra una evaluación</strong> por varias tareas a la vez (solo jefatura).
     </div>
     """, unsafe_allow_html=True)
 
@@ -1221,6 +1203,7 @@ if st.session_state["eva_visible"]:
     df_all = st.session_state["df_main"].copy()
 
     with st.form("form_evaluacion", clear_on_submit=False):
+        # Misma grilla que prioridad para calzar anchos (Id 2.4)
         A, F = 1.2, 1.2
         c_area, c_resp, c_desde, c_hasta, c_tarea, c_id = st.columns([A, F, 1.1, 1.1, 1.0, 2.4], gap="medium")
 
@@ -1232,40 +1215,64 @@ if st.session_state["eva_visible"]:
         desde = c_desde.date_input("Desde", value=None, key="eva_desde", disabled=not CAN_EDIT)
         hasta = c_hasta.date_input("Hasta", value=None, key="eva_hasta", disabled=not CAN_EDIT)
 
+        # Multiselección de tareas para evaluar (como prioridad)
         df_f = _filtra_dataset(df_all, area_sel, resp_sel, desde, hasta).dropna(subset=["Id"]).copy()
         df_f["Tarea_str"] = df_f["Tarea"].astype(str).replace({"nan": ""})
-        tarea_sel = c_tarea.selectbox("Tarea", ["— Selecciona —"] + df_f["Tarea_str"].tolist(), index=0, disabled=not CAN_EDIT)
+        tareas_opts = df_f["Tarea_str"].tolist()
 
-        sel_id = ""
-        if tarea_sel and tarea_sel != "— Selecciona —":
-            sel_id = str(df_f.loc[df_f["Tarea_str"] == tarea_sel, "Id"].iloc[0])
-        c_id.text_input("Id", value=sel_id if sel_id else "—", disabled=True)
+        tareas_sel = c_tarea.multiselect("Tarea (multi)", tareas_opts, default=[], disabled=not CAN_EDIT, key="eva_tareas_sel")
+
+        ids_sel = []
+        if tareas_sel:
+            ids_sel = df_f.loc[df_f["Tarea_str"].isin(tareas_sel), "Id"].astype(str).tolist()
+        c_id.text_input("Ids seleccionados", value=", ".join(ids_sel) if ids_sel else "—", disabled=True)
 
         st.write("")
-        # editor simple: calificación y comentario
-        e1, e2 = st.columns([1.0, 3.0], gap="medium")
-        calif = e1.selectbox("Calificación", options=EVAL_CHOICES, index=0, disabled=not CAN_EDIT, help="5=Excelente … 1=Deficiente")
-        nota  = e2.text_input("Comentario (opcional)", placeholder="Observaciones de la evaluación", disabled=not CAN_EDIT)
+
+        # Tabla editable de Evaluación (5..1), sin comentario
+        df_tab_e = df_f.loc[df_f["Tarea_str"].isin(tareas_sel), ["Id", "Área", "Responsable", "Tarea"]].copy() if ids_sel else pd.DataFrame(columns=["Id","Área","Responsable","Tarea"])
+        if not df_tab_e.empty:
+            df_tab_e["Evaluación"] = 5     # por defecto 5
+        else:
+            df_tab_e["Evaluación"] = []
+
+        df_tab_e["Id"] = df_tab_e["Id"].astype(str)
+
+        st.caption("Lista seleccionada")
+        edited_eval = st.data_editor(
+            df_tab_e,
+            key="eva_editor",
+            disabled=not CAN_EDIT,
+            use_container_width=True,
+            column_config={
+                "Evaluación": st.column_config.SelectboxColumn("Evaluación", options=EVAL_CHOICES, required=True),
+                "Id": st.column_config.TextColumn("Id", disabled=True),
+                "Área": st.column_config.TextColumn("Área", disabled=True),
+                "Responsable": st.column_config.TextColumn("Responsable", disabled=True),
+                "Tarea": st.column_config.TextColumn("Tarea", disabled=True),
+            },
+            hide_index=True,
+            num_rows="dynamic"
+        )
 
         # === Botón con el MISMO ancho (1.2) que "Vincular alerta-tarea" ===
         bx1, bx2, bx3, bx4, bx5, bx6 = st.columns([A, F, 1.1, 1.1, 1.0, 1.2], gap="medium")
         with bx6:
-            do_save_eval = st.form_submit_button("💾 Guardar evaluación", use_container_width=True, disabled=not CAN_EDIT)
+            do_save_eval = st.form_submit_button("✅ Evaluar", use_container_width=True, disabled=not CAN_EDIT)
 
     if CAN_EDIT and 'do_save_eval' in locals() and do_save_eval:
-        if not sel_id:
-            st.warning("Selecciona una tarea antes de guardar la evaluación.")
+        if edited_eval.empty:
+            st.warning("No hay filas seleccionadas para evaluar.")
         else:
             df = st.session_state["df_main"].copy()
-            m = df["Id"].astype(str) == sel_id
-            if m.any():
-                df.loc[m, "Evaluación"] = calif
-                if "Comentario evaluación" in df.columns:
-                    df.loc[m, "Comentario evaluación"] = nota
-                st.session_state["df_main"] = df.copy()
-                _save_local(df[COLS].copy())
-                ok, msg = _write_sheet_tab(df[COLS].copy())
-                st.success(f"✔ Evaluación guardada para la tarea {sel_id}. {msg}") if ok else st.warning(f"Actualizado localmente. {msg}")
+            for _, row in edited_eval.iterrows():
+                m = df["Id"].astype(str) == str(row["Id"])
+                if m.any():
+                    df.loc[m, "Evaluación"] = row["Evaluación"]
+            st.session_state["df_main"] = df.copy()
+            _save_local(df[COLS].copy())
+            ok, msg = _write_sheet_tab(df[COLS].copy())
+            st.success(f"✔ Evaluación registrada ({len(edited_eval)} filas). {msg}") if ok else st.warning(f"Actualizado localmente. {msg}")
     elif not CAN_EDIT:
         st.info("🔒 Solo jefatura puede registrar evaluaciones.")
     st.markdown('</div>', unsafe_allow_html=True)  # form-card
