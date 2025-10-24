@@ -23,6 +23,75 @@ if not hasattr(_stc, "components"):
 
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, JsCode, DataReturnMode
 
+# ======= Utilidades de tablas (Prioridad / Evaluación) =======
+# Anchos de píldoras (mantenlos sincronizados con tu CSS)
+PILL_W_AREA  = 168  # píldora "Área"
+PILL_W_RESP  = 220  # píldora "Responsable"
+PILL_W_HASTA = 220  # píldora "Hasta"
+PILL_W_TAREA = PILL_W_HASTA
+
+# Reglas pedidas
+COL_W_ID         = PILL_W_AREA                 # Id = ancho píldora Área
+COL_W_AREA       = PILL_W_RESP                 # Área = píldora Responsable
+COL_W_DESDE      = PILL_W_RESP                 # Desde = píldora Responsable
+COL_W_TAREA      = PILL_W_TAREA                # Tarea = píldora Hasta
+COL_W_PRIORIDAD  = COL_W_TAREA + COL_W_ID      # Prioridad = Tarea + Id
+COL_W_EVALUACION = COL_W_TAREA + COL_W_ID      # Evaluación = Tarea + Id
+
+def _clean_df_for_grid(df):
+    # quita índice para no mostrar una columna sin nombre
+    if df.index.name is not None:
+        df.index.name = None
+    return df.reset_index(drop=True).copy()
+
+def _grid_options_prioridad(df):
+    gob = GridOptionsBuilder.from_dataframe(df, enableRowGroup=False, enableValue=False, enablePivot=False)
+    gob.configure_grid_options(
+        suppressMovableColumns=True,
+        domLayout="normal",
+        ensureDomOrder=True,
+        rowHeight=38,
+        headerHeight=42
+    )
+    # Definición de columnas y anchos exactos
+    gob.configure_column("Id", width=COL_W_ID, editable=False)
+    gob.configure_column("Área", width=COL_W_AREA, editable=False)
+    gob.configure_column("Responsable", width=PILL_W_RESP, editable=False)
+    gob.configure_column("Tarea", width=COL_W_TAREA, editable=False)
+    gob.configure_column(
+        "Prioridad",
+        width=COL_W_PRIORIDAD,
+        editable=True,
+        cellEditor="agSelectCellEditor",
+        cellEditorParams={"values": ["Urgente", "Alta", "Media", "Baja"]}
+    )
+    # No autosize (para respetar widths)
+    gob.configure_grid_options(suppressColumnVirtualisation=False)
+    return gob.build()
+
+def _grid_options_evaluacion(df):
+    gob = GridOptionsBuilder.from_dataframe(df, enableRowGroup=False, enableValue=False, enablePivot=False)
+    gob.configure_grid_options(
+        suppressMovableColumns=True,
+        domLayout="normal",
+        ensureDomOrder=True,
+        rowHeight=38,
+        headerHeight=42
+    )
+    gob.configure_column("Id", width=COL_W_ID, editable=False)
+    gob.configure_column("Área", width=COL_W_AREA, editable=False)
+    gob.configure_column("Responsable", width=PILL_W_RESP, editable=False)
+    gob.configure_column("Tarea", width=COL_W_TAREA, editable=False)
+    gob.configure_column(
+        "Evaluación",
+        width=COL_W_EVALUACION,
+        editable=True,
+        cellEditor="agSelectCellEditor",
+        cellEditorParams={"values": [5,4,3,2,1]}
+    )
+    gob.configure_grid_options(suppressColumnVirtualisation=False)
+    return gob.build()
+
 # --- allow-list ---
 allowed_emails  = st.secrets.get("auth", {}).get("allowed_emails", [])
 allowed_domains = st.secrets.get("auth", {}).get("allowed_domains", [])
@@ -1128,29 +1197,29 @@ if st.session_state["pri_visible"]:
             ids_sel = df_f.loc[df_f["Tarea_str"].isin(tareas_sel), "Id"].astype(str).tolist()
         r1_ids.text_input("Ids seleccionados", value=", ".join(ids_sel) if ids_sel else "—", disabled=True)
 
-        # Tabla editable de prioridades
+        # ===== Tabla editable de prioridades (AgGrid con anchos exactos) =====
         st.write("")
-        df_tab = df_f.loc[df_f["Tarea_str"].isin(tareas_sel), ["Id", "Área", "Responsable", "Tarea", "Prioridad"]].copy() if ids_sel else pd.DataFrame(columns=["Id","Área","Responsable","Tarea","Prioridad"])
+        df_tab = df_f.loc[df_f["Tarea_str"].isin(tareas_sel), ["Id", "Área", "Responsable", "Tarea", "Prioridad"]].copy() \
+                 if ids_sel else pd.DataFrame(columns=["Id","Área","Responsable","Tarea","Prioridad"])
         if "Prioridad" not in df_tab.columns:
             df_tab["Prioridad"] = "Media"
         df_tab["Id"] = df_tab["Id"].astype(str)
 
         st.caption("Lista seleccionada")
-        edited = st.data_editor(
-            df_tab,
-            key="pri_editor",
-            disabled=not CAN_EDIT,
-            use_container_width=True,
-            column_config={
-                "Prioridad": st.column_config.SelectboxColumn("Prioridad", options=PRIORITY_CHOICES, required=True),
-                "Id": st.column_config.TextColumn("Id", disabled=True),
-                "Área": st.column_config.TextColumn("Área", disabled=True),
-                "Responsable": st.column_config.TextColumn("Responsable", disabled=True),
-                "Tarea": st.column_config.TextColumn("Tarea", disabled=True),
-            },
-            hide_index=True,
-            num_rows="dynamic"
+        df_pri = _clean_df_for_grid(df_tab)
+        grid_opt_pri = _grid_options_prioridad(df_pri)
+
+        grid_pri = AgGrid(
+            df_pri,
+            gridOptions=grid_opt_pri,
+            fit_columns_on_grid_load=False,                       # respeta widths configurados
+            data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+            update_mode=GridUpdateMode.VALUE_CHANGED,            # devuelve cambios en tiempo real
+            allow_unsafe_jscode=True
         )
+
+        # Toma lo editado (mantiene el nombre 'edited' para no romper tu lógica de guardado)
+        edited = pd.DataFrame(grid_pri["data"]) if isinstance(grid_pri, dict) and "data" in grid_pri else df_pri.copy()
 
         # === Botón con el MISMO ancho (1.2) que "Vincular alerta-tarea" ===
         b1, b2, b3, b4, b5, b6 = st.columns([A, F, 1.1, 1.1, 1.0, 0.995], gap="medium")
@@ -1165,7 +1234,7 @@ if st.session_state["pri_visible"]:
             for _, row in edited.iterrows():
                 m = df["Id"].astype(str) == str(row["Id"])
                 if m.any():
-                    df.loc[m, "Prioridad"] = row["Prioridad"]
+                    df.loc[m, "Prioridad"] = row.get("Prioridad", df.loc[m, "Prioridad"])
             st.session_state["df_main"] = df.copy()
             _save_local(df[COLS].copy())
             ok, msg = _write_sheet_tab(df[COLS].copy())
@@ -1228,8 +1297,9 @@ if st.session_state["eva_visible"]:
 
         st.write("")
 
-        # Tabla editable de Evaluación (5..1), sin comentario
-        df_tab_e = df_f.loc[df_f["Tarea_str"].isin(tareas_sel), ["Id", "Área", "Responsable", "Tarea"]].copy() if ids_sel else pd.DataFrame(columns=["Id","Área","Responsable","Tarea"])
+        # ===== Tabla editable de Evaluación (AgGrid con anchos exactos) =====
+        df_tab_e = df_f.loc[df_f["Tarea_str"].isin(tareas_sel), ["Id", "Área", "Responsable", "Tarea"]].copy() \
+                   if ids_sel else pd.DataFrame(columns=["Id","Área","Responsable","Tarea"])
         if not df_tab_e.empty:
             df_tab_e["Evaluación"] = 5     # por defecto 5
         else:
@@ -1238,21 +1308,20 @@ if st.session_state["eva_visible"]:
         df_tab_e["Id"] = df_tab_e["Id"].astype(str)
 
         st.caption("Lista seleccionada")
-        edited_eval = st.data_editor(
-            df_tab_e,
-            key="eva_editor",
-            disabled=not CAN_EDIT,
-            use_container_width=True,
-            column_config={
-                "Evaluación": st.column_config.SelectboxColumn("Evaluación", options=EVAL_CHOICES, required=True),
-                "Id": st.column_config.TextColumn("Id", disabled=True),
-                "Área": st.column_config.TextColumn("Área", disabled=True),
-                "Responsable": st.column_config.TextColumn("Responsable", disabled=True),
-                "Tarea": st.column_config.TextColumn("Tarea", disabled=True),
-            },
-            hide_index=True,
-            num_rows="dynamic"
+        df_eval_tab = _clean_df_for_grid(df_tab_e)
+        grid_opt_eval = _grid_options_evaluacion(df_eval_tab)
+
+        grid_eval = AgGrid(
+            df_eval_tab,
+            gridOptions=grid_opt_eval,
+            fit_columns_on_grid_load=False,                     # respeta widths configurados
+            data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+            update_mode=GridUpdateMode.VALUE_CHANGED,          # devuelve cambios en tiempo real
+            allow_unsafe_jscode=True
         )
+
+        # Mantén el nombre edited_eval para tu lógica de guardado
+        edited_eval = pd.DataFrame(grid_eval["data"]) if isinstance(grid_eval, dict) and "data" in grid_eval else df_eval_tab.copy()
 
         # === Botón con el MISMO ancho (1.2) que "Vincular alerta-tarea" ===
         bx1, bx2, bx3, bx4, bx5, bx6 = st.columns([A, F, 1.1, 1.1, 1.0, 0.995], gap="medium")
@@ -1267,7 +1336,7 @@ if st.session_state["eva_visible"]:
             for _, row in edited_eval.iterrows():
                 m = df["Id"].astype(str) == str(row["Id"])
                 if m.any():
-                    df.loc[m, "Evaluación"] = row["Evaluación"]
+                    df.loc[m, "Evaluación"] = row.get("Evaluación", df.loc[m, "Evaluación"])
             st.session_state["df_main"] = df.copy()
             _save_local(df[COLS].copy())
             ok, msg = _write_sheet_tab(df[COLS].copy())
