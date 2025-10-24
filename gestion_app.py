@@ -450,27 +450,31 @@ st.markdown("""
 .pill-btn button[kind],
 .pill-btn button[kind="primary"],
 .pill-btn button[kind="secondary"],
-.pill-btn button {
+.pill-btn button,
+.pill-btn :is(button,[role="button"],[data-testid="baseButton-primary"],[data-testid="baseButton-secondary"]){
   display: inline-flex !important;
   align-items: center !important;
   gap: 8px !important;
   padding: 8px 14px !important;
   border-radius: 12px !important;
 
-  /* COLOR CELESTE (usamos background-color para vencer estilos inline) */
-  background-color: var(--pill-azul) !important;
-  border-color: var(--pill-azul-bord) !important;
+  /* COLOR CELESTE — anulamos el rojo del tema */
+  background: var(--pill-azul) !important;
+  background-color: var(--pill-azul) !important;   /* machaca estilos inline */
+  background-image: none !important;               /* quita degradados rojos */
+  border: 1px solid var(--pill-azul-bord) !important;
   color: #ffffff !important;
 
   font-weight: 700 !important;
   line-height: 1.15 !important;
 
-  /* ANCHO CONTROLADO (como Área) */
+  /* ANCHO CONTROLADO (como “Área”) */
   min-width: var(--pill-width) !important;
   width: fit-content !important;
 
   /* Sombra suave */
   box-shadow: 0 6px 16px rgba(148,190,234,.30) !important;
+  filter: none !important;
 }
 
 /* Asegura texto blanco dentro del botón */
@@ -478,7 +482,8 @@ st.markdown("""
 .pill-btn .stButton > div > button *,
 .pill-btn [data-testid="baseButton-primary"] button *,
 .pill-btn [data-testid="baseButton-secondary"] button *,
-.pill-btn button[kind] * {
+.pill-btn button[kind] *,
+.pill-btn :is(button,[role="button"],[data-testid="baseButton-primary"],[data-testid="baseButton-secondary"]) *{
   color: #ffffff !important;
 }
 
@@ -487,10 +492,10 @@ st.markdown("""
 .pill-btn .stButton > div > button:hover,
 .pill-btn [data-testid="baseButton-primary"] button:hover,
 .pill-btn [data-testid="baseButton-secondary"] button:hover,
-.pill-btn button[kind]:hover{
+.pill-btn button[kind]:hover,
+.pill-btn :is(button,[role="button"],[data-testid="baseButton-primary"],[data-testid="baseButton-secondary"]):hover{
   filter: brightness(.97) !important;
 }
-
 </style>
 """, unsafe_allow_html=True)
 
