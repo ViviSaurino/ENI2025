@@ -828,7 +828,7 @@ if st.session_state["ux_visible"]:
         # Botón debajo de "Estado" con el mismo ancho
         with c_estado:
             st.write("")  # separador fino
-            do_update_estado = st.form_submit_button("🔗 Vincular estado a tarea", use_container_width=True)
+            do_update_estado = st.form_submit_button("🔗 Vincular estado-tarea", use_container_width=True)
 
     # Lógica de guardado
     if 'do_update_estado' in locals() and do_update_estado:
@@ -1216,4 +1216,5 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
