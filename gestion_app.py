@@ -619,7 +619,8 @@ st.session_state.setdefault("nt_visible", True)
 
 # --- Píldora celeste "clickable" (botón con estilo de píldora) ---
 st.markdown('<div class="pill-btn">', unsafe_allow_html=True)
-if st.button("➕  📝  Nueva tarea", key="nt_toggle"):
+pill_label = "▾  📝  Nueva tarea" if st.session_state["nt_visible"] else "▸  📝  Nueva tarea"
+if st.button(pill_label, key="nt_toggle"):
     st.session_state["nt_visible"] = not st.session_state["nt_visible"]
 st.markdown('</div>', unsafe_allow_html=True)
 
