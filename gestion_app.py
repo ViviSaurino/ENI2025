@@ -1084,6 +1084,10 @@ def _filtra_dataset(df_base, area, responsable, desde, hasta):
 
     return df
 
+# ===== Constantes usadas por PRIORIDAD / EVALUACIÓN (definir antes) =====
+PRIORITY_CHOICES = ["Urgente", "Alta", "Media", "Baja"]
+EVAL_CHOICES     = [5, 4, 3, 2, 1]   # 5=Excelente … 1=Deficiente
+
 # =====================================================================
 # =========================== PRIORIDAD ===============================
 # =====================================================================
