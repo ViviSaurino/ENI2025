@@ -548,7 +548,7 @@ st.markdown("""
 .help-strip-nt{
   position: relative !important;
   top: -10px !important;     /* sube más: -12, -14...  baja: -6, -4... */
-  margin-top: -14 !important;
+  margin-top: -24 !important;
   margin-bottom: 10px !important;
 }
 
@@ -1180,6 +1180,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
