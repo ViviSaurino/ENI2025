@@ -525,7 +525,7 @@ st.markdown("""
 
 /* SOLO la de “Nueva tarea” (usa help-strip-nt en el HTML) */
 .topbar ~ .help-strip-nt{
-  margin-top: 50px !important;   /* ← sube/baja solo esta franja */
+  margin-top: -6px !important;   /* ← sube/baja solo esta franja */
   margin-bottom: 10px !important;
 }
 
@@ -1171,6 +1171,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
