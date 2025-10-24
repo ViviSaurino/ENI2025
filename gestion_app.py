@@ -1154,7 +1154,7 @@ if st.session_state["pri_visible"]:
         )
 
         # === Botón con el MISMO ancho (1.2) que "Vincular alerta-tarea" ===
-        b1, b2, b3, b4, b5, b6 = st.columns([A, F, 1.1, 1.1, 1.0, 1.0], gap="medium")
+        b1, b2, b3, b4, b5, b6 = st.columns([A, F, 1.1, 1.1, 1.0, 0.8], gap="medium")
         with b6:
             do_save_pri = st.form_submit_button("🧭 Dar prioridad", use_container_width=True, disabled=not CAN_EDIT)
 
@@ -1529,4 +1529,5 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
