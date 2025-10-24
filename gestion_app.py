@@ -1216,7 +1216,12 @@ if st.session_state["pri_visible"]:
             data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
             update_mode=GridUpdateMode.VALUE_CHANGED,            # devuelve cambios en tiempo real
             allow_unsafe_jscode=True,
-            eight=180, # ⬅⬅⬅ altura compacta
+            theme="balham",
+            height=180,                                          # ⬅ altura compacta
+            custom_css={                                         # ⬅ fuerza el alto si el layout lo estira
+                ".ag-root-wrapper": {"height": "180px !important"},
+                ".ag-body-viewport": {"height": "140px !important"},
+            },
         )
 
         # Toma lo editado (mantiene el nombre 'edited' para no romper tu lógica de guardado)
@@ -1317,9 +1322,14 @@ if st.session_state["eva_visible"]:
             gridOptions=grid_opt_eval,
             fit_columns_on_grid_load=False,                     # respeta widths configurados
             data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
-            update_mode=GridUpdateMode.VALUE_CHANGED,          # devuelve cambios en tiempo real
+            update_mode=GridUpdateMode.VALUE_CHANGED,           # devuelve cambios en tiempo real
             allow_unsafe_jscode=True,
-            height=200, # ⬅⬅⬅ altura compacta
+            theme="balham",
+            height=180,                                         # ⬅ altura compacta
+            custom_css={                                        # ⬅ fuerza el alto si el layout lo estira
+                ".ag-root-wrapper": {"height": "180px !important"},
+                ".ag-body-viewport": {"height": "140px !important"},
+            },
         )
 
         # Mantén el nombre edited_eval para tu lógica de guardado
@@ -1346,6 +1356,7 @@ if st.session_state["eva_visible"]:
     elif not CAN_EDIT:
         st.info("🔒 Solo jefatura puede registrar evaluaciones.")
     st.markdown('</div>', unsafe_allow_html=True)  # form-card
+
 
 
 # ================== Historial ================== 
