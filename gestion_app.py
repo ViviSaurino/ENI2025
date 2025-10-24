@@ -533,7 +533,7 @@ st.markdown("""
 /* ===== Separación de las indicaciones respecto a la píldora y al borde ===== */
 .help-strip{
   display:block !important;
-  margin-top:-2px !important;     /* separa de la PÍLDORA */
+  margin-top:2px !important;     /* separa de la PÍLDORA */
   margin-bottom:14px !important;  /* separa del RECTÁNGULO de la sección */
   padding:2px 0 !important;
   line-height:1.25 !important;
@@ -1217,6 +1217,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
