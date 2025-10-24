@@ -1052,16 +1052,37 @@ if st.session_state["na_visible"]:
 
     st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
 
-# ====== CONTROL DE EDICIÓN (JEFATURA) — definir SIEMPRE antes de usar ======
-# 1) Lista de correos permitidos (ajústala luego):
-ALLOWED_BOSS_EMAILS = {"stephanysg18@gmail.com.pe"}   # <-- cámbialo cuando te pasen el correo
-# 2) Email del usuario actual (ajústalo a tu mecanismo de auth):
-user_email = st.session_state.get("user_email", "")
-
-# 3) Bandera global de edición:
+# ====== CONTROL DE EDICIÓN (JEFATURA) ======
+ALLOWED_BOSS_EMAILS = {"stephanysg18@gmail.com.pe"}  # lo ajustarás luego
+# Mientras pruebas: permite editar a todos
 CAN_EDIT = True
-# Si quieres que, mientras no configuras el correo, se permita editar:
-# CAN_EDIT = True  # <- úsalo temporalmente mientras pruebas
+
+# ====== FALLBACKS para listados ======
+AREAS_OPC = st.session_state.get("AREAS_OPC", ["Planeamiento"])
+
+# ====== UTILIDAD: filtro común para tablas ======
+def _filtra_dataset(df_base, area, responsable, desde, hasta):
+    """Filtra df_base por área, responsable y rango de fechas (Fecha inicio)."""
+    if df_base is None or df_base.empty:
+        return df_base
+
+    df = df_base.copy()
+
+    if area and area != "Todas" and "Área" in df.columns:
+        df = df[df["Área"] == area]
+
+    if responsable and responsable != "Todos" and "Responsable" in df.columns:
+        df = df[df["Responsable"].astype(str) == responsable]
+
+    # Rango de fechas sobre 'Fecha inicio' si existe
+    if "Fecha inicio" in df.columns:
+        fcol = pd.to_datetime(df["Fecha inicio"], errors="coerce")
+        if desde:
+            df = df[fcol >= pd.to_datetime(desde)]
+        if hasta:
+            df = df[fcol <= (pd.to_datetime(hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
+
+    return df
 
 # =====================================================================
 # =========================== PRIORIDAD ===============================
