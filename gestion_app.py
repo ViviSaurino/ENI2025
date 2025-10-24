@@ -544,13 +544,21 @@ st.markdown("""
   display:inline-flex !important; align-items:center !important;
 }
             
-/* === Solo la franja de indicaciones debajo de "Nueva tarea" === */
-.help-strip-nt{
+<style>
+/* Forzamos mover SOLO la franja bajo “Nueva tarea” */
+#nt-help{
   position: relative !important;
-  top: -10px !important;     /* sube más: -12, -14...  baja: -6, -4... */
-  margin-top: 0 !important;
-  margin-bottom: 10px !important;
+  transform: translateY(-12px) !important;  /* súbelo más: -14, -16... */
+  margin-top: 0 !important;                 /* evita colapso de márgenes */
+  margin-bottom: 10px !important;           /* aire debajo */
+  display: block !important;
 }
+
+/* Por si algún contenedor padre tuviera overflow oculto */
+#nt-help, #nt-help *{ overflow: visible !important; }
+
+/* Máxima prioridad (por si hay colisiones) */
+.stApp #nt-help{ transform: translateY(-12px) !important; }
 
 </style>
 """, unsafe_allow_html=True)
@@ -618,9 +626,9 @@ st.markdown('</div>', unsafe_allow_html=True)
 # --- Cuerpo (solo si está visible) ---
 if st.session_state["nt_visible"]:
 
-    # Tira de ayuda (SOLO de "Nueva tarea") — clase específica para moverla con CSS
+    # Tira de ayuda (SOLO de "Nueva tarea") — clase e ID específicos para moverla con CSS
     st.markdown("""
-    <div class="help-strip help-strip-nt">
+    <div class="help-strip help-strip-nt" id="nt-help">
       ✳️ <strong>Completa los campos principales</strong> para registrar una nueva tarea
     </div>
     """, unsafe_allow_html=True)
@@ -1180,11 +1188,3 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
-
-
-
-
-
