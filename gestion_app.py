@@ -670,63 +670,40 @@ st.markdown("""
   .form-title-pri, .form-title-eval{ width: auto !important; }
 }
             
-/* ===== Compactar al máximo el espacio entre las barras/píldoras ===== */
+/* Quita el espacio vertical que mete Streamlit entre elementos */
+.block-container [data-testid="stVerticalBlock"]{
+  row-gap: 6px !important;   /* antes ~24px; prueba 4–10px */
+  gap: 6px !important;
+}
 
-/* 1) Reduce márgenes y padding del contenedor que envuelve cada topbar */
+/* Aún más compacto solo para los bloques que contienen las barras/píldoras */
+.block-container [data-testid="stVerticalBlock"]:has(.topbar),
+.block-container [data-testid="stVerticalBlock"]:has(.topbar-ux),
+.block-container [data-testid="stVerticalBlock"]:has(.topbar-na),
+.block-container [data-testid="stVerticalBlock"]:has(.topbar-pri),
+.block-container [data-testid="stVerticalBlock"]:has(.topbar-eval){
+  row-gap: 4px !important;   /* ↓ ajusta aquí si lo quieres pegadísimo (2px) */
+  gap: 4px !important;
+}
+
+/* También reduce el gap de los bloques de columnas que envuelven el triangulito + píldora */
+.block-container [data-testid="stHorizontalBlock"]:has(.topbar),
+.block-container [data-testid="stHorizontalBlock"]:has(.topbar-ux),
+.block-container [data-testid="stHorizontalBlock"]:has(.topbar-na),
+.block-container [data-testid="stHorizontalBlock"]:has(.topbar-pri),
+.block-container [data-testid="stHorizontalBlock"]:has(.topbar-eval){
+  column-gap: 8px !important;
+  gap: 8px !important;        /* por si el tema usa 'gap' en lugar de 'column-gap' */
+}
+
+/* Sin márgenes extra en el contenedor inmediato de cada barra */
 .block-container .element-container:has(.topbar),
 .block-container .element-container:has(.topbar-ux),
 .block-container .element-container:has(.topbar-na),
 .block-container .element-container:has(.topbar-pri),
 .block-container .element-container:has(.topbar-eval){
   margin-top: 2px !important;
-  margin-bottom: 6px !important;   /* ← SUBE o BAJA este número (2–10px) */
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-}
-
-/* 2) Aún más pegadas: quita separación entre una barra y la siguiente barra */
-.block-container .element-container:has(.topbar)      + .element-container:has(.topbar),
-.block-container .element-container:has(.topbar-ux)   + .element-container:has(.topbar-ux),
-.block-container .element-container:has(.topbar-na)   + .element-container:has(.topbar-na),
-.block-container .element-container:has(.topbar-pri)  + .element-container:has(.topbar-pri),
-.block-container .element-container:has(.topbar-eval) + .element-container:has(.topbar-eval){
-  margin-top: -2px !important;     /* pequeño solape para quitar el “aire” */
-}
-
-/* 3) El propio markdown de la píldora sin márgenes extra */
-.block-container .stMarkdown:has(.form-title),
-.block-container .stMarkdown:has(.form-title-ux),
-.block-container .stMarkdown:has(.form-title-na),
-.block-container .stMarkdown:has(.form-title-pri),
-.block-container .stMarkdown:has(.form-title-eval){
-  margin: 0 !important;
-}
-
-/* 4) Márgenes de las píldoras y su “bajada” (reduce el hueco) */
-.form-title,
-.form-title-ux,
-.form-title-na,
-.form-title-pri,
-.form-title-eval{
-  margin: 0 0 2px 0 !important;
-  transform: translateY(4px) !important; /* si quieres aún menos: 2px */
-}
-
-/* 5) Botón triangulito sin respiro */
-.toggle-icon .stButton>button{ margin: 0 !important; }
-
-/* Opcional: más compacto en móviles */
-@media (max-width: 980px){
-  .block-container .element-container:has(.topbar),
-  .block-container .element-container:has(.topbar-ux),
-  .block-container .element-container:has(.topbar-na),
-  .block-container .element-container:has(.topbar-pri),
-  .block-container .element-container:has(.topbar-eval){
-    margin-bottom: 4px !important;
-  }
-  .form-title, .form-title-ux, .form-title-na, .form-title-pri, .form-title-eval{
-    transform: translateY(2px) !important;
-  }
+  margin-bottom: 6px !important;  /* bájalo a 2–4px si quieres todavía menos */
 }
 
 }
