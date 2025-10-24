@@ -297,294 +297,160 @@ st.markdown("""
   --blue-pill-bd: #0EA5E9;
   --blue-pill-fg: #ffffff;
 
-  /* <<< Ancho unificado para las 3 píldoras >>> */
-  --pill-width: 300px;  /* AJUSTA este valor al ancho de “Estado” */
+  /* <<< Ancho unificado para las 3 píldoras (igual que “Estado”) >>> */
+  --pill-width: 300px;
 }
 
 /* ======= Separaciones fuertes dentro del formulario ======= */
 .form-card [data-testid="stHorizontalBlock"]{
   display: grid !important;
   grid-auto-flow: row dense !important;
-  grid-row-gap: 16px !important;       /* espacio entre FILAS */
-  grid-column-gap: 20px !important;    /* espacio entre COLUMNAS */
+  grid-row-gap: 16px !important;
+  grid-column-gap: 20px !important;
   align-items: start !important;
 }
 
 /* Cada columna aporta un padding de seguridad */
-.form-card [data-testid="column"]{
-  padding-right: 12px !important;
-  box-sizing: border-box !important;
-}
-.form-card [data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child{
-  padding-right: 0 !important;
-}
+.form-card [data-testid="column"]{ padding-right: 12px !important; box-sizing: border-box !important; }
+.form-card [data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child{ padding-right: 0 !important; }
 
 /* Sub-bloques anidados */
 .form-card [data-testid="stHorizontalBlock"] [data-testid="stHorizontalBlock"]{
-  display: grid !important;
-  grid-column-gap: 16px !important;
-  grid-row-gap: 12px !important;
+  display: grid !important; grid-column-gap: 16px !important; grid-row-gap: 12px !important;
 }
 
 /* Margen inferior */
 .form-card [data-baseweb],
 .form-card [data-testid="stWidgetLabel"],
-.form-card [data-baseweb] > div{
-  margin-bottom: 6px !important;
-}
+.form-card [data-baseweb] > div{ margin-bottom: 6px !important; }
 
 /* ===== Controles ===== */
 .form-card [data-baseweb="input"] > div,
 .form-card [data-baseweb="textarea"] > div,
 .form-card [data-baseweb="select"] > div,
 .form-card [data-baseweb="datepicker"] > div{
-  min-height: 44px !important;
-  border-radius: 12px !important;
-  border: 1px solid #E5E7EB !important;
-  background: #fff !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
+  min-height: 44px !important; border-radius: 12px !important; border: 1px solid #E5E7EB !important;
+  background: #fff !important; width: 100% !important; box-sizing: border-box !important;
 }
 .form-card [data-baseweb="input"] input,
 .form-card [data-baseweb="textarea"] textarea,
 .form-card [data-baseweb="select"] div,
-.form-card [data-baseweb="datepicker"] input{
-  font-size: 15px !important;
-}
+.form-card [data-baseweb="datepicker"] input{ font-size: 15px !important; }
 
 /* Foco */
 .form-card [data-baseweb="input"] > div:has(input:focus),
 .form-card [data-baseweb="textarea"] > div:has(textarea:focus),
 .form-card [data-baseweb="select"] > div:focus-within,
 .form-card [data-baseweb="datepicker"] > div:focus-within{
-  border-color: #60A5FA !important;
-  box-shadow: 0 0 0 3px rgba(96,165,250,.25) !important;
+  border-color: #60A5FA !important; box-shadow: 0 0 0 3px rgba(96,165,250,.25) !important;
 }
 
 /* ===== Sidebar ===== */
-[data-testid="stSidebar"]{
-  background: var(--lilac-50) !important;
-  border-right: 1px solid #ECE6FF !important;
-  width: 200px !important;
-  min-width: 200px !important;
-}
+[data-testid="stSidebar"]{ background: var(--lilac-50) !important; border-right: 1px solid #ECE6FF !important; width: 200px !important; min-width: 200px !important; }
 [data-testid="stSidebar"] > div{ width: 200px !important; }
-[data-testid="stSidebar"] a{
-  color: var(--lilac-600) !important;
-  font-weight: 600 !important;
-  text-decoration: none !important;
-}
+[data-testid="stSidebar"] a{ color: var(--lilac-600) !important; font-weight: 600 !important; text-decoration: none !important; }
 [data-testid="stSidebar"] .stButton > button{
-  border-radius: 12px !important;
-  background: var(--lilac) !important;
-  border: 1px solid var(--lilac) !important;
-  color:#fff !important; font-weight:800 !important;
-  box-shadow: 0 8px 18px rgba(179,139,227,.25) !important;
+  border-radius: 12px !important; background: var(--lilac) !important; border: 1px solid var(--lilac) !important;
+  color:#fff !important; font-weight:800 !important; box-shadow: 0 8px 18px rgba(179,139,227,.25) !important;
 }
 [data-testid="stSidebar"] .stButton > button:hover{ filter: brightness(.96); }
 
 /* ===== Píldoras celestes (títulos) ===== */
 .form-title{
-  display:inline-flex; align-items:center; gap:.5rem;
-  padding: 6px 12px;
-  border-radius: 12px;
-  background: var(--blue-pill-bg);
-  border: 1px solid var(--blue-pill-bd);
-  color: var(--blue-pill-fg);
-  font-weight: 800; letter-spacing: .2px;
-  margin: 6px 0 10px 0;
-
-  /* <<< Fuerza el mismo ancho y centra contenido >>> */
-  width: var(--pill-width) !important;
-  justify-content: center !important;
+  display:inline-flex; align-items:center; gap:.5rem; padding: 6px 12px; border-radius: 12px;
+  background: var(--blue-pill-bg); border: 1px solid var(--blue-pill-bd); color: var(--blue-pill-fg);
+  font-weight: 800; letter-spacing: .2px; margin: 6px 0 10px 0;
+  width: var(--pill-width) !important; justify-content: center !important;
 }
 
 /* ===== SELECTs (regla general) ===== */
-.form-card [data-baseweb="select"] > div{
-  overflow: visible !important;
-  white-space: nowrap !important;
-  text-overflow: clip !important;
-  width: fit-content !important;
-  min-width: 240px !important;
-}
-.form-card [data-baseweb="select"] [role="combobox"]{
-  overflow: visible !important;
-  white-space: nowrap !important;
-  text-overflow: clip !important;
-}
+.form-card [data-baseweb="select"] > div{ overflow: visible !important; white-space: nowrap !important; text-overflow: clip !important; width: fit-content !important; min-width: 240px !important; }
+.form-card [data-baseweb="select"] [role="combobox"]{ overflow: visible !important; white-space: nowrap !important; text-overflow: clip !important; }
 .form-card [data-baseweb="select"] span,
 .form-card [data-baseweb="select"] label,
-.form-card [data-baseweb="select"] div div{
-  white-space: nowrap !important;
-  text-overflow: clip !important;
-  overflow: visible !important;
-  max-width: none !important;
-}
+.form-card [data-baseweb="select"] div div{ white-space: nowrap !important; text-overflow: clip !important; overflow: visible !important; max-width: none !important; }
 
 /* ===== SOLO Área y Estado más anchos ===== */
-.form-card [data-testid="stHorizontalBlock"]:nth-of-type(1)
-  > [data-testid="column"]:first-child [data-baseweb="select"] > div{
-  min-width: 300px !important;   /* Área */
-}
-.form-card [data-testid="stHorizontalBlock"]:nth-of-type(2)
-  > [data-testid="column"]:first-child [data-baseweb="select"] > div{
-  min-width: 300px !important;   /* Estado */
-}
+.form-card [data-testid="stHorizontalBlock"]:nth-of-type(1) > [data-testid="column"]:first-child [data-baseweb="select"] > div{ min-width: 300px !important; } /* Área */
+.form-card [data-testid="stHorizontalBlock"]:nth-of-type(2) > [data-testid="column"]:first-child [data-baseweb="select"] > div{ min-width: 300px !important; } /* Estado */
 
 /* Responsive */
 @media (max-width: 980px){
   .form-card [data-baseweb="select"] > div{ min-width: 200px !important; }
-  /* <<< En móviles, que las píldoras se ajusten al contenido >>> */
   .form-title{ width: auto !important; }
 }
 
 /* ===================================================================== */
 /* ====== Tarjeta de Alertas (anclada con .alertas-grid) — 1|3|1 ======= */
 /* ===================================================================== */
-
-.form-card.alertas-grid{
-  display: grid !important;
-  grid-template-columns: repeat(5, 1fr); /* A B C D E */
-  grid-column-gap: 20px;
-  grid-row-gap: 16px;
-  align-items: start;
-}
-
-/* Aplana TODOS los st.columns dentro de esta tarjeta */
-.form-card.alertas-grid [data-testid="stHorizontalBlock"]{
-  display: contents !important;
-}
-
-/* Fila “virtual” 1: 1|3|1 -> A | B..D | E */
+.form-card.alertas-grid{ display: grid !important; grid-template-columns: repeat(5, 1fr); grid-column-gap: 20px; grid-row-gap: 16px; align-items: start; }
+.form-card.alertas-grid [data-testid="stHorizontalBlock"]{ display: contents !important; }
 .form-card.alertas-grid > [data-testid="column"]:nth-of-type(1){ grid-column: 1; }
 .form-card.alertas-grid > [data-testid="column"]:nth-of-type(2){ grid-column: 2 / 5; }
 .form-card.alertas-grid > [data-testid="column"]:nth-of-type(3){ grid-column: 5; }
-
-/* Fila “virtual” 2: A B C D E */
 .form-card.alertas-grid > [data-testid="column"]:nth-of-type(4){ grid-column: 1; }
 .form-card.alertas-grid > [data-testid="column"]:nth-of-type(5){ grid-column: 2; }
 .form-card.alertas-grid > [data-testid="column"]:nth-of-type(6){ grid-column: 3; }
 .form-card.alertas-grid > [data-testid="column"]:nth-of-type(7){ grid-column: 4; }
 .form-card.alertas-grid > [data-testid="column"]:nth-of-type(8){ grid-column: 5; }
-
-/* Inputs al 100% SOLO en esta tarjeta (anula el fit-content general) */
 .form-card.alertas-grid [data-baseweb="select"] > div,
 .form-card.alertas-grid [data-baseweb="input"] > div,
-.form-card.alertas-grid [data-baseweb="datepicker"] > div{
-  width: 100% !important;
-  min-width: 0 !important;
-  white-space: normal !important;
-}
-            
+.form-card.alertas-grid [data-baseweb="datepicker"] > div{ width: 100% !important; min-width: 0 !important; white-space: normal !important; }
+
 /* ===== Tono celeste institucional para títulos ===== */
-:root{
-  --pill-azul:      #94BEEA;
-  --pill-azul-bord: #94BEEA;
-}
-
+:root{ --pill-azul:#94BEEA; --pill-azul-bord:#94BEEA; }
 .form-title{
-  background: var(--pill-azul) !important;
-  border: 1px solid var(--pill-azul-bord) !important;
-  color: #ffffff !important;
-  box-shadow: 0 6px 16px rgba(148,190,234,.3) !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  margin-right: 10px !important;
-  font-weight: 700 !important;
-
-  width: var(--pill-width) !important;
-  justify-content: center !important;
+  background: var(--pill-azul) !important; border: 1px solid var(--pill-azul-bord) !important; color: #ffffff !important;
+  box-shadow: 0 6px 16px rgba(148,190,234,.3) !important; display: inline-flex !important; align-items: center !important;
+  gap: 6px !important; margin-right: 10px !important; font-weight: 700 !important; width: var(--pill-width) !important; justify-content: center !important;
 }
 
 /* ====== Botón del formulario al 100% del ancho (igual a "Fecha fin") ====== */
 .form-card .stButton > button,
 .form-card [data-testid="baseButton-secondary"],
-.form-card [data-testid="baseButton-primary"]{
-  width: 100% !important;
-}
-.form-card .stButton > button{
-  padding-top: 10px !important;
-  padding-bottom: 10px !important;
-}
+.form-card [data-testid="baseButton-primary"]{ width: 100% !important; }
+.form-card .stButton > button{ padding-top: 10px !important; padding-bottom: 10px !important; }
 
 /* === Exportar (st.download_button) — cubrir todas las variantes === */
 [data-testid="stDownloadButton"] a,
 [data-testid="stDownloadButton"] button,
 [data-testid="stDownloadButton"] a *,
-[data-testid="stDownloadButton"] button *{
-  font-size: var(--actions-font) !important;
-  line-height: 1.05 !important;
-  white-space: nowrap !important;
-}
+[data-testid="stDownloadButton"] button *{ font-size: var(--actions-font) !important; line-height: 1.05 !important; white-space: nowrap !important; }
 [data-testid="stDownloadButton"] a,
 [data-testid="stDownloadButton"] button{
-  padding: var(--actions-pad-y) var(--actions-pad-x) !important;
-  border-radius: 12px !important;
-  border: 1px solid #E5E7EB !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 6px !important;
+  padding: var(--actions-pad-y) var(--actions-pad-x) !important; border-radius: 12px !important; border: 1px solid #E5E7EB !important;
+  display: inline-flex !important; align-items: center !important; gap: 6px !important;
 }
 
 /* ===== Separación de las indicaciones respecto a la píldora y al borde ===== */
-.help-strip{
-  display: block !important;
-  margin-top: 10px !important;     /* separa de la PÍLDORA */
-  margin-bottom: 14px !important;  /* separa del RECTÁNGULO de la sección */
-  padding: 2px 0 !important;
-  line-height: 1.25 !important;
-}
-.form-card > .help-strip{
-  margin-top: 10px !important;
-  margin-bottom: 14px !important;
-}
-.help-strip strong{ display: inline-block !important; }
+.help-strip{ display:block !important; margin-top:10px !important; margin-bottom:14px !important; padding:2px 0 !important; line-height:1.25 !important; }
+.form-card > .help-strip{ margin-top:10px !important; margin-bottom:14px !important; }
+.help-strip strong{ display:inline-block !important; }
 
 /* ===== Botón-píldora toggle (celeste + ancho controlado) ===== */
 .pill-btn{ margin: 8px 0 6px 0; }
 
-/* Todas las variantes de botón que usa Streamlit */
+/* Forzamos el estilo tanto si streamlit marca primary/secondary como si no */
+.pill-btn button,
 .pill-btn .stButton > button,
 .pill-btn .stButton > div > button,
-.pill-btn button[kind="secondary"],
-.pill-btn button[kind="primary"],
 .pill-btn [data-testid="baseButton-secondary"],
-.pill-btn [data-testid="baseButton-primary"]{
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  padding: 8px 14px !important;
-  border-radius: 12px !important;
-
-  background: var(--pill-azul) !important;
-  border: 1px solid var(--pill-azul-bord) !important;
-  color: #ffffff !important;
-  font-weight: 700 !important;
-  line-height: 1.15 !important;
-
-  /* ancho igual al definido para las píldoras/tamaño de Estado */
-  min-width: var(--pill-width) !important;
-  width: fit-content !important;
-
-  box-shadow: 0 6px 16px rgba(148,190,234,.30) !important;
+.pill-btn [data-testid="baseButton-primary"],
+.pill-btn button[kind="secondary"],
+.pill-btn button[kind="primary"]{
+  display:inline-flex !important; align-items:center !important; gap:8px !important; padding:8px 14px !important; border-radius:12px !important;
+  background: var(--pill-azul) !important; border: 1px solid var(--pill-azul-bord) !important; color:#ffffff !important; font-weight:700 !important; line-height:1.15 !important;
+  min-width: var(--pill-width) !important; width: fit-content !important; box-shadow: 0 6px 16px rgba(148,190,234,.30) !important; cursor:pointer !important;
 }
 
-/* Asegura texto blanco dentro del botón */
-.pill-btn .stButton > button *,
-.pill-btn .stButton > div > button *,
-.pill-btn [data-testid="baseButton-secondary"] *,
-.pill-btn [data-testid="baseButton-primary"] *{
-  color: #ffffff !important;
-}
+/* Texto e íconos en blanco dentro del botón */
+.pill-btn button *, .pill-btn .stButton > button *, .pill-btn [data-testid="baseButton-secondary"] *, .pill-btn [data-testid="baseButton-primary"] *{ color:#ffffff !important; fill:#ffffff !important; }
 
 /* Hover */
+.pill-btn button:hover,
 .pill-btn .stButton > button:hover,
-.pill-btn .stButton > div > button:hover,
 .pill-btn [data-testid="baseButton-secondary"]:hover,
-.pill-btn [data-testid="baseButton-primary"]:hover{
-  filter: brightness(.97) !important;
-}
+.pill-btn [data-testid="baseButton-primary"]:hover{ filter: brightness(.97) !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -620,7 +486,7 @@ st.session_state.setdefault("nt_visible", True)
 # --- Píldora celeste "clickable" (botón con estilo de píldora) ---
 st.markdown('<div class="pill-btn">', unsafe_allow_html=True)
 pill_label = "▾  📝  Nueva tarea" if st.session_state["nt_visible"] else "▸  📝  Nueva tarea"
-if st.button(pill_label, key="nt_toggle"):
+if st.button(pill_label, key="nt_toggle", type="primary"):  # <- tipo primario para estilo celeste
     st.session_state["nt_visible"] = not st.session_state["nt_visible"]
 st.markdown('</div>', unsafe_allow_html=True)
 
