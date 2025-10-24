@@ -605,7 +605,7 @@ st.markdown("""
 <style>
 /* SOLO la franja de indicaciones que viene justo después del botón “Nueva tarea” */
 .topbar + .help-strip{
-  margin-top: 2px !important;     /* súbelo/bájalo: prueba 0, 2, 4 px */
+  margin-top: 0px !important;     /* súbelo/bájalo: prueba 0, 2, 4 px */
   margin-bottom: 10px !important;  /* opcional: aire debajo */
 }
 
@@ -1237,3 +1237,4 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
