@@ -1168,11 +1168,12 @@ if st.session_state["pri_visible"]:
                 "Tarea": st.column_config.TextColumn("Tarea", disabled=True),
             },
             hide_index=True,
-            num_rows="dynamic"  # permite quitar/añadir de la selección si quieres
+            num_rows="dynamic"
         )
 
-        col_left, col_right = st.columns([1,1])
-        with col_right:
+        # === Botón con el MISMO ancho (1.2) que "Vincular alerta-tarea" ===
+        b1, b2, b3, b4, b5, b6 = st.columns([A, F, 1.1, 1.1, 1.0, 1.2], gap="medium")
+        with b6:
             do_save_pri = st.form_submit_button("💾 Guardar prioridades", use_container_width=True, disabled=not CAN_EDIT)
 
     if CAN_EDIT and 'do_save_pri' in locals() and do_save_pri:
@@ -1246,8 +1247,9 @@ if st.session_state["eva_visible"]:
         calif = e1.selectbox("Calificación", options=EVAL_CHOICES, index=0, disabled=not CAN_EDIT, help="5=Excelente … 1=Deficiente")
         nota  = e2.text_input("Comentario (opcional)", placeholder="Observaciones de la evaluación", disabled=not CAN_EDIT)
 
-        colx, coly = st.columns([1,1])
-        with coly:
+        # === Botón con el MISMO ancho (1.2) que "Vincular alerta-tarea" ===
+        bx1, bx2, bx3, bx4, bx5, bx6 = st.columns([A, F, 1.1, 1.1, 1.0, 1.2], gap="medium")
+        with bx6:
             do_save_eval = st.form_submit_button("💾 Guardar evaluación", use_container_width=True, disabled=not CAN_EDIT)
 
     if CAN_EDIT and 'do_save_eval' in locals() and do_save_eval:
