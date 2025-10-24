@@ -533,7 +533,7 @@ st.markdown("""
 /* ===== Separación de las indicaciones respecto a la píldora y al borde ===== */
 .help-strip{
   display:block !important;
-  margin-top:-6px !important;     /* separa de la PÍLDORA */
+  margin-top:0px !important;     /* separa de la PÍLDORA */
   margin-bottom:14px !important;  /* separa del RECTÁNGULO de la sección */
   padding:2px 0 !important;
   line-height:1.25 !important;
@@ -566,7 +566,7 @@ st.markdown("""
   align-items:center !important;
   padding:0 12px !important;
   line-height:1 !important;
-  transform: translateY( 11px); /* AJUSTE: baja la píldora */
+  transform: translateY(11px); /* AJUSTE: baja la píldora */
 }
 
 /* Botón triangulito ya en 36px; reforzamos alineación */
@@ -585,6 +585,18 @@ st.markdown("""
   border-radius:10px !important;
   display:inline-flex !important;
   align-items:center !important;
+}
+
+/* Ajuste fino de la franja de indicaciones */
+.help-strip{ 
+  margin-top: 0px !important;     /* 0,  -2px o -4px si lo quieres aún más arriba */
+  margin-bottom: 10px !important; /* opcional, un poco menos de aire abajo */
+}
+
+/* Si la help-strip está dentro de .form-card, aplica igual */
+.form-card > .help-strip{
+  margin-top: 0px !important;
+  margin-bottom: 10px !important;
 }
 
 /* Evitar saltos de ancho en el botón */
@@ -1217,29 +1229,3 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
