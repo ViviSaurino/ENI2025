@@ -1319,7 +1319,7 @@ if st.session_state["eva_visible"]:
             data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
             update_mode=GridUpdateMode.VALUE_CHANGED,          # devuelve cambios en tiempo real
             allow_unsafe_jscode=True,
-            height=280, # ⬅⬅⬅ altura compacta
+            height=180, # ⬅⬅⬅ altura compacta
         )
 
         # Mantén el nombre edited_eval para tu lógica de guardado
@@ -1599,3 +1599,4 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
