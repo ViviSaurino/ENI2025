@@ -298,7 +298,7 @@ st.markdown("""
   --blue-pill-fg: #ffffff;
 
   /* <<< Ancho unificado para las 3 píldoras (igual que “Estado”) >>> */
-  --pill-width: 300px;
+  --pill-width: 360px;
 }
 
 /* ======= Separaciones fuertes dentro del formulario ======= */
@@ -480,14 +480,17 @@ EMO_ESTADO      = {"🍼 No iniciado": "No iniciado","⏳ En curso": "En curso",
 EMO_SI_NO       = {"✅ Sí": "Sí", "🚫 No": "No"}
 
 # ================== Formulario ==================
-# Toggle de visibilidad (por defecto: visible)
+# Estado inicial del toggle
 st.session_state.setdefault("nt_visible", True)
 
-# --- Píldora celeste "clickable" (botón con estilo de píldora) ---
+# --- Píldora celeste (toggle con un solo clic) ---
+def _toggle_nt():
+    st.session_state["nt_visible"] = not st.session_state["nt_visible"]
+
 st.markdown('<div class="pill-btn">', unsafe_allow_html=True)
 pill_label = "▾  📝  Nueva tarea" if st.session_state["nt_visible"] else "▸  📝  Nueva tarea"
-if st.button(pill_label, key="nt_toggle", type="primary"):  # <- tipo primario para estilo celeste
-    st.session_state["nt_visible"] = not st.session_state["nt_visible"]
+# type="primary" para evitar color por defecto rojo y permitir que el CSS lo pinte celeste
+st.button(pill_label, key="nt_toggle", type="primary", on_click=_toggle_nt)
 st.markdown('</div>', unsafe_allow_html=True)
 
 # --- Cuerpo (solo si está visible) ---
@@ -500,7 +503,7 @@ if st.session_state["nt_visible"]:
     </div>
     """, unsafe_allow_html=True)
 
-    # Tarjeta con un único borde (el tuyo)
+    # Tarjeta con un único borde
     st.markdown('<div class="form-card">', unsafe_allow_html=True)
 
     with st.form("form_nueva_tarea", clear_on_submit=True):
@@ -510,17 +513,14 @@ if st.session_state["nt_visible"]:
         T = 3.2   # Tarea  y  (Estado + Complejidad + Fecha inicio)
         D = 2.4   # Detalle y  (Vencimiento + Fecha fin)
 
-        # -------- Fila 1: Área | Fase | Tarea | Detalle --------
+        # -------- Fila 1 --------
         r1c1, r1c2, r1c3, r1c4 = st.columns([A, F, T, D], gap="medium")
-
         area    = _opt_map(r1c1, "Área", EMO_AREA, "Planeamiento")
         fase    = r1c2.text_input("Fase", placeholder="Etapa")
         tarea   = r1c3.text_input("Tarea", placeholder="Describe la tarea")
         detalle = r1c4.text_input("Detalle", placeholder="Información adicional (opcional)")
 
         # -------- Fila 2 --------
-        # Estado + Complejidad + Fecha inicio = T (3.2)  ->  1.1 + 1.1 + 1.0
-        # Vencimiento + Fecha fin = D (2.4)             ->  1.2 + 1.2
         c2_1, c2_2, c2_3, c2_4, c2_5, c2_6, c2_7 = st.columns([A, F, 1.1, 1.1, 1.0, 1.2, 1.2], gap="medium")
 
         tipo = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría")
@@ -563,17 +563,13 @@ if st.session_state["nt_visible"]:
             "Vencimiento": f_ven,
             "Fecha fin": f_fin,
         })
-
         new["Duración"]     = duration_days(new["Fecha inicio"], new["Vencimiento"])
         new["Días hábiles"] = business_days(new["Fecha inicio"], new["Vencimiento"])
 
         df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
         st.session_state["df_main"] = df.copy()
-        path_ok = os.path.join("data", "tareas.csv")
         os.makedirs("data", exist_ok=True)
-        df.reindex(columns=COLS, fill_value=None).to_csv(
-            path_ok, index=False, encoding="utf-8-sig", mode="w"
-        )
+        df.reindex(columns=COLS, fill_value=None).to_csv("data/tareas.csv", index=False, encoding="utf-8-sig", mode="w")
         ok, msg = _write_sheet_tab(df[COLS].copy())
         st.success(f"✔ Tarea agregada ({new['Id']}). {msg}") if ok else st.warning(f"Agregado localmente. {msg}")
 
