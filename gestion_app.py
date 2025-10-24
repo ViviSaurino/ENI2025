@@ -670,19 +670,30 @@ st.markdown("""
   .form-title-pri, .form-title-eval{ width: auto !important; }
 }
             
-/* Compactar el espacio vertical entre barras/píldoras (cuando la sección está colapsada o no) */
+/* ===== Compactar al máximo el espacio entre las barras/píldoras ===== */
 
-/* Reduce el margen del CONTENEDOR que envuelve cada barra */
+/* 1) Reduce márgenes y padding del contenedor que envuelve cada topbar */
 .block-container .element-container:has(.topbar),
 .block-container .element-container:has(.topbar-ux),
 .block-container .element-container:has(.topbar-na),
 .block-container .element-container:has(.topbar-pri),
 .block-container .element-container:has(.topbar-eval){
-  margin-bottom: 6px !important;   /* ← ajusta aquí (2–10px) */
-  margin-top: 4px !important;
+  margin-top: 2px !important;
+  margin-bottom: 6px !important;   /* ← SUBE o BAJA este número (2–10px) */
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
 }
 
-/* Quita márgenes propios del markdown que pinta la píldora */
+/* 2) Aún más pegadas: quita separación entre una barra y la siguiente barra */
+.block-container .element-container:has(.topbar)      + .element-container:has(.topbar),
+.block-container .element-container:has(.topbar-ux)   + .element-container:has(.topbar-ux),
+.block-container .element-container:has(.topbar-na)   + .element-container:has(.topbar-na),
+.block-container .element-container:has(.topbar-pri)  + .element-container:has(.topbar-pri),
+.block-container .element-container:has(.topbar-eval) + .element-container:has(.topbar-eval){
+  margin-top: -2px !important;     /* pequeño solape para quitar el “aire” */
+}
+
+/* 3) El propio markdown de la píldora sin márgenes extra */
 .block-container .stMarkdown:has(.form-title),
 .block-container .stMarkdown:has(.form-title-ux),
 .block-container .stMarkdown:has(.form-title-na),
@@ -691,20 +702,20 @@ st.markdown("""
   margin: 0 !important;
 }
 
-/* Márgenes de las píldoras en sí (por si queda otro respiro) */
+/* 4) Márgenes de las píldoras y su “bajada” (reduce el hueco) */
 .form-title,
 .form-title-ux,
 .form-title-na,
 .form-title-pri,
 .form-title-eval{
-  margin: 2px 0 4px 0 !important;
-  transform: translateY(6px) !important; /* menor “bajada” = menos hueco */
+  margin: 0 0 2px 0 !important;
+  transform: translateY(4px) !important; /* si quieres aún menos: 2px */
 }
 
-/* Botón triangulito sin espacio extra */
+/* 5) Botón triangulito sin respiro */
 .toggle-icon .stButton>button{ margin: 0 !important; }
 
-/* (Opcional) aún más compacto en móviles */
+/* Opcional: más compacto en móviles */
 @media (max-width: 980px){
   .block-container .element-container:has(.topbar),
   .block-container .element-container:has(.topbar-ux),
@@ -714,8 +725,7 @@ st.markdown("""
     margin-bottom: 4px !important;
   }
   .form-title, .form-title-ux, .form-title-na, .form-title-pri, .form-title-eval{
-    margin: 2px 0 2px 0 !important;
-    transform: translateY(4px) !important;
+    transform: translateY(2px) !important;
   }
 }
 
