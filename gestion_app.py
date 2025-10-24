@@ -566,7 +566,7 @@ st.markdown("""
   align-items:center !important;
   padding:0 12px !important;
   line-height:1 !important;
-  transform: translateY(6.5px); /* AJUSTE: baja la píldora */
+  transform: translateY(7.5px); /* AJUSTE: baja la píldora */
 }
 
 /* Botón triangulito ya en 36px; reforzamos alineación */
@@ -1217,6 +1217,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
