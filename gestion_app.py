@@ -1052,6 +1052,17 @@ if st.session_state["na_visible"]:
 
     st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
 
+# ====== CONTROL DE EDICIÓN (JEFATURA) — definir SIEMPRE antes de usar ======
+# 1) Lista de correos permitidos (ajústala luego):
+ALLOWED_BOSS_EMAILS = {"stephanysg18@gmail.com.pe"}   # <-- cámbialo cuando te pasen el correo
+# 2) Email del usuario actual (ajústalo a tu mecanismo de auth):
+user_email = st.session_state.get("user_email", "")
+
+# 3) Bandera global de edición:
+CAN_EDIT = True
+# Si quieres que, mientras no configuras el correo, se permita editar:
+# CAN_EDIT = True  # <- úsalo temporalmente mientras pruebas
+
 # =====================================================================
 # =========================== PRIORIDAD ===============================
 # =====================================================================
