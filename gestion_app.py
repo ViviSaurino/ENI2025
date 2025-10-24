@@ -1440,7 +1440,7 @@ if f_desde:
     df_view = df_view[df_view["Fecha inicio"].dt.date >= f_desde]
 if f_hasta:
     df_view = df_view[df_view["Fecha inicio"].dt.date <= f_hasta]
-st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
+st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
 
 # === ORDEN DE COLUMNAS: Id primero, luego Área y el resto ===
 grid_cols = ["Id", "Área"] + [c for c in COLS if c not in ("Id", "Área")]
@@ -1653,6 +1653,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
