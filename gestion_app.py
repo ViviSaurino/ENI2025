@@ -298,7 +298,7 @@ st.markdown("""
   --blue-pill-fg: #ffffff;
 
   /* <<< Ancho unificado para las 3 píldoras >>> */
-  --pill-width: 220px;  /* ajusta este valor para que termine donde 'Estado' */
+  --pill-width: 300px;  /* AJUSTA este valor al ancho de “Estado” */
 }
 
 /* ======= Separaciones fuertes dentro del formulario ======= */
@@ -383,7 +383,7 @@ st.markdown("""
 }
 [data-testid="stSidebar"] .stButton > button:hover{ filter: brightness(.96); }
 
-/* ===== Píldoras celestes ===== */
+/* ===== Píldoras celestes (títulos) ===== */
 .form-title{
   display:inline-flex; align-items:center; gap:.5rem;
   padding: 6px 12px;
@@ -433,17 +433,13 @@ st.markdown("""
 
 /* Responsive */
 @media (max-width: 980px){
-  .form-card [data-baseweb="select"] > div{
-    min-width: 200px !important;
-  }
+  .form-card [data-baseweb="select"] > div{ min-width: 200px !important; }
   /* <<< En móviles, que las píldoras se ajusten al contenido >>> */
   .form-title{ width: auto !important; }
 }
 
 /* ===================================================================== */
 /* ====== Tarjeta de Alertas (anclada con .alertas-grid) — 1|3|1 ======= */
-/* ID = ¿Generó? (1) | Tarea = Tipo+Fecha+¿Se corrigió? (3) |            */
-/* Responsable = Fecha corregida (1)                                     */
 /* ===================================================================== */
 
 .form-card.alertas-grid{
@@ -459,28 +455,17 @@ st.markdown("""
   display: contents !important;
 }
 
-/* Posiciona por orden absoluto de aparición (8 campos):
-   1: ID
-   2: Tarea
-   3: Responsable
-   4: ¿Generó alerta?
-   5: Tipo de alerta
-   6: Fecha de alerta
-   7: ¿Se corrigió la alerta?
-   8: Fecha alerta corregida
-*/
-
-/* Fila “virtual” 1: 1|3|1  ->  A | B..D | E */
-.form-card.alertas-grid > [data-testid="column"]:nth-of-type(1){ grid-column: 1; }      /* ID -> A */
-.form-card.alertas-grid > [data-testid="column"]:nth-of-type(2){ grid-column: 2 / 5; }  /* Tarea -> B+C+D */
-.form-card.alertas-grid > [data-testid="column"]:nth-of-type(3){ grid-column: 5; }      /* Responsable -> E */
+/* Fila “virtual” 1: 1|3|1 -> A | B..D | E */
+.form-card.alertas-grid > [data-testid="column"]:nth-of-type(1){ grid-column: 1; }
+.form-card.alertas-grid > [data-testid="column"]:nth-of-type(2){ grid-column: 2 / 5; }
+.form-card.alertas-grid > [data-testid="column"]:nth-of-type(3){ grid-column: 5; }
 
 /* Fila “virtual” 2: A B C D E */
-.form-card.alertas-grid > [data-testid="column"]:nth-of-type(4){ grid-column: 1; }      /* ¿Generó? -> A */
-.form-card.alertas-grid > [data-testid="column"]:nth-of-type(5){ grid-column: 2; }      /* Tipo -> B */
-.form-card.alertas-grid > [data-testid="column"]:nth-of-type(6){ grid-column: 3; }      /* Fecha alerta -> C */
-.form-card.alertas-grid > [data-testid="column"]:nth-of-type(7){ grid-column: 4; }      /* ¿Se corrigió? -> D */
-.form-card.alertas-grid > [data-testid="column"]:nth-of-type(8){ grid-column: 5; }      /* Fecha corregida -> E */
+.form-card.alertas-grid > [data-testid="column"]:nth-of-type(4){ grid-column: 1; }
+.form-card.alertas-grid > [data-testid="column"]:nth-of-type(5){ grid-column: 2; }
+.form-card.alertas-grid > [data-testid="column"]:nth-of-type(6){ grid-column: 3; }
+.form-card.alertas-grid > [data-testid="column"]:nth-of-type(7){ grid-column: 4; }
+.form-card.alertas-grid > [data-testid="column"]:nth-of-type(8){ grid-column: 5; }
 
 /* Inputs al 100% SOLO en esta tarjeta (anula el fit-content general) */
 .form-card.alertas-grid [data-baseweb="select"] > div,
@@ -491,16 +476,16 @@ st.markdown("""
   white-space: normal !important;
 }
             
-/* ===== Píldoras (Nueva tarea / Nueva alerta) — Celeste institucional suave ===== */
+/* ===== Tono celeste institucional para títulos ===== */
 :root{
-  --pill-azul:      #94BEEA;  /* tono de la imagen */
-  --pill-azul-bord: #94BEEA;  /* borde igual */
+  --pill-azul:      #94BEEA;
+  --pill-azul-bord: #94BEEA;
 }
 
 .form-title{
   background: var(--pill-azul) !important;
   border: 1px solid var(--pill-azul-bord) !important;
-  color: #ffffff !important; /* letras blancas */
+  color: #ffffff !important;
   box-shadow: 0 6px 16px rgba(148,190,234,.3) !important;
   display: inline-flex !important;
   align-items: center !important;
@@ -508,7 +493,6 @@ st.markdown("""
   margin-right: 10px !important;
   font-weight: 700 !important;
 
-  /* <<< Igualar ancho y centrar >>> */
   width: var(--pill-width) !important;
   justify-content: center !important;
 }
@@ -519,7 +503,6 @@ st.markdown("""
 .form-card [data-testid="baseButton-primary"]{
   width: 100% !important;
 }
-/* Opcional: misma altura visual que los inputs */
 .form-card .stButton > button{
   padding-top: 10px !important;
   padding-bottom: 10px !important;
@@ -530,11 +513,10 @@ st.markdown("""
 [data-testid="stDownloadButton"] button,
 [data-testid="stDownloadButton"] a *,
 [data-testid="stDownloadButton"] button *{
-  font-size: var(--actions-font) !important;  /* usa la misma var que definiste */
+  font-size: var(--actions-font) !important;
   line-height: 1.05 !important;
   white-space: nowrap !important;
 }
-
 [data-testid="stDownloadButton"] a,
 [data-testid="stDownloadButton"] button{
   padding: var(--actions-pad-y) var(--actions-pad-x) !important;
@@ -553,52 +535,56 @@ st.markdown("""
   padding: 2px 0 !important;
   line-height: 1.25 !important;
 }
-
-/* Si la indicación está dentro de .form-card, afianza la separación */
 .form-card > .help-strip{
   margin-top: 10px !important;
   margin-bottom: 14px !important;
 }
+.help-strip strong{ display: inline-block !important; }
 
-/* (Opcional) por si usas <strong> en la indicación */
-.help-strip strong{
-  display: inline-block !important;
-}
-
-/* ===== Botón-píldora toggle (misma estética y ancho que "Estado") ===== */
+/* ===== Botón-píldora toggle (celeste + ancho controlado) ===== */
 .pill-btn{ margin: 8px 0 6px 0; }
 
-/* Cubre todas las variantes de botón que usa Streamlit dentro del contenedor */
+/* Todas las variantes de botón que usa Streamlit */
 .pill-btn .stButton > button,
+.pill-btn .stButton > div > button,
+.pill-btn button[kind="secondary"],
+.pill-btn button[kind="primary"],
 .pill-btn [data-testid="baseButton-secondary"],
 .pill-btn [data-testid="baseButton-primary"]{
-  display:inline-flex !important;
-  align-items:center !important;
-  gap:8px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
   padding: 8px 14px !important;
   border-radius: 12px !important;
+
   background: var(--pill-azul) !important;
   border: 1px solid var(--pill-azul-bord) !important;
   color: #ffffff !important;
   font-weight: 700 !important;
-  box-shadow: 0 6px 16px rgba(148,190,234,.30) !important;
-  min-width: 300px !important;   /* = ancho de "Estado" */
+  line-height: 1.15 !important;
+
+  /* ancho igual al definido para las píldoras/tamaño de Estado */
+  min-width: var(--pill-width) !important;
   width: fit-content !important;
+
+  box-shadow: 0 6px 16px rgba(148,190,234,.30) !important;
 }
 
-/* Asegura texto e íconos en blanco */
+/* Asegura texto blanco dentro del botón */
 .pill-btn .stButton > button *,
+.pill-btn .stButton > div > button *,
 .pill-btn [data-testid="baseButton-secondary"] *,
 .pill-btn [data-testid="baseButton-primary"] *{
-  color:#ffffff !important;
+  color: #ffffff !important;
 }
 
+/* Hover */
 .pill-btn .stButton > button:hover,
+.pill-btn .stButton > div > button:hover,
 .pill-btn [data-testid="baseButton-secondary"]:hover,
 .pill-btn [data-testid="baseButton-primary"]:hover{
-  filter: brightness(.97);
+  filter: brightness(.97) !important;
 }
-
 </style>
 """, unsafe_allow_html=True)
 
