@@ -287,7 +287,7 @@ if "df_main" not in st.session_state:
 # ---------- CSS ----------
 st.markdown("""
 <style>
-/* ===== Colores base ===== */
+/* =================== Variables de tema =================== */
 :root{
   --lilac:      #B38BE3;
   --lilac-50:   #F6EEFF;
@@ -297,15 +297,15 @@ st.markdown("""
   --blue-pill-bd: #0EA5E9;
   --blue-pill-fg: #ffffff;
 
-  /* Ancho unificado para las 3 píldoras (igual que “Estado” / “Área”) */
-  --pill-width: 168px; /* AJUSTE: ahora calza con Área */
+  /* Ancho de la píldora “Nueva tarea” */
+  --pill-width: 168px;
 
-  /* Tono celeste institucional para títulos */
+  /* Celeste institucional de títulos */
   --pill-azul:      #94BEEA;
   --pill-azul-bord: #94BEEA;
 }
 
-/* ======= Separaciones fuertes dentro del formulario ======= */
+/* =================== Layout de formulario =================== */
 .form-card [data-testid="stHorizontalBlock"]{
   display: grid !important;
   grid-auto-flow: row dense !important;
@@ -313,8 +313,6 @@ st.markdown("""
   grid-column-gap: 20px !important;
   align-items: start !important;
 }
-
-/* Cada columna aporta un padding de seguridad */
 .form-card [data-testid="column"]{
   padding-right: 12px !important;
   box-sizing: border-box !important;
@@ -322,22 +320,20 @@ st.markdown("""
 .form-card [data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child{
   padding-right: 0 !important;
 }
-
-/* Sub-bloques anidados */
 .form-card [data-testid="stHorizontalBlock"] [data-testid="stHorizontalBlock"]{
   display: grid !important;
   grid-column-gap: 16px !important;
   grid-row-gap: 12px !important;
 }
 
-/* Margen inferior en widgets */
+/* Margen base entre widgets */
 .form-card [data-baseweb],
 .form-card [data-testid="stWidgetLabel"],
 .form-card [data-baseweb] > div{
   margin-bottom: 6px !important;
 }
 
-/* ===== Controles ===== */
+/* =================== Inputs =================== */
 .form-card [data-baseweb="input"] > div,
 .form-card [data-baseweb="textarea"] > div,
 .form-card [data-baseweb="select"] > div,
@@ -365,7 +361,7 @@ st.markdown("""
   box-shadow: 0 0 0 3px rgba(96,165,250,.25) !important;
 }
 
-/* ===== Sidebar ===== */
+/* =================== Sidebar =================== */
 [data-testid="stSidebar"]{
   background: var(--lilac-50) !important;
   border-right: 1px solid #ECE6FF !important;
@@ -388,8 +384,7 @@ st.markdown("""
 }
 [data-testid="stSidebar"] .stButton > button:hover{ filter: brightness(.96); }
 
-/* ===== Píldoras celestes (títulos) ===== */
-/* La píldora es un DIV para que siempre se vea celeste */
+/* =================== Píldoras (títulos) =================== */
 .form-title{
   display:inline-flex !important;
   align-items:center !important;
@@ -405,10 +400,14 @@ st.markdown("""
   width: var(--pill-width) !important;
   justify-content: center !important;
   box-shadow: 0 6px 16px rgba(148,190,234,.3) !important;
+
+  /* Alineación vertical fina respecto al triangulito */
+  min-height:36px !important;
+  line-height:1 !important;
+  transform: translateY(11px); /* ↓ sube/baja la píldora si hace falta */
 }
 
-/* ===== Flechita de toggle (botón pequeño a la izquierda) ===== */
-/* Moradito, centrado verticalmente y a misma altura que la píldora */
+/* =================== Triangulito (toggle) =================== */
 .toggle-icon{
   display:flex !important;
   align-items:center !important;
@@ -418,7 +417,7 @@ st.markdown("""
   min-width: 36px !important;
   height: 36px !important;
   border-radius: 10px !important;
-  background: var(--lilac-600) !important;   /* morado */
+  background: var(--lilac-600) !important;
   border: 1px solid var(--lilac-600) !important;
   color: #ffffff !important;
   font-weight: 800 !important;
@@ -426,9 +425,11 @@ st.markdown("""
   box-shadow: 0 4px 12px rgba(139,92,246,.25) !important;
 }
 .toggle-icon .stButton>button:hover{ filter: brightness(.98) !important; }
-.toggle-icon .stButton>button:focus{ outline: none !important; box-shadow: 0 0 0 2px rgba(139,92,246,.35) !important; }
+.toggle-icon .stButton>button:focus{
+  outline: none !important; box-shadow: 0 0 0 2px rgba(139,92,246,.35) !important;
+}
 
-/* ===== SELECTs (regla general) ===== */
+/* =================== SELECTs =================== */
 .form-card [data-baseweb="select"] > div{
   overflow: visible !important;
   white-space: nowrap !important;
@@ -450,25 +451,19 @@ st.markdown("""
   max-width: none !important;
 }
 
-/* ===== SOLO Área y Estado más anchos ===== */
+/* Anchura mayor para Área y Estado (fila 1 col 1 y fila 2 col 1) */
 .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1)
-  > [data-testid="column"]:first-child [data-baseweb="select"] > div{
-  min-width: 300px !important;   /* Área */
-}
+  > [data-testid="column"]:first-child [data-baseweb="select"] > div{ min-width: 300px !important; }
 .form-card [data-testid="stHorizontalBlock"]:nth-of-type(2)
-  > [data-testid="column"]:first-child [data-baseweb="select"] > div{
-  min-width: 300px !important;   /* Estado */
-}
+  > [data-testid="column"]:first-child [data-baseweb="select"] > div{ min-width: 300px !important; }
 
-/* Responsive */
+/* =================== Responsivo =================== */
 @media (max-width: 980px){
   .form-card [data-baseweb="select"] > div{ min-width: 200px !important; }
   .form-title{ width: auto !important; }
 }
 
-/* ===================================================================== */
-/* ====== Tarjeta de Alertas (anclada con .alertas-grid) — 1|3|1 ======= */
-/* ===================================================================== */
+/* =================== Tarjeta de Alertas (grid) =================== */
 .form-card.alertas-grid{
   display: grid !important;
   grid-template-columns: repeat(5, 1fr);
@@ -476,42 +471,28 @@ st.markdown("""
   grid-row-gap: 16px;
   align-items: start;
 }
-/* Aplana TODOS los st.columns dentro de esta tarjeta */
 .form-card.alertas-grid [data-testid="stHorizontalBlock"]{ display: contents !important; }
-
-/* Fila “virtual” 1: 1|3|1 -> A | B..D | E */
 .form-card.alertas-grid > [data-testid="column"]:nth-of-type(1){ grid-column: 1; }
 .form-card.alertas-grid > [data-testid="column"]:nth-of-type(2){ grid-column: 2 / 5; }
 .form-card.alertas-grid > [data-testid="column"]:nth-of-type(3){ grid-column: 5; }
-
-/* Fila “virtual” 2: A B C D E */
 .form-card.alertas-grid > [data-testid="column"]:nth-of-type(4){ grid-column: 1; }
 .form-card.alertas-grid > [data-testid="column"]:nth-of-type(5){ grid-column: 2; }
 .form-card.alertas-grid > [data-testid="column"]:nth-of-type(6){ grid-column: 3; }
 .form-card.alertas-grid > [data-testid="column"]:nth-of-type(7){ grid-column: 4; }
 .form-card.alertas-grid > [data-testid="column"]:nth-of-type(8){ grid-column: 5; }
-
-/* Inputs al 100% SOLO en esta tarjeta */
 .form-card.alertas-grid [data-baseweb="select"] > div,
 .form-card.alertas-grid [data-baseweb="input"] > div,
 .form-card.alertas-grid [data-baseweb="datepicker"] > div{
-  width: 100% !important;
-  min-width: 0 !important;
-  white-space: normal !important;
+  width: 100% !important; min-width: 0 !important; white-space: normal !important;
 }
 
-/* ===== Botón del formulario al 100% del ancho (igual a "Fecha fin") ===== */
+/* =================== Botones dentro de la card =================== */
 .form-card .stButton > button,
 .form-card [data-testid="baseButton-secondary"],
-.form-card [data-testid="baseButton-primary"]{
-  width: 100% !important;
-}
-.form-card .stButton > button{
-  padding-top: 10px !important;
-  padding-bottom: 10px !important;
-}
+.form-card [data-testid="baseButton-primary"]{ width: 100% !important; }
+.form-card .stButton > button{ padding-top: 10px !important; padding-bottom: 10px !important; }
 
-/* === Exportar (st.download_button) — cubrir todas las variantes === */
+/* =================== Download button =================== */
 [data-testid="stDownloadButton"] a,
 [data-testid="stDownloadButton"] button,
 [data-testid="stDownloadButton"] a *,
@@ -525,90 +506,43 @@ st.markdown("""
   padding: var(--actions-pad-y) var(--actions-pad-x) !important;
   border-radius: 12px !important;
   border: 1px solid #E5E7EB !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 6px !important;
+  display: inline-flex !important; align-items: center !important; gap: 6px !important;
 }
 
-/* ===== Separación de las indicaciones respecto a la píldora y al borde ===== */
+/* =================== Franja de indicaciones =================== */
 .help-strip{
   display:block !important;
-  margin-top:0px !important;     /* separa de la PÍLDORA */
-  margin-bottom:14px !important;  /* separa del RECTÁNGULO de la sección */
   padding:2px 0 !important;
   line-height:1.25 !important;
+  margin-top: 0px !important;
+  margin-bottom: 14px !important;
 }
 .form-card > .help-strip{
-  margin-top:10px !important;
-  margin-bottom:14px !important;
+  margin-top: 10px !important;
+  margin-bottom: 14px !important;
 }
 .help-strip strong{ display:inline-block !important; }
 
-/* ===== Contenedor genérico por si lo usas más adelante ===== */
-.pill-btn{ margin: 8px 0 6px 0; display:inline-block; }
+/* SOLO la de “Nueva tarea” (usa help-strip-nt en el HTML) */
+.topbar ~ .help-strip-nt{
+  margin-top: -6px !important;   /* ← sube/baja solo esta franja */
+  margin-bottom: 10px !important;
+}
 
-/* ===================================================================== */
-/* ================== AJUSTE DE ALINEACIÓN SUPERIOR ===================== */
-/* ===================================================================== */
-
-/* Contenedor para poner triangulito + “Nueva tarea” en la misma línea */
+/* =================== Topbar (expander + píldora) =================== */
 .topbar{
   display:flex !important;
-  align-items:center !important;  /* alinea verticalmente */
+  align-items:center !important;
   gap:8px !important;
 }
-
-/* Forzamos que la píldora tenga la MISMA altura que el triangulito
-   y la bajamos 2px para alinear perfecto */
-.form-title{
-  min-height:36px !important;
-  display:inline-flex !important;
-  align-items:center !important;
-  padding:0 12px !important;
-  line-height:1 !important;
-  transform: translateY(11px); /* AJUSTE: baja la píldora */
-}
-
-/* Botón triangulito ya en 36px; reforzamos alineación */
-.toggle-icon{ display:flex !important; align-items:center !important; }
-.toggle-icon .stButton>button{
-  height:36px !important;
-  display:inline-flex !important;
-  align-items:center !important;
-}
-
-/* Si usas un st.button para “Nueva tarea”, dale la misma altura */
+.topbar .stButton{ display:inline-flex !important; align-items:center !important; } /* evita saltos */
 .topbar .stButton>button,
 .pill-btn .stButton>button{
   height:36px !important;
   padding:0 16px !important;
   border-radius:10px !important;
-  display:inline-flex !important;
-  align-items:center !important;
+  display:inline-flex !important; align-items:center !important;
 }
-
-/* Ajuste fino de la franja de indicaciones */
-.help-strip{ 
-  margin-top: 0px !important;     /* 0,  -2px o -4px si lo quieres aún más arriba */
-  margin-bottom: 10px !important; /* opcional, un poco menos de aire abajo */
-}
-
-/* Si la help-strip está dentro de .form-card, aplica igual */
-.form-card > .help-strip{
-  margin-top: 0px !important;
-  margin-bottom: 10px !important;
-}
-
-/* Evitar saltos de ancho en el botón */
-.topbar .stButton{ display:inline-flex !important; align-items:center !important; }
-
-<style>
-/* SOLO la franja de indicaciones que viene justo después del botón “Nueva tarea” */
-.topbar + .help-strip{
-  margin-top: -4px !important;     /* súbelo/bájalo: prueba 0, 2, 4 px */
-  margin-bottom: 10px !important;  /* opcional: aire debajo */
-}
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -675,9 +609,9 @@ st.markdown('</div>', unsafe_allow_html=True)
 # --- Cuerpo (solo si está visible) ---
 if st.session_state["nt_visible"]:
 
-    # Tira de ayuda
+    # Tira de ayuda (SOLO de "Nueva tarea") — clase específica para moverla con CSS
     st.markdown("""
-    <div class="help-strip">
+    <div class="help-strip help-strip-nt">
       ✳️ <strong>Completa los campos principales</strong> para registrar una nueva tarea
     </div>
     """, unsafe_allow_html=True)
@@ -1237,6 +1171,3 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
