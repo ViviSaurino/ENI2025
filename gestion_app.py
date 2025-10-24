@@ -739,7 +739,7 @@ with c_toggle2:
 with c_pill2:
     # Píldora celeste (igual estética/ancho que la otra)
     st.markdown(
-        '<div class="form-title-ux">&nbsp;&nbsp;🔁&nbsp;&nbsp;Actualizar estado</div>',
+        '<div class="form-title-ux">&nbsp;&nbsp;🔁&nbsp;&nbsp;Editar estado</div>',
         unsafe_allow_html=True
     )
 st.markdown('</div>', unsafe_allow_html=True)
@@ -1216,3 +1216,4 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
