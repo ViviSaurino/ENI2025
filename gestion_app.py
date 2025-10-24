@@ -413,8 +413,8 @@ st.markdown("""
   align-items:center !important;
 }
 .toggle-icon .stButton>button{
-  padding: 4px 8px !important;
-  min-width: 20px !important;
+  padding: 2px 4px !important;
+  min-width: 28px !important;
   height: 36px !important;
   border-radius: 10px !important;
   background: var(--lilac-600) !important;
@@ -1188,5 +1188,6 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
