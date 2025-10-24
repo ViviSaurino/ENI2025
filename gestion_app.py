@@ -1402,6 +1402,7 @@ if st.session_state["eva_visible"]:
 
 st.markdown("<div style='height:60px'></div>", unsafe_allow_html=True)
 st.subheader("📝 Tareas recientes")
+st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
 df_view = st.session_state["df_main"].copy()
 
@@ -1651,6 +1652,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
