@@ -374,8 +374,8 @@ st.markdown("""
   --pill-azul-bord: #94BEEA;
 
   /* ===== Píldoras rosadas para Prioridad / Evaluación ===== */
-  --pill-rosa:      #D69AC2;  /* color muestra */
-  --pill-rosa-bord: #C05AA7;  /* borde un poco más oscuro */
+  --pill-rosa:      #67D3C4;  /* color muestra */
+  --pill-rosa-bord: #67D3C4;  /* borde un poco más oscuro */
 }
 
 /* =================== Inputs =================== */
@@ -1215,8 +1215,8 @@ if st.session_state["pri_visible"]:
             fit_columns_on_grid_load=False,                       # respeta widths configurados
             data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
             update_mode=GridUpdateMode.VALUE_CHANGED,            # devuelve cambios en tiempo real
-            allow_unsafe_jscode=True
-            eight=280  # ⬅⬅⬅ altura compacta
+            allow_unsafe_jscode=True,
+            eight=280, # ⬅⬅⬅ altura compacta
         )
 
         # Toma lo editado (mantiene el nombre 'edited' para no romper tu lógica de guardado)
@@ -1318,8 +1318,8 @@ if st.session_state["eva_visible"]:
             fit_columns_on_grid_load=False,                     # respeta widths configurados
             data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
             update_mode=GridUpdateMode.VALUE_CHANGED,          # devuelve cambios en tiempo real
-            allow_unsafe_jscode=True
-            height=280  # ⬅⬅⬅ altura compacta
+            allow_unsafe_jscode=True,
+            height=280, # ⬅⬅⬅ altura compacta
         )
 
         # Mantén el nombre edited_eval para tu lógica de guardado
