@@ -297,8 +297,12 @@ st.markdown("""
   --blue-pill-bd: #0EA5E9;
   --blue-pill-fg: #ffffff;
 
-  /* <<< Ancho unificado para las 3 píldoras (igual que “Estado”) >>> */
+  /* Ancho unificado para las 3 píldoras (igual que “Estado” / “Área”) */
   --pill-width: 360px;
+
+  /* Tono celeste institucional para títulos */
+  --pill-azul:      #94BEEA;
+  --pill-azul-bord: #94BEEA;
 }
 
 /* ======= Separaciones fuertes dentro del formulario ======= */
@@ -311,68 +315,143 @@ st.markdown("""
 }
 
 /* Cada columna aporta un padding de seguridad */
-.form-card [data-testid="column"]{ padding-right: 12px !important; box-sizing: border-box !important; }
-.form-card [data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child{ padding-right: 0 !important; }
+.form-card [data-testid="column"]{
+  padding-right: 12px !important;
+  box-sizing: border-box !important;
+}
+.form-card [data-testid="stHorizontalBlock"] > [data-testid="column"]:last-child{
+  padding-right: 0 !important;
+}
 
 /* Sub-bloques anidados */
 .form-card [data-testid="stHorizontalBlock"] [data-testid="stHorizontalBlock"]{
-  display: grid !important; grid-column-gap: 16px !important; grid-row-gap: 12px !important;
+  display: grid !important;
+  grid-column-gap: 16px !important;
+  grid-row-gap: 12px !important;
 }
 
-/* Margen inferior */
+/* Margen inferior en widgets */
 .form-card [data-baseweb],
 .form-card [data-testid="stWidgetLabel"],
-.form-card [data-baseweb] > div{ margin-bottom: 6px !important; }
+.form-card [data-baseweb] > div{
+  margin-bottom: 6px !important;
+}
 
 /* ===== Controles ===== */
 .form-card [data-baseweb="input"] > div,
 .form-card [data-baseweb="textarea"] > div,
 .form-card [data-baseweb="select"] > div,
 .form-card [data-baseweb="datepicker"] > div{
-  min-height: 44px !important; border-radius: 12px !important; border: 1px solid #E5E7EB !important;
-  background: #fff !important; width: 100% !important; box-sizing: border-box !important;
+  min-height: 44px !important;
+  border-radius: 12px !important;
+  border: 1px solid #E5E7EB !important;
+  background: #fff !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 .form-card [data-baseweb="input"] input,
 .form-card [data-baseweb="textarea"] textarea,
 .form-card [data-baseweb="select"] div,
-.form-card [data-baseweb="datepicker"] input{ font-size: 15px !important; }
+.form-card [data-baseweb="datepicker"] input{
+  font-size: 15px !important;
+}
 
 /* Foco */
 .form-card [data-baseweb="input"] > div:has(input:focus),
 .form-card [data-baseweb="textarea"] > div:has(textarea:focus),
 .form-card [data-baseweb="select"] > div:focus-within,
 .form-card [data-baseweb="datepicker"] > div:focus-within{
-  border-color: #60A5FA !important; box-shadow: 0 0 0 3px rgba(96,165,250,.25) !important;
+  border-color: #60A5FA !important;
+  box-shadow: 0 0 0 3px rgba(96,165,250,.25) !important;
 }
 
 /* ===== Sidebar ===== */
-[data-testid="stSidebar"]{ background: var(--lilac-50) !important; border-right: 1px solid #ECE6FF !important; width: 200px !important; min-width: 200px !important; }
+[data-testid="stSidebar"]{
+  background: var(--lilac-50) !important;
+  border-right: 1px solid #ECE6FF !important;
+  width: 200px !important;
+  min-width: 200px !important;
+}
 [data-testid="stSidebar"] > div{ width: 200px !important; }
-[data-testid="stSidebar"] a{ color: var(--lilac-600) !important; font-weight: 600 !important; text-decoration: none !important; }
+[data-testid="stSidebar"] a{
+  color: var(--lilac-600) !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+}
 [data-testid="stSidebar"] .stButton > button{
-  border-radius: 12px !important; background: var(--lilac) !important; border: 1px solid var(--lilac) !important;
-  color:#fff !important; font-weight:800 !important; box-shadow: 0 8px 18px rgba(179,139,227,.25) !important;
+  border-radius: 12px !important;
+  background: var(--lilac) !important;
+  border: 1px solid var(--lilac) !important;
+  color:#fff !important;
+  font-weight:800 !important;
+  box-shadow: 0 8px 18px rgba(179,139,227,.25) !important;
 }
 [data-testid="stSidebar"] .stButton > button:hover{ filter: brightness(.96); }
 
 /* ===== Píldoras celestes (títulos) ===== */
+/* La píldora es un DIV para que siempre se vea celeste */
 .form-title{
-  display:inline-flex; align-items:center; gap:.5rem; padding: 6px 12px; border-radius: 12px;
-  background: var(--blue-pill-bg); border: 1px solid var(--blue-pill-bd); color: var(--blue-pill-fg);
-  font-weight: 800; letter-spacing: .2px; margin: 6px 0 10px 0;
-  width: var(--pill-width) !important; justify-content: center !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  gap:.5rem !important;
+  padding: 6px 12px !important;
+  border-radius: 12px !important;
+  background: var(--pill-azul) !important;
+  border: 1px solid var(--pill-azul-bord) !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  letter-spacing: .2px !important;
+  margin: 6px 0 10px 0 !important;
+  width: var(--pill-width) !important;
+  justify-content: center !important;
+  box-shadow: 0 6px 16px rgba(148,190,234,.3) !important;
 }
 
+/* ===== Flechita de toggle (botón pequeño a la izquierda) ===== */
+.toggle-icon .stButton>button{
+  padding: 4px 8px !important;
+  min-width: 36px !important;
+  height: 36px !important;
+  border-radius: 10px !important;
+  background: #F1F5F9 !important;       /* gris claro, neutral */
+  border: 1px solid #E2E8F0 !important;
+  color: #111827 !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+}
+.toggle-icon .stButton>button:hover{ filter: brightness(.98) !important; }
+
 /* ===== SELECTs (regla general) ===== */
-.form-card [data-baseweb="select"] > div{ overflow: visible !important; white-space: nowrap !important; text-overflow: clip !important; width: fit-content !important; min-width: 240px !important; }
-.form-card [data-baseweb="select"] [role="combobox"]{ overflow: visible !important; white-space: nowrap !important; text-overflow: clip !important; }
+.form-card [data-baseweb="select"] > div{
+  overflow: visible !important;
+  white-space: nowrap !important;
+  text-overflow: clip !important;
+  width: fit-content !important;
+  min-width: 240px !important;
+}
+.form-card [data-baseweb="select"] [role="combobox"]{
+  overflow: visible !important;
+  white-space: nowrap !important;
+  text-overflow: clip !important;
+}
 .form-card [data-baseweb="select"] span,
 .form-card [data-baseweb="select"] label,
-.form-card [data-baseweb="select"] div div{ white-space: nowrap !important; text-overflow: clip !important; overflow: visible !important; max-width: none !important; }
+.form-card [data-baseweb="select"] div div{
+  white-space: nowrap !important;
+  text-overflow: clip !important;
+  overflow: visible !important;
+  max-width: none !important;
+}
 
 /* ===== SOLO Área y Estado más anchos ===== */
-.form-card [data-testid="stHorizontalBlock"]:nth-of-type(1) > [data-testid="column"]:first-child [data-baseweb="select"] > div{ min-width: 300px !important; } /* Área */
-.form-card [data-testid="stHorizontalBlock"]:nth-of-type(2) > [data-testid="column"]:first-child [data-baseweb="select"] > div{ min-width: 300px !important; } /* Estado */
+.form-card [data-testid="stHorizontalBlock"]:nth-of-type(1)
+  > [data-testid="column"]:first-child [data-baseweb="select"] > div{
+  min-width: 300px !important;   /* Área */
+}
+.form-card [data-testid="stHorizontalBlock"]:nth-of-type(2)
+  > [data-testid="column"]:first-child [data-baseweb="select"] > div{
+  min-width: 300px !important;   /* Estado */
+}
 
 /* Responsive */
 @media (max-width: 980px){
@@ -383,119 +462,84 @@ st.markdown("""
 /* ===================================================================== */
 /* ====== Tarjeta de Alertas (anclada con .alertas-grid) — 1|3|1 ======= */
 /* ===================================================================== */
-.form-card.alertas-grid{ display: grid !important; grid-template-columns: repeat(5, 1fr); grid-column-gap: 20px; grid-row-gap: 16px; align-items: start; }
+.form-card.alertas-grid{
+  display: grid !important;
+  grid-template-columns: repeat(5, 1fr);
+  grid-column-gap: 20px;
+  grid-row-gap: 16px;
+  align-items: start;
+}
+/* Aplana TODOS los st.columns dentro de esta tarjeta */
 .form-card.alertas-grid [data-testid="stHorizontalBlock"]{ display: contents !important; }
+
+/* Fila “virtual” 1: 1|3|1 -> A | B..D | E */
 .form-card.alertas-grid > [data-testid="column"]:nth-of-type(1){ grid-column: 1; }
 .form-card.alertas-grid > [data-testid="column"]:nth-of-type(2){ grid-column: 2 / 5; }
 .form-card.alertas-grid > [data-testid="column"]:nth-of-type(3){ grid-column: 5; }
+
+/* Fila “virtual” 2: A B C D E */
 .form-card.alertas-grid > [data-testid="column"]:nth-of-type(4){ grid-column: 1; }
 .form-card.alertas-grid > [data-testid="column"]:nth-of-type(5){ grid-column: 2; }
 .form-card.alertas-grid > [data-testid="column"]:nth-of-type(6){ grid-column: 3; }
 .form-card.alertas-grid > [data-testid="column"]:nth-of-type(7){ grid-column: 4; }
 .form-card.alertas-grid > [data-testid="column"]:nth-of-type(8){ grid-column: 5; }
+
+/* Inputs al 100% SOLO en esta tarjeta */
 .form-card.alertas-grid [data-baseweb="select"] > div,
 .form-card.alertas-grid [data-baseweb="input"] > div,
-.form-card.alertas-grid [data-baseweb="datepicker"] > div{ width: 100% !important; min-width: 0 !important; white-space: normal !important; }
-
-/* ===== Tono celeste institucional para títulos ===== */
-:root{ --pill-azul:#94BEEA; --pill-azul-bord:#94BEEA; }
-.form-title{
-  background: var(--pill-azul) !important; border: 1px solid var(--pill-azul-bord) !important; color: #ffffff !important;
-  box-shadow: 0 6px 16px rgba(148,190,234,.3) !important; display: inline-flex !important; align-items: center !important;
-  gap: 6px !important; margin-right: 10px !important; font-weight: 700 !important; width: var(--pill-width) !important; justify-content: center !important;
+.form-card.alertas-grid [data-baseweb="datepicker"] > div{
+  width: 100% !important;
+  min-width: 0 !important;
+  white-space: normal !important;
 }
 
-/* ====== Botón del formulario al 100% del ancho (igual a "Fecha fin") ====== */
+/* ===== Botón del formulario al 100% del ancho (igual a "Fecha fin") ===== */
 .form-card .stButton > button,
 .form-card [data-testid="baseButton-secondary"],
-.form-card [data-testid="baseButton-primary"]{ width: 100% !important; }
-.form-card .stButton > button{ padding-top: 10px !important; padding-bottom: 10px !important; }
+.form-card [data-testid="baseButton-primary"]{
+  width: 100% !important;
+}
+.form-card .stButton > button{
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
 
 /* === Exportar (st.download_button) — cubrir todas las variantes === */
 [data-testid="stDownloadButton"] a,
 [data-testid="stDownloadButton"] button,
 [data-testid="stDownloadButton"] a *,
-[data-testid="stDownloadButton"] button *{ font-size: var(--actions-font) !important; line-height: 1.05 !important; white-space: nowrap !important; }
+[data-testid="stDownloadButton"] button *{
+  font-size: var(--actions-font) !important;
+  line-height: 1.05 !important;
+  white-space: nowrap !important;
+}
 [data-testid="stDownloadButton"] a,
 [data-testid="stDownloadButton"] button{
-  padding: var(--actions-pad-y) var(--actions-pad-x) !important; border-radius: 12px !important; border: 1px solid #E5E7EB !important;
-  display: inline-flex !important; align-items: center !important; gap: 6px !important;
+  padding: var(--actions-pad-y) var(--actions-pad-x) !important;
+  border-radius: 12px !important;
+  border: 1px solid #E5E7EB !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
 }
 
 /* ===== Separación de las indicaciones respecto a la píldora y al borde ===== */
-.help-strip{ display:block !important; margin-top:10px !important; margin-bottom:14px !important; padding:2px 0 !important; line-height:1.25 !important; }
-.form-card > .help-strip{ margin-top:10px !important; margin-bottom:14px !important; }
+.help-strip{
+  display:block !important;
+  margin-top:10px !important;     /* separa de la PÍLDORA */
+  margin-bottom:14px !important;  /* separa del RECTÁNGULO de la sección */
+  padding:2px 0 !important;
+  line-height:1.25 !important;
+}
+.form-card > .help-strip{
+  margin-top:10px !important;
+  margin-bottom:14px !important;
+}
 .help-strip strong{ display:inline-block !important; }
 
-/* ===== Botón-píldora toggle (celeste + ancho controlado) ===== */
-.pill-btn{ margin: 8px 0 6px 0; }
+/* ===== Contenedor genérico por si lo usas más adelante ===== */
+.pill-btn{ margin: 8px 0 6px 0; display:inline-block; }
 
-/* ===== Botón-píldora toggle (celeste + ancho controlado) ===== */
-:root{
-  /* ajusta al ancho de “Área” */
-  --pill-width: 360px; 
-}
-
-/* contenedor del botón */
-.pill-btn{
-  margin: 8px 0 6px 0;
-  display: inline-block;
-}
-
-/* ——— Fuerza el estilo sobre cualquier variante de botón de Streamlit ——— */
-.pill-btn .stButton > button,
-.pill-btn .stButton > div > button,
-.pill-btn [data-testid="baseButton-primary"] button,
-.pill-btn [data-testid="baseButton-secondary"] button,
-.pill-btn button[kind],
-.pill-btn button[kind="primary"],
-.pill-btn button[kind="secondary"],
-.pill-btn button,
-.pill-btn :is(button,[role="button"],[data-testid="baseButton-primary"],[data-testid="baseButton-secondary"]){
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  padding: 8px 14px !important;
-  border-radius: 12px !important;
-
-  /* COLOR CELESTE — anulamos el rojo del tema */
-  background: var(--pill-azul) !important;
-  background-color: var(--pill-azul) !important;   /* machaca estilos inline */
-  background-image: none !important;               /* quita degradados rojos */
-  border: 1px solid var(--pill-azul-bord) !important;
-  color: #ffffff !important;
-
-  font-weight: 700 !important;
-  line-height: 1.15 !important;
-
-  /* ANCHO CONTROLADO (como “Área”) */
-  min-width: var(--pill-width) !important;
-  width: fit-content !important;
-
-  /* Sombra suave */
-  box-shadow: 0 6px 16px rgba(148,190,234,.30) !important;
-  filter: none !important;
-}
-
-/* Asegura texto blanco dentro del botón */
-.pill-btn .stButton > button *,
-.pill-btn .stButton > div > button *,
-.pill-btn [data-testid="baseButton-primary"] button *,
-.pill-btn [data-testid="baseButton-secondary"] button *,
-.pill-btn button[kind] *,
-.pill-btn :is(button,[role="button"],[data-testid="baseButton-primary"],[data-testid="baseButton-secondary"]) *{
-  color: #ffffff !important;
-}
-
-/* Hover */
-.pill-btn .stButton > button:hover,
-.pill-btn .stButton > div > button:hover,
-.pill-btn [data-testid="baseButton-primary"] button:hover,
-.pill-btn [data-testid="baseButton-secondary"] button:hover,
-.pill-btn button[kind]:hover,
-.pill-btn :is(button,[role="button"],[data-testid="baseButton-primary"],[data-testid="baseButton-secondary"]):hover{
-  filter: brightness(.97) !important;
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -525,18 +569,25 @@ EMO_ESTADO      = {"🍼 No iniciado": "No iniciado","⏳ En curso": "En curso",
 EMO_SI_NO       = {"✅ Sí": "Sí", "🚫 No": "No"}
 
 # ================== Formulario ==================
-# Estado inicial del toggle
+# Estado inicial del colapsable
 st.session_state.setdefault("nt_visible", True)
 
-# --- Píldora celeste (toggle con un solo clic) ---
-def _toggle_nt():
-    st.session_state["nt_visible"] = not st.session_state["nt_visible"]
+# Fila: [flecha toggle] [píldora celeste]
+c_toggle, c_pill = st.columns([0.06, 1], gap="small")
 
-st.markdown('<div class="pill-btn">', unsafe_allow_html=True)
-pill_label = "▾  📝  Nueva tarea" if st.session_state["nt_visible"] else "▸  📝  Nueva tarea"
-# type="primary" para evitar color por defecto rojo y permitir que el CSS lo pinte celeste
-st.button(pill_label, key="nt_toggle", type="primary", on_click=_toggle_nt)
-st.markdown('</div>', unsafe_allow_html=True)
+with c_toggle:
+    st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
+    nt_icon = "▼" if st.session_state["nt_visible"] else "►"
+    if st.button(nt_icon, key="nt_toggle_icon"):
+        st.session_state["nt_visible"] = not st.session_state["nt_visible"]
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with c_pill:
+    # Píldora celeste (no botón, para que siempre se vea azul)
+    st.markdown(
+        '<div class="form-title"><span class="plus">➕</span><span class="secico">📝</span> Nueva tarea</div>',
+        unsafe_allow_html=True
+    )
 
 # --- Cuerpo (solo si está visible) ---
 if st.session_state["nt_visible"]:
@@ -548,7 +599,7 @@ if st.session_state["nt_visible"]:
     </div>
     """, unsafe_allow_html=True)
 
-    # Tarjeta con un único borde
+    # Tarjeta con tu borde
     st.markdown('<div class="form-card">', unsafe_allow_html=True)
 
     with st.form("form_nueva_tarea", clear_on_submit=True):
@@ -558,14 +609,17 @@ if st.session_state["nt_visible"]:
         T = 3.2   # Tarea  y  (Estado + Complejidad + Fecha inicio)
         D = 2.4   # Detalle y  (Vencimiento + Fecha fin)
 
-        # -------- Fila 1 --------
+        # -------- Fila 1: Área | Fase | Tarea | Detalle --------
         r1c1, r1c2, r1c3, r1c4 = st.columns([A, F, T, D], gap="medium")
+
         area    = _opt_map(r1c1, "Área", EMO_AREA, "Planeamiento")
         fase    = r1c2.text_input("Fase", placeholder="Etapa")
         tarea   = r1c3.text_input("Tarea", placeholder="Describe la tarea")
         detalle = r1c4.text_input("Detalle", placeholder="Información adicional (opcional)")
 
         # -------- Fila 2 --------
+        # Estado + Complejidad + Fecha inicio = T (3.2)  ->  1.1 + 1.1 + 1.0
+        # Vencimiento + Fecha fin = D (2.4)             ->  1.2 + 1.2
         c2_1, c2_2, c2_3, c2_4, c2_5, c2_6, c2_7 = st.columns([A, F, 1.1, 1.1, 1.0, 1.2, 1.2], gap="medium")
 
         tipo = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría")
@@ -608,13 +662,17 @@ if st.session_state["nt_visible"]:
             "Vencimiento": f_ven,
             "Fecha fin": f_fin,
         })
+
         new["Duración"]     = duration_days(new["Fecha inicio"], new["Vencimiento"])
         new["Días hábiles"] = business_days(new["Fecha inicio"], new["Vencimiento"])
 
         df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
         st.session_state["df_main"] = df.copy()
+        path_ok = os.path.join("data", "tareas.csv")
         os.makedirs("data", exist_ok=True)
-        df.reindex(columns=COLS, fill_value=None).to_csv("data/tareas.csv", index=False, encoding="utf-8-sig", mode="w")
+        df.reindex(columns=COLS, fill_value=None).to_csv(
+            path_ok, index=False, encoding="utf-8-sig", mode="w"
+        )
         ok, msg = _write_sheet_tab(df[COLS].copy())
         st.success(f"✔ Tarea agregada ({new['Id']}). {msg}") if ok else st.warning(f"Agregado localmente. {msg}")
 
