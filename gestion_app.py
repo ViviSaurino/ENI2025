@@ -430,27 +430,67 @@ st.markdown("""
 /* ===== Botón-píldora toggle (celeste + ancho controlado) ===== */
 .pill-btn{ margin: 8px 0 6px 0; }
 
-/* Forzamos el estilo tanto si streamlit marca primary/secondary como si no */
-.pill-btn button,
-.pill-btn .stButton > button,
-.pill-btn .stButton > div > button,
-.pill-btn [data-testid="baseButton-secondary"],
-.pill-btn [data-testid="baseButton-primary"],
-.pill-btn button[kind="secondary"],
-.pill-btn button[kind="primary"]{
-  display:inline-flex !important; align-items:center !important; gap:8px !important; padding:8px 14px !important; border-radius:12px !important;
-  background: var(--pill-azul) !important; border: 1px solid var(--pill-azul-bord) !important; color:#ffffff !important; font-weight:700 !important; line-height:1.15 !important;
-  min-width: var(--pill-width) !important; width: fit-content !important; box-shadow: 0 6px 16px rgba(148,190,234,.30) !important; cursor:pointer !important;
+/* ===== Botón-píldora toggle (celeste + ancho controlado) ===== */
+:root{
+  /* ajusta al ancho de “Área” */
+  --pill-width: 360px; 
 }
 
-/* Texto e íconos en blanco dentro del botón */
-.pill-btn button *, .pill-btn .stButton > button *, .pill-btn [data-testid="baseButton-secondary"] *, .pill-btn [data-testid="baseButton-primary"] *{ color:#ffffff !important; fill:#ffffff !important; }
+/* contenedor del botón */
+.pill-btn{
+  margin: 8px 0 6px 0;
+  display: inline-block;
+}
+
+/* ——— Fuerza el estilo sobre cualquier variante de botón de Streamlit ——— */
+.pill-btn .stButton > button,
+.pill-btn .stButton > div > button,
+.pill-btn [data-testid="baseButton-primary"] button,
+.pill-btn [data-testid="baseButton-secondary"] button,
+.pill-btn button[kind],
+.pill-btn button[kind="primary"],
+.pill-btn button[kind="secondary"],
+.pill-btn button {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 8px 14px !important;
+  border-radius: 12px !important;
+
+  /* COLOR CELESTE (usamos background-color para vencer estilos inline) */
+  background-color: var(--pill-azul) !important;
+  border-color: var(--pill-azul-bord) !important;
+  color: #ffffff !important;
+
+  font-weight: 700 !important;
+  line-height: 1.15 !important;
+
+  /* ANCHO CONTROLADO (como Área) */
+  min-width: var(--pill-width) !important;
+  width: fit-content !important;
+
+  /* Sombra suave */
+  box-shadow: 0 6px 16px rgba(148,190,234,.30) !important;
+}
+
+/* Asegura texto blanco dentro del botón */
+.pill-btn .stButton > button *,
+.pill-btn .stButton > div > button *,
+.pill-btn [data-testid="baseButton-primary"] button *,
+.pill-btn [data-testid="baseButton-secondary"] button *,
+.pill-btn button[kind] * {
+  color: #ffffff !important;
+}
 
 /* Hover */
-.pill-btn button:hover,
 .pill-btn .stButton > button:hover,
-.pill-btn [data-testid="baseButton-secondary"]:hover,
-.pill-btn [data-testid="baseButton-primary"]:hover{ filter: brightness(.97) !important; }
+.pill-btn .stButton > div > button:hover,
+.pill-btn [data-testid="baseButton-primary"] button:hover,
+.pill-btn [data-testid="baseButton-secondary"] button:hover,
+.pill-btn button[kind]:hover{
+  filter: brightness(.97) !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
