@@ -670,35 +670,55 @@ st.markdown("""
   .form-title-pri, .form-title-eval{ width: auto !important; }
 }
             
-/* ===== Compactar separación vertical de barras/píldoras ===== */
-.topbar,
-.topbar-ux,
-.topbar-na,
-.topbar-pri,
-.topbar-eval{
-  margin-top: 2px !important;
-  margin-bottom: 8px !important;  /* ↓ menos espacio entre secciones colapsadas */
+/* Compactar el espacio vertical entre barras/píldoras (cuando la sección está colapsada o no) */
+
+/* Reduce el margen del CONTENEDOR que envuelve cada barra */
+.block-container .element-container:has(.topbar),
+.block-container .element-container:has(.topbar-ux),
+.block-container .element-container:has(.topbar-na),
+.block-container .element-container:has(.topbar-pri),
+.block-container .element-container:has(.topbar-eval){
+  margin-bottom: 6px !important;   /* ← ajusta aquí (2–10px) */
+  margin-top: 4px !important;
 }
 
-/* Píldoras (todas): bajar márgenes y la traslación para que no dejen hueco */
+/* Quita márgenes propios del markdown que pinta la píldora */
+.block-container .stMarkdown:has(.form-title),
+.block-container .stMarkdown:has(.form-title-ux),
+.block-container .stMarkdown:has(.form-title-na),
+.block-container .stMarkdown:has(.form-title-pri),
+.block-container .stMarkdown:has(.form-title-eval){
+  margin: 0 !important;
+}
+
+/* Márgenes de las píldoras en sí (por si queda otro respiro) */
 .form-title,
 .form-title-ux,
 .form-title-na,
 .form-title-pri,
 .form-title-eval{
-  margin: 2px 0 4px 0 !important;  /* antes tenías ~6px 0 10px 0 */
-  transform: translateY(6px) !important; /* era 11px; reduce el hueco visual */
+  margin: 2px 0 4px 0 !important;
+  transform: translateY(6px) !important; /* menor “bajada” = menos hueco */
 }
 
-/* Botón triangulito: sin márgenes extra */
-.toggle-icon .stButton>button{
-  margin: 0 !important;
-}
+/* Botón triangulito sin espacio extra */
+.toggle-icon .stButton>button{ margin: 0 !important; }
 
-/* (Opcional) todavía más compacto en pantallas chicas */
+/* (Opcional) aún más compacto en móviles */
 @media (max-width: 980px){
-  .topbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval{ margin-bottom: 6px !important; }
-  .form-title, .form-title-ux, .form-title-na, .form-title-pri, .form-title-eval{ margin: 2px 0 2px 0 !important; transform: translateY(4px) !important; }
+  .block-container .element-container:has(.topbar),
+  .block-container .element-container:has(.topbar-ux),
+  .block-container .element-container:has(.topbar-na),
+  .block-container .element-container:has(.topbar-pri),
+  .block-container .element-container:has(.topbar-eval){
+    margin-bottom: 4px !important;
+  }
+  .form-title, .form-title-ux, .form-title-na, .form-title-pri, .form-title-eval{
+    margin: 2px 0 2px 0 !important;
+    transform: translateY(4px) !important;
+  }
+}
+
 }
 
 </style>
