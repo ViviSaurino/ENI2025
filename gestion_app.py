@@ -1216,7 +1216,7 @@ if st.session_state["pri_visible"]:
             data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
             update_mode=GridUpdateMode.VALUE_CHANGED,            # devuelve cambios en tiempo real
             allow_unsafe_jscode=True,
-            eight=180, # ⬅⬅⬅ altura compacta
+            Weight=180, # ⬅⬅⬅ altura compacta
         )
 
         # Toma lo editado (mantiene el nombre 'edited' para no romper tu lógica de guardado)
@@ -1599,5 +1599,6 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
