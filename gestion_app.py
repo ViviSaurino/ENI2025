@@ -297,7 +297,7 @@ st.markdown("""
   --blue-pill-bd: #0EA5E9;
   --blue-pill-fg: #ffffff;
 
-  /* Ancho de las píldoras (Nueva tarea / Actualizar estado) */
+  /* Ancho de las píldoras (Nueva tarea / Editar estado / Nueva alerta) */
   --pill-width: 168px;
 
   /* Celeste institucional de títulos */
@@ -386,7 +386,8 @@ st.markdown("""
 
 /* =================== Píldoras (títulos) =================== */
 .form-title,
-.form-title-ux{
+.form-title-ux,
+.form-title-na{
   display:inline-flex !important;
   align-items:center !important;
   gap:.5rem !important;
@@ -461,7 +462,7 @@ st.markdown("""
 /* =================== Responsivo =================== */
 @media (max-width: 980px){
   .form-card [data-baseweb="select"] > div{ min-width: 200px !important; }
-  .form-title, .form-title-ux{ width: auto !important; }
+  .form-title, .form-title-ux, .form-title-na{ width: auto !important; }
 }
 
 /* =================== Tarjeta de Alertas (grid) =================== */
@@ -524,7 +525,7 @@ st.markdown("""
 }
 .help-strip strong{ display:inline-block !important; }
 
-/* SOLO la de “Nueva tarea” (usa id="nt-help" en el HTML) */
+/* SOLO la de “Nueva tarea” */
 #nt-help{
   position: relative !important;
   transform: translateY(-12px) !important;
@@ -532,9 +533,16 @@ st.markdown("""
   margin-bottom: 10px !important;
   display: block !important;
 }
-
-/* SOLO la de “Actualizar estado” (usa id="ux-help" en el HTML) */
+/* SOLO la de “Editar/Cambiar estado” */
 #ux-help{
+  position: relative !important;
+  transform: translateY(-12px) !important;
+  margin-top: 0 !important;
+  margin-bottom: 10px !important;
+  display: block !important;
+}
+/* SOLO la de “Nueva alerta” */
+#na-help{
   position: relative !important;
   transform: translateY(-12px) !important;
   margin-top: 0 !important;
@@ -543,15 +551,17 @@ st.markdown("""
 }
 
 /* =================== Topbar (expander + píldora) =================== */
-.topbar, .topbar-ux{
+.topbar, .topbar-ux, .topbar-na{
   display:flex !important;
   align-items:center !important;
   gap:8px !important;
 }
 .topbar .stButton,
-.topbar-ux .stButton{ display:inline-flex !important; align-items:center !important; }
+.topbar-ux .stButton,
+.topbar-na .stButton{ display:inline-flex !important; align-items:center !important; }
 .topbar .stButton>button,
 .topbar-ux .stButton>button,
+.topbar-na .stButton>button,
 .pill-btn .stButton>button{
   height:36px !important;
   padding:0 16px !important;
@@ -856,16 +866,46 @@ if st.session_state["ux_visible"]:
     st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
 
 # ================== Nueva alerta ==================
-with st.expander("", expanded=True):
-    # Píldora celeste (igual estilo que las otras secciones)
+
+# Estado inicial del colapsable de esta sección
+st.session_state.setdefault("na_visible", True)
+
+# Chevron (1 clic) para esta barra
+chev3 = "▾" if st.session_state["na_visible"] else "▸"
+
+# ---------- Barra superior (triangulito + píldora) ALINEADA como las demás ----------
+st.markdown('<div class="topbar-na">', unsafe_allow_html=True)
+c_toggle3, c_pill3 = st.columns([0.028, 0.965], gap="small")  # mismas proporciones
+
+with c_toggle3:
+    st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
+
+    def _toggle_na():
+        st.session_state["na_visible"] = not st.session_state["na_visible"]
+
+    st.button(
+        chev3,
+        key="na_toggle_icon",
+        help="Mostrar/ocultar",
+        on_click=_toggle_na
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with c_pill3:
+    # Píldora celeste (igual estética/ancho que las otras)
     st.markdown(
-        '<div class="form-title"><span class="plus">➕</span><span class="secico">⚠️</span> Nueva alerta</div>',
+        '<div class="form-title-na">&nbsp;&nbsp;⚠️&nbsp;&nbsp;Nueva alerta</div>',
         unsafe_allow_html=True
     )
+st.markdown('</div>', unsafe_allow_html=True)
+# ---------- fin barra superior ----------
 
-    # Tira de ayuda
+# --- Cuerpo (solo si está visible) ---
+if st.session_state["na_visible"]:
+
+    # Tira de ayuda SOLO para esta sección (con clase + id propios)
     st.markdown("""
-    <div class="help-strip">
+    <div class="help-strip help-strip-na" id="na-help">
       ⚠️ <strong>Vincula una alerta</strong> a una tarea ya registrada
     </div>
     """, unsafe_allow_html=True)
@@ -914,7 +954,6 @@ with st.expander("", expanded=True):
         # Id automático (solo lectura) en base a la tarea elegida
         id_auto = ""
         if tarea_sel != "— Selecciona —":
-            # Si hay varias tareas con el mismo nombre, tomamos la primera visible tras el filtro
             m = df_tasks["Tarea_str"] == tarea_sel
             if m.any():
                 id_auto = str(df_tasks.loc[m, "Id"].iloc[0])
@@ -1216,5 +1255,3 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
