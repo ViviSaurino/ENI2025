@@ -408,18 +408,25 @@ st.markdown("""
 }
 
 /* ===== Flechita de toggle (botón pequeño a la izquierda) ===== */
+/* Moradito, centrado verticalmente y a misma altura que la píldora */
+.toggle-icon{
+  display:flex !important;
+  align-items:center !important;
+}
 .toggle-icon .stButton>button{
   padding: 4px 8px !important;
   min-width: 36px !important;
   height: 36px !important;
   border-radius: 10px !important;
-  background: #F1F5F9 !important;       /* gris claro, neutral */
-  border: 1px solid #E2E8F0 !important;
-  color: #111827 !important;
+  background: var(--lilac-600) !important;   /* morado */
+  border: 1px solid var(--lilac-600) !important;
+  color: #ffffff !important;
   font-weight: 800 !important;
   line-height: 1 !important;
+  box-shadow: 0 4px 12px rgba(139,92,246,.25) !important;
 }
 .toggle-icon .stButton>button:hover{ filter: brightness(.98) !important; }
+.toggle-icon .stButton>button:focus{ outline: none !important; box-shadow: 0 0 0 2px rgba(139,92,246,.35) !important; }
 
 /* ===== SELECTs (regla general) ===== */
 .form-card [data-baseweb="select"] > div{
@@ -572,20 +579,23 @@ EMO_SI_NO       = {"✅ Sí": "Sí", "🚫 No": "No"}
 # Estado inicial del colapsable
 st.session_state.setdefault("nt_visible", True)
 
-# Fila: [flecha toggle] [píldora celeste]
-c_toggle, c_pill = st.columns([0.06, 1], gap="small")
+# Chevron (1 clic): ▾ abierto / ▸ cerrado
+chev = "▾" if st.session_state["nt_visible"] else "▸"
+
+# Fila: [flecha toggle] [píldora celeste] — más juntos y alineados
+c_toggle, c_pill = st.columns([0.055, 0.945], gap="small")
 
 with c_toggle:
+    # Botón pequeño SOLO para ocultar/mostrar (1 clic)
     st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
-    nt_icon = "▼" if st.session_state["nt_visible"] else "►"
-    if st.button(nt_icon, key="nt_toggle_icon"):
+    if st.button(chev, key="nt_toggle_icon", help="Mostrar/ocultar"):
         st.session_state["nt_visible"] = not st.session_state["nt_visible"]
     st.markdown('</div>', unsafe_allow_html=True)
 
 with c_pill:
-    # Píldora celeste (no botón, para que siempre se vea azul)
+    # Píldora celeste (DIV, no botón; siempre azul)
     st.markdown(
-        '<div class="form-title"><span class="plus">➕</span><span class="secico">📝</span> Nueva tarea</div>',
+        '<div class="form-title">➕&nbsp;&nbsp;📝&nbsp;&nbsp;Nueva tarea</div>',
         unsafe_allow_html=True
     )
 
