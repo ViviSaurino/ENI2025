@@ -543,6 +543,15 @@ st.markdown("""
   border-radius:10px !important;
   display:inline-flex !important; align-items:center !important;
 }
+            
+/* === Solo la franja de indicaciones debajo de "Nueva tarea" === */
+.help-strip-nt{
+  position: relative !important;
+  top: -10px !important;     /* sube más: -12, -14...  baja: -6, -4... */
+  margin-top: 0 !important;
+  margin-bottom: 10px !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -1171,9 +1180,3 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
-
-
-
