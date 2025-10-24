@@ -626,7 +626,7 @@ chev = "▾" if st.session_state["nt_visible"] else "▸"
 
 # ---------- Barra superior (triangulito + píldora) alineada ----------
 st.markdown('<div class="topbar">', unsafe_allow_html=True)
-c_toggle, c_pill = st.columns([0.055, 0.945], gap="small")
+c_toggle, c_pill = st.columns([0.035, 0.965], gap="small")
 
 with c_toggle:
     # Botón pequeño SOLO para ocultar/mostrar (1 clic)
@@ -1217,6 +1217,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
