@@ -669,6 +669,38 @@ st.markdown("""
 @media (max-width: 980px){
   .form-title-pri, .form-title-eval{ width: auto !important; }
 }
+            
+/* ===== Compactar separación vertical de barras/píldoras ===== */
+.topbar,
+.topbar-ux,
+.topbar-na,
+.topbar-pri,
+.topbar-eval{
+  margin-top: 2px !important;
+  margin-bottom: 8px !important;  /* ↓ menos espacio entre secciones colapsadas */
+}
+
+/* Píldoras (todas): bajar márgenes y la traslación para que no dejen hueco */
+.form-title,
+.form-title-ux,
+.form-title-na,
+.form-title-pri,
+.form-title-eval{
+  margin: 2px 0 4px 0 !important;  /* antes tenías ~6px 0 10px 0 */
+  transform: translateY(6px) !important; /* era 11px; reduce el hueco visual */
+}
+
+/* Botón triangulito: sin márgenes extra */
+.toggle-icon .stButton>button{
+  margin: 0 !important;
+}
+
+/* (Opcional) todavía más compacto en pantallas chicas */
+@media (max-width: 980px){
+  .topbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval{ margin-bottom: 6px !important; }
+  .form-title, .form-title-ux, .form-title-na, .form-title-pri, .form-title-eval{ margin: 2px 0 2px 0 !important; transform: translateY(4px) !important; }
+}
+
 </style>
 """, unsafe_allow_html=True)
 
