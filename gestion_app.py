@@ -305,21 +305,8 @@ st.markdown("""
   --pill-azul-bord: #94BEEA;
 
   /* ===== Píldoras rosadas para Prioridad / Evaluación ===== */
-:root{
-  --pill-rosa: #D69AC2;     /* color de la muestra */
-  --pill-rosa-bord: #C05AA7;/* borde un pelín más oscuro */
-}
-
-.form-title-pri,
-.form-title-eval{
-  display:inline-flex!important; align-items:center!important; gap:.5rem!important;
-  padding:6px 12px!important; border-radius:12px!important;
-  background: var(--pill-rosa)!important;
-  border:1px solid var(--pill-rosa-bord)!important;
-  color:#fff!important; font-weight:800!important; letter-spacing:.2px!important;
-  margin:6px 0 10px 0!important; width: var(--pill-width)!important; justify-content:center!important;
-  box-shadow:0 6px 16px rgba(214,154,194,.30)!important;
-  min-height:36px!important; line-height:1!important; transform: translateY(11px);
+  --pill-rosa:      #D69AC2;  /* color muestra */
+  --pill-rosa-bord: #C05AA7;  /* borde un poco más oscuro */
 }
 
 /* =================== Inputs =================== */
@@ -373,7 +360,7 @@ st.markdown("""
 }
 [data-testid="stSidebar"] .stButton > button:hover{ filter: brightness(.96); }
 
-/* =================== Píldoras (títulos) =================== */
+/* =================== Píldoras (títulos celestes) =================== */
 .form-title,
 .form-title-ux,
 .form-title-na{
@@ -391,11 +378,11 @@ st.markdown("""
   width: var(--pill-width) !important;
   justify-content: center !important;
   box-shadow: 0 6px 16px rgba(148,190,234,.3) !important;
-
-  /* Alineación vertical fina respecto al triangulito */
   min-height:36px !important;
   line-height:1 !important;
   transform: translateY(11px); /* ↓ sube/baja la píldora si hace falta */
+  white-space: nowrap !important;
+  font-size: 14px !important;
 }
 
 /* =================== Triangulito (toggle) =================== */
@@ -559,7 +546,7 @@ st.markdown("""
 }
 
 /* ================================================================== */
-/* =================== NUEVO: PRIORIDAD / EVALUACIÓN ================= */
+/* =================== PRIORIDAD / EVALUACIÓN ======================= */
 /* ================================================================== */
 
 /* Barras superiores (mismo layout) */
@@ -576,16 +563,28 @@ st.markdown("""
   display:inline-flex !important; align-items:center !important;
 }
 
-/* Píldoras magenta (Prioridad y Evaluación) */
-.form-title-pri, .form-title-eval{
-  display:inline-flex !important; align-items:center !important; gap:.5rem !important;
-  padding: 6px 12px !important; border-radius: 12px !important;
-  background: var(--pill-magenta) !important; border: 1px solid var(--pill-magenta-bord) !important;
-  color:#fff !important; font-weight:800 !important; letter-spacing:.2px !important;
-  margin: 6px 0 10px 0 !important; width: var(--pill-width) !important; justify-content:center !important;
-  box-shadow: 0 6px 16px rgba(179,18,99,.28) !important;
-
-  min-height:36px !important; line-height:1 !important; transform: translateY(11px);
+/* ===== Píldoras ROSA (Prioridad y Evaluación) — versión final ===== */
+.form-title-pri,
+.form-title-eval{
+  display:inline-flex !important;
+  align-items:center !important;
+  gap:.5rem !important;
+  padding:6px 12px !important;
+  border-radius:12px !important;
+  background: var(--pill-rosa) !important;
+  border: 1px solid var(--pill-rosa-bord) !important;
+  color:#ffffff !important;
+  font-weight: 800 !important;
+  font-size: 14px !important;
+  letter-spacing:.2px !important;
+  white-space: nowrap !important;
+  margin:6px 0 10px 0 !important;
+  width: var(--pill-width) !important;
+  justify-content:center !important;
+  box-shadow:0 6px 16px rgba(214,154,194,.30) !important;
+  min-height:36px !important;
+  line-height:1 !important;
+  transform: translateY(11px) !important;
 }
 
 /* Franjas de ayuda específicas */
@@ -1529,10 +1528,3 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
-
-
-
-
