@@ -722,15 +722,66 @@ st.markdown("""
 .toggle-icon .chev-link{
   display: inline-block !important;
   font-weight: 800 !important;
-  font-size: 14px !important;   /* ajusta 12–16 */
+  font-size: 18px !important;      /* tamaño del triángulo (link) */
   line-height: 1 !important;
   padding: 0 !important;
   margin: 0 !important;
   text-decoration: none !important;
   color: inherit !important;
   cursor: pointer !important;
+  transform: translateY(8px);      /* alinea con la píldora */
 }
 .toggle-icon .chev-link:hover{ text-decoration: none !important; }
+
+/* ================================================================== */
+/* ================= OVERRIDE FINAL: toggle SIN CUADRADITO ========== */
+/* ================================================================== */
+/* Quita fondo/borde/sombra en cualquier variante de botón que use el toggle */
+.topbar .toggle-icon .stButton,
+.topbar-ux .toggle-icon .stButton,
+.topbar-na .toggle-icon .stButton,
+.topbar-pri .toggle-icon .stButton,
+.topbar-eval .toggle-icon .stButton{
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+.toggle-icon [data-testid="baseButton-primary"],
+.toggle-icon [data-testid="baseButton-secondary"],
+.toggle-icon [data-testid="baseButton-default"]{
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+/* El botón en sí (si no usas link): sin caja y alineado */
+.toggle-icon .stButton > button{
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  padding: 0 !important;
+  width: auto !important;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  line-height: 1 !important;
+  font-weight: 800 !important;
+  font-size: 18px !important;     /* tamaño del triángulo (botón) */
+  transform: translateY(8px);      /* alinea con la píldora */
+}
+/* Asegura que hover/focus/active no reintroduzcan la caja */
+.toggle-icon .stButton > button:hover,
+.toggle-icon .stButton > button:focus,
+.toggle-icon .stButton > button:active{
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -792,7 +843,7 @@ with c_toggle:
         line-height: 1 !important;
         font-weight: 800 !important;
         font-size: 20px !important;     /* ← tamaño del triángulo */
-        transform: translateY(0px);      /* ← bajadita para alinearlo con la píldora */
+        transform: translateY(8px);      /* ← bajadita para alinearlo con la píldora */
       }
       .toggle-icon .stButton > button:hover,
       .toggle-icon .stButton > button:focus,
@@ -1709,6 +1760,3 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
