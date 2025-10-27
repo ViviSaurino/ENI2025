@@ -1010,21 +1010,38 @@ if st.session_state.get("nt_visible", True):
         # ----- Proporciones para cuadrar anchos entre filas -----
         A = 1.2   # Área  y  Tipo
         F = 1.2   # Fase  y  Responsable
-        T = 3.2   # Tarea  y  (Estado + Complejidad + Fecha inicio)
-        D = 2.4   # Detalle y  (Vencimiento + Fecha fin)
 
-        # -------- Fila 1: Área | Fase | Tarea | Detalle --------
-        r1c1, r1c2, r1c3, r1c4 = st.columns([A, F, T, D], gap="medium")
+        # Referencias de la segunda fila (para parear anchos)
+        W_ESTADO = 1.1
+        W_COMP   = 1.1
+        W_FINI   = 1.0
+        W_VENC   = 1.2
+        W_FFIN   = 1.2
+
+        # “Tarea” ahora = Complejidad (1.1) + Fecha inicio (1.0) = 2.1
+        T = W_COMP + W_FINI     # 2.1
+
+        # “Detalle” se mantiene como antes
+        D = 2.4
+
+        # -------- Fila 1: Área | Fase | [Nueva celda] | Tarea | Detalle --------
+        r1c1, r1c2, r1c3, r1c4, r1c5 = st.columns([A, F, W_ESTADO, T, D], gap="medium")
 
         area    = _opt_map(r1c1, "Área", EMO_AREA, "Planeamiento")
         fase    = r1c2.text_input("Fase", placeholder="Etapa")
-        tarea   = r1c3.text_input("Tarea", placeholder="Describe la tarea")
-        detalle = r1c4.text_input("Detalle", placeholder="Información adicional (opcional)")
+
+        # Nueva celda (mismo ancho que “Estado”)
+        nuevo_f1c3 = r1c3.text_input("Nuevo campo", placeholder="—")
+
+        tarea   = r1c4.text_input("Tarea", placeholder="Describe la tarea")
+        detalle = r1c5.text_input("Detalle", placeholder="Información adicional (opcional)")
 
         # -------- Fila 2 --------
-        # Estado + Complejidad + Fecha inicio = T (3.2)  ->  1.1 + 1.1 + 1.0
-        # Vencimiento + Fecha fin = D (2.4)             ->  1.2 + 1.2
-        c2_1, c2_2, c2_3, c2_4, c2_5, c2_6, c2_7 = st.columns([A, F, 1.1, 1.1, 1.0, 1.2, 1.2], gap="medium")
+        # Estado + Complejidad + Fecha inicio = 1.1 + 1.1 + 1.0
+        # Vencimiento + Fecha fin             = 1.2 + 1.2
+        c2_1, c2_2, c2_3, c2_4, c2_5, c2_6, c2_7 = st.columns(
+            [A, F, W_ESTADO, W_COMP, W_FINI, W_VENC, W_FFIN], gap="medium"
+        )
 
         tipo = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría")
         resp = c2_2.text_input("Responsable", placeholder="Nombre")
@@ -1065,6 +1082,7 @@ if st.session_state.get("nt_visible", True):
             "Fecha inicio": f_ini,
             "Vencimiento": f_ven,
             "Fecha fin": f_fin,
+            # "Nuevo campo": nuevo_f1c3,  # si quieres guardarlo, descomenta esta línea
         })
 
         new["Duración"]     = duration_days(new["Fecha inicio"], new["Vencimiento"])
@@ -1875,6 +1893,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
