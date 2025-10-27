@@ -718,14 +718,6 @@ st.markdown("""
   margin-top: 10px !important;       /* valor base para todas */
 }
 
-/* Checkbox como toggle de triángulo (sin cajita) */
-.toggle-icon [data-testid="stCheckbox"]{
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 0 !important;
-  padding: 0 !important;
-  margin: 0 !important;
-}
 /* oculta el cuadrado del checkbox */
 .toggle-icon [data-testid="stCheckbox"] input{
   appearance: none !important;
@@ -800,12 +792,16 @@ with c_toggle:
     def _toggle_nt():
         st.session_state["nt_visible"] = not st.session_state["nt_visible"]
 
-    st.button(
-        chev,
-        key="nt_toggle_icon",
-        help="Mostrar/ocultar",
-        on_click=_toggle_nt
+    # 👉 reemplazo del botón por checkbox (muestra solo ▾/▸)
+    st.checkbox(
+        chev,                              # "▾" si abierto / "▸" si cerrado
+        key="nt_toggle_icon_cb",
+        value=st.session_state["nt_visible"],
+        on_change=_toggle_nt,
+        label_visibility="visible",
+        help="Mostrar/ocultar"
     )
+
     st.markdown('</div>', unsafe_allow_html=True)
 
 with c_pill:
