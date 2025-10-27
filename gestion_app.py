@@ -1477,6 +1477,14 @@ if st.session_state["pri_visible"]:
     st.markdown('<div class="form-card">', unsafe_allow_html=True)
     df_all = st.session_state["df_main"].copy()
 
+    # ===== Claves estables y lectura desde session_state =====
+    # (asegura persistencia al hacer clic fuera del form)
+    _k_area  = "pri_area_sel"
+    _k_resp  = "pri_resp_sel"
+    _k_d     = "pri_desde"
+    _k_h     = "pri_hasta"
+    _k_tasks = "pri_tareas_sel"
+
     with st.form("form_prioridad", clear_on_submit=False):
         # === Fila de filtros con pesos que calzan con el grid ===
         W_AREA, W_RESP, W_TAREA, W_PRI = COL_W_AREA, PILL_W_RESP, COL_W_TAREA, COL_W_PRIORIDAD
@@ -1485,33 +1493,52 @@ if st.session_state["pri_visible"]:
         )
 
         areas_opts = ["Todas"] + AREAS_OPC
-        area_sel = r1_area.selectbox("Área", options=areas_opts, index=0, disabled=not CAN_EDIT)
+        area_sel = r1_area.selectbox("Área", options=areas_opts, index=0, key=_k_area, disabled=not CAN_EDIT)
 
-        df_resp = df_all if area_sel == "Todas" else df_all[df_all["Área"] == area_sel]
+        df_resp = df_all if st.session_state[_k_area] == "Todas" else df_all[df_all["Área"] == st.session_state[_k_area]]
         responsables_all = sorted([x for x in df_resp["Responsable"].astype(str).unique() if x and x != "nan"])
-        resp_sel = r1_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0, disabled=not CAN_EDIT)
+        resp_sel = r1_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0, key=_k_resp, disabled=not CAN_EDIT)
 
-        f_desde = r1_desde.date_input("Desde", value=None, key="pri_desde", disabled=not CAN_EDIT)
-        f_hasta = r1_hasta.date_input("Hasta", value=None, key="pri_hasta", disabled=not CAN_EDIT)
+        r1_desde.date_input("Desde", value=None, key=_k_d, disabled=not CAN_EDIT)
+        r1_hasta.date_input("Hasta", value=None, key=_k_h, disabled=not CAN_EDIT)
 
         # Dataset filtrado + lista multiselección de tareas
-        df_f = _filtra_dataset(df_all, area_sel, resp_sel, f_desde, f_hasta)
-        df_f = df_f.dropna(subset=["Id"]).copy()
+        def _filtra(df):
+            out = df.copy()
+            if st.session_state[_k_area] != "Todas":
+                out = out[out["Área"] == st.session_state[_k_area]]
+            if st.session_state[_k_resp] != "Todos":
+                out = out[out["Responsable"].astype(str) == st.session_state[_k_resp]]
+            if st.session_state[_k_d]:
+                fcol = pd.to_datetime(out["Fecha inicio"], errors="coerce")
+                out = out[fcol.dt.date >= st.session_state[_k_d]]
+            if st.session_state[_k_h]:
+                fcol = pd.to_datetime(out["Fecha inicio"], errors="coerce")
+                out = out[fcol.dt.date <= st.session_state[_k_h]]
+            return out
+
+        df_f = _filtra(df_all).dropna(subset=["Id"]).copy()
         df_f["Tarea_str"] = df_f["Tarea"].astype(str).replace({"nan": ""})
         opciones_tarea = df_f["Tarea_str"].tolist()
 
-        tareas_sel = r1_tarea.multiselect("Tarea (multi)", opciones_tarea, default=[], disabled=not CAN_EDIT, key="pri_tareas_sel")
+        r1_tarea.multiselect("Tarea (multi)", opciones_tarea, default=st.session_state.get(_k_tasks, []),
+                             key=_k_tasks, disabled=not CAN_EDIT)
 
-        # Ids seleccionados (solo lectura)
-        ids_sel = []
-        if tareas_sel:
-            ids_sel = df_f.loc[df_f["Tarea_str"].isin(tareas_sel), "Id"].astype(str).tolist()
+        # Ids seleccionados (solo lectura) — calculado SIEMPRE desde session_state
+        if st.session_state[_k_tasks]:
+            ids_sel = df_f.loc[df_f["Tarea_str"].isin(st.session_state[_k_tasks]), "Id"].astype(str).tolist()
+        else:
+            ids_sel = []
         r1_ids.text_input("Ids seleccionados", value=", ".join(ids_sel) if ids_sel else "—", disabled=True)
 
-        # ===== Tabla editable de prioridades (AgGrid con anchos exactos) =====
+        # ===== Tabla editable PRIORIDAD (AgGrid) =====
         st.write("")
-        df_tab = df_f.loc[df_f["Tarea_str"].isin(tareas_sel), ["Id", "Área", "Responsable", "Tarea", "Prioridad"]].copy() \
-                 if ids_sel else pd.DataFrame(columns=["Id","Área","Responsable","Tarea","Prioridad"])
+        if ids_sel:
+            df_tab = df_f.loc[df_f["Tarea_str"].isin(st.session_state[_k_tasks]),
+                              ["Id", "Área", "Responsable", "Tarea", "Prioridad"]].copy()
+        else:
+            df_tab = pd.DataFrame(columns=["Id","Área","Responsable","Tarea","Prioridad"])
+
         if "Prioridad" not in df_tab.columns:
             df_tab["Prioridad"] = "Media"
         df_tab["Id"] = df_tab["Id"].astype(str)
@@ -1534,13 +1561,13 @@ if st.session_state["pri_visible"]:
                 ".ag-root-wrapper": {"height": "180px !important"},
                 ".ag-body-viewport": {"height": "140px !important"},
             },
-            key="grid_prior"   # ← clave estable para que no “desaparezca”
+            key="grid_prior"   # clave estable
         )
         st.markdown('</div>', unsafe_allow_html=True)
 
         edited = pd.DataFrame(grid_pri["data"]) if isinstance(grid_pri, dict) and "data" in grid_pri else df_pri.copy()
 
-        # === Botón con el MISMO ancho que la última columna (Prioridad) ===
+        # === Botón con ancho de la última columna ===
         b1, b2, b3, b4, b5, b6 = st.columns([W_AREA, W_RESP, W_RESP, W_RESP, W_TAREA, W_PRI], gap="small")
         with b6:
             do_save_pri = st.form_submit_button("🧭 Dar prioridad", use_container_width=True, disabled=not CAN_EDIT)
@@ -1589,8 +1616,15 @@ if st.session_state["eva_visible"]:
     st.markdown('<div class="form-card">', unsafe_allow_html=True)
     df_all = st.session_state["df_main"].copy()
 
+    # ===== Claves estables y lectura desde session_state =====
+    _k_area  = "eva_area_sel"
+    _k_resp  = "eva_resp_sel"
+    _k_d     = "eva_desde"
+    _k_h     = "eva_hasta"
+    _k_tasks = "eva_tareas_sel"
+
     with st.form("form_evaluacion", clear_on_submit=False):
-        # ===== Pesos calcados a los anchos del grid =====
+        # Pesos calcados a los anchos del grid
         W_AREA, W_RESP, W_TAREA, W_EVA = COL_W_AREA, PILL_W_RESP, COL_W_TAREA, COL_W_EVALUACION
 
         # Fila de filtros (alineada a columnas del grid)
@@ -1598,33 +1632,53 @@ if st.session_state["eva_visible"]:
             [W_AREA, W_RESP, W_RESP, W_RESP, W_TAREA, W_EVA], gap="small"
         )
 
-        area_sel = c_area.selectbox("Área", options=["Todas"] + AREAS_OPC, index=0, disabled=not CAN_EDIT)
-        df_resp = df_all if area_sel == "Todas" else df_all[df_all["Área"] == area_sel]
+        area_sel = c_area.selectbox("Área", options=["Todas"] + AREAS_OPC, index=0, key=_k_area, disabled=not CAN_EDIT)
+        df_resp = df_all if st.session_state[_k_area] == "Todas" else df_all[df_all["Área"] == st.session_state[_k_area]]
         responsables_all = sorted([x for x in df_resp["Responsable"].astype(str).unique() if x and x != "nan"])
-        resp_sel = c_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0, disabled=not CAN_EDIT)
+        resp_sel = c_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0, key=_k_resp, disabled=not CAN_EDIT)
 
-        desde = c_desde.date_input("Desde", value=None, key="eva_desde", disabled=not CAN_EDIT)
-        hasta = c_hasta.date_input("Hasta", value=None, key="eva_hasta", disabled=not CAN_EDIT)
+        c_desde.date_input("Desde", value=None, key=_k_d, disabled=not CAN_EDIT)
+        c_hasta.date_input("Hasta", value=None, key=_k_h, disabled=not CAN_EDIT)
 
-        # Multiselección de tareas para evaluar (como prioridad)
-        df_f = _filtra_dataset(df_all, area_sel, resp_sel, desde, hasta).dropna(subset=["Id"]).copy()
+        # Multiselección de tareas para evaluar
+        def _filtra(df):
+            out = df.copy()
+            if st.session_state[_k_area] != "Todas":
+                out = out[out["Área"] == st.session_state[_k_area]]
+            if st.session_state[_k_resp] != "Todos":
+                out = out[out["Responsable"].astype(str) == st.session_state[_k_resp]]
+            if st.session_state[_k_d]:
+                fcol = pd.to_datetime(out["Fecha inicio"], errors="coerce")
+                out = out[fcol.dt.date >= st.session_state[_k_d]]
+            if st.session_state[_k_h]:
+                fcol = pd.to_datetime(out["Fecha inicio"], errors="coerce")
+                out = out[fcol.dt.date <= st.session_state[_k_h]]
+            return out
+
+        df_f = _filtra(df_all).dropna(subset=["Id"]).copy()
         df_f["Tarea_str"] = df_f["Tarea"].astype(str).replace({"nan": ""})
         tareas_opts = df_f["Tarea_str"].tolist()
 
-        tareas_sel = c_tarea.multiselect("Tarea (multi)", tareas_opts, default=[], disabled=not CAN_EDIT, key="eva_tareas_sel")
+        c_tarea.multiselect("Tarea (multi)", tareas_opts, default=st.session_state.get(_k_tasks, []),
+                            key=_k_tasks, disabled=not CAN_EDIT)
 
-        ids_sel = []
-        if tareas_sel:
-            ids_sel = df_f.loc[df_f["Tarea_str"].isin(tareas_sel), "Id"].astype(str).tolist()
+        if st.session_state[_k_tasks]:
+            ids_sel = df_f.loc[df_f["Tarea_str"].isin(st.session_state[_k_tasks]), "Id"].astype(str).tolist()
+        else:
+            ids_sel = []
         c_id.text_input("Ids seleccionados", value=", ".join(ids_sel) if ids_sel else "—", disabled=True)
 
         st.write("")
 
-        # ===== Tabla editable de Evaluación (AgGrid con anchos exactos) =====
-        df_tab_e = df_f.loc[df_f["Tarea_str"].isin(tareas_sel), ["Id", "Área", "Responsable", "Tarea"]].copy() \
-                   if ids_sel else pd.DataFrame(columns=["Id","Área","Responsable","Tarea"])
+        # ===== Tabla editable de Evaluación (AgGrid) =====
+        if ids_sel:
+            df_tab_e = df_f.loc[df_f["Tarea_str"].isin(st.session_state[_k_tasks]),
+                                ["Id", "Área", "Responsable", "Tarea"]].copy()
+        else:
+            df_tab_e = pd.DataFrame(columns=["Id","Área","Responsable","Tarea"])
+
         if not df_tab_e.empty:
-            df_tab_e["Evaluación"] = 5     # por defecto 5
+            df_tab_e["Evaluación"] = 5
         else:
             df_tab_e["Evaluación"] = []
 
@@ -1634,14 +1688,13 @@ if st.session_state["eva_visible"]:
         df_eval_tab = _clean_df_for_grid(df_tab_e)
         grid_opt_eval = _grid_options_evaluacion(df_eval_tab)
 
-        # Envoltura para enganchar CSS (#eval-grid)
         st.markdown('<div id="eval-grid">', unsafe_allow_html=True)
         grid_eval = AgGrid(
             df_eval_tab,
             gridOptions=grid_opt_eval,
-            fit_columns_on_grid_load=False,                     # respeta widths configurados
+            fit_columns_on_grid_load=False,
             data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
-            update_mode=GridUpdateMode.VALUE_CHANGED,           # devuelve cambios en tiempo real
+            update_mode=GridUpdateMode.VALUE_CHANGED,
             allow_unsafe_jscode=True,
             theme="balham",
             height=180,
@@ -1649,11 +1702,10 @@ if st.session_state["eva_visible"]:
                 ".ag-root-wrapper": {"height": "180px !important"},
                 ".ag-body-viewport": {"height": "140px !important"},
             },
-            key="grid_eval"    # ← clave estable para que no “desaparezca”
+            key="grid_eval"    # clave estable
         )
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # Mantén el nombre edited_eval
         edited_eval = pd.DataFrame(grid_eval["data"]) if isinstance(grid_eval, dict) and "data" in grid_eval else df_eval_tab.copy()
 
         # Botón con el MISMO ancho que la última columna (Evaluación)
