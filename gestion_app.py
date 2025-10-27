@@ -24,20 +24,23 @@ if not hasattr(_stc, "components"):
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, JsCode, DataReturnMode
 
 # ======= Utilidades de tablas (Prioridad / Evaluación) =======
+import streamlit as st
+from st_aggrid import GridOptionsBuilder
+
 # Anchos de píldoras (mantenlos sincronizados con tu CSS)
 PILL_W_AREA  = 168  # píldora "Área"
 PILL_W_RESP  = 220  # píldora "Responsable"
 PILL_W_HASTA = 220  # píldora "Hasta"
 PILL_W_TAREA = PILL_W_HASTA
 
-# Ajuste fino POR COLUMNA para compensar padding interno de AgGrid
+# Ajuste fino POR COLUMNA para compensar padding interno de AgGrid (puedes moverlos a gusto)
 ALIGN_FIXES = {
-    "Id":          10,
-    "Área":        100,
-    "Responsable": 10,
-    "Tarea":       10,
-    "Prioridad":   10,
-    "Evaluación":  10,
+    "Id":          0,   # mueve SOLO el ancho de la col "Id"
+    "Área":        0,
+    "Responsable": 0,
+    "Tarea":       0,
+    "Prioridad":   0,
+    "Evaluación":  0,
 }
 
 # Reglas pedidas (base sin ajuste)
@@ -59,11 +62,11 @@ def _fixed_col(gob, field, width, editable):
         field,
         editable=editable,
         width=width,
-        minWidth=width,          # <-- fija mínimo
-        maxWidth=width,          # <-- fija máximo
-        resizable=False,         # <-- evita drag del usuario
-        suppressSizeToFit=True,  # <-- ignora sizeToFit
-        flex=0                   # <-- sin flex
+        minWidth=width,          # fija mínimo
+        maxWidth=width,          # fija máximo
+        resizable=False,         # evita drag del usuario
+        suppressSizeToFit=True,  # ignora sizeToFit
+        flex=0                   # sin flex
     )
 
 def _grid_options_prioridad(df):
@@ -81,7 +84,7 @@ def _grid_options_prioridad(df):
         suppressSizeToFit=True,   # no ajustar al ancho del contenedor
     )
 
-    # Anchos exactos + ajuste fino
+    # Anchos exactos + ajuste fino por columna
     _fixed_col(gob, "Id",            COL_W_ID        + ALIGN_FIXES.get("Id", 0),          editable=False)
     _fixed_col(gob, "Área",          COL_W_AREA      + ALIGN_FIXES.get("Área", 0),        editable=False)
     _fixed_col(gob, "Responsable",   PILL_W_RESP     + ALIGN_FIXES.get("Responsable", 0), editable=False)
@@ -89,6 +92,10 @@ def _grid_options_prioridad(df):
     _fixed_col(gob, "Prioridad",     COL_W_PRIORIDAD + ALIGN_FIXES.get("Prioridad", 0),   editable=True)
 
     gob.configure_grid_options(suppressColumnVirtualisation=False)
+
+    # === Inyecta guías visuales de header para PRIORIDAD (alinean rayitas plomas) ===
+    _inject_header_guides_prioridad()
+
     return gob.build()
 
 def _grid_options_evaluacion(df):
@@ -112,13 +119,98 @@ def _grid_options_evaluacion(df):
     _fixed_col(gob, "Evaluación",   COL_W_EVALUACION+ ALIGN_FIXES.get("Evaluación", 0),   editable=True)
 
     gob.configure_grid_options(suppressColumnVirtualisation=False)
+
+    # === Inyecta guías visuales de header para EVALUACIÓN ===
+    _inject_header_guides_evaluacion()
+
     return gob.build()
+
+# ---------------- CSS overlays: “rayitas” alineadas a los filtros ----------------
+def _inject_header_guides_prioridad():
+    """Dibuja líneas verticales en el header de #prior-grid exactamente donde
+    terminan las columnas Id, Área, Responsable, Tarea, Prioridad."""
+    w_id   = COL_W_ID        + ALIGN_FIXES.get("Id", 0)
+    w_area = COL_W_AREA      + ALIGN_FIXES.get("Área", 0)
+    w_resp = PILL_W_RESP     + ALIGN_FIXES.get("Responsable", 0)
+    w_tar  = COL_W_TAREA     + ALIGN_FIXES.get("Tarea", 0)
+    w_prio = COL_W_PRIORIDAD + ALIGN_FIXES.get("Prioridad", 0)
+
+    css = f"""
+    <style>
+    #prior-grid .ag-header-viewport{{
+      --w-id:   {w_id}px;
+      --w-area: {w_area}px;
+      --w-resp: {w_resp}px;
+      --w-tar:  {w_tar}px;
+      --w-pri:  {w_prio}px;
+
+      /* acumulados */
+      --x1: var(--w-id);
+      --x2: calc(var(--x1) + var(--w-area));
+      --x3: calc(var(--x2) + var(--w-resp));
+      --x4: calc(var(--x3) + var(--w-tar));
+      --x5: calc(var(--x4) + var(--w-pri));
+
+      background-image:
+        linear-gradient(to right, transparent calc(var(--x1) - 1px), #E9ECEF calc(var(--x1) - 1px), #E9ECEF var(--x1), transparent var(--x1)),
+        linear-gradient(to right, transparent calc(var(--x2) - 1px), #E9ECEF calc(var(--x2) - 1px), #E9ECEF var(--x2), transparent var(--x2)),
+        linear-gradient(to right, transparent calc(var(--x3) - 1px), #E9ECEF calc(var(--x3) - 1px), #E9ECEF var(--x3), transparent var(--x3)),
+        linear-gradient(to right, transparent calc(var(--x4) - 1px), #E9ECEF calc(var(--x4) - 1px), #E9ECEF var(--x4), transparent var(--x4)),
+        linear-gradient(to right, transparent calc(var(--x5) - 1px), #E9ECEF calc(var(--x5) - 1px), #E9ECEF var(--x5), transparent var(--x5));
+      background-repeat: no-repeat;
+      background-size: 100% 100%;
+      background-position-y: bottom;  /* pegar a la línea inferior del header */
+      padding-left: 0px !important;   /* microajuste global si lo necesitas */
+    }}
+    </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
+
+def _inject_header_guides_evaluacion():
+    """Dibuja líneas verticales en el header de #eval-grid exactamente donde
+    terminan las columnas Id, Área, Responsable, Tarea, Evaluación."""
+    w_id   = COL_W_ID         + ALIGN_FIXES.get("Id", 0)
+    w_area = COL_W_AREA       + ALIGN_FIXES.get("Área", 0)
+    w_resp = PILL_W_RESP      + ALIGN_FIXES.get("Responsable", 0)
+    w_tar  = COL_W_TAREA      + ALIGN_FIXES.get("Tarea", 0)
+    w_eval = COL_W_EVALUACION + ALIGN_FIXES.get("Evaluación", 0)
+
+    css = f"""
+    <style>
+    #eval-grid .ag-header-viewport{{
+      --w-id:   {w_id}px;
+      --w-area: {w_area}px;
+      --w-resp: {w_resp}px;
+      --w-tar:  {w_tar}px;
+      --w-eva:  {w_eval}px;
+
+      --x1: var(--w-id);
+      --x2: calc(var(--x1) + var(--w-area));
+      --x3: calc(var(--x2) + var(--w-resp));
+      --x4: calc(var(--x3) + var(--w-tar));
+      --x5: calc(var(--x4) + var(--w-eva));
+
+      background-image:
+        linear-gradient(to right, transparent calc(var(--x1) - 1px), #E9ECEF calc(var(--x1) - 1px), #E9ECEF var(--x1), transparent var(--x1)),
+        linear-gradient(to right, transparent calc(var(--x2) - 1px), #E9ECEF calc(var(--x2) - 1px), #E9ECEF var(--x2), transparent var(--x2)),
+        linear-gradient(to right, transparent calc(var(--x3) - 1px), #E9ECEF calc(var(--x3) - 1px), #E9ECEF var(--x3), transparent var(--x3)),
+        linear-gradient(to right, transparent calc(var(--x4) - 1px), #E9ECEF calc(var(--x4) - 1px), #E9ECEF var(--x4), transparent var(--x4)),
+        linear-gradient(to right, transparent calc(var(--x5) - 1px), #E9ECEF calc(var(--x5) - 1px), #E9ECEF var(--x5), transparent var(--x5));
+      background-repeat: no-repeat;
+      background-size: 100% 100%;
+      background-position-y: bottom;
+      padding-left: 0px !important;
+    }}
+    </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
 
 # --- allow-list ---
 allowed_emails  = st.secrets.get("auth", {}).get("allowed_emails", [])
 allowed_domains = st.secrets.get("auth", {}).get("allowed_domains", [])
 
 # 👤 Login
+from auth_google import google_login, logout
 user = google_login(allowed_emails=allowed_emails,
                     allowed_domains=allowed_domains,
                     redirect_page=None)
@@ -1950,6 +2042,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
