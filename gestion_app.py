@@ -147,6 +147,20 @@ def _grid_options_evaluacion(df):
 allowed_emails  = st.secrets.get("auth", {}).get("allowed_emails", [])
 allowed_domains = st.secrets.get("auth", {}).get("allowed_domains", [])
 
+# 🔐 PUERTA DE ENTRADA — LOGIN (ACTIVADO)
+user = google_login(
+    allowed_emails=allowed_emails,
+    allowed_domains=allowed_domains,
+    title="Inicia sesión para continuar"
+)
+if not user:
+    st.stop()  # Detiene el render hasta que el usuario inicie sesión
+
+# (Opcional) Mostrar usuario y botón de salir en la barra lateral
+with st.sidebar:
+    st.caption(f"Conectado: {user.get('email','')}")
+    st.button("Cerrar sesión", on_click=logout)
+
 # ========= Utilitario para exportar a Excel (auto-engine) =========
 def export_excel(df, filename: str = "ENI2025_tareas.xlsx", sheet_name: str = "Tareas", **kwargs):
     """
@@ -278,6 +292,7 @@ if "export_excel" not in globals():
         buf.seek(0)
         return buf
 
+
 # ===== Inicialización de visibilidad por única vez =====
 if "_ui_bootstrap" not in st.session_state:
     st.session_state["nt_visible"]  = True   # Nueva tarea
@@ -318,7 +333,6 @@ if "df_main" not in st.session_state:
         base["Calificación"] = pd.to_numeric(base["Calificación"], errors="coerce").fillna(0).astype(int)
 
     st.session_state["df_main"] = base[COLS + ["__DEL__"]].copy()
-
 
 # ---------- CSS ----------
 st.markdown("""
@@ -2000,6 +2014,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
