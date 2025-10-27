@@ -33,7 +33,7 @@ PILL_W_TAREA = PILL_W_HASTA
 # Ajuste fino POR COLUMNA para compensar padding interno de AgGrid
 ALIGN_FIXES = {
     "Id":          10,
-    "Área":        100,
+    "Área":        10,
     "Responsable": 10,
     "Tarea":       10,
     "Prioridad":   10,
@@ -53,11 +53,24 @@ def _clean_df_for_grid(df):
         df.index.name = None
     return df.reset_index(drop=True).copy()
 
+# Helper para columna de ancho FIJO (bloquea cualquier autosize/flex)
+def _fixed_col(gob, field, width, editable):
+    gob.configure_column(
+        field,
+        editable=editable,
+        width=width,
+        minWidth=width,          # <-- fija mínimo
+        maxWidth=width,          # <-- fija máximo
+        resizable=False,         # <-- evita drag del usuario
+        suppressSizeToFit=True,  # <-- ignora sizeToFit
+        flex=0                   # <-- sin flex
+    )
+
 def _grid_options_prioridad(df):
     gob = GridOptionsBuilder.from_dataframe(df, enableRowGroup=False, enableValue=False, enablePivot=False)
 
-    # 🔒 Columna por defecto SIN flex (respeta width)
-    gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, flex=0)
+    # Columna por defecto SIN flex
+    gob.configure_default_column(resizable=False, wrapText=True, autoHeight=True, flex=0)
 
     gob.configure_grid_options(
         suppressMovableColumns=True,
@@ -65,21 +78,15 @@ def _grid_options_prioridad(df):
         ensureDomOrder=True,
         rowHeight=38,
         headerHeight=42,
-        suppressSizeToFit=True,   # ⬅️ desactiva autosize a todo ancho
+        suppressSizeToFit=True,   # no ajustar al ancho del contenedor
     )
 
-    # Definición de columnas y anchos exactos + ajuste fino por columna
-    gob.configure_column("Id",            width=COL_W_ID        + ALIGN_FIXES.get("Id", 0),          editable=False)
-    gob.configure_column("Área",          width=COL_W_AREA      + ALIGN_FIXES.get("Área", 0),        editable=False)
-    gob.configure_column("Responsable",   width=PILL_W_RESP     + ALIGN_FIXES.get("Responsable", 0), editable=False)
-    gob.configure_column("Tarea",         width=COL_W_TAREA     + ALIGN_FIXES.get("Tarea", 0),       editable=False)
-    gob.configure_column(
-        "Prioridad",
-        width=COL_W_PRIORIDAD + ALIGN_FIXES.get("Prioridad", 0),
-        editable=True,
-        cellEditor="agSelectCellEditor",
-        cellEditorParams={"values": ["Urgente", "Alta", "Media", "Baja"]}
-    )
+    # Anchos exactos + ajuste fino
+    _fixed_col(gob, "Id",            COL_W_ID        + ALIGN_FIXES.get("Id", 0),          editable=False)
+    _fixed_col(gob, "Área",          COL_W_AREA      + ALIGN_FIXES.get("Área", 0),        editable=False)
+    _fixed_col(gob, "Responsable",   PILL_W_RESP     + ALIGN_FIXES.get("Responsable", 0), editable=False)
+    _fixed_col(gob, "Tarea",         COL_W_TAREA     + ALIGN_FIXES.get("Tarea", 0),       editable=False)
+    _fixed_col(gob, "Prioridad",     COL_W_PRIORIDAD + ALIGN_FIXES.get("Prioridad", 0),   editable=True)
 
     gob.configure_grid_options(suppressColumnVirtualisation=False)
     return gob.build()
@@ -87,8 +94,7 @@ def _grid_options_prioridad(df):
 def _grid_options_evaluacion(df):
     gob = GridOptionsBuilder.from_dataframe(df, enableRowGroup=False, enableValue=False, enablePivot=False)
 
-    # 🔒 Columna por defecto SIN flex (respeta width)
-    gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, flex=0)
+    gob.configure_default_column(resizable=False, wrapText=True, autoHeight=True, flex=0)
 
     gob.configure_grid_options(
         suppressMovableColumns=True,
@@ -96,20 +102,14 @@ def _grid_options_evaluacion(df):
         ensureDomOrder=True,
         rowHeight=38,
         headerHeight=42,
-        suppressSizeToFit=True,   # ⬅️ desactiva autosize a todo ancho
+        suppressSizeToFit=True,
     )
 
-    gob.configure_column("Id",           width=COL_W_ID        + ALIGN_FIXES.get("Id", 0),           editable=False)
-    gob.configure_column("Área",         width=COL_W_AREA      + ALIGN_FIXES.get("Área", 0),         editable=False)
-    gob.configure_column("Responsable",  width=PILL_W_RESP     + ALIGN_FIXES.get("Responsable", 0),  editable=False)
-    gob.configure_column("Tarea",        width=COL_W_TAREA     + ALIGN_FIXES.get("Tarea", 0),        editable=False)
-    gob.configure_column(
-        "Evaluación",
-        width=COL_W_EVALUACION + ALIGN_FIXES.get("Evaluación", 0),
-        editable=True,
-        cellEditor="agSelectCellEditor",
-        cellEditorParams={"values": [5,4,3,2,1]}
-    )
+    _fixed_col(gob, "Id",           COL_W_ID        + ALIGN_FIXES.get("Id", 0),           editable=False)
+    _fixed_col(gob, "Área",         COL_W_AREA      + ALIGN_FIXES.get("Área", 0),         editable=False)
+    _fixed_col(gob, "Responsable",  PILL_W_RESP     + ALIGN_FIXES.get("Responsable", 0),  editable=False)
+    _fixed_col(gob, "Tarea",        COL_W_TAREA     + ALIGN_FIXES.get("Tarea", 0),        editable=False)
+    _fixed_col(gob, "Evaluación",   COL_W_EVALUACION+ ALIGN_FIXES.get("Evaluación", 0),   editable=True)
 
     gob.configure_grid_options(suppressColumnVirtualisation=False)
     return gob.build()
@@ -1950,6 +1950,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
