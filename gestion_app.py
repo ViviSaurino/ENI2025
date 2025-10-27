@@ -589,7 +589,7 @@ st.markdown("""
   margin-bottom: 14px !important;
 }
 .form-card > .help-strip{
-  margin-top: 10px !important;
+  margin-top: 20px !important;
   margin-bottom: 14px !important;
 }
 .help-strip strong{ display:inline-block !important; }
@@ -1680,6 +1680,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
