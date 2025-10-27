@@ -34,7 +34,7 @@ PILL_W_TAREA = PILL_W_HASTA
 # (modifica solo estos números hasta que las “rayitas plomas” calcen perfecto)
 ALIGN_FIXES = {
     "Id":          10,
-    "Área":        30,
+    "Área":        01,
     "Responsable": 10,
     "Tarea":       10,
     "Prioridad":   10,
@@ -1939,6 +1939,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
