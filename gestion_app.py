@@ -380,7 +380,7 @@ st.markdown("""
   --pill-h: 36px;
 
   /* Ancho de las píldoras (Nueva tarea / Editar estado / Nueva alerta) */
-  --pill-width: 168px;
+  --pill-width: 158px;
 
   /* Celeste institucional de títulos */
   --pill-azul:      #94BEEA;
@@ -1875,6 +1875,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
