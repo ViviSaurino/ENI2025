@@ -718,68 +718,29 @@ st.markdown("""
   margin-top: 10px !important;       /* valor base para todas */
 }
 
-/* ===== Killer override: toggle como triángulo puro, sin caja (funciona con BaseWeb) ===== */
-.toggle-icon :is(
-  [data-baseweb="button"],
-  [data-testid="baseButton-primary"],
-  [data-testid="baseButton-secondary"],
-  button
-){
-  /* quita caja */
+            /* === Toggle como triángulo puro (sin caja) usando el title del botón === */
+.toggle-icon .stButton > button[title="Mostrar/ocultar"]{
   background: transparent !important;
   background-color: transparent !important;
   border: 0 !important;
   box-shadow: none !important;
   outline: none !important;
 
-  /* quita tamaño mínimo que pone BaseWeb */
-  min-width: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
   width: auto !important;
+  min-width: 0 !important;
   height: auto !important;
   min-height: 0 !important;
   line-height: 1 !important;
-  padding: 0 !important;
-  margin: 0 !important;
   border-radius: 0 !important;
 
-  /* por si el tema usa variables internas de botón */
-  --button-min-width: 0px !important;
+  color: inherit !important;    /* usa el color de texto actual */
+  font-size: 14px !important;   /* ajusta 12–16 si quieres */
 }
 
-/* algunos temas envuelven el botón en un div/span con estilos: límpialos también */
-.toggle-icon :is(.stButton, [data-testid="baseButton-root"], span, div){
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  line-height: 1 !important;
-}
-
-/* elimina cualquier pseudo-elemento que pinte la “caja” */
-.toggle-icon :is(
-  [data-baseweb="button"],
-  [data-testid="baseButton-primary"],
-  [data-testid="baseButton-secondary"],
-  button
-)::before,
-.toggle-icon :is(
-  [data-baseweb="button"],
-  [data-testid="baseButton-primary"],
-  [data-testid="baseButton-secondary"],
-  button
-)::after{
-  content: none !important;
-  display: none !important;
-}
-
-/* asegura que en hover/focus/active no reaparezca */
-.toggle-icon :is(
-  [data-baseweb="button"],
-  [data-testid="baseButton-primary"],
-  [data-testid="baseButton-secondary"],
-  button
-):is(:hover,:focus,:active){
+/* No dejes que en hover/focus/active vuelva la “caja” */
+.toggle-icon .stButton > button[title="Mostrar/ocultar"]:is(:hover,:focus,:active){
   background: transparent !important;
   background-color: transparent !important;
   border: 0 !important;
@@ -787,15 +748,6 @@ st.markdown("""
   outline: none !important;
 }
 
-/* tamaño del triángulo (texto) — ajústalo si quieres más chico/grande */
-.toggle-icon :is(
-  [data-baseweb="button"],
-  [data-testid="baseButton-primary"],
-  [data-testid="baseButton-secondary"],
-  button
-){
-  font-size: 14px !important; /* prueba 12–16px */
-}
 </style>
 """, unsafe_allow_html=True)
 
