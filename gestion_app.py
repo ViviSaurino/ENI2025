@@ -1951,15 +1951,25 @@ if "Calificación" in df_grid.columns:
     gob.configure_column("Calificación", editable=True, valueFormatter=stars_fmt,
                          minWidth=colw["Calificación"], maxWidth=140, flex=0)
 
-# Editor de fecha/hora
+# Editor de fecha/hora (FIX: classList con punto)
 date_time_editor = JsCode("""
 class DateTimeEditor{
-  init(p){ this.eInput=document.createElement('input'); this.eInput.type='datetime-local';
-    this.eInput classList.add('ag-input'); this.eInput.style.width='100%';
-    const v=p.value?new Date(p.value):null;
-    if(v&&!isNaN(v.getTime())){ const pad=n=>String(n).padStart(2,'0');
-      this.eInput.value=v.getFullYear()+'-'+pad(v.getMonth()+1)+'-'+pad(v.getDate())+'T'+pad(v.getHours())+':'+pad(v.getMinutes()); } }
-  getGui(){return this.eInput} afterGuiAttached(){this.eInput.focus()} getValue(){return this.eInput.value} }""")
+  init(p){
+    this.eInput = document.createElement('input');
+    this.eInput.type = 'datetime-local';
+    this.eInput.classList.add('ag-input');   // <-- FIX AQUÍ
+    this.eInput.style.width = '100%';
+    const v = p.value ? new Date(p.value) : null;
+    if (v && !isNaN(v.getTime())){
+      const pad = n => String(n).padStart(2,'0');
+      this.eInput.value = v.getFullYear() + '-' + pad(v.getMonth()+1) + '-' + pad(v.getDate())
+                        + 'T' + pad(v.getHours()) + ':' + pad(v.getMinutes());
+    }
+  }
+  getGui(){ return this.eInput }
+  afterGuiAttached(){ this.eInput.focus() }
+  getValue(){ return this.eInput.value }
+}""")
 
 date_time_fmt = JsCode("""
 function(p){ if(p.value===null||p.value===undefined) return '—';
