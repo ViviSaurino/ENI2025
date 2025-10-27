@@ -717,71 +717,76 @@ st.markdown("""
 .form-card > .help-strip{
   margin-top: 10px !important;       /* valor base para todas */
 }
-
-/* Triángulo como link minimal (sin caja) */
-.toggle-icon .chev-link{
-  display: inline-block !important;
-  font-weight: 800 !important;
-  font-size: 18px !important;      /* tamaño del triángulo (link) */
-  line-height: 1 !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  text-decoration: none !important;
-  color: inherit !important;
-  cursor: pointer !important;
-  transform: translateY(8px);      /* alinea con la píldora */
-}
-.toggle-icon .chev-link:hover{ text-decoration: none !important; }
-
-/* ================================================================== */
-/* ================= OVERRIDE FINAL: toggle SIN CUADRADITO ========== */
-/* ================================================================== */
-/* Quita fondo/borde/sombra en cualquier variante de botón que use el toggle */
-.topbar .toggle-icon .stButton,
-.topbar-ux .toggle-icon .stButton,
-.topbar-na .toggle-icon .stButton,
-.topbar-pri .toggle-icon .stButton,
-.topbar-eval .toggle-icon .stButton{
+           
+/* === PATCH ULTRA para el triángulo SIN caja dentro de .toggle-icon === */
+/* 1) Quita fondo/borde/sombra de cualquier wrapper del botón */
+.toggle-icon .stButton,
+.toggle-icon .stButton > div,
+.toggle-icon [data-testid^="baseButton"],
+.toggle-icon [data-testid^="baseButton"] > div {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
   padding: 0 !important;
   margin: 0 !important;
 }
-.toggle-icon [data-testid="baseButton-primary"],
-.toggle-icon [data-testid="baseButton-secondary"],
-.toggle-icon [data-testid="baseButton-default"]{
+
+/* 2) El <button> real (cualquiera que sea su variante/kind) */
+.toggle-icon .stButton button,
+.toggle-icon button[kind],
+.toggle-icon button[class*="primary"],
+.toggle-icon button[class*="secondary"],
+.toggle-icon [role="button"] {
   background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
-}
-/* El botón en sí (si no usas link): sin caja y alineado */
-.toggle-icon .stButton > button{
-  background: transparent !important;
+  background-image: none !important;
   border: none !important;
   box-shadow: none !important;
   outline: none !important;
+
+  /* quita geometría del “cuadradito” */
   padding: 0 !important;
+  margin: 0 !important;
   width: auto !important;
   min-width: 0 !important;
   height: auto !important;
   min-height: 0 !important;
-  line-height: 1 !important;
+  border-radius: 0 !important;
+
+  /* tamaño y alineación del triángulo */
   font-weight: 800 !important;
-  font-size: 18px !important;     /* tamaño del triángulo (botón) */
-  transform: translateY(8px);      /* alinea con la píldora */
+  font-size: 18px !important;   /* sube/baja a gusto */
+  line-height: 1 !important;
+  transform: translateY(8px);   /* alinea verticalmente con la píldora */
+  color: inherit !important;
+  cursor: pointer !important;
 }
-/* Asegura que hover/focus/active no reintroduzcan la caja */
-.toggle-icon .stButton > button:hover,
-.toggle-icon .stButton > button:focus,
-.toggle-icon .stButton > button:active{
+
+/* 3) Asegura que hover/focus/active NO reintroduzcan la caja */
+.toggle-icon .stButton button:hover,
+.toggle-icon .stButton button:focus,
+.toggle-icon .stButton button:active,
+.toggle-icon button[kind]:hover,
+.toggle-icon button[kind]:focus,
+.toggle-icon button[kind]:active,
+.toggle-icon [role="button"]:hover,
+.toggle-icon [role="button"]:focus,
+.toggle-icon [role="button"]:active {
   background: transparent !important;
+  background-image: none !important;
   border: none !important;
   box-shadow: none !important;
   outline: none !important;
 }
+
+/* 4) Por si el tema inyecta pseudo-elementos decorativos */
+.toggle-icon .stButton button::before,
+.toggle-icon .stButton button::after,
+.toggle-icon [role="button"]::before,
+.toggle-icon [role="button"]::after {
+  content: none !important;
+  display: none !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
