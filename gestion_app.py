@@ -182,6 +182,10 @@ if "COLS" not in globals():
         "COLS",
         ["Id","Área","Responsable","Tarea","Prioridad","Evaluación","Fecha inicio","__DEL__"]
     )
+# 👇 Nuevo: nombre de pestaña/hoja por defecto para exportaciones, etc.
+if "TAB_NAME" not in globals():
+    TAB_NAME = st.session_state.get("TAB_NAME", "Tareas")
+
 _os.makedirs(DATA_DIR, exist_ok=True)
 
 if "_read_sheet_tab" not in globals():
@@ -1934,4 +1938,5 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
