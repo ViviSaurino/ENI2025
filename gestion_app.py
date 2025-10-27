@@ -1810,8 +1810,7 @@ D = 2.4   # Detalle / (Fecha alerta + Fecha corregida)
 # Responsables (antes de filtrar)
 responsables = sorted([x for x in df_view["Responsable"].astype(str).unique() if x and x != "nan"])
 
-# ---- FILA DE 5 FILTROS (ancho sincronizado con la tarjeta de alertas) ----
-# Área = A+F | Responsable = T/2 | Estado = T/2 | Desde = D/2 | Hasta = D/2
+# ---- FILA DE 5 FILTROS ----
 cA, cR, cE, cD, cH = st.columns([A + F, T/2, T/2, D/2, D/2], gap="medium")
 
 area_sel = cA.selectbox("Área", options=["Todas"] + AREAS_OPC, index=0)
@@ -1837,36 +1836,27 @@ if f_hasta:
     df_view = df_view[df_view["Fecha inicio"].dt.date <= f_hasta]
 st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
 
-# === ORDEN DE COLUMNAS: Id, Área, Responsable, Tarea, Tipo, Ciclo de mejora, y luego el resto ===
+# === ORDEN DE COLUMNAS ===
 cols_first = ["Id", "Área", "Responsable", "Tarea", "Tipo", "Ciclo de mejora"]
-
-# Crea la columna si aún no existe para evitar KeyError
 if "Ciclo de mejora" not in df_view.columns:
     df_view["Ciclo de mejora"] = ""
 
-# Construye orden asegurando que existan columnas
 cols_order = cols_first + [c for c in df_view.columns if c not in cols_first + ["__DEL__"]]
 extra = ["__DEL__"] if "__DEL__" in df_view.columns else []
 
-# --- SI ESTÁ VACÍO, IGUAL RENDERIZAMOS GRID CON HEADERS ---
-if df_view.empty:
-    # sin mensaje: renderiza el grid vacío con headers
-    df_grid = pd.DataFrame(columns=cols_order + extra)
-else:
-    df_grid = df_view.reindex(columns=cols_order + extra).copy()
+df_grid = (pd.DataFrame(columns=cols_order + extra) if df_view.empty
+           else df_view.reindex(columns=cols_order + extra).copy())
 
-# === GRID OPTIONS ===
+# ================= GRID OPTIONS =================
 gob = GridOptionsBuilder.from_dataframe(df_grid)
-
-# que TODAS las columnas sean redimensionables, con wrap y alto automático en celdas (no en header)
 gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True)
 
 gob.configure_grid_options(
     rowSelection="multiple",
-    suppressRowClickSelection=True,
+    suppressRowClickSelection=False,        # permitimos click + checkbox
     domLayout="normal",
     rowHeight=38,
-    headerHeight=42,          # encabezado compacto sin wrap
+    headerHeight=42,
     enableRangeSelection=True,
     enableCellTextSelection=True,
     singleClickEdit=True,
@@ -1876,23 +1866,23 @@ gob.configure_grid_options(
     getRowId=JsCode("function(p){ return (p.data && (p.data.Id || p.data['Id'])) + ''; }"),
 )
 
+# Selección múltiple con checkbox
 gob.configure_selection("multiple", use_checkbox=True)
 
-# Dejar Id, Área y Responsable a la izquierda visibles (pinned) — solo si existen
-try:
-    gob.configure_column("Id",   editable=False, width=110, pinned="left")
-except Exception:
-    pass
-try:
+# Id con checkbox en celdas y en el header (select all)
+if "Id" in df_grid.columns:
+    gob.configure_column(
+        "Id",
+        editable=False, width=110, pinned="left",
+        checkboxSelection=True,
+        headerCheckboxSelection=True,
+        headerCheckboxSelectionFilteredOnly=True
+    )
+if "Área" in df_grid.columns:
     gob.configure_column("Área", editable=True,  width=160, pinned="left")
-except Exception:
-    pass
-try:
+if "Responsable" in df_grid.columns:
     gob.configure_column("Responsable", pinned="left")
-except Exception:
-    pass
 
-# Oculta auxiliar si existe
 if "__DEL__" in df_grid.columns:
     gob.configure_column("__DEL__", hide=True)
 
@@ -1913,7 +1903,7 @@ function(p){
   else if(v==='Terminado'){bg='#00C4B3'}
   else if(v==='Cancelado'){bg='#FF2D95'}
   else if(v==='Pausado'){bg='#7E57C2'}
-  else if(v==='Entregado a tiempo'){bg:'#00C4B3'}
+  else if(v==='Entregado a tiempo'){bg='#00C4B3'}
   else if(v==='Entregado con retraso'){bg:'#00ACC1'}
   else if(v==='No entregado'){bg:'#006064'}
   else if(v==='En riesgo de retraso'){bg:'#0277BD'}
@@ -1991,14 +1981,13 @@ if "Días hábiles" in df_grid.columns:
 for col in df_grid.columns:
     gob.configure_column(col, headerTooltip=col)
 
-# === Autosize callbacks para que los headers se vean completos y horizontales ===
+# === Autosize callbacks ===
 autosize_on_ready = JsCode("""
 function(params){
   const all = params.columnApi.getAllDisplayedColumns();
-  params.columnApi.autoSizeColumns(all, true); // true => tamaño por texto del HEADER
+  params.columnApi.autoSizeColumns(all, true);
 }
 """)
-
 autosize_on_data = JsCode("""
 function(params){
   if (params.api && params.api.getDisplayedRowCount() > 0){
@@ -2008,19 +1997,29 @@ function(params){
 }
 """)
 
-# Inyecta los eventos al gridOptions ya construido
 grid_opts = gob.build()
 grid_opts["onGridReady"] = autosize_on_ready.js_code
 grid_opts["onFirstDataRendered"] = autosize_on_data.js_code
 grid_opts["onColumnEverythingChanged"] = autosize_on_data.js_code
 
+# Recordar selección entre reruns
+grid_opts["rowSelection"] = "multiple"
+grid_opts["rowMultiSelectWithClick"] = True
+grid_opts["rememberSelection"] = True
+
 grid = AgGrid(
     df_grid, key="grid_historial", gridOptions=grid_opts, height=500,
-    fit_columns_on_grid_load=False,   # respeta autosize; no force fit
+    fit_columns_on_grid_load=False,
     data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
-    update_mode=(GridUpdateMode.VALUE_CHANGED | GridUpdateMode.MODEL_CHANGED | GridUpdateMode.FILTERING_CHANGED | GridUpdateMode.SORTING_CHANGED | GridUpdateMode.SELECTION_CHANGED),
+    update_mode=(GridUpdateMode.VALUE_CHANGED | GridUpdateMode.MODEL_CHANGED
+                 | GridUpdateMode.FILTERING_CHANGED | GridUpdateMode.SORTING_CHANGED
+                 | GridUpdateMode.SELECTION_CHANGED),
     allow_unsafe_jscode=True, theme="balham",
 )
+
+# Guarda la selección actual (Ids) en session_state
+sel_rows_now = grid.get("selected_rows", []) if isinstance(grid, dict) else []
+st.session_state["hist_sel_ids"] = [str(r.get("Id", "")).strip() for r in sel_rows_now if r.get("Id", "") != ""]
 
 # Sincroniza ediciones por Id (solo si hay data)
 if isinstance(grid, dict) and "data" in grid and grid["data"] is not None and len(grid["data"]) > 0:
@@ -2031,25 +2030,25 @@ if isinstance(grid, dict) and "data" in grid and grid["data"] is not None and le
     except Exception:
         pass
 
-# ---- Botones (ancho total = Área + Responsable) ----
-# Reutilizamos las mismas proporciones declaradas en el formulario: A, F, T, D
-total_btn_width = (A + F) + (T / 2)    # Área + Responsable
+# ---- Botones ----
+total_btn_width = (A + F) + (T / 2)
 btn_w = total_btn_width / 4
 
 b_del, b_xlsx, b_save_local, b_save_sheets, _spacer = st.columns(
-    [btn_w, btn_w, btn_w, btn_w, (T / 2) + D],  # el resto de la fila como espaciador
+    [btn_w, btn_w, btn_w, btn_w, (T / 2) + D],  # espaciador al final
     gap="medium"
 )
 
-# 1) Borrar seleccionados
+# 1) Borrar seleccionados (usa selección guardada)
 with b_del:
-    sel_rows = grid.get("selected_rows", []) if isinstance(grid, dict) else []
     if st.button("🗑️ Borrar", use_container_width=True):
-        ids = pd.DataFrame(sel_rows)["Id"].astype(str).tolist() if sel_rows else []
+        ids = st.session_state.get("hist_sel_ids", [])
         if ids:
-            df0 = st.session_state["df_main"]
+            df0 = st.session_state["df_main"].copy()
             st.session_state["df_main"] = df0[~df0["Id"].astype(str).isin(ids)].copy()
+            st.session_state["hist_sel_ids"] = []
             st.success(f"Eliminadas {len(ids)} fila(s).")
+            st.rerun()
         else:
             st.warning("No hay filas seleccionadas.")
 
@@ -2071,13 +2070,15 @@ with b_xlsx:
 with b_save_local:
     if st.button("💽 Guardar", use_container_width=True):
         df = st.session_state["df_main"][COLS].copy()
-        _save_local(df.copy())  # guarda en data/tareas.csv
+        _save_local(df.copy())
         st.success("Datos guardados en la tabla local (CSV).")
 
 # 4) Subir a Sheets
 with b_save_sheets:
     if st.button("📤 Subir a Sheets", use_container_width=True):
         df = st.session_state["df_main"][COLS].copy()
-        _save_local(df.copy())  # opcional: respaldo local antes de subir
+        _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
+
