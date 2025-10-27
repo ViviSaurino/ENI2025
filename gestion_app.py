@@ -913,66 +913,72 @@ st.markdown('<div id="ntbar" class="topbar">', unsafe_allow_html=True)
 c_toggle, c_pill = st.columns([0.028, 0.965], gap="small")
 
 with c_toggle:
-    # Triángulo sin “cajita”, y JS que busca #nt-section SOLO al hacer clic
-    chev_now = "▾" if st.session_state.get("nt_visible", True) else "▸"
+    # Botón mínimo SOLO para ocultar/mostrar (sigue funcionando con session_state)
+    st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
 
-    st.markdown(f"""
-    <div class="toggle-icon">
-      <a id="nt-toggle" href="#" title="Mostrar/ocultar">{chev_now}</a>
-    </div>
+    def _toggle_nt():
+        st.session_state["nt_visible"] = not st.session_state["nt_visible"]
 
+    st.button(
+        "▾" if st.session_state.get("nt_visible", True) else "▸",
+        key="nt_toggle_icon",
+        help="Mostrar/ocultar",
+        on_click=_toggle_nt
+    )
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # --- Camuflaje del “cuadrado”: fondo y borde blancos, sin sombra ---
+    st.markdown("""
     <style>
-      /* Link-triángulo, sin caja */
-      #ntbar .toggle-icon #nt-toggle{{
-        display:inline-block !important;
-        text-decoration:none !important;
-        background:transparent !important;
-        border:none !important;
-        box-shadow:none !important;
-        outline:none !important;
-        padding:0 !important; margin:0 !important;
-        font-weight:800 !important;
-        font-size:20px !important;
-        line-height:1 !important;
-        transform: translateY(8px);
+      /* Wrappers posibles del botón en esta barra */
+      #ntbar .toggle-icon .stButton,
+      #ntbar .toggle-icon .stButton > div,
+      #ntbar .toggle-icon [data-testid^="baseButton"],
+      #ntbar .toggle-icon [data-testid^="baseButton"] > div{
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+
+      /* El <button> real: fondo y borde blancos para “desaparecer” el cuadrado */
+      #ntbar .toggle-icon .stButton > button,
+      #ntbar .toggle-icon [data-testid^="baseButton"] button{
+        background: #ffffff !important;     /* mismo color que el fondo de la página */
+        border: 1px solid #ffffff !important;
+        box-shadow: none !important;
+        outline: none !important;
+
+        padding: 0 !important;              /* quita “caja” visual */
+        margin: 0 !important;
+        min-width: 0 !important;
+        height: auto !important;
+        min-height: 0 !important;
+        border-radius: 0 !important;
+
+        font-weight: 800 !important;
+        font-size: 20px !important;         /* tamaño del triángulo */
+        line-height: 1 !important;
+        transform: translateY(8px);         /* alinear con la píldora */
         color: inherit !important;
         cursor: pointer !important;
-      }}
-      #ntbar .toggle-icon #nt-toggle:focus,
-      #ntbar .toggle-icon #nt-toggle:hover,
-      #ntbar .toggle-icon #nt-toggle:active{{
-        text-decoration:none !important;
-        outline:none !important;
-        box-shadow:none !important;
-      }}
+      }
+
+      /* Mantén el camuflaje en hover/focus/active */
+      #ntbar .toggle-icon .stButton > button:hover,
+      #ntbar .toggle-icon .stButton > button:focus,
+      #ntbar .toggle-icon .stButton > button:active,
+      #ntbar .toggle-icon [data-testid^="baseButton"] button:hover,
+      #ntbar .toggle-icon [data-testid^="baseButton"] button:focus,
+      #ntbar .toggle-icon [data-testid^="baseButton"] button:active{
+        background: #ffffff !important;
+        border-color: #ffffff !important;
+        box-shadow: none !important;
+        outline: none !important;
+      }
     </style>
-
-    <script>
-      (function(){{
-        const a = document.getElementById('nt-toggle');
-        if(!a) return;
-
-        // Al hacer clic: busca #nt-section en ese momento y alterna display
-        a.addEventListener('click', function(e){{
-          e.preventDefault();
-          const sec = document.getElementById('nt-section');
-          if(!sec) return;  // si aún no está en el DOM, no hace nada
-          const isHidden = getComputedStyle(sec).display === 'none';
-          sec.style.display = isHidden ? 'block' : 'none';
-          a.textContent = isHidden ? '▾' : '▸';
-        }});
-
-        // Sincroniza el símbolo una vez cuando la sección ya existe
-        const sync = () => {{
-          const sec = document.getElementById('nt-section');
-          if(!sec) return;
-          const isHidden = getComputedStyle(sec).display === 'none';
-          a.textContent = isHidden ? '▸' : '▾';
-        }};
-        requestAnimationFrame(sync);
-        setTimeout(sync, 0);
-      }})();
-    </script>
     """, unsafe_allow_html=True)
 
 with c_pill:
@@ -1866,6 +1872,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
