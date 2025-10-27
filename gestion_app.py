@@ -1777,16 +1777,23 @@ st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
 # === ORDEN DE COLUMNAS: Id, Área, Responsable, Tarea, Tipo, Ciclo de mejora, y luego el resto ===
 cols_first = ["Id", "Área", "Responsable", "Tarea", "Tipo", "Ciclo de mejora"]
 
-# crea la columna si aún no existe para evitar KeyError
+# Crea la columna si aún no existe para evitar KeyError
 if "Ciclo de mejora" not in df_view.columns:
     df_view["Ciclo de mejora"] = ""
 
+# Construye orden asegurando que existan columnas
 cols_order = cols_first + [c for c in df_view.columns if c not in cols_first + ["__DEL__"]]
 extra = ["__DEL__"] if "__DEL__" in df_view.columns else []
-df_view = df_view.reindex(columns=cols_order + extra)
+
+# --- SI ESTÁ VACÍO, IGUAL RENDERIZAMOS GRID CON HEADERS ---
+if df_view.empty:
+    st.info("No hay tareas que coincidan con los filtros vigentes.")
+    df_grid = pd.DataFrame(columns=cols_order + extra)
+else:
+    df_grid = df_view.reindex(columns=cols_order + extra).copy()
 
 # === GRID OPTIONS ===
-gob = GridOptionsBuilder.from_dataframe(df_view)
+gob = GridOptionsBuilder.from_dataframe(df_grid)
 
 # que TODAS las columnas sean redimensionables, con wrap y alto automático en celdas (no en header)
 gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True)
@@ -1808,12 +1815,23 @@ gob.configure_grid_options(
 
 gob.configure_selection("multiple", use_checkbox=True)
 
-# Dejar Id, Área y Responsable a la izquierda visibles (pinned)
-gob.configure_column("Id",   editable=False, width=110, pinned="left")
-gob.configure_column("Área", editable=True,  width=160, pinned="left")
-gob.configure_column("Responsable", pinned="left")
+# Dejar Id, Área y Responsable a la izquierda visibles (pinned) — solo si existen
+try:
+    gob.configure_column("Id",   editable=False, width=110, pinned="left")
+except Exception:
+    pass
+try:
+    gob.configure_column("Área", editable=True,  width=160, pinned="left")
+except Exception:
+    pass
+try:
+    gob.configure_column("Responsable", pinned="left")
+except Exception:
+    pass
 
-gob.configure_column("__DEL__", hide=True)
+# Oculta auxiliar si existe
+if "__DEL__" in df_grid.columns:
+    gob.configure_column("__DEL__", hide=True)
 
 colw = {"Tarea":220,"Tipo":160,"Responsable":200,"Fase":140,"Complejidad":130,"Prioridad":130,"Estado":130,
         "Fecha inicio":160,"Vencimiento":160,"Fecha fin":160,"Duración":110,"Días hábiles":120,
@@ -1832,9 +1850,9 @@ function(p){
   else if(v==='Terminado'){bg='#00C4B3'}
   else if(v==='Cancelado'){bg='#FF2D95'}
   else if(v==='Pausado'){bg='#7E57C2'}
-  else if(v==='Entregado a tiempo'){bg='#00C4B3'}
-  else if(v==='Entregado con retraso'){bg='#00ACC1'}
-  else if(v==='No entregado'){bg='#006064'}
+  else if(v==='Entregado a tiempo'){bg:'#00C4B3'}
+  else if(v==='Entregado con retraso'){bg:'#00ACC1'}
+  else if(v==='No entregado'){bg:'#006064'}
   else if(v==='En riesgo de retraso'){bg:'#0277BD'}
   else if(v==='Aprobada'){bg:'#8BC34A'; fg:'#0A2E00'}
   else if(v==='Desaprobada'){bg:'#FF8A80'}
@@ -1857,21 +1875,25 @@ function(p){
 }""")
 
 for c, fx in [("Tarea",3), ("Tipo",2), ("Tipo de alerta",2), ("Responsable",2), ("Fase",1)]:
-    gob.configure_column(c, editable=True, minWidth=colw[c], flex=fx, valueFormatter=fmt_dash)
+    if c in df_grid.columns:
+        gob.configure_column(c, editable=True, minWidth=colw.get(c,120), flex=fx, valueFormatter=fmt_dash)
 
 for c in ["Complejidad", "Prioridad"]:
-    gob.configure_column(c, editable=True, cellEditor="agSelectCellEditor",
-                         cellEditorParams={"values": ["Alta","Media","Baja"]},
-                         valueFormatter=flag_formatter, minWidth=colw[c], maxWidth=220, flex=1)
+    if c in df_grid.columns:
+        gob.configure_column(c, editable=True, cellEditor="agSelectCellEditor",
+                             cellEditorParams={"values": ["Alta","Media","Baja"]},
+                             valueFormatter=flag_formatter, minWidth=colw[c], maxWidth=220, flex=1)
 
 for c, vals in [("Estado", ESTADO), ("Cumplimiento", CUMPLIMIENTO), ("¿Generó alerta?", SI_NO),
                 ("¿Se corrigió?", SI_NO), ("Evaluación", ["Aprobada","Desaprobada","Pendiente de revisión","Observada","Cancelada","Pausada"])]:
-    gob.configure_column(c, editable=True, cellEditor="agSelectCellEditor",
-                         cellEditorParams={"values": vals}, cellStyle=chip_style, valueFormatter=fmt_dash,
-                         minWidth=colw.get(c, 120), maxWidth=260, flex=1)
+    if c in df_grid.columns:
+        gob.configure_column(c, editable=True, cellEditor="agSelectCellEditor",
+                             cellEditorParams={"values": vals}, cellStyle=chip_style, valueFormatter=fmt_dash,
+                             minWidth=colw.get(c, 120), maxWidth=260, flex=1)
 
-gob.configure_column("Calificación", editable=True, valueFormatter=stars_fmt,
-                     minWidth=colw["Calificación"], maxWidth=140, flex=0)
+if "Calificación" in df_grid.columns:
+    gob.configure_column("Calificación", editable=True, valueFormatter=stars_fmt,
+                         minWidth=colw["Calificación"], maxWidth=140, flex=0)
 
 # Editor de fecha/hora
 date_time_editor = JsCode("""
@@ -1890,17 +1912,20 @@ function(p){ if(p.value===null||p.value===undefined) return '—';
   return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes()); }""")
 
 for c in ["Fecha inicio","Vencimiento","Fecha fin"]:
-    gob.configure_column(c, editable=True, cellEditor=date_time_editor, valueFormatter=date_time_fmt,
-                         minWidth=colw[c], maxWidth=200, flex=1)
+    if c in df_grid.columns:
+        gob.configure_column(c, editable=True, cellEditor=date_time_editor, valueFormatter=date_time_fmt,
+                             minWidth=colw[c], maxWidth=200, flex=1)
 
 dur_getter = JsCode("function(p){const s=p.data['Fecha inicio'],e=p.data['Vencimiento'];if(!s||!e)return null;const sd=new Date(s),ed=new Date(e);if(isNaN(sd.getTime()))return null;return Math.floor((ed-sd)/(1000*60*60*24));}")
 bd_getter  = JsCode("function(p){const s=p.data['Fecha inicio'],e=p.data['Vencimiento'];if(!s||!e)return null;let sd=new Date(s),ed=new Date(e);if(isNaN(sd.getTime()))return null;if(ed<sd)return 0;sd=new Date(sd.getFullYear(),sd.getMonth(),sd.getDate());ed=new Date(ed.getFullYear(),ed.getMonth(),ed.getDate());let c=0;const one=24*60*60*1000;for(let t=sd.getTime();t<=ed.getTime();t+=one){const d=new Date(t).getDay();if(d!==0&&d!==6)c++;}return c;}")
 
-gob.configure_column("Duración", editable=False, valueGetter=dur_getter, valueFormatter=fmt_dash, minWidth=colw["Duración"], maxWidth=130, flex=0)
-gob.configure_column("Días hábiles", editable=False, valueGetter=bd_getter, valueFormatter=fmt_dash, minWidth=colw["Días hábiles"], maxWidth=140, flex=0)
+if "Duración" in df_grid.columns:
+    gob.configure_column("Duración", editable=False, valueGetter=dur_getter, valueFormatter=fmt_dash, minWidth=colw["Duración"], maxWidth=130, flex=0)
+if "Días hábiles" in df_grid.columns:
+    gob.configure_column("Días hábiles", editable=False, valueGetter=bd_getter, valueFormatter=fmt_dash, minWidth=colw["Días hábiles"], maxWidth=140, flex=0)
 
 # Tooltips en headers
-for col in df_view.columns:
+for col in df_grid.columns:
     gob.configure_column(col, headerTooltip=col)
 
 # === Autosize callbacks para que los headers se vean completos y horizontales ===
@@ -1927,15 +1952,15 @@ grid_opts["onFirstDataRendered"] = autosize_on_data.js_code
 grid_opts["onColumnEverythingChanged"] = autosize_on_data.js_code
 
 grid = AgGrid(
-    df_view, key="grid_historial", gridOptions=grid_opts, height=500,
+    df_grid, key="grid_historial", gridOptions=grid_opts, height=500,
     fit_columns_on_grid_load=False,   # respeta autosize; no force fit
     data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
     update_mode=(GridUpdateMode.VALUE_CHANGED | GridUpdateMode.MODEL_CHANGED | GridUpdateMode.FILTERING_CHANGED | GridUpdateMode.SORTING_CHANGED | GridUpdateMode.SELECTION_CHANGED),
     allow_unsafe_jscode=True, theme="balham",
 )
 
-# Sincroniza ediciones por Id
-if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
+# Sincroniza ediciones por Id (solo si hay data)
+if isinstance(grid, dict) and "data" in grid and grid["data"] is not None and len(grid["data"]) > 0:
     try:
         edited = pd.DataFrame(grid["data"]).copy()
         base = st.session_state["df_main"].copy().set_index("Id")
