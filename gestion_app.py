@@ -1,5 +1,5 @@
 # ============================
-# Gestión — ENI2025 (UNA TABLA con "Área" y formulario + historial)
+# Gestión — ENI2025 (MÓDULO: una tabla con "Área" y formulario + historial)
 # ============================
 import os
 from io import BytesIO
@@ -7,12 +7,9 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-# ⚠️ Debe ser lo primero de Streamlit
-st.set_page_config(page_title="Gestión — ENI2025",
-                   layout="wide",
-                   initial_sidebar_state="expanded"),
+# ❌ [QUITADO] set_page_config — ahora va en pages/01_Gestion.py
 
-# 🔐 Login Google (importar DESPUÉS del set_page_config)
+# 🔐 Puedes seguir importando utilidades de auth si las usas en funciones
 from auth_google import google_login, logout
 
 # Parche compatibilidad Streamlit 1.50 + st-aggrid
@@ -24,6 +21,7 @@ if not hasattr(_stc, "components"):
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, JsCode, DataReturnMode
 
 # ======= Utilidades de tablas (Prioridad / Evaluación) =======
+# (estos imports duplicados no hacen daño; los mantengo tal cual)
 import streamlit as st
 from st_aggrid import GridOptionsBuilder
 from auth_google import google_login, logout
@@ -35,7 +33,6 @@ PILL_W_HASTA = 220  # píldora "Hasta"
 PILL_W_TAREA = PILL_W_HASTA
 
 # Ajuste fino POR COLUMNA para compensar padding interno de AgGrid
-# (modifica solo estos números hasta que las “rayitas plomas” calcen perfecto)
 ALIGN_FIXES = {
     "Id":          10,
     "Área":        10,
@@ -135,22 +132,13 @@ def _grid_options_evaluacion(df):
     gob.configure_grid_options(suppressColumnVirtualisation=False)
     return gob.build()
 
-# --- allow-list ---
+# --- allow-list (puedes seguir usándolo desde la página) ---
 allowed_emails  = st.secrets.get("auth", {}).get("allowed_emails", [])
 allowed_domains = st.secrets.get("auth", {}).get("allowed_domains", [])
 
-# 👤 Login
-user = google_login(allowed_emails=allowed_emails,
-                    allowed_domains=allowed_domains,
-                    redirect_page=None)
-if not user:
-    st.stop()
-
-with st.sidebar:
-    st.markdown(f"**{user.get('name','')}**  \n{user.get('email','')}")
-    if st.button("Cerrar sesión", use_container_width=True):
-        logout()
-        st.rerun()
+# ❌ [QUITADO] Login + Sidebar
+# user = google_login(...)
+# with st.sidebar: ...
 
 # ===== Inicialización de visibilidad por única vez =====
 if "_ui_bootstrap" not in st.session_state:
@@ -162,6 +150,14 @@ if "_ui_bootstrap" not in st.session_state:
     st.session_state["eva_visible"] = False  # Evaluación
     st.session_state["_ui_bootstrap"] = True
 
+# ===========================
+# A PARTIR DE AQUÍ: tu UI va dentro de render()
+# ===========================
+def render():
+    """
+    Renderiza TODA la UI de Gestión (formulario, editar estado,
+    nueva alerta, prioridad, evaluación, historial, etc.)
+    """
 # ================== GOOGLE SHEETS ==================
 import json, re
 
@@ -2093,3 +2089,4 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
