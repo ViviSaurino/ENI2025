@@ -46,10 +46,6 @@ def _clean_df_for_grid(df):
 
 def _grid_options_prioridad(df):
     gob = GridOptionsBuilder.from_dataframe(df, enableRowGroup=False, enableValue=False, enablePivot=False)
-
-    # === CLAVE PARA ALINEAR: sin flex ni autosize por defecto ===
-    gob.configure_default_column(resizable=True, wrapText=False, autoHeight=False, flex=0)
-
     gob.configure_grid_options(
         suppressMovableColumns=True,
         domLayout="normal",
@@ -57,12 +53,11 @@ def _grid_options_prioridad(df):
         rowHeight=38,
         headerHeight=42
     )
-
-    # Definición de columnas y anchos exactos (no usar flex en estas tablas)
-    gob.configure_column("Id",          width=COL_W_ID,   editable=False)
-    gob.configure_column("Área",        width=COL_W_AREA, editable=False)
+    # Definición de columnas y anchos exactos
+    gob.configure_column("Id", width=COL_W_ID, editable=False)
+    gob.configure_column("Área", width=COL_W_AREA, editable=False)
     gob.configure_column("Responsable", width=PILL_W_RESP, editable=False)
-    gob.configure_column("Tarea",       width=COL_W_TAREA, editable=False)
+    gob.configure_column("Tarea", width=COL_W_TAREA, editable=False)
     gob.configure_column(
         "Prioridad",
         width=COL_W_PRIORIDAD,
@@ -70,17 +65,12 @@ def _grid_options_prioridad(df):
         cellEditor="agSelectCellEditor",
         cellEditorParams={"values": ["Urgente", "Alta", "Media", "Baja"]}
     )
-
-    # No autosize (para respetar widths exactos)
+    # No autosize (para respetar widths)
     gob.configure_grid_options(suppressColumnVirtualisation=False)
     return gob.build()
 
 def _grid_options_evaluacion(df):
     gob = GridOptionsBuilder.from_dataframe(df, enableRowGroup=False, enableValue=False, enablePivot=False)
-
-    # === CLAVE PARA ALINEAR: sin flex ni autosize por defecto ===
-    gob.configure_default_column(resizable=True, wrapText=False, autoHeight=False, flex=0)
-
     gob.configure_grid_options(
         suppressMovableColumns=True,
         domLayout="normal",
@@ -88,20 +78,17 @@ def _grid_options_evaluacion(df):
         rowHeight=38,
         headerHeight=42
     )
-
-    gob.configure_column("Id",          width=COL_W_ID,   editable=False)
-    gob.configure_column("Área",        width=COL_W_AREA, editable=False)
+    gob.configure_column("Id", width=COL_W_ID, editable=False)
+    gob.configure_column("Área", width=COL_W_AREA, editable=False)
     gob.configure_column("Responsable", width=PILL_W_RESP, editable=False)
-    gob.configure_column("Tarea",       width=COL_W_TAREA, editable=False)
+    gob.configure_column("Tarea", width=COL_W_TAREA, editable=False)
     gob.configure_column(
         "Evaluación",
         width=COL_W_EVALUACION,
         editable=True,
         cellEditor="agSelectCellEditor",
-        cellEditorParams={"values": [5, 4, 3, 2, 1]}
+        cellEditorParams={"values": [5,4,3,2,1]}
     )
-
-    # No autosize (para respetar widths exactos)
     gob.configure_grid_options(suppressColumnVirtualisation=False)
     return gob.build()
 
