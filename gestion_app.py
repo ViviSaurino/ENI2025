@@ -717,48 +717,22 @@ st.markdown("""
   margin-top: 10px !important;       /* valor base para todas */
 }
             
-/* ===== Forzar tamaño del botón triangulito (todas las barras) ===== */
-:root{ --toggle-size: 10px; }  /* prueba 24–30px según te guste */
+/* Forzar tamaño visual del botón con escala */
+:root{ --toggle-scale: 0.75; } /* 0.70–0.85 suele verse bien */
 
 .topbar .toggle-icon .stButton>button,
 .topbar-ux .toggle-icon .stButton>button,
 .topbar-na .toggle-icon .stButton>button,
 .topbar-pri .toggle-icon .stButton>button,
-.topbar-eval .toggle-icon .stButton>button,
-.toggle-icon [data-testid="baseButton-secondary"],   /* por si Streamlit usa este testid */
-.toggle-icon [data-testid="baseButton-primary"]{     /* y este en algunos temas */
-  width: var(--toggle-size) !important;
-  min-width: var(--toggle-size) !important;
-  height: var(--toggle-size) !important;
-  min-height: var(--toggle-size) !important;
-  aspect-ratio: 1 / 1 !important;
+.topbar-eval .toggle-icon .stButton>button{
+  transform: scale(var(--toggle-scale)) !important;
+  transform-origin: left center !important;
+  /* Si la caja reserva espacio, compénsalo con margen negativo */
+  margin-right: calc(-1 * (1 - var(--toggle-scale)) * 36px) !important;
+  /* Asegura que no crezcan por estilos del tema */
   padding: 0 !important;
-  border-radius: 8px !important;
-  line-height: var(--toggle-size) !important;
-  font-size: 12px !important;        /* tamaño del símbolo ▾/▸ */
-  box-sizing: border-box !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-
-/* Quita cualquier relleno extra del contenedor del botón */
-.topbar .toggle-icon .stButton,
-.topbar-ux .toggle-icon .stButton,
-.topbar-na .toggle-icon .stButton,
-.topbar-pri .toggle-icon .stButton,
-.topbar-eval .toggle-icon .stButton{
-  padding: 0 !important;
-  margin: 0 !important;
-  line-height: 0 !important;
-}
-
-/* Por si algún tema mete padding en el span interior */
-.topbar .toggle-icon .stButton>button *{
-  padding: 0 !important;
-  margin: 0 !important;
   line-height: 1 !important;
-  font-size: inherit !important;
+  font-size: 12px !important; /* baja si aún lo ves grande */
 }
                        
 </style>
@@ -1705,5 +1679,3 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
