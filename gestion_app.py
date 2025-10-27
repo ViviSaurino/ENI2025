@@ -1942,7 +1942,10 @@ with b_del:
 # 2) Exportar Excel
 with b_xlsx:
     try:
-        xlsx_b = export_excel(st.session_state["df_main"][COLS], sheet=TAB_NAME)
+        xlsx_b = export_excel(
+            st.session_state["df_main"][COLS],
+            sheet_name=TAB_NAME  # <- antes decía sheet=TAB_NAME
+        )
         st.download_button(
             "⬇️ Exportar Excel",
             data=xlsx_b,
@@ -1967,6 +1970,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
