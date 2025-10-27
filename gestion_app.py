@@ -871,43 +871,57 @@ st.markdown("""
   margin: 0 !important;
 }
 
-/* ========== Camuflaje BLANCO para TODOS los toggles (5 barras) ========== */
-/* Aplica a: Nueva tarea (#ntbar), Actualizar estado (.topbar-ux),
-   y los otros bloques similares (.topbar-na, .topbar-pri, .topbar-eval)    */
+/* === CAMUFLAJE TOTAL: borde y fondo BLANCOS en TODOS los toggles === */
+/* Aplica a: #ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval */
 
-/* Limpia wrappers del botón dentro de cada toggle */
+:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon *,
+:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon *::before,
+:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon *::after{
+  /* mata sombras/rings que parecen “borde plomo” */
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* wrappers posibles con borde */
 :where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon .stButton,
 :where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon .stButton > div,
 :where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon [data-testid^="baseButton"],
 :where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon [data-testid^="baseButton"] > div{
   background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
+  border: 1px solid #ffffff !important;   /* ← BLANCO */
+  border-radius: 0 !important;
 }
 
-/* El <button> real: fondo y borde BLANCOS (cuadrado invisible) */
+/* el <button> real en todas sus variantes */
 :where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon .stButton > button,
 :where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon [data-testid^="baseButton"] button,
-:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon button[kind]{
-  background: #ffffff !important;
-  border: 1px solid #ffffff !important;
-  box-shadow: none !important;
+:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon button[kind],
+:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon [role="button"]{
+  background: #ffffff !important;          /* fondo blanco */
+  border: 1px solid #ffffff !important;     /* borde blanco */
+  box-shadow: none !important;              /* sin glow gris */
   outline: none !important;
 
+  /* por si el borde era “simulado” con sombra interna */
+  -webkit-box-shadow: inset 0 0 0 1px #ffffff !important;
+  box-shadow: inset 0 0 0 1px #ffffff !important;
+
+  /* geometría mínima */
   padding: 0 !important; margin: 0 !important;
   min-width: 0 !important; min-height: 0 !important; height: auto !important;
   border-radius: 0 !important;
 
-  /* (opcional) mantener tu alineación y tipografía del triángulo */
+  /* tipografía del triángulo */
   font-weight: 800 !important; font-size: 20px !important; line-height: 1 !important;
   transform: translateY(8px);
   color: inherit !important;
   cursor: pointer !important;
+
+  /* quita highlight móvil que se ve gris */
+  -webkit-tap-highlight-color: rgba(255,255,255,0) !important;
 }
 
-/* Mantener BLANCO en hover/focus/active */
+/* estados hover/focus/active: SIEMPRE BLANCO */
 :where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon .stButton > button:hover,
 :where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon .stButton > button:focus,
 :where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon .stButton > button:active,
@@ -919,13 +933,13 @@ st.markdown("""
 :where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon button[kind]:active{
   background: #ffffff !important;
   border-color: #ffffff !important;
-  box-shadow: none !important;
+  -webkit-box-shadow: inset 0 0 0 1px #ffffff !important;
+  box-shadow: inset 0 0 0 1px #ffffff !important;
   outline: none !important;
 }
 
 </style>
 """, unsafe_allow_html=True)
-
 
 # ---------- Título ----------
 st.title("📂 Gestión - ENI 2025")
@@ -1913,6 +1927,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
