@@ -1707,9 +1707,16 @@ if f_hasta:
     df_view = df_view[df_view["Fecha inicio"].dt.date <= f_hasta]
 st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
 
-# === ORDEN DE COLUMNAS: Id primero, luego Área y el resto ===
-grid_cols = ["Id", "Área"] + [c for c in COLS if c not in ("Id", "Área")]
-df_view = df_view[grid_cols + ["__DEL__"]]
+# === ORDEN DE COLUMNAS: Id, Área, Responsable, Tarea, Tipo, Ciclo de mejora, y luego el resto ===
+cols_first = ["Id", "Área", "Responsable", "Tarea", "Tipo", "Ciclo de mejora"]
+
+# crea la columna si aún no existe para evitar KeyError
+if "Ciclo de mejora" not in df_view.columns:
+    df_view["Ciclo de mejora"] = ""
+
+cols_order = cols_first + [c for c in df_view.columns if c not in cols_first + ["__DEL__"]]
+extra = ["__DEL__"] if "__DEL__" in df_view.columns else []
+df_view = df_view.reindex(columns=cols_order + extra)
 
 # === GRID OPTIONS ===
 gob = GridOptionsBuilder.from_dataframe(df_view)
@@ -1734,9 +1741,10 @@ gob.configure_grid_options(
 
 gob.configure_selection("multiple", use_checkbox=True)
 
-# Dejar Id y Área a la izquierda visibles
+# Dejar Id, Área y Responsable a la izquierda visibles (pinned)
 gob.configure_column("Id",   editable=False, width=110, pinned="left")
 gob.configure_column("Área", editable=True,  width=160, pinned="left")
+gob.configure_column("Responsable", pinned="left")
 
 gob.configure_column("__DEL__", hide=True)
 
@@ -1760,11 +1768,11 @@ function(p){
   else if(v==='Entregado a tiempo'){bg='#00C4B3'}
   else if(v==='Entregado con retraso'){bg='#00ACC1'}
   else if(v==='No entregado'){bg='#006064'}
-  else if(v==='En riesgo de retraso'){bg='#0277BD'}
+  else if(v==='En riesgo de retraso'){bg:'#0277BD'}
   else if(v==='Aprobada'){bg:'#8BC34A'; fg:'#0A2E00'}
   else if(v==='Desaprobada'){bg:'#FF8A80'}
-  else if(v==='Pendiente de revisión'){bg='#BDBDBD'; fg:'#2B2B2B'}
-  else if(v==='Observada'){bg='#D7A56C'}
+  else if(v==='Pendiente de revisión'){bg:'#BDBDBD'; fg:'#2B2B2B'}
+  else if(v==='Observada'){bg:'#D7A56C'}
   return { backgroundColor:bg, color:fg, fontWeight:'600', textAlign:'center',
            borderRadius:'10px', padding:'4px 10px' };
 }""")
