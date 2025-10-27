@@ -718,64 +718,19 @@ st.markdown("""
   margin-top: 10px !important;       /* valor base para todas */
 }
 
-/* === TRIÁNGULO MINI: reduce tamaño real y visual, y pega la píldora === */
-
-/* 1) Quita tamaños mínimos del botón que impone BaseWeb */
-.topbar .toggle-icon .stButton > button,
-.topbar-ux .toggle-icon .stButton > button,
-.topbar-na .toggle-icon .stButton > button,
-.topbar-pri .toggle-icon .stButton > button,
-.topbar-eval .toggle-icon .stButton > button{
-  min-width: 0 !important;
-  width: auto !important;
-  min-height: 0 !important;
-  height: auto !important;
-  padding: 0 !important;
+/* Triángulo como link minimal (sin caja) */
+.toggle-icon .chev-link{
+  display: inline-block !important;
+  font-weight: 800 !important;
+  font-size: 14px !important;   /* ajusta 12–16 */
   line-height: 1 !important;
-}
-
-/* 2) Escala el botón (reduce lo que ves) */
-.topbar .toggle-icon,
-.topbar-ux .toggle-icon,
-.topbar-na .toggle-icon,
-.topbar-pri .toggle-icon,
-.topbar-eval .toggle-icon{
-  transform: scale(0.55) !important;     /* ← prueba 0.55–0.80 */
-  transform-origin: left center !important;
-}
-
-/* 3) Reduce el espacio que “reserva” la columna (tirando del contenedor) */
-.topbar .toggle-icon,
-.topbar-ux .toggle-icon,
-.topbar-na .toggle-icon,
-.topbar-pri .toggle-icon,
-.topbar-eval .toggle-icon{
-  margin-right: -08px !important;        /* pega más la píldora */
-  margin-top: -2px !important;           /* ajusta vertical si hace falta */
-}
-
-/* 4) Evita que algún tema le vuelva a dar tamaño en hover/focus */
-.topbar .toggle-icon .stButton > button:is(:hover,:focus,:active),
-.topbar-ux .toggle-icon .stButton > button:is(:hover,:focus,:active),
-.topbar-na .toggle-icon .stButton > button:is(:hover,:focus,:active),
-.topbar-pri .toggle-icon .stButton > button:is(:hover,:focus,:active),
-.topbar-eval .toggle-icon .stButton > button:is(:hover,:focus,:active){
-  min-width: 0 !important;
-  width: auto !important;
-  min-height: 0 !important;
-  height: auto !important;
   padding: 0 !important;
+  margin: 0 !important;
+  text-decoration: none !important;
+  color: inherit !important;
+  cursor: pointer !important;
 }
-
-/* 5) (opcional) Triángulo un poco más fino */
-.topbar .toggle-icon .stButton > button,
-.topbar-ux .toggle-icon .stButton > button,
-.topbar-na .toggle-icon .stButton > button,
-.topbar-pri .toggle-icon .stButton > button,
-.topbar-eval .toggle-icon .stButton > button{
-  font-size: 18px !important;            /* baja a 11 si quieres micro */
-}
-
+.toggle-icon .chev-link:hover{ text-decoration: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -805,30 +760,43 @@ EMO_ESTADO      = {"🍼 No iniciado": "No iniciado","⏳ En curso": "En curso",
 EMO_SI_NO       = {"✅ Sí": "Sí", "🚫 No": "No"}
 
 # ================== Formulario ==================
+# Lee query param para sincronizar visibilidad con el triángulo-link (?nt=0/1)
+try:
+    nt_param = (st.query_params.get("nt") if hasattr(st, "query_params") else None)
+    if isinstance(nt_param, list):
+        nt_param = nt_param[0] if nt_param else None
+except Exception:
+    try:
+        nt_param = st.experimental_get_query_params().get("nt", [None])[0]
+    except Exception:
+        nt_param = None
+
 # Estado inicial del colapsable
 st.session_state.setdefault("nt_visible", True)
+if nt_param in ("0", "1"):
+    st.session_state["nt_visible"] = (nt_param == "1")
 
 # Chevron (1 clic): ▾ abierto / ▸ cerrado
-chev = "▾" if st.session_state["nt_visible"] else "▸"
+chev  = "▾" if st.session_state["nt_visible"] else "▸"
+_next = "0" if st.session_state["nt_visible"] else "1"
 
 # ---------- Barra superior (triangulito + píldora) alineada ----------
 st.markdown('<div class="topbar">', unsafe_allow_html=True)
 c_toggle, c_pill = st.columns([0.028, 0.965], gap="small")
 
 with c_toggle:
-    # Botón pequeño SOLO para ocultar/mostrar (1 clic)
-    st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
-
-    def _toggle_nt():
-        st.session_state["nt_visible"] = not st.session_state["nt_visible"]
-
-    st.button(
-        chev,
-        key="nt_toggle_icon",
-        help="Mostrar/ocultar",
-        on_click=_toggle_nt
+    # Triángulo como ENLACE minimal (sin caja)
+    st.markdown(
+        f'''
+        <div class="toggle-icon">
+          <a href="?nt={_next}" title="Mostrar/ocultar"
+             style="display:inline-block;font-weight:800;font-size:14px;line-height:1;text-decoration:none;color:inherit;">
+            {chev}
+          </a>
+        </div>
+        ''',
+        unsafe_allow_html=True
     )
-    st.markdown('</div>', unsafe_allow_html=True)
 
 with c_pill:
     # Píldora celeste (DIV, no botón; siempre azul)
