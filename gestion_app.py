@@ -976,7 +976,7 @@ chev = "▾" if st.session_state.get("nt_visible", True) else "▸"
 
 # ---------- Barra superior (triangulito + píldora) alineada ----------
 st.markdown('<div id="ntbar" class="topbar">', unsafe_allow_html=True)
-c_toggle, c_pill = st.columns([0.028, 0.965], gap="small")
+c_toggle, c_pill = st.columns([0.028, 0.965], gap="medium")
 
 with c_toggle:
     st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
@@ -1927,6 +1927,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
