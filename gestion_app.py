@@ -112,9 +112,9 @@ with st.sidebar:
 # ===== Inicialización de visibilidad por única vez =====
 if "_ui_bootstrap" not in st.session_state:
     # Secciones colapsadas por defecto al entrar
-    st.session_state["nt_visible"]  = True  # Nueva tarea
-    st.session_state["ux_visible"]  = True  # Editar estado
-    st.session_state["na_visible"]  = True  # Nueva alerta
+    st.session_state["nt_visible"]  = False  # Nueva tarea
+    st.session_state["ux_visible"]  = False  # Editar estado
+    st.session_state["na_visible"]  = False  # Nueva alerta
     st.session_state["pri_visible"] = False  # Prioridad
     st.session_state["eva_visible"] = False  # Evaluación
     st.session_state["_ui_bootstrap"] = True
@@ -416,14 +416,26 @@ st.markdown("""
   box-shadow: 0 0 0 3px rgba(96,165,250,.25) !important;
 }
 
-/* =================== Sidebar =================== */
+/* =================== Sidebar (ancho dinámico) =================== */
 [data-testid="stSidebar"]{
   background: var(--lilac-50) !important;
   border-right: 1px solid #ECE6FF !important;
+  transition: width .2s ease, min-width .2s ease;
+}
+
+/* Sidebar ABIERTA -> 200px */
+[data-testid="stSidebar"][aria-expanded="true"]{
   width: 200px !important;
   min-width: 200px !important;
 }
-[data-testid="stSidebar"] > div{ width: 200px !important; }
+[data-testid="stSidebar"][aria-expanded="true"] > div{ width: 200px !important; }
+
+/* Sidebar CERRADA -> ocupa 0px (el centro se expande a todo el ancho) */
+[data-testid="stSidebar"][aria-expanded="false"]{
+  width: 0 !important;
+  min-width: 0 !important;
+}
+[data-testid="stSidebar"][aria-expanded="false"] > div{ width: 0 !important; }
 [data-testid="stSidebar"] a{
   color: var(--lilac-600) !important;
   font-weight: 600 !important;
@@ -1662,5 +1674,3 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
