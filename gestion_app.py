@@ -800,16 +800,12 @@ with c_toggle:
     def _toggle_nt():
         st.session_state["nt_visible"] = not st.session_state["nt_visible"]
 
-    # 👉 reemplazo del botón por checkbox (muestra solo ▾/▸)
-    st.checkbox(
-        chev,                              # "▾" si abierto / "▸" si cerrado
-        key="nt_toggle_icon_cb",
-        value=st.session_state["nt_visible"],
-        on_change=_toggle_nt,
-        label_visibility="visible",
-        help="Mostrar/ocultar"
+    st.button(
+        chev,
+        key="nt_toggle_icon",
+        help="Mostrar/ocultar",
+        on_click=_toggle_nt
     )
-
     st.markdown('</div>', unsafe_allow_html=True)
 
 with c_pill:
