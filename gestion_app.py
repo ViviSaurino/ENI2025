@@ -482,6 +482,7 @@ st.markdown("""
   display:flex !important;
   align-items:center !important;
 }
+/* (Se mantiene para compatibilidad, pero lo anulamos abajo con el override) */
 .toggle-icon .stButton>button{
   padding: 0px !important;
   min-width: 32px !important;
@@ -716,7 +717,7 @@ st.markdown("""
 .form-card > .help-strip{
   margin-top: 10px !important;       /* valor base para todas */
 }
-            
+
 /* === Toggle solo como triángulo (sin caja), override definitivo === */
 .topbar .toggle-icon .stButton,
 .topbar-ux .toggle-icon .stButton,
@@ -730,7 +731,6 @@ st.markdown("""
   border: none !important;
   box-shadow: none !important;
 }
-
 .topbar .toggle-icon .stButton > button,
 .topbar-ux .toggle-icon .stButton > button,
 .topbar-na .toggle-icon .stButton > button,
@@ -751,7 +751,6 @@ st.markdown("""
   border-radius: 0 !important;
   color: inherit !important;            /* usa el color de texto actual */
 }
-
 /* Asegura que en estados hover/focus/active no vuelva la caja */
 .topbar .toggle-icon .stButton > button:hover,
 .topbar .toggle-icon .stButton > button:focus,
@@ -773,7 +772,6 @@ st.markdown("""
   box-shadow: none !important;
   outline: none !important;
 }
-
 /* Por si el tema inyecta pseudo-elementos */
 .topbar .toggle-icon .stButton > button::before,
 .topbar .toggle-icon .stButton > button::after,
@@ -788,7 +786,6 @@ st.markdown("""
   content: none !important;
   display: none !important;
 }
-                       
 </style>
 """, unsafe_allow_html=True)
 
