@@ -716,6 +716,18 @@ st.markdown("""
 .form-card > .help-strip{
   margin-top: 10px !important;       /* valor base para todas */
 }
+            
+/* Tamaño específico del botón con triángulo */
+:root{ --toggle-size: 30px; }  /* ajusta: 28–32px suele verse bien */
+
+.toggle-icon .stButton>button{
+  width: var(--toggle-size) !important;
+  min-width: var(--toggle-size) !important;
+  height: var(--toggle-size) !important;
+  border-radius: 8px !important;   /* opcional: esquinas un poco más cerradas */
+  font-size: 14px !important;      /* opcional: tamaño del símbolo ▾/▸ */
+}
+                       
 </style>
 """, unsafe_allow_html=True)
 
