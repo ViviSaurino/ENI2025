@@ -851,7 +851,7 @@ if st.session_state["nt_visible"]:
                                label_visibility="collapsed", key="ff_t") if ff_d else None
 
         with c2_7:
-            submitted = st.form_submit_button("💾 Agregar y guardar", use_container_width=True)
+            submitted = st.form_submit_button("💾 Guardar", use_container_width=True)
 
     if submitted:
         df = st.session_state["df_main"].copy()
@@ -1680,3 +1680,4 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
