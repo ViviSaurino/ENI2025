@@ -30,6 +30,9 @@ PILL_W_RESP  = 220  # píldora "Responsable"
 PILL_W_HASTA = 220  # píldora "Hasta"
 PILL_W_TAREA = PILL_W_HASTA
 
+# Ajuste fino para compensar padding interno de AgGrid (alinear “rayitas plomas”)
+ALIGN_FIX = 10  # si ves 1–2 px de desfase, prueba 8/12
+
 # Reglas pedidas
 COL_W_ID         = PILL_W_AREA                 # Id = ancho píldora Área
 COL_W_AREA       = PILL_W_RESP                 # Área = píldora Responsable
@@ -53,14 +56,14 @@ def _grid_options_prioridad(df):
         rowHeight=38,
         headerHeight=42
     )
-    # Definición de columnas y anchos exactos
-    gob.configure_column("Id", width=COL_W_ID, editable=False)
-    gob.configure_column("Área", width=COL_W_AREA, editable=False)
-    gob.configure_column("Responsable", width=PILL_W_RESP, editable=False)
-    gob.configure_column("Tarea", width=COL_W_TAREA, editable=False)
+    # Definición de columnas y anchos exactos + ajuste fino
+    gob.configure_column("Id",            width=COL_W_ID + ALIGN_FIX,        editable=False)
+    gob.configure_column("Área",          width=COL_W_AREA + ALIGN_FIX,      editable=False)
+    gob.configure_column("Responsable",   width=PILL_W_RESP + ALIGN_FIX,     editable=False)
+    gob.configure_column("Tarea",         width=COL_W_TAREA + ALIGN_FIX,     editable=False)
     gob.configure_column(
         "Prioridad",
-        width=COL_W_PRIORIDAD,
+        width=COL_W_PRIORIDAD + ALIGN_FIX,
         editable=True,
         cellEditor="agSelectCellEditor",
         cellEditorParams={"values": ["Urgente", "Alta", "Media", "Baja"]}
@@ -78,13 +81,13 @@ def _grid_options_evaluacion(df):
         rowHeight=38,
         headerHeight=42
     )
-    gob.configure_column("Id", width=COL_W_ID, editable=False)
-    gob.configure_column("Área", width=COL_W_AREA, editable=False)
-    gob.configure_column("Responsable", width=PILL_W_RESP, editable=False)
-    gob.configure_column("Tarea", width=COL_W_TAREA, editable=False)
+    gob.configure_column("Id",           width=COL_W_ID + ALIGN_FIX,         editable=False)
+    gob.configure_column("Área",         width=COL_W_AREA + ALIGN_FIX,       editable=False)
+    gob.configure_column("Responsable",  width=PILL_W_RESP + ALIGN_FIX,      editable=False)
+    gob.configure_column("Tarea",        width=COL_W_TAREA + ALIGN_FIX,      editable=False)
     gob.configure_column(
         "Evaluación",
-        width=COL_W_EVALUACION,
+        width=COL_W_EVALUACION + ALIGN_FIX,
         editable=True,
         cellEditor="agSelectCellEditor",
         cellEditorParams={"values": [5,4,3,2,1]}
