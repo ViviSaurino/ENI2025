@@ -720,9 +720,9 @@ st.markdown("""
 
 /* ==== Triángulo más pequeño y compacto ==== */
 .toggle-icon .stButton > button {
-  width: 22px !important;          /* antes 32px → más angosto */
+  width: 12px !important;          /* antes 32px → más angosto */
   min-width: 22px !important;
-  height: 22px !important;         /* antes 32px → más bajo */
+  height: 12px !important;         /* antes 32px → más bajo */
   border-radius: 6px !important;   /* esquinas suaves */
   font-size: 13px !important;      /* triángulo proporcional */
   line-height: 1 !important;
@@ -1693,3 +1693,4 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
