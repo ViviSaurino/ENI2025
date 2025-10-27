@@ -177,12 +177,14 @@ import pandas as _pd
 
 if "DATA_DIR" not in globals():
     DATA_DIR = st.session_state.get("DATA_DIR", "data")
+
 if "COLS" not in globals():
     COLS = st.session_state.get(
         "COLS",
         ["Id","Área","Responsable","Tarea","Prioridad","Evaluación","Fecha inicio","__DEL__"]
     )
-# 👇 Nuevo: nombre de pestaña/hoja por defecto para exportaciones, etc.
+
+# 👇 Nombre de hoja por defecto para exportaciones (Excel/Sheets)
 if "TAB_NAME" not in globals():
     TAB_NAME = st.session_state.get("TAB_NAME", "Tareas")
 
@@ -199,9 +201,11 @@ if "_read_sheet_tab" not in globals():
             df = _pd.read_csv(csv_path, encoding="utf-8-sig")
         except (_pd.errors.EmptyDataError, ValueError):
             return _pd.DataFrame([], columns=COLS)
+        # Garantiza columnas esperadas
         for c in COLS:
             if c not in df.columns:
                 df[c] = None
+        # Ordena según COLS, dejando extras al final
         df = df[[c for c in COLS if c in df.columns] + [c for c in df.columns if c not in COLS]]
         return df
 
@@ -218,6 +222,31 @@ if "_save_local" not in globals():
 if "_write_sheet_tab" not in globals():
     def _write_sheet_tab(df):
         return False, "No conectado a Google Sheets (fallback activo)"
+
+# 👇 Fallback para exportar Excel (firma correcta con sheet_name)
+if "export_excel" not in globals():
+    def export_excel(df, filename: str = "ENI2025_tareas.xlsx", sheet_name: str = "Tareas"):
+        from io import BytesIO
+        import pandas as pd
+        buf = BytesIO()
+        with pd.ExcelWriter(buf, engine="xlsxwriter") as xw:
+            (df if isinstance(df, pd.DataFrame) else pd.DataFrame(df)).to_excel(
+                xw, sheet_name=sheet_name, index=False
+            )
+            # Autoajuste simple de anchos
+            ws = xw.sheets[sheet_name]
+            try:
+                for i, col in enumerate((df.columns if isinstance(df, pd.DataFrame) else pd.DataFrame(df).columns)):
+                    try:
+                        maxlen = int(pd.Series(df[col]).astype(str).map(len).max())
+                        maxlen = max(10, min(60, maxlen + 2))
+                    except Exception:
+                        maxlen = 12
+                    ws.set_column(i, i, maxlen)
+            except Exception:
+                pass
+        buf.seek(0)
+        return buf
 
 # ===== Inicialización de visibilidad por única vez =====
 if "_ui_bootstrap" not in st.session_state:
@@ -1938,5 +1967,6 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
