@@ -720,9 +720,9 @@ st.markdown("""
 
 /* ==== Triángulo más pequeño y compacto ==== */
 .toggle-icon .stButton > button {
-  width: 5px !important;          /* antes 32px → más angosto */
-  min-width: 12px !important;
-  height: 5px !important;         /* antes 32px → más bajo */
+  width: 12px !important;          /* antes 32px → más angosto */
+  min-width: 22px !important;
+  height: 12px !important;         /* antes 32px → más bajo */
   border-radius: 6px !important;   /* esquinas suaves */
   font-size: 13px !important;      /* triángulo proporcional */
   line-height: 1 !important;
@@ -746,6 +746,25 @@ st.markdown("""
 /* Margen más ajustado respecto a la píldora */
 .topbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval {
   gap: 4px !important;  /* reduce separación entre triángulo y píldora */
+}
+
+            /* Encoge el botón del triángulo sin pelear con estilos internos */
+.topbar .toggle-icon,
+.topbar-ux .toggle-icon,
+.topbar-na .toggle-icon,
+.topbar-pri .toggle-icon,
+.topbar-eval .toggle-icon{
+  transform: scale(0.72);            /* ajusta 0.60–0.85 a gusto */
+  transform-origin: left center;     /* que encoja hacia la izquierda */
+}
+
+/* Evita que el layout agregue alto extra */
+.topbar .toggle-icon .stButton,
+.topbar-ux .toggle-icon .stButton,
+.topbar-na .toggle-icon .stButton,
+.topbar-pri .toggle-icon .stButton,
+.topbar-eval .toggle-icon .stButton{
+  line-height: 0 !important;
 }
 
 </style>
@@ -785,7 +804,7 @@ chev = "▾" if st.session_state["nt_visible"] else "▸"
 
 # ---------- Barra superior (triangulito + píldora) alineada ----------
 st.markdown('<div class="topbar">', unsafe_allow_html=True)
-c_toggle, c_pill = st.columns([0.016, 0.984], gap="small")
+c_toggle, c_pill = st.columns([0.028, 0.965], gap="small")
 
 with c_toggle:
     # Botón pequeño SOLO para ocultar/mostrar (1 clic)
@@ -1693,6 +1712,3 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
