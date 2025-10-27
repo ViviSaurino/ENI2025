@@ -718,34 +718,44 @@ st.markdown("""
   margin-top: 10px !important;       /* valor base para todas */
 }
 
-            /* === Toggle como triángulo puro (sin caja) usando el title del botón === */
-.toggle-icon .stButton > button[title="Mostrar/ocultar"]{
-  background: transparent !important;
-  background-color: transparent !important;
-  border: 0 !important;
+/* === Eliminación total del recuadro del botón de triángulo === */
+.toggle-icon button,
+.toggle-icon [data-baseweb="button"],
+.toggle-icon [data-testid="baseButton-root"],
+.toggle-icon [data-testid="baseButton-primary"],
+.toggle-icon [data-testid="baseButton-secondary"] {
+  all: unset !important;               /* 🔥 borra todos los estilos heredados */
+  background: none !important;
+  border: none !important;
   box-shadow: none !important;
   outline: none !important;
-
   padding: 0 !important;
   margin: 0 !important;
-  width: auto !important;
-  min-width: 0 !important;
-  height: auto !important;
-  min-height: 0 !important;
+  display: inline !important;
+  color: inherit !important;
+  font-size: 14px !important;          /* ajusta tamaño del triángulo */
   line-height: 1 !important;
-  border-radius: 0 !important;
-
-  color: inherit !important;    /* usa el color de texto actual */
-  font-size: 14px !important;   /* ajusta 12–16 si quieres */
+  cursor: pointer !important;
 }
 
-/* No dejes que en hover/focus/active vuelva la “caja” */
-.toggle-icon .stButton > button[title="Mostrar/ocultar"]:is(:hover,:focus,:active){
-  background: transparent !important;
-  background-color: transparent !important;
-  border: 0 !important;
+/* Asegura que no se regenere el fondo en hover/focus/active */
+.toggle-icon button:hover,
+.toggle-icon button:focus,
+.toggle-icon button:active,
+.toggle-icon [data-baseweb="button"]:hover,
+.toggle-icon [data-baseweb="button"]:focus,
+.toggle-icon [data-baseweb="button"]:active {
+  all: unset !important;
+  color: inherit !important;
+  cursor: pointer !important;
+}
+
+/* Si Streamlit envuelve el botón en un div con fondo, se limpia también */
+.toggle-icon div,
+.toggle-icon span {
+  background: none !important;
+  border: none !important;
   box-shadow: none !important;
-  outline: none !important;
 }
 
 </style>
