@@ -1813,8 +1813,8 @@ responsables = sorted([x for x in df_view["Responsable"].astype(str).unique() if
 # ---- FILA DE 5 FILTROS ----
 cA, cR, cE, cD, cH = st.columns([A + F, T/2, T/2, D/2, D/2], gap="medium")
 
-area_sel = cA.selectbox("Área", options=["Todas"] + AREAS_OPC, index=0)
-resp_sel = cR.selectbox("Responsable", options=["Todos"] + responsables, index=0)
+area_sel  = cA.selectbox("Área", options=["Todas"] + AREAS_OPC, index=0)
+resp_sel  = cR.selectbox("Responsable", options=["Todos"] + responsables, index=0)
 estado_sel = cE.selectbox("Estado", options=["Todos"] + ESTADO, index=0)
 
 # Calendarios (rango de fechas)
@@ -1847,13 +1847,19 @@ extra = ["__DEL__"] if "__DEL__" in df_view.columns else []
 df_grid = (pd.DataFrame(columns=cols_order + extra) if df_view.empty
            else df_view.reindex(columns=cols_order + extra).copy())
 
+# **CLAVE**: forzar Id a string antes de renderizar el grid
+if "Id" in df_grid.columns:
+    df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
+
 # ================= GRID OPTIONS =================
 gob = GridOptionsBuilder.from_dataframe(df_grid)
 gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True)
 
 gob.configure_grid_options(
     rowSelection="multiple",
-    suppressRowClickSelection=False,        # permitimos click + checkbox
+    rowMultiSelectWithClick=True,           # permite click + checkbox
+    suppressRowClickSelection=False,
+    rememberSelection=True,                 # recuerda selección
     domLayout="normal",
     rowHeight=38,
     headerHeight=42,
@@ -1866,10 +1872,7 @@ gob.configure_grid_options(
     getRowId=JsCode("function(p){ return (p.data && (p.data.Id || p.data['Id'])) + ''; }"),
 )
 
-# Selección múltiple con checkbox
-gob.configure_selection("multiple", use_checkbox=True)
-
-# Id con checkbox en celdas y en el header (select all)
+# Selección múltiple con checkbox en Id + select-all
 if "Id" in df_grid.columns:
     gob.configure_column(
         "Id",
@@ -1952,7 +1955,7 @@ if "Calificación" in df_grid.columns:
 date_time_editor = JsCode("""
 class DateTimeEditor{
   init(p){ this.eInput=document.createElement('input'); this.eInput.type='datetime-local';
-    this.eInput.classList.add('ag-input'); this.eInput.style.width='100%';
+    this.eInput classList.add('ag-input'); this.eInput.style.width='100%';
     const v=p.value?new Date(p.value):null;
     if(v&&!isNaN(v.getTime())){ const pad=n=>String(n).padStart(2,'0');
       this.eInput.value=v.getFullYear()+'-'+pad(v.getMonth()+1)+'-'+pad(v.getDate())+'T'+pad(v.getHours())+':'+pad(v.getMinutes()); } }
@@ -2019,7 +2022,7 @@ grid = AgGrid(
 
 # Guarda la selección actual (Ids) en session_state
 sel_rows_now = grid.get("selected_rows", []) if isinstance(grid, dict) else []
-st.session_state["hist_sel_ids"] = [str(r.get("Id", "")).strip() for r in sel_rows_now if r.get("Id", "") != ""]
+st.session_state["hist_sel_ids"] = [str(r.get("Id", "")).strip() for r in sel_rows_now if str(r.get("Id", "")).strip()]
 
 # Sincroniza ediciones por Id (solo si hay data)
 if isinstance(grid, dict) and "data" in grid and grid["data"] is not None and len(grid["data"]) > 0:
@@ -2035,11 +2038,11 @@ total_btn_width = (A + F) + (T / 2)
 btn_w = total_btn_width / 4
 
 b_del, b_xlsx, b_save_local, b_save_sheets, _spacer = st.columns(
-    [btn_w, btn_w, btn_w, btn_w, (T / 2) + D],  # espaciador al final
+    [btn_w, btn_w, btn_w, btn_w, (T / 2) + D],
     gap="medium"
 )
 
-# 1) Borrar seleccionados (usa selección guardada)
+# 1) Borrar seleccionados
 with b_del:
     if st.button("🗑️ Borrar", use_container_width=True):
         ids = st.session_state.get("hist_sel_ids", [])
@@ -2080,5 +2083,3 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
