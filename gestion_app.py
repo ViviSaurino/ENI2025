@@ -1,4 +1,3 @@
-# ============================
 # Gestión — ENI2025 (MÓDULO: una tabla con "Área" y formulario + historial)
 # ============================
 import os
@@ -51,11 +50,12 @@ COL_W_PRIORIDAD  = COL_W_TAREA + COL_W_ID      # Prioridad = Tarea + Id
 COL_W_EVALUACION = COL_W_TAREA + COL_W_ID      # Evaluación = Tarea + Id
 
 # ===== IDs por Área (PL, BD, CO, ME) =====
+# (normalizamos a minúsculas para evitar fallos por mayúsculas/acentos)
 AREA_PREFIX = {
-    "Planeamiento":   "PL",
-    "Base de Datos":  "BD",
-    "Consistencia":   "CO",
-    "Metodología":    "ME",
+    "planeamiento":   "PL",
+    "base de datos":  "BD",
+    "consistencia":   "CO",
+    "metodología":    "ME",
 }
 
 def next_id_area(df, area: str) -> str:
@@ -64,7 +64,8 @@ def next_id_area(df, area: str) -> str:
     Ejemplo: Planeamiento -> PL1, PL2, ...
     """
     import pandas as pd
-    pref = AREA_PREFIX.get(str(area).strip(), "OT")
+    area_key = str(area).strip().lower()
+    pref = AREA_PREFIX.get(area_key, "OT")
     # Extrae la parte numérica de los IDs que ya tengan ese prefijo exactamente
     serie_ids = df.get("Id", pd.Series([], dtype=str)).astype(str)
     nums = (
@@ -143,9 +144,9 @@ allowed_domains = st.secrets.get("auth", {}).get("allowed_domains", [])
 # ===== Inicialización de visibilidad por única vez =====
 if "_ui_bootstrap" not in st.session_state:
     # Secciones colapsadas por defecto al entrar
-    st.session_state["nt_visible"]  = True  # Nueva tarea
-    st.session_state["ux_visible"]  = True  # Editar estado
-    st.session_state["na_visible"]  = True  # Nueva alerta
+    st.session_state["nt_visible"]  = True   # Nueva tarea
+    st.session_state["ux_visible"]  = True   # Editar estado
+    st.session_state["na_visible"]  = True   # Nueva alerta
     st.session_state["pri_visible"] = False  # Prioridad
     st.session_state["eva_visible"] = False  # Evaluación
     st.session_state["_ui_bootstrap"] = True
@@ -158,233 +159,6 @@ def render():
     Renderiza TODA la UI de Gestión (formulario, editar estado,
     nueva alerta, prioridad, evaluación, historial, etc.)
     """
-# ================== GOOGLE SHEETS ==================
-import json, re
-
-SHEET_URL = os.environ.get("SHEET_URL", "").strip() or (st.secrets.get("SHEET_URL", "").strip() if hasattr(st, "secrets") else "")
-SHEET_ID  = os.environ.get("SHEET_ID", "").strip()  or (st.secrets.get("SHEET_ID", "").strip()  if hasattr(st, "secrets") else "")
-JSON_PATH = os.environ.get("GCP_SA_JSON_PATH", "eni2025-e19a99dfffd3.json")
-TAB_NAME  = "GESTION ENI"   # <- pestaña única en Sheets
-
-def _load_sa_info():
-    try:
-        if hasattr(st, "secrets") and "gcp_service_account" in st.secrets:
-            sa = st.secrets["gcp_service_account"]
-            if isinstance(sa, str):   return json.loads(sa)
-            if isinstance(sa, dict):  return dict(sa)
-    except Exception: pass
-    try:
-        if os.path.exists(JSON_PATH):
-            with open(JSON_PATH, "r", encoding="utf-8") as fh:
-                return json.load(fh)
-    except Exception: pass
-    try:
-        sa_env = os.environ.get("GCP_SA_JSON", "")
-        if sa_env:
-            return json.loads(sa_env)
-    except Exception: pass
-    return None
-
-def _get_spreadsheet_id(s: str) -> str:
-    s = (s or "").strip()
-    if not s: return ""
-    if re.match(r'^[A-Za-z0-9-_]{30,}$', s): return s
-    m = re.search(r'/spreadsheets/d/([A-Za-z0-9-_]+)', s)
-    return m.group(1) if m else s
-
-def _gs_client():
-    try:
-        import gspread
-        from google.oauth2.service_account import Credentials
-    except Exception:
-        st.error("Falta instalar dependencias: `pip install gspread google-auth`")
-        return None
-    sa_info = _load_sa_info()
-    if not sa_info:
-        st.warning("No encontré credenciales del Service Account.")
-        return None
-    if "private_key" in sa_info and isinstance(sa_info["private_key"], str) and "\\n" in sa_info["private_key"]:
-        sa_info["private_key"] = sa_info["private_key"].replace("\\n", "\n")
-    try:
-        creds = Credentials.from_service_account_info(sa_info, scopes=["https://www.googleapis.com/auth/spreadsheets"])
-        gc = gspread.authorize(creds)
-        st.session_state["_sa_email"] = sa_info.get("client_email", "(sin email)")
-        return gc
-    except Exception as e:
-        st.warning(f"No pude crear el cliente de Google: {e}")
-        return None
-
-def _open_sheet():
-    gc = _gs_client()
-    if gc is None: return None
-    sid = _get_spreadsheet_id(SHEET_URL or SHEET_ID or "")
-    if not sid:
-        st.warning("Falta `SHEET_URL` o `SHEET_ID`.")
-        return None
-    try:
-        sh = gc.open_by_key(sid)
-        try:
-            sh.worksheet(TAB_NAME)
-        except Exception:
-            sh.add_worksheet(title=TAB_NAME, rows=400, cols=60)
-        return sh
-    except Exception as e:
-        st.warning(f"No pude abrir el Sheet (comparte con **{st.session_state.get('_sa_email','(sin email)')}**). Detalle: {e}")
-        return None
-
-# ---------- Config ----------
-AREAS_OPC = ["Planeamiento", "Base de datos", "Metodología", "Consistencia"]
-COMPLEJIDAD = ["Alta", "Media", "Baja"]
-PRIORIDAD   = ["Alta", "Media", "Baja"]
-ESTADO      = ["No iniciado", "En curso", "Terminado", "Cancelado", "Pausado"]
-CUMPLIMIENTO= ["Entregado a tiempo", "Entregado con retraso", "No entregado", "En riesgo de retraso"]
-SI_NO       = ["Sí", "No"]
-
-COLS = [
-    "Área", "Id", "Tarea", "Tipo", "Responsable", "Fase",
-    "Complejidad", "Prioridad", "Estado",
-    "Ts_creación", "Ts_en_curso", "Ts_terminado", "Ts_cancelado", "Ts_pausado",
-    "Fecha inicio", "Vencimiento", "Fecha fin", "Duración", "Días hábiles",
-    "Cumplimiento", "¿Generó alerta?", "Tipo de alerta", "¿Se corrigió?",
-    "Fecha detectada", "Fecha corregida",
-    "Evaluación", "Calificación"
-]
-DATA_DIR = "data"
-os.makedirs(DATA_DIR, exist_ok=True)
-
-def now_ts(): return pd.Timestamp.now()
-
-def parse_dt(s):
-    s = (s or "").strip()
-    v = pd.to_datetime(s, errors="coerce")
-    return None if (not s or pd.isna(v)) else v
-
-def combine_dt(date_obj, time_obj):
-    """Convierte (date, time) en Timestamp; cualquiera puede ser None."""
-    if date_obj is None and time_obj is None:
-        return None
-    if date_obj is None:
-        date_obj = pd.Timestamp.now().date()
-    if time_obj is None:
-        time_obj = pd.Timestamp(0).time()
-    return pd.Timestamp(
-        year=date_obj.year, month=date_obj.month, day=date_obj.day,
-        hour=time_obj.hour, minute=time_obj.minute
-    )
-
-def next_id(df):
-    if df.empty or "Id" not in df.columns: return "G1"
-    nums = []
-    for x in df["Id"].astype(str):
-        if x.startswith("G"):
-            try: nums.append(int(x[1:]))
-            except: pass
-    return f"G{(max(nums)+1) if nums else 1}"
-
-def business_days(d1, d2):
-    if d1 is None or d2 is None: return None
-    s, e = d1.date(), d2.date()
-    if e < s: return 0
-    return int(np.busday_count(s, e + pd.Timedelta(days=1), weekmask="Mon Tue Wed Thu Fri"))
-
-def duration_days(d1, d2):
-    if d1 is None or d2 is None: return None
-    return (d2.date() - d1.date()).days
-
-def export_excel(df, sheet="Tareas"):
-    out = BytesIO()
-    with pd.ExcelWriter(out, engine="openpyxl") as xw:
-        df.to_excel(xw, index=False, sheet_name=sheet)
-    return out.getvalue()
-
-def blank_row():
-    return {
-        "Área": AREAS_OPC[0],
-        "Id": "G1",
-        "Tarea": "", "Tipo": "", "Responsable": "", "Fase": "",
-        "Complejidad": "Media", "Prioridad": "Media", "Estado": "No iniciado",
-        "Ts_creación": now_ts(), "Ts_en_curso": None, "Ts_terminado": None,
-        "Ts_cancelado": None, "Ts_pausado": None,
-        "Fecha inicio": None, "Vencimiento": None, "Fecha fin": None,
-        "Duración": None, "Días hábiles": None,
-        "Cumplimiento": "En riesgo de retraso",
-        "¿Generó alerta?": "No", "Tipo de alerta": "",
-        "¿Se corrigió?": "No", "Fecha detectada": None, "Fecha corregida": None,
-        "Evaluación": "Pendiente de revisión",
-        "Calificación": 0,
-        "__DEL__": False,
-    }
-
-def _read_sheet_tab():
-    sh = _open_sheet()
-    if sh is None: return None
-    try:
-        ws = sh.worksheet(TAB_NAME)
-        recs = ws.get_all_records()
-        df = pd.DataFrame(recs) if recs else pd.DataFrame(columns=COLS)
-        for c in COLS:
-            if c not in df.columns: df[c] = None
-        if "Calificación" in df.columns:
-            df["Calificación"] = pd.to_numeric(df["Calificación"], errors="coerce").fillna(0).astype(int)
-        if "Evaluación" in df.columns:
-            df["Evaluación"] = df["Evaluación"].astype(str).replace({"": "Pendiente de revisión"})
-        return df[COLS]
-    except Exception:
-        return pd.DataFrame(columns=COLS)
-
-def _col_letters(n: int) -> str:
-    s = ""
-    while n > 0:
-        n, r = divmod(n - 1, 26)
-        s = chr(65 + r) + s
-    return s or "A"
-
-def _write_sheet_tab(df: pd.DataFrame):
-    sh = _open_sheet()
-    if sh is None: return False, "No se pudo abrir el Sheet."
-    try:
-        try:
-            ws = sh.worksheet(TAB_NAME)
-        except Exception:
-            ws = sh.add_worksheet(title=TAB_NAME, rows=400, cols=max(26, len(COLS)))
-
-        df_out = df.copy()
-        for c in ["Fecha inicio","Vencimiento","Fecha fin","Ts_creación","Ts_en_curso","Ts_terminado","Ts_cancelado","Ts_pausado","Fecha detectada","Fecha corregida"]:
-            if c in df_out.columns:
-                s = pd.to_datetime(df_out[c], errors="coerce")
-                df_out[c] = s.dt.strftime("%Y-%m-%d %H:%M").fillna("")
-        if "Calificación" in df_out.columns:
-            df_out["Calificación"] = pd.to_numeric(df_out["Calificación"], errors="coerce").fillna(0).astype(int)
-
-        df_out = df_out.reindex(columns=COLS, fill_value="")
-        values = [list(df_out.columns)] + df_out.astype(str).fillna("").values.tolist()
-        nrows = len(values); ncols = len(COLS); end_col = _col_letters(ncols)
-        a1_range = f"'{TAB_NAME}'!A1:{end_col}{nrows}"
-
-        try:
-            sh.values_clear(f"'{TAB_NAME}'!A:ZZ")
-        except Exception:
-            pass
-
-        sh.values_update(
-            a1_range,
-            params={"valueInputOption": "USER_ENTERED"},
-            body={"range": a1_range, "majorDimension": "ROWS", "values": values}
-        )
-        try:
-            ws.resize(rows=max(nrows, 400), cols=max(ncols, 60))
-        except Exception:
-            pass
-        return True, f"Subido a Sheets en pestaña “{TAB_NAME}” ({len(df_out)} filas)."
-    except Exception as e:
-        return False, f"Error escribiendo en Sheets: {e}"
-
-def _save_local(df: pd.DataFrame):
-    path = os.path.join(DATA_DIR, "tareas.csv")
-    df.reindex(columns=COLS, fill_value=None).to_csv(path, index=False, encoding="utf-8-sig", mode="w")
-    st.session_state["last_saved"] = now_ts()
-    try: st.toast("💾 Guardado local", icon="💾")
-    except: pass
 
 # ---------- Estado inicial (RESTABLECIDO) ----------
 if "df_main" not in st.session_state:
