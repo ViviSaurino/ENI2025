@@ -170,7 +170,7 @@ allowed_domains = st.secrets.get("auth", {}).get("allowed_domains", [])
 # with st.sidebar: ...
 
 
-# ========= Ajuste: utilitario para exportar a Excel =========
+# ========= Utilitario para exportar a Excel =========
 def export_excel(df, filename: str = "ENI2025_tareas.xlsx"):
     """
     Genera y retorna un buffer BytesIO con el XLSX de `df`.
@@ -199,6 +199,45 @@ def export_excel(df, filename: str = "ENI2025_tareas.xlsx"):
             pass
     buf.seek(0)
     return buf
+
+
+# ========= Fallbacks seguros para evitar NameError =========
+# (Solo se usan si en tu app principal no existen estos símbolos.)
+
+import os as _os
+import pandas as _pd
+
+# Carpeta local y columnas mínimas por defecto
+if "DATA_DIR" not in globals():
+    DATA_DIR = st.session_state.get("DATA_DIR", "data")
+if "COLS" not in globals():
+    COLS = st.session_state.get(
+        "COLS",
+        ["Id","Área","Responsable","Tarea","Prioridad","Evaluación","Fecha inicio","__DEL__"]
+    )
+
+_os.makedirs(DATA_DIR, exist_ok=True)
+
+if "_read_sheet_tab" not in globals():
+    def _read_sheet_tab():
+        """Fallback: carga desde CSV local si existe; si no, DataFrame vacío con COLS."""
+        csv_path = _os.path.join(DATA_DIR, "tareas.csv")
+        return _pd.read_csv(csv_path) if _os.path.exists(csv_path) else _pd.DataFrame([], columns=COLS)
+
+if "_save_local" not in globals():
+    def _save_local(df):
+        """Fallback: guarda CSV local en DATA_DIR."""
+        csv_path = _os.path.join(DATA_DIR, "tareas.csv")
+        try:
+            (df if isinstance(df, _pd.DataFrame) else _pd.DataFrame(df)).to_csv(csv_path, index=False)
+        except Exception:
+            pass
+
+if "_write_sheet_tab" not in globals():
+    def _write_sheet_tab(df):
+        """Fallback: sin conexión a Google Sheets. No hace nada y devuelve aviso."""
+        return False, "No conectado a Google Sheets (fallback activo)"
+
 
 # ===== Inicialización de visibilidad por única vez =====
 if "_ui_bootstrap" not in st.session_state:
