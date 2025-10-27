@@ -717,22 +717,76 @@ st.markdown("""
   margin-top: 10px !important;       /* valor base para todas */
 }
             
-/* Botón toggle como ícono puro (sin caja) */
-.topbar .toggle-icon .stButton>button,
-.topbar-ux .toggle-icon .stButton>button,
-.topbar-na .toggle-icon .stButton>button,
-.topbar-pri .toggle-icon .stButton>button,
-.topbar-eval .toggle-icon .stButton>button{
+/* === Toggle solo como triángulo (sin caja), override definitivo === */
+.topbar .toggle-icon .stButton,
+.topbar-ux .toggle-icon .stButton,
+.topbar-na .toggle-icon .stButton,
+.topbar-pri .toggle-icon .stButton,
+.topbar-eval .toggle-icon .stButton{
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 0 !important;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
+}
+
+.topbar .toggle-icon .stButton > button,
+.topbar-ux .toggle-icon .stButton > button,
+.topbar-na .toggle-icon .stButton > button,
+.topbar-pri .toggle-icon .stButton > button,
+.topbar-eval .toggle-icon .stButton > button,
+.toggle-icon [data-testid="baseButton-secondary"],
+.toggle-icon [data-testid="baseButton-primary"]{
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
   padding: 0 !important;
   width: auto !important;
   min-width: 0 !important;
   height: auto !important;
   min-height: 0 !important;
   line-height: 1 !important;
-  font-size: 16px !important; /* ajusta 12–18px a gusto */
+  border-radius: 0 !important;
+  color: inherit !important;            /* usa el color de texto actual */
+}
+
+/* Asegura que en estados hover/focus/active no vuelva la caja */
+.topbar .toggle-icon .stButton > button:hover,
+.topbar .toggle-icon .stButton > button:focus,
+.topbar .toggle-icon .stButton > button:active,
+.topbar-ux .toggle-icon .stButton > button:hover,
+.topbar-ux .toggle-icon .stButton > button:focus,
+.topbar-ux .toggle-icon .stButton > button:active,
+.topbar-na .toggle-icon .stButton > button:hover,
+.topbar-na .toggle-icon .stButton > button:focus,
+.topbar-na .toggle-icon .stButton > button:active,
+.topbar-pri .toggle-icon .stButton > button:hover,
+.topbar-pri .toggle-icon .stButton > button:focus,
+.topbar-pri .toggle-icon .stButton > button:active,
+.topbar-eval .toggle-icon .stButton > button:hover,
+.topbar-eval .toggle-icon .stButton > button:focus,
+.topbar-eval .toggle-icon .stButton > button:active{
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Por si el tema inyecta pseudo-elementos */
+.topbar .toggle-icon .stButton > button::before,
+.topbar .toggle-icon .stButton > button::after,
+.topbar-ux .toggle-icon .stButton > button::before,
+.topbar-ux .toggle-icon .stButton > button::after,
+.topbar-na .toggle-icon .stButton > button::before,
+.topbar-na .toggle-icon .stButton > button::after,
+.topbar-pri .toggle-icon .stButton > button::before,
+.topbar-pri .toggle-icon .stButton > button::after,
+.topbar-eval .toggle-icon .stButton > button::before,
+.topbar-eval .toggle-icon .stButton > button::after{
+  content: none !important;
+  display: none !important;
 }
                        
 </style>
