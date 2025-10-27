@@ -26,6 +26,48 @@ from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, JsCode, DataRe
 # ======= Utilidades de tablas (Prioridad / Evaluación) =======
 import streamlit as st
 from st_aggrid import GridOptionsBuilder
+from auth_google import google_login, logout
+
+# ---------- CSS SEGURO (no tapa el grid) ----------
+st.markdown("""
+<style>
+/* Alinear bordes del grid con el contenedor (quita sangrías internas de AgGrid) */
+#prior-grid .ag-header-viewport,
+#prior-grid .ag-center-cols-viewport,
+#eval-grid  .ag-header-viewport,
+#eval-grid  .ag-center-cols-viewport{
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Wrapper sin rellenos ni bordes extra */
+#prior-grid .ag-root-wrapper,
+#eval-grid  .ag-root-wrapper{
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+}
+
+/* Header con altura estable */
+#prior-grid .ag-header,
+#eval-grid  .ag-header{
+  height: auto !important;
+  min-height: 42px !important;  /* coincide con headerHeight */
+}
+
+/* Asegura cálculo al píxel */
+#prior-grid .ag-header-cell,
+#eval-grid  .ag-header-cell{
+  box-sizing: border-box !important;
+}
+
+/* Desactiva cualquier overlay residual en el header */
+#prior-grid .ag-header::after,
+#eval-grid  .ag-header::after{
+  content: none !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # Anchos de píldoras (mantenlos sincronizados con tu CSS)
 PILL_W_AREA  = 168  # píldora "Área"
@@ -33,9 +75,9 @@ PILL_W_RESP  = 220  # píldora "Responsable"
 PILL_W_HASTA = 220  # píldora "Hasta"
 PILL_W_TAREA = PILL_W_HASTA
 
-# Ajuste fino POR COLUMNA para compensar padding interno de AgGrid (puedes moverlos a gusto)
+# Ajuste fino POR COLUMNA para compensar pequeñas diferencias visuales (px)
 ALIGN_FIXES = {
-    "Id":          0,   # mueve SOLO el ancho de la col "Id"
+    "Id":          0,
     "Área":        0,
     "Responsable": 0,
     "Tarea":       0,
@@ -92,10 +134,6 @@ def _grid_options_prioridad(df):
     _fixed_col(gob, "Prioridad",     COL_W_PRIORIDAD + ALIGN_FIXES.get("Prioridad", 0),   editable=True)
 
     gob.configure_grid_options(suppressColumnVirtualisation=False)
-
-    # === Inyecta guías visuales de header para PRIORIDAD (alinean rayitas plomas) ===
-    _inject_header_guides_prioridad()
-
     return gob.build()
 
 def _grid_options_evaluacion(df):
@@ -112,105 +150,20 @@ def _grid_options_evaluacion(df):
         suppressSizeToFit=True,
     )
 
-    _fixed_col(gob, "Id",           COL_W_ID        + ALIGN_FIXES.get("Id", 0),           editable=False)
-    _fixed_col(gob, "Área",         COL_W_AREA      + ALIGN_FIXES.get("Área", 0),         editable=False)
-    _fixed_col(gob, "Responsable",  PILL_W_RESP     + ALIGN_FIXES.get("Responsable", 0),  editable=False)
-    _fixed_col(gob, "Tarea",        COL_W_TAREA     + ALIGN_FIXES.get("Tarea", 0),        editable=False)
-    _fixed_col(gob, "Evaluación",   COL_W_EVALUACION+ ALIGN_FIXES.get("Evaluación", 0),   editable=True)
+    _fixed_col(gob, "Id",           COL_W_ID         + ALIGN_FIXES.get("Id", 0),           editable=False)
+    _fixed_col(gob, "Área",         COL_W_AREA       + ALIGN_FIXES.get("Área", 0),         editable=False)
+    _fixed_col(gob, "Responsable",  PILL_W_RESP      + ALIGN_FIXES.get("Responsable", 0),  editable=False)
+    _fixed_col(gob, "Tarea",        COL_W_TAREA      + ALIGN_FIXES.get("Tarea", 0),        editable=False)
+    _fixed_col(gob, "Evaluación",   COL_W_EVALUACION + ALIGN_FIXES.get("Evaluación", 0),   editable=True)
 
     gob.configure_grid_options(suppressColumnVirtualisation=False)
-
-    # === Inyecta guías visuales de header para EVALUACIÓN ===
-    _inject_header_guides_evaluacion()
-
     return gob.build()
-
-# ---------------- CSS overlays: “rayitas” alineadas a los filtros ----------------
-def _inject_header_guides_prioridad():
-    """Rayitas alineadas sin tapar el grid: overlay en el header (::after)."""
-    w_id   = COL_W_ID        + ALIGN_FIXES.get("Id", 0)
-    w_area = COL_W_AREA      + ALIGN_FIXES.get("Área", 0)
-    w_resp = PILL_W_RESP     + ALIGN_FIXES.get("Responsable", 0)
-    w_tar  = COL_W_TAREA     + ALIGN_FIXES.get("Tarea", 0)
-    w_prio = COL_W_PRIORIDAD + ALIGN_FIXES.get("Prioridad", 0)
-
-    css = f"""
-    <style>
-    #prior-grid .ag-header {{
-      position: relative;                 /* ancla overlay en el header */
-    }}
-    #prior-grid .ag-header::after {{
-      content: "";
-      position: absolute;
-      left: 0; right: 0; bottom: 0;       /* pegado a la base del header */
-      height: 0;                          /* el alto lo dan los gradientes */
-      pointer-events: none;               /* no intercepta clics */
-      z-index: 2;                         /* por encima del header, no del body */
-      /* variables de ancho reales */
-      --w-id:{w_id}px; --w-area:{w_area}px; --w-resp:{w_resp}px; --w-tar:{w_tar}px; --w-pri:{w_prio}px;
-      --x1: var(--w-id);
-      --x2: calc(var(--x1) + var(--w-area));
-      --x3: calc(var(--x2) + var(--w-resp));
-      --x4: calc(var(--x3) + var(--w-tar));
-      --x5: calc(var(--x4) + var(--w-pri));
-      background-image:
-        linear-gradient(to right, transparent calc(var(--x1) - 1px), #E9ECEF calc(var(--x1) - 1px), #E9ECEF var(--x1), transparent var(--x1)),
-        linear-gradient(to right, transparent calc(var(--x2) - 1px), #E9ECEF calc(var(--x2) - 1px), #E9ECEF var(--x2), transparent var(--x2)),
-        linear-gradient(to right, transparent calc(var(--x3) - 1px), #E9ECEF calc(var(--x3) - 1px), #E9ECEF var(--x3), transparent var(--x3)),
-        linear-gradient(to right, transparent calc(var(--x4) - 1px), #E9ECEF calc(var(--x4) - 1px), #E9ECEF var(--x4), transparent var(--x4)),
-        linear-gradient(to right, transparent calc(var(--x5) - 1px), #E9ECEF calc(var(--x5) - 1px), #E9ECEF var(--x5), transparent var(--x5));
-      background-repeat: no-repeat;
-      background-size: 100% 1px;          /* 1px de grosor de línea */
-    }}
-    </style>
-    """
-    st.markdown(css, unsafe_allow_html=True)
-
-def _inject_header_guides_evaluacion():
-    """Rayitas alineadas para Evaluación (overlay en el header ::after)."""
-    w_id   = COL_W_ID         + ALIGN_FIXES.get("Id", 0)
-    w_area = COL_W_AREA       + ALIGN_FIXES.get("Área", 0)
-    w_resp = PILL_W_RESP      + ALIGN_FIXES.get("Responsable", 0)
-    w_tar  = COL_W_TAREA      + ALIGN_FIXES.get("Tarea", 0)
-    w_eval = COL_W_EVALUACION + ALIGN_FIXES.get("Evaluación", 0)
-
-    css = f"""
-    <style>
-    #eval-grid .ag-header {{
-      position: relative;
-    }}
-    #eval-grid .ag-header::after {{
-      content: "";
-      position: absolute;
-      left: 0; right: 0; bottom: 0;
-      height: 0;
-      pointer-events: none;
-      z-index: 2;
-      --w-id:{w_id}px; --w-area:{w_area}px; --w-resp:{w_resp}px; --w-tar:{w_tar}px; --w-eva:{w_eval}px;
-      --x1: var(--w-id);
-      --x2: calc(var(--x1) + var(--w-area));
-      --x3: calc(var(--x2) + var(--w-resp));
-      --x4: calc(var(--x3) + var(--w-tar));
-      --x5: calc(var(--x4) + var(--w-eva));
-      background-image:
-        linear-gradient(to right, transparent calc(var(--x1) - 1px), #E9ECEF calc(var(--x1) - 1px), #E9ECEF var(--x1), transparent var(--x1)),
-        linear-gradient(to right, transparent calc(var(--x2) - 1px), #E9ECEF calc(var(--x2) - 1px), #E9ECEF var(--x2), transparent var(--x2)),
-        linear-gradient(to right, transparent calc(var(--x3) - 1px), #E9ECEF calc(var(--x3) - 1px), #E9ECEF var(--x3), transparent var(--x3)),
-        linear-gradient(to right, transparent calc(var(--x4) - 1px), #E9ECEF calc(var(--x4) - 1px), #E9ECEF var(--x4), transparent var(--x4)),
-        linear-gradient(to right, transparent calc(var(--x5) - 1px), #E9ECEF calc(var(--x5) - 1px), #E9ECEF var(--x5), transparent var(--x5));
-      background-repeat: no-repeat;
-      background-size: 100% 1px;
-    }}
-    </style>
-    """
-    st.markdown(css, unsafe_allow_html=True)
 
 # --- allow-list ---
 allowed_emails  = st.secrets.get("auth", {}).get("allowed_emails", [])
 allowed_domains = st.secrets.get("auth", {}).get("allowed_domains", [])
 
 # 👤 Login
-from auth_google import google_login, logout
 user = google_login(allowed_emails=allowed_emails,
                     allowed_domains=allowed_domains,
                     redirect_page=None)
@@ -2042,6 +1995,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
