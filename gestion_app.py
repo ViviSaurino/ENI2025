@@ -904,9 +904,8 @@ EMO_SI_NO       = {"✅ Sí": "Sí", "🚫 No": "No"}
 # Estado inicial del colapsable (se usa solo para el primer render)
 st.session_state.setdefault("nt_visible", True)
 
-# Chevron inicial (▾ abierto / ▸ cerrado)
-chev = "▾" if st.session_state["nt_visible"] else "▸"
-initial_display = "block" if st.session_state["nt_visible"] else "none"
+# Chevron (1 clic): ▾ abierto / ▸ cerrado
+chev = "▾" if st.session_state.get("nt_visible", True) else "▸"
 
 # ---------- Barra superior (triangulito + píldora) alineada ----------
 st.markdown('<div id="ntbar" class="topbar">', unsafe_allow_html=True)
@@ -915,64 +914,51 @@ c_toggle, c_pill = st.columns([0.028, 0.965], gap="small")
 with c_toggle:
     st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
 
-    # Igual que en "Actualizar estado": función on_click que invierte el estado
+    # MISMA LÓGICA QUE EN "ACTUALIZAR ESTADO"
     def _toggle_nt():
         st.session_state["nt_visible"] = not st.session_state.get("nt_visible", True)
 
     st.button(
-        "▾" if st.session_state.get("nt_visible", True) else "▸",
+        chev,                         # ← usa la variable, como en ux
         key="nt_toggle_icon",
         help="Mostrar/ocultar",
         on_click=_toggle_nt
     )
-
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Camuflaje del cuadrado: fondo y borde BLANCOS (sin sombra)
+    # Camuflaje del cuadrado: borde y fondo BLANCOS (sin sombra)
     st.markdown("""
     <style>
-      /* Limpia wrappers del botón en este bloque */
       #ntbar .toggle-icon .stButton,
       #ntbar .toggle-icon .stButton > div,
       #ntbar .toggle-icon [data-testid^="baseButton"],
-      #ntbar .toggle-icon [data-testid^="baseButton"] > div {
+      #ntbar .toggle-icon [data-testid^="baseButton"] > div{
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
         padding: 0 !important;
         margin: 0 !important;
       }
-
-      /* El <button> real: borde y fondo blancos para "desaparecer" el cuadrado */
       #ntbar .toggle-icon .stButton > button,
-      #ntbar .toggle-icon [data-testid^="baseButton"] button {
-        background: #ffffff !important;
-        border: 1px solid #ffffff !important;   /* BLANCO (no plomo) */
+      #ntbar .toggle-icon [data-testid^="baseButton"] button{
+        background: #ffffff !important;            /* fondo blanco */
+        border: 1px solid #ffffff !important;      /* borde blanco */
         box-shadow: none !important;
         outline: none !important;
-
-        padding: 0 !important;
-        margin: 0 !important;
-        min-width: 0 !important;
-        height: auto !important;
-        min-height: 0 !important;
+        padding: 0 !important; margin: 0 !important;
+        min-width: 0 !important; min-height: 0 !important; height: auto !important;
         border-radius: 0 !important;
-
-        font-weight: 800 !important;
-        font-size: 20px !important;
-        line-height: 1 !important;
-        transform: translateY(8px);             /* alinear con la píldora */
+        font-weight: 800 !important; font-size: 20px !important; line-height: 1 !important;
+        transform: translateY(8px);
         color: inherit !important;
         cursor: pointer !important;
       }
-
-      /* Mantén blanco en hover/focus/active */
       #ntbar .toggle-icon .stButton > button:hover,
       #ntbar .toggle-icon .stButton > button:focus,
       #ntbar .toggle-icon .stButton > button:active,
       #ntbar .toggle-icon [data-testid^="baseButton"] button:hover,
       #ntbar .toggle-icon [data-testid^="baseButton"] button:focus,
-      #ntbar .toggle-icon [data-testid^="baseButton"] button:active {
+      #ntbar .toggle-icon [data-testid^="baseButton"] button:active{
         background: #ffffff !important;
         border-color: #ffffff !important;
         box-shadow: none !important;
@@ -982,7 +968,6 @@ with c_toggle:
     """, unsafe_allow_html=True)
 
 with c_pill:
-    # Píldora celeste (DIV, no botón; siempre azul)
     st.markdown(
         '<div class="form-title">&nbsp;&nbsp;📝&nbsp;&nbsp;Nueva tarea</div>',
         unsafe_allow_html=True
@@ -1872,6 +1857,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
