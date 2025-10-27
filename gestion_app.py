@@ -740,7 +740,7 @@ st.markdown("""
 .topbar-na .toggle-icon,
 .topbar-pri .toggle-icon,
 .topbar-eval .toggle-icon{
-  transform: scale(0.65) !important;     /* ← prueba 0.55–0.80 */
+  transform: scale(0.55) !important;     /* ← prueba 0.55–0.80 */
   transform-origin: left center !important;
 }
 
@@ -750,7 +750,7 @@ st.markdown("""
 .topbar-na .toggle-icon,
 .topbar-pri .toggle-icon,
 .topbar-eval .toggle-icon{
-  margin-right: -10px !important;        /* pega más la píldora */
+  margin-right: -08px !important;        /* pega más la píldora */
   margin-top: -2px !important;           /* ajusta vertical si hace falta */
 }
 
@@ -773,7 +773,7 @@ st.markdown("""
 .topbar-na .toggle-icon .stButton > button,
 .topbar-pri .toggle-icon .stButton > button,
 .topbar-eval .toggle-icon .stButton > button{
-  font-size: 12px !important;            /* baja a 11 si quieres micro */
+  font-size: 18px !important;            /* baja a 11 si quieres micro */
 }
 
 </style>
