@@ -147,16 +147,27 @@ def _grid_options_evaluacion(df):
 allowed_emails  = st.secrets.get("auth", {}).get("allowed_emails", [])
 allowed_domains = st.secrets.get("auth", {}).get("allowed_domains", [])
 
-# 🔐 PUERTA DE ENTRADA — LOGIN (ACTIVADO)
-user = google_login(
-    allowed_emails=allowed_emails,
-    allowed_domains=allowed_domains,
-    title="Inicia sesión para continuar"
-)
-if not user:
-    st.stop()  # Detiene el render hasta que el usuario inicie sesión
+# 🔐 LOGIN (wrapper compatible con distintas firmas de google_login)
+def _do_login():
+    variants = [
+        dict(allowed_emails=allowed_emails, allowed_domains=allowed_domains, title="Inicia sesión para continuar"),
+        dict(allowed_emails=allowed_emails, allowed_domains=allowed_domains),
+        {},  # algunos auth_google solo aceptan () sin kwargs
+    ]
+    for kwargs in variants:
+        try:
+            return google_login(**kwargs)
+        except TypeError:
+            continue
+    try:
+        return google_login()
+    except Exception:
+        return None
 
-# (Opcional) Mostrar usuario y botón de salir en la barra lateral
+user = _do_login()
+if not user:
+    st.stop()
+
 with st.sidebar:
     st.caption(f"Conectado: {user.get('email','')}")
     st.button("Cerrar sesión", on_click=logout)
@@ -171,15 +182,12 @@ def export_excel(df, filename: str = "ENI2025_tareas.xlsx", sheet_name: str = "T
     from io import BytesIO
     import pandas as pd
 
-    # Alias de compatibilidad por si alguien pasa sheet=
     if "sheet" in kwargs and not sheet_name:
         sheet_name = kwargs.pop("sheet")
     else:
         kwargs.pop("sheet", None)
 
     buf = BytesIO()
-
-    # Elegir motor disponible: xlsxwriter -> openpyxl
     engine = None
     try:
         import xlsxwriter  # noqa: F401
@@ -189,16 +197,13 @@ def export_excel(df, filename: str = "ENI2025_tareas.xlsx", sheet_name: str = "T
             import openpyxl  # noqa: F401
             engine = "openpyxl"
         except Exception:
-            raise ImportError(
-                "No hay motor para Excel. Instala 'xlsxwriter' o 'openpyxl' en tu entorno."
-            )
+            raise ImportError("No hay motor para Excel. Instala 'xlsxwriter' o 'openpyxl' en tu entorno.")
 
     with pd.ExcelWriter(buf, engine=engine) as xw:
         sheet = sheet_name or "Tareas"
         (df if isinstance(df, pd.DataFrame) else pd.DataFrame(df)).to_excel(
             xw, sheet_name=sheet, index=False
         )
-        # Auto-anchos (solo si el motor lo permite)
         try:
             if engine == "xlsxwriter":
                 ws = xw.sheets[sheet]
@@ -245,11 +250,9 @@ if "_read_sheet_tab" not in globals():
             df = _pd.read_csv(csv_path, encoding="utf-8-sig")
         except (_pd.errors.EmptyDataError, ValueError):
             return _pd.DataFrame([], columns=COLS)
-        # Garantiza columnas esperadas
         for c in COLS:
             if c not in df.columns:
                 df[c] = None
-        # Ordena según COLS, dejando extras al final
         df = df[[c for c in COLS if c in df.columns] + [c for c in df.columns if c not in COLS]]
         return df
 
@@ -277,7 +280,6 @@ if "export_excel" not in globals():
             (df if isinstance(df, pd.DataFrame) else pd.DataFrame(df)).to_excel(
                 xw, sheet_name=sheet_name, index=False
             )
-            # Autoajuste simple de anchos
             ws = xw.sheets[sheet_name]
             try:
                 for i, col in enumerate((df.columns if isinstance(df, pd.DataFrame) else pd.DataFrame(df).columns)):
@@ -333,6 +335,7 @@ if "df_main" not in st.session_state:
         base["Calificación"] = pd.to_numeric(base["Calificación"], errors="coerce").fillna(0).astype(int)
 
     st.session_state["df_main"] = base[COLS + ["__DEL__"]].copy()
+
 
 # ---------- CSS ----------
 st.markdown("""
@@ -2014,6 +2017,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
