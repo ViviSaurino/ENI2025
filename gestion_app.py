@@ -871,71 +871,18 @@ st.markdown("""
   margin: 0 !important;
 }
             
-/* === CAMUFLAJE TOTAL: borde y fondo BLANCOS en TODOS los toggles === */
-/* Aplica a: #ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval */
-
-:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon *,
-:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon *::before,
-:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon *::after{
-  /* mata sombras/rings que parecen “borde plomo” */
-  box-shadow: none !important;
-  outline: none !important;
+/* Más espacio entre las indicaciones (help-strip) y la sección */
+#nt-help, #ux-help, #na-help, #pri-help, #eva-help{
+  margin-bottom: 18px !important;   /* súbelo a 22–24px si quieres más aire */
 }
 
-/* wrappers posibles con borde */
-:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon .stButton,
-:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon .stButton > div,
-:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon [data-testid^="baseButton"],
-:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon [data-testid^="baseButton"] > div{
-  background: transparent !important;
-  border: 1px solid #ffffff !important;   /* ← BLANCO */
-  border-radius: 0 !important;
-}
-
-/* el <button> real en todas sus variantes */
-:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon .stButton > button,
-:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon [data-testid^="baseButton"] button,
-:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon button[kind],
-:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon [role="button"]{
-  background: #ffffff !important;          /* fondo blanco */
-  border: 1px solid #ffffff !important;     /* borde blanco */
-  box-shadow: none !important;              /* sin glow gris */
-  outline: none !important;
-
-  /* por si el borde era “simulado” con sombra interna */
-  -webkit-box-shadow: inset 0 0 0 1px #ffffff !important;
-  box-shadow: inset 0 0 0 1px #ffffff !important;
-
-  /* geometría mínima */
-  padding: 0 !important; margin: 0 !important;
-  min-width: 0 !important; min-height: 0 !important; height: auto !important;
-  border-radius: 0 !important;
-
-  /* tipografía del triángulo */
-  font-weight: 800 !important; font-size: 20px !important; line-height: 1 !important;
-  transform: translateY(8px);
-  color: inherit !important;
-  cursor: pointer !important;
-
-  /* quita highlight móvil que se ve gris */
-  -webkit-tap-highlight-color: rgba(255,255,255,0) !important;
-}
-
-/* estados hover/focus/active: SIEMPRE BLANCO */
-:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon .stButton > button:hover,
-:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon .stButton > button:focus,
-:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon .stButton > button:active,
-:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon [data-testid^="baseButton"] button:hover,
-:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon [data-testid^="baseButton"] button:focus,
-:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon [data-testid^="baseButton"] button:active,
-:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon button[kind]:hover,
-:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon button[kind]:focus,
-:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon button[kind]:active{
-  background: #ffffff !important;
-  border-color: #ffffff !important;
-  -webkit-box-shadow: inset 0 0 0 1px #ffffff !important;
-  box-shadow: inset 0 0 0 1px #ffffff !important;
-  outline: none !important;
+/* Y por si alguna tarjeta está muy pegada, dale un respiro arriba */
+#nt-section .form-card,
+#ux-section .form-card,
+#na-section .form-card,
+#pri-section .form-card,
+#eva-section .form-card{
+  margin-top: 6px !important;       /* ajusta 0–12px a gusto */
 }
 
 </style>
