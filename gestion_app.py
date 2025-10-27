@@ -718,32 +718,36 @@ st.markdown("""
   margin-top: 10px !important;       /* valor base para todas */
 }
            
-/* === PATCH ULTRA para el triángulo SIN caja dentro de .toggle-icon === */
-/* 1) Quita fondo/borde/sombra de cualquier wrapper del botón */
+/* === ULTRA-OVERRIDE FINAL: triángulo SIN caja dentro de .toggle-icon === */
+/* Apaga cualquier wrapper que añada fondo/borde/sombra/padding */
 .toggle-icon .stButton,
 .toggle-icon .stButton > div,
 .toggle-icon [data-testid^="baseButton"],
-.toggle-icon [data-testid^="baseButton"] > div {
+.toggle-icon [data-testid^="baseButton"] > div,
+.toggle-icon [data-testid^="baseButton"] > div > div{
   background: transparent !important;
-  border: none !important;
+  border: 0 !important;
   box-shadow: none !important;
   padding: 0 !important;
   margin: 0 !important;
 }
 
-/* 2) El <button> real (cualquiera que sea su variante/kind) */
+/* El <button> real en cualquiera de sus rutas posibles */
 .toggle-icon .stButton button,
+.toggle-icon [data-testid^="baseButton"] button,
 .toggle-icon button[kind],
 .toggle-icon button[class*="primary"],
 .toggle-icon button[class*="secondary"],
-.toggle-icon [role="button"] {
+.toggle-icon [role="button"]{
   background: transparent !important;
   background-image: none !important;
-  border: none !important;
+  border: 0 !important;
   box-shadow: none !important;
-  outline: none !important;
+  outline: 0 !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
 
-  /* quita geometría del “cuadradito” */
+  /* sin “caja” */
   padding: 0 !important;
   margin: 0 !important;
   width: auto !important;
@@ -752,37 +756,38 @@ st.markdown("""
   min-height: 0 !important;
   border-radius: 0 !important;
 
-  /* tamaño y alineación del triángulo */
+  /* texto/ícono del triángulo */
   font-weight: 800 !important;
-  font-size: 18px !important;   /* sube/baja a gusto */
+  font-size: 18px !important;
   line-height: 1 !important;
-  transform: translateY(8px);   /* alinea verticalmente con la píldora */
+  transform: translateY(8px);   /* alinea con la píldora */
   color: inherit !important;
   cursor: pointer !important;
 }
 
-/* 3) Asegura que hover/focus/active NO reintroduzcan la caja */
+/* Que hover/focus/active NO traigan de vuelta la caja */
 .toggle-icon .stButton button:hover,
 .toggle-icon .stButton button:focus,
 .toggle-icon .stButton button:active,
-.toggle-icon button[kind]:hover,
-.toggle-icon button[kind]:focus,
-.toggle-icon button[kind]:active,
+.toggle-icon [data-testid^="baseButton"] button:hover,
+.toggle-icon [data-testid^="baseButton"] button:focus,
+.toggle-icon [data-testid^="baseButton"] button:active,
 .toggle-icon [role="button"]:hover,
 .toggle-icon [role="button"]:focus,
-.toggle-icon [role="button"]:active {
+.toggle-icon [role="button"]:active{
   background: transparent !important;
-  background-image: none !important;
-  border: none !important;
+  border: 0 !important;
   box-shadow: none !important;
-  outline: none !important;
+  outline: 0 !important;
 }
 
-/* 4) Por si el tema inyecta pseudo-elementos decorativos */
+/* Por si el tema mete pseudo-elementos */
 .toggle-icon .stButton button::before,
 .toggle-icon .stButton button::after,
+.toggle-icon [data-testid^="baseButton"] button::before,
+.toggle-icon [data-testid^="baseButton"] button::after,
 .toggle-icon [role="button"]::before,
-.toggle-icon [role="button"]::after {
+.toggle-icon [role="button"]::after{
   content: none !important;
   display: none !important;
 }
