@@ -922,16 +922,16 @@ st.markdown('<div id="ntbar" class="topbar">', unsafe_allow_html=True)
 c_toggle, c_pill = st.columns([0.028, 0.965], gap="small")
 
 with c_toggle:
-    # Link puro que alterna ?nt=1/0 (recarga y actualiza el estado)
-    next_state = "0" if st.session_state["nt_visible"] else "1"
+    # Chevron actual solo para pintar
     chev_now = "▾" if st.session_state["nt_visible"] else "▸"
 
     st.markdown(f"""
     <div class="toggle-icon">
-      <a id="nt-toggle" href="?nt={next_state}" title="Mostrar/ocultar">{chev_now}</a>
+      <a id="nt-toggle" href="#" title="Mostrar/ocultar">{chev_now}</a>
     </div>
+
     <style>
-      /* Chevron sin “caja” (link estilizado) */
+      /* Chevron como link, sin caja */
       #ntbar .toggle-icon #nt-toggle{{
         display:inline-block !important;
         text-decoration:none !important;
@@ -955,12 +955,27 @@ with c_toggle:
         box-shadow:none !important;
       }}
     </style>
+
+    <script>
+      (function(){{
+        const a = document.getElementById('nt-toggle');
+        if(!a) return;
+        a.addEventListener('click', function(e){{
+          e.preventDefault();                 // no navegación por defecto
+          const url = new URL(window.location.href);
+          const cur = url.searchParams.get('nt');
+          const next = (cur === '1') ? '0' : '1';
+
+          // Actualiza la URL EN SITIO (sin cambiar de página)
+          url.searchParams.set('nt', next);
+          history.replaceState(null, '', url.toString());
+
+          // Fuerza re-render de Streamlit en la MISMA página
+          window.location.reload();
+        }});
+      }})();
+    </script>
     """, unsafe_allow_html=True)
-with c_pill:
-    # Píldora celeste (DIV, no botón; siempre azul)
-    st.markdown(
-        '<div class="form-title">&nbsp;&nbsp;📝&nbsp;&nbsp;Nueva tarea</div>',
-        unsafe_allow_html=True
     )
 st.markdown('</div>', unsafe_allow_html=True)
 # ---------- fin barra superior ----------
@@ -1846,5 +1861,6 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
