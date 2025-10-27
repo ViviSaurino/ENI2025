@@ -901,37 +901,26 @@ EMO_SI_NO       = {"✅ Sí": "Sí", "🚫 No": "No"}
 
 # ================== Formulario ==================
 
-# ------ Estado inicial (lee ?nt=1/0 si existe) ------
-try:
-    qp = st.query_params
-except Exception:
-    qp = st.experimental_get_query_params()
-if "nt" in qp:
-    val = qp["nt"]
-    if isinstance(val, list):
-        val = val[0]
-    st.session_state["nt_visible"] = (val == "1")
-else:
-    st.session_state.setdefault("nt_visible", True)
+# Estado inicial del colapsable (se usa solo para el primer render)
+st.session_state.setdefault("nt_visible", True)
 
-# Chevron (1 clic): ▾ abierto / ▸ cerrado
+# Chevron inicial (▾ abierto / ▸ cerrado)
 chev = "▾" if st.session_state["nt_visible"] else "▸"
+initial_display = "block" if st.session_state["nt_visible"] else "none"
 
 # ---------- Barra superior (triangulito + píldora) alineada ----------
 st.markdown('<div id="ntbar" class="topbar">', unsafe_allow_html=True)
 c_toggle, c_pill = st.columns([0.028, 0.965], gap="small")
 
 with c_toggle:
-    # Chevron actual solo para pintar
-    chev_now = "▾" if st.session_state["nt_visible"] else "▸"
-
+    # Triángulo como LINK (sin “cuadradito”)
     st.markdown(f"""
     <div class="toggle-icon">
-      <a id="nt-toggle" href="#" title="Mostrar/ocultar">{chev_now}</a>
+      <a id="nt-toggle" href="#" title="Mostrar/ocultar">{chev}</a>
     </div>
 
     <style>
-      /* Chevron como link, sin caja */
+      /* Chevron sin caja */
       #ntbar .toggle-icon #nt-toggle{{
         display:inline-block !important;
         text-decoration:none !important;
@@ -960,114 +949,119 @@ with c_toggle:
       (function(){{
         const a = document.getElementById('nt-toggle');
         if(!a) return;
+        const sec = document.getElementById('nt-section');
+        if(!sec) return;
+
         a.addEventListener('click', function(e){{
-          e.preventDefault();                 // no navegación por defecto
-          const url = new URL(window.location.href);
-          const cur = url.searchParams.get('nt');
-          const next = (cur === '1') ? '0' : '1';
-
-          // Actualiza la URL EN SITIO (sin cambiar de página)
-          url.searchParams.set('nt', next);
-          history.replaceState(null, '', url.toString());
-
-          // Fuerza re-render de Streamlit en la MISMA página
-          window.location.reload();
+          e.preventDefault();
+          const visible = sec.style.display !== 'none';
+          // alterna visualmente
+          sec.style.display = visible ? 'none' : 'block';
+          // cambia el símbolo
+          a.textContent = visible ? '▸' : '▾';
         }});
       }})();
     </script>
     """, unsafe_allow_html=True)
-  
+
+with c_pill:
+    # Píldora celeste (DIV, no botón; siempre azul)
+    st.markdown(
+        '<div class="form-title">&nbsp;&nbsp;📝&nbsp;&nbsp;Nueva tarea</div>',
+        unsafe_allow_html=True
+    )
 st.markdown('</div>', unsafe_allow_html=True)
 # ---------- fin barra superior ----------
 
-# --- Cuerpo (solo si está visible) ---
-if st.session_state["nt_visible"]:
+# --- Cuerpo (siempre se renderiza, pero se oculta/muestra por JS) ---
+st.markdown(f'<div id="nt-section" style="display:{initial_display};">', unsafe_allow_html=True)
 
-    # Tira de ayuda (SOLO de "Nueva tarea")
-    st.markdown("""
-    <div class="help-strip help-strip-nt" id="nt-help">
-      ✳️ <strong>Completa los campos principales</strong> para registrar una nueva tarea
-    </div>
-    """, unsafe_allow_html=True)
+# Tira de ayuda (SOLO de "Nueva tarea")
+st.markdown("""
+<div class="help-strip help-strip-nt" id="nt-help">
+  ✳️ <strong>Completa los campos principales</strong> para registrar una nueva tarea
+</div>
+""", unsafe_allow_html=True)
 
-    # Tarjeta con tu borde
-    st.markdown('<div class="form-card">', unsafe_allow_html=True)
+# Tarjeta con tu borde
+st.markdown('<div class="form-card">', unsafe_allow_html=True)
 
-    with st.form("form_nueva_tarea", clear_on_submit=True):
-        # ----- Proporciones para cuadrar anchos entre filas -----
-        A = 1.2   # Área  y  Tipo
-        F = 1.2   # Fase  y  Responsable
-        T = 3.2   # Tarea  y  (Estado + Complejidad + Fecha inicio)
-        D = 2.4   # Detalle y  (Vencimiento + Fecha fin)
+with st.form("form_nueva_tarea", clear_on_submit=True):
+    # ----- Proporciones para cuadrar anchos entre filas -----
+    A = 1.2   # Área  y  Tipo
+    F = 1.2   # Fase  y  Responsable
+    T = 3.2   # Tarea  y  (Estado + Complejidad + Fecha inicio)
+    D = 2.4   # Detalle y  (Vencimiento + Fecha fin)
 
-        # -------- Fila 1: Área | Fase | Tarea | Detalle --------
-        r1c1, r1c2, r1c3, r1c4 = st.columns([A, F, T, D], gap="medium")
+    # -------- Fila 1: Área | Fase | Tarea | Detalle --------
+    r1c1, r1c2, r1c3, r1c4 = st.columns([A, F, T, D], gap="medium")
 
-        area    = _opt_map(r1c1, "Área", EMO_AREA, "Planeamiento")
-        fase    = r1c2.text_input("Fase", placeholder="Etapa")
-        tarea   = r1c3.text_input("Tarea", placeholder="Describe la tarea")
-        detalle = r1c4.text_input("Detalle", placeholder="Información adicional (opcional)")
+    area    = _opt_map(r1c1, "Área", EMO_AREA, "Planeamiento")
+    fase    = r1c2.text_input("Fase", placeholder="Etapa")
+    tarea   = r1c3.text_input("Tarea", placeholder="Describe la tarea")
+    detalle = r1c4.text_input("Detalle", placeholder="Información adicional (opcional)")
 
-        # -------- Fila 2 --------
-        # Estado + Complejidad + Fecha inicio = T (3.2)  ->  1.1 + 1.1 + 1.0
-        # Vencimiento + Fecha fin = D (2.4)             ->  1.2 + 1.2
-        c2_1, c2_2, c2_3, c2_4, c2_5, c2_6, c2_7 = st.columns([A, F, 1.1, 1.1, 1.0, 1.2, 1.2], gap="medium")
+    # -------- Fila 2 --------
+    # Estado + Complejidad + Fecha inicio = T (3.2)  ->  1.1 + 1.1 + 1.0
+    # Vencimiento + Fecha fin = D (2.4)             ->  1.2 + 1.2
+    c2_1, c2_2, c2_3, c2_4, c2_5, c2_6, c2_7 = st.columns([A, F, 1.1, 1.1, 1.0, 1.2, 1.2], gap="medium")
 
-        tipo = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría")
-        resp = c2_2.text_input("Responsable", placeholder="Nombre")
+    tipo = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría")
+    resp = c2_2.text_input("Responsable", placeholder="Nombre")
 
-        estado = _opt_map(c2_3, "Estado", EMO_ESTADO, "No iniciado")
-        compl  = _opt_map(c2_4, "Complejidad", EMO_COMPLEJIDAD, "Media")
+    estado = _opt_map(c2_3, "Estado", EMO_ESTADO, "No iniciado")
+    compl  = _opt_map(c2_4, "Complejidad", EMO_COMPLEJIDAD, "Media")
 
-        fi_d = c2_5.date_input("Fecha inicio", value=None, key="fi_d")
-        fi_t = c2_5.time_input("Hora inicio", value=None, step=60,
-                               label_visibility="collapsed", key="fi_t") if fi_d else None
+    fi_d = c2_5.date_input("Fecha inicio", value=None, key="fi_d")
+    fi_t = c2_5.time_input("Hora inicio", value=None, step=60,
+                           label_visibility="collapsed", key="fi_t") if fi_d else None
 
-        v_d = c2_6.date_input("Vencimiento", value=None, key="v_d")
-        v_t = c2_6.time_input("Hora vencimiento", value=None, step=60,
-                              label_visibility="collapsed", key="v_t") if v_d else None
+    v_d = c2_6.date_input("Vencimiento", value=None, key="v_d")
+    v_t = c2_6.time_input("Hora vencimiento", value=None, step=60,
+                          label_visibility="collapsed", key="v_t") if v_d else None
 
-        ff_d = c2_7.date_input("Fecha fin", value=None, key="ff_d")
-        ff_t = c2_7.time_input("Hora fin", value=None, step=60,
-                               label_visibility="collapsed", key="ff_t") if ff_d else None
+    ff_d = c2_7.date_input("Fecha fin", value=None, key="ff_d")
+    ff_t = c2_7.time_input("Hora fin", value=None, step=60,
+                           label_visibility="collapsed", key="ff_t") if ff_d else None
 
-        with c2_7:
-            submitted = st.form_submit_button("💾 Agregar y guardar", use_container_width=True)
+    with c2_7:
+        submitted = st.form_submit_button("💾 Agregar y guardar", use_container_width=True)
 
-    if submitted:
-        df = st.session_state["df_main"].copy()
-        new = blank_row()
-        f_ini = combine_dt(fi_d, fi_t)
-        f_ven = combine_dt(v_d,  v_t)
-        f_fin = combine_dt(ff_d, ff_t)
-        new.update({
-            "Área": area,
-            "Id": next_id(df),
-            "Tarea": tarea,
-            "Tipo": tipo,
-            "Responsable": resp,
-            "Fase": fase,
-            "Complejidad": compl,
-            "Estado": estado,
-            "Fecha inicio": f_ini,
-            "Vencimiento": f_ven,
-            "Fecha fin": f_fin,
-        })
+if submitted:
+    df = st.session_state["df_main"].copy()
+    new = blank_row()
+    f_ini = combine_dt(fi_d, fi_t)
+    f_ven = combine_dt(v_d,  v_t)
+    f_fin = combine_dt(ff_d, ff_t)
+    new.update({
+        "Área": area,
+        "Id": next_id(df),
+        "Tarea": tarea,
+        "Tipo": tipo,
+        "Responsable": resp,
+        "Fase": fase,
+        "Complejidad": compl,
+        "Estado": estado,
+        "Fecha inicio": f_ini,
+        "Vencimiento": f_ven,
+        "Fecha fin": f_fin,
+    })
 
-        new["Duración"]     = duration_days(new["Fecha inicio"], new["Vencimiento"])
-        new["Días hábiles"] = business_days(new["Fecha inicio"], new["Vencimiento"])
+    new["Duración"]     = duration_days(new["Fecha inicio"], new["Vencimiento"])
+    new["Días hábiles"] = business_days(new["Fecha inicio"], new["Vencimiento"])
 
-        df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
-        st.session_state["df_main"] = df.copy()
-        path_ok = os.path.join("data", "tareas.csv")
-        os.makedirs("data", exist_ok=True)
-        df.reindex(columns=COLS, fill_value=None).to_csv(
-            path_ok, index=False, encoding="utf-8-sig", mode="w"
-        )
-        ok, msg = _write_sheet_tab(df[COLS].copy())
-        st.success(f"✔ Tarea agregada ({new['Id']}). {msg}") if ok else st.warning(f"Agregado localmente. {msg}")
+    df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
+    st.session_state["df_main"] = df.copy()
+    path_ok = os.path.join("data", "tareas.csv")
+    os.makedirs("data", exist_ok=True)
+    df.reindex(columns=COLS, fill_value=None).to_csv(
+        path_ok, index=False, encoding="utf-8-sig", mode="w"
+    )
+    ok, msg = _write_sheet_tab(df[COLS].copy())
+    st.success(f"✔ Tarea agregada ({new['Id']}). {msg}") if ok else st.warning(f"Agregado localmente. {msg}")
 
-    st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
+st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
+st.markdown('</div>', unsafe_allow_html=True)  # cierra #nt-section
 
 # ================== Actualizar estado ==================
 
@@ -1861,6 +1855,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
