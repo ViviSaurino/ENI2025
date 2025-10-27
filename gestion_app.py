@@ -792,7 +792,7 @@ with c_toggle:
         line-height: 1 !important;
         font-weight: 800 !important;
         font-size: 20px !important;     /* ← tamaño del triángulo */
-        transform: translateY(6px);      /* ← bajadita para alinearlo con la píldora */
+        transform: translateY(0px);      /* ← bajadita para alinearlo con la píldora */
       }
       .toggle-icon .stButton > button:hover,
       .toggle-icon .stButton > button:focus,
@@ -1709,5 +1709,6 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
