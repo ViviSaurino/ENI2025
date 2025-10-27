@@ -147,38 +147,54 @@ def _grid_options_evaluacion(df):
 allowed_emails  = st.secrets.get("auth", {}).get("allowed_emails", [])
 allowed_domains = st.secrets.get("auth", {}).get("allowed_domains", [])
 
-# ========= Utilitario para exportar a Excel (ACEPTA sheet_name) =========
-def export_excel(df, filename: str = "ENI2025_tareas.xlsx", sheet_name: str | None = None):
+# ========= Utilitario para exportar a Excel (auto-engine) =========
+def export_excel(df, filename: str = "ENI2025_tareas.xlsx", sheet_name: str = "Tareas", **kwargs):
+    """
+    Devuelve un BytesIO con el .xlsx. Usa xlsxwriter si está instalado;
+    si no, cae a openpyxl sin que tengas que cambiar nada en el resto del código.
+    Acepta 'sheet' como alias de 'sheet_name'.
+    """
     from io import BytesIO
     import pandas as pd
 
-    # Nombre de hoja: si no te lo pasan, usa TAB_NAME (si existe) o "Tareas"
-    if sheet_name is None:
-        try:
-            sheet_name = TAB_NAME
-        except NameError:
-            sheet_name = "Tareas"
-
-    # Excel limita a 31 caracteres y prohíbe []:*?/\
-    sn = str(sheet_name)[:31]
-    for ch in '[]:*?/\\':
-        sn = sn.replace(ch, '-')
+    # Alias de compatibilidad por si alguien pasa sheet=
+    if "sheet" in kwargs and not sheet_name:
+        sheet_name = kwargs.pop("sheet")
+    else:
+        kwargs.pop("sheet", None)
 
     buf = BytesIO()
-    with pd.ExcelWriter(buf, engine="xlsxwriter") as xw:
-        (df if isinstance(df, pd.DataFrame) else pd.DataFrame(df)).to_excel(
-            xw, sheet_name=sn, index=False
-        )
-        # Auto-ajuste simple de columnas
-        ws = xw.sheets[sn]
+
+    # Elegir motor disponible: xlsxwriter -> openpyxl
+    engine = None
+    try:
+        import xlsxwriter  # noqa: F401
+        engine = "xlsxwriter"
+    except Exception:
         try:
-            for i, col in enumerate((df.columns if hasattr(df, "columns") else [])):
-                try:
-                    maxlen = int(pd.Series(df[col]).astype(str).map(len).max())
-                    maxlen = max(10, min(60, maxlen + 2))
-                except Exception:
-                    maxlen = 12
-                ws.set_column(i, i, maxlen)
+            import openpyxl  # noqa: F401
+            engine = "openpyxl"
+        except Exception:
+            raise ImportError(
+                "No hay motor para Excel. Instala 'xlsxwriter' o 'openpyxl' en tu entorno."
+            )
+
+    with pd.ExcelWriter(buf, engine=engine) as xw:
+        sheet = sheet_name or "Tareas"
+        (df if isinstance(df, pd.DataFrame) else pd.DataFrame(df)).to_excel(
+            xw, sheet_name=sheet, index=False
+        )
+        # Auto-anchos (solo si el motor lo permite)
+        try:
+            if engine == "xlsxwriter":
+                ws = xw.sheets[sheet]
+                for i, col in enumerate(df.columns):
+                    try:
+                        maxlen = int(pd.Series(df[col]).astype(str).map(len).max())
+                        maxlen = max(10, min(60, maxlen + 2))
+                    except Exception:
+                        maxlen = 12
+                    ws.set_column(i, i, maxlen)
         except Exception:
             pass
 
@@ -1984,6 +2000,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
