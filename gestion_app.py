@@ -785,12 +785,14 @@ st.markdown('<div class="topbar">', unsafe_allow_html=True)
 c_toggle, c_pill = st.columns([0.028, 0.965], gap="small")
 
 with c_toggle:
-    # Triángulo como ENLACE minimal (sin caja) y alineado a la misma altura de la píldora
+    # Triángulo como ENLACE minimal (sin caja), más grande y centrado verticalmente con la píldora
     st.markdown(
         f'''
-        <div class="toggle-icon" style="height:36px;display:flex;align-items:center;">
+        <div class="toggle-icon"
+             style="height:36px;display:flex;align-items:center;justify-content:center;">
           <a href="?nt={_next}" title="Mostrar/ocultar"
-             style="display:inline-block;font-weight:800;font-size:14px;line-height:1;text-decoration:none;color:inherit;">
+             style="display:inline-block;font-weight:800;font-size:20px;line-height:1;
+                    text-decoration:none;color:inherit;transform:translateY(2px);">
             {chev}
           </a>
         </div>
