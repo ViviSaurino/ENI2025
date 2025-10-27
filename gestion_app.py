@@ -1439,9 +1439,9 @@ def _filtra_dataset(df_base, area, responsable, desde, hasta):
 PRIORITY_CHOICES = ["Urgente", "Alta", "Media", "Baja"]
 EVAL_CHOICES     = [5, 4, 3, 2, 1]   # 5=Excelente … 1=Deficiente
 
-# =====================================================================
+
 # =========================== PRIORIDAD ===============================
-# =====================================================================
+
 st.session_state.setdefault("pri_visible", True)
 chev_pri = "▾" if st.session_state["pri_visible"] else "▸"
 
@@ -1467,9 +1467,11 @@ if st.session_state["pri_visible"]:
     df_all = st.session_state["df_main"].copy()
 
     with st.form("form_prioridad", clear_on_submit=False):
-        # Filtros iguales que "Editar estado"
-        A, F = 1.2, 1.2
-        r1_area, r1_resp, r1_desde, r1_hasta, r1_tarea, r1_ids = st.columns([A, F, 1.1, 1.1, 1.0, 2.4], gap="medium")
+        # === Fila de filtros con pesos que calzan con el grid ===
+        W_AREA, W_RESP, W_TAREA, W_PRI = COL_W_AREA, PILL_W_RESP, COL_W_TAREA, COL_W_PRIORIDAD
+        r1_area, r1_resp, r1_desde, r1_hasta, r1_tarea, r1_ids = st.columns(
+            [W_AREA, W_RESP, W_RESP, W_RESP, W_TAREA, W_PRI], gap="small"
+        )
 
         areas_opts = ["Todas"] + AREAS_OPC
         area_sel = r1_area.selectbox("Área", options=areas_opts, index=0, disabled=not CAN_EDIT)
@@ -1507,30 +1509,27 @@ if st.session_state["pri_visible"]:
         df_pri = _clean_df_for_grid(df_tab)
         grid_opt_pri = _grid_options_prioridad(df_pri)
 
-        # ⬇⬇⬇ ENVOLTORIO para enganchar CSS de alineación (#prior-grid)
         st.markdown('<div id="prior-grid">', unsafe_allow_html=True)
         grid_pri = AgGrid(
             df_pri,
             gridOptions=grid_opt_pri,
-            fit_columns_on_grid_load=False,                       # respeta widths configurados
+            fit_columns_on_grid_load=False,
             data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
-            update_mode=GridUpdateMode.VALUE_CHANGED,            # devuelve cambios en tiempo real
+            update_mode=GridUpdateMode.VALUE_CHANGED,
             allow_unsafe_jscode=True,
             theme="balham",
-            height=180,                                          # ⬅ altura compacta
-            custom_css={                                         # ⬅ fuerza el alto si el layout lo estira
+            height=180,
+            custom_css={
                 ".ag-root-wrapper": {"height": "180px !important"},
                 ".ag-body-viewport": {"height": "140px !important"},
             },
         )
         st.markdown('</div>', unsafe_allow_html=True)
-        # ⬆⬆⬆ FIN ENVOLTORIO
 
-        # Toma lo editado (mantiene el nombre 'edited' para no romper tu lógica de guardado)
         edited = pd.DataFrame(grid_pri["data"]) if isinstance(grid_pri, dict) and "data" in grid_pri else df_pri.copy()
 
-        # === Botón con el MISMO ancho (1.2) que "Vincular alerta" ===
-        b1, b2, b3, b4, b5, b6 = st.columns([A, F, 1.1, 1.1, 1.0, 0.995], gap="medium")
+        # === Botón con el MISMO ancho que la última columna (Prioridad) ===
+        b1, b2, b3, b4, b5, b6 = st.columns([W_AREA, W_RESP, W_RESP, W_RESP, W_TAREA, W_PRI], gap="small")
         with b6:
             do_save_pri = st.form_submit_button("🧭 Dar prioridad", use_container_width=True, disabled=not CAN_EDIT)
 
@@ -1579,9 +1578,13 @@ if st.session_state["eva_visible"]:
     df_all = st.session_state["df_main"].copy()
 
     with st.form("form_evaluacion", clear_on_submit=False):
-        # Misma grilla que prioridad para calzar anchos (Id 2.4)
-        A, F = 1.2, 1.2
-        c_area, c_resp, c_desde, c_hasta, c_tarea, c_id = st.columns([A, F, 1.1, 1.1, 1.0, 2.4], gap="medium")
+        # ===== Pesos calcados a los anchos del grid =====
+        W_AREA, W_RESP, W_TAREA, W_EVA = COL_W_AREA, PILL_W_RESP, COL_W_TAREA, COL_W_EVALUACION
+
+        # Fila de filtros (alineada a columnas del grid)
+        c_area, c_resp, c_desde, c_hasta, c_tarea, c_id = st.columns(
+            [W_AREA, W_RESP, W_RESP, W_RESP, W_TAREA, W_EVA], gap="small"
+        )
 
         area_sel = c_area.selectbox("Área", options=["Todas"] + AREAS_OPC, index=0, disabled=not CAN_EDIT)
         df_resp = df_all if area_sel == "Todas" else df_all[df_all["Área"] == area_sel]
@@ -1619,7 +1622,7 @@ if st.session_state["eva_visible"]:
         df_eval_tab = _clean_df_for_grid(df_tab_e)
         grid_opt_eval = _grid_options_evaluacion(df_eval_tab)
 
-        # ⬇⬇⬇ ENVOLTORIO para enganchar CSS de alineación (#eval-grid)
+        # Envoltura para enganchar CSS (#eval-grid)
         st.markdown('<div id="eval-grid">', unsafe_allow_html=True)
         grid_eval = AgGrid(
             df_eval_tab,
@@ -1629,20 +1632,19 @@ if st.session_state["eva_visible"]:
             update_mode=GridUpdateMode.VALUE_CHANGED,           # devuelve cambios en tiempo real
             allow_unsafe_jscode=True,
             theme="balham",
-            height=180,                                         # ⬅ altura compacta
-            custom_css={                                        # ⬅ fuerza el alto si el layout lo estira
+            height=180,
+            custom_css={
                 ".ag-root-wrapper": {"height": "180px !important"},
                 ".ag-body-viewport": {"height": "140px !important"},
             },
         )
         st.markdown('</div>', unsafe_allow_html=True)
-        # ⬆⬆⬆ FIN ENVOLTORIO
 
-        # Mantén el nombre edited_eval para tu lógica de guardado
+        # Mantén el nombre edited_eval
         edited_eval = pd.DataFrame(grid_eval["data"]) if isinstance(grid_eval, dict) and "data" in grid_eval else df_eval_tab.copy()
 
-        # === Botón con el MISMO ancho (1.2) que "Vincular alerta" ===
-        bx1, bx2, bx3, bx4, bx5, bx6 = st.columns([A, F, 1.1, 1.1, 1.0, 0.995], gap="medium")
+        # Botón con el MISMO ancho que la última columna (Evaluación)
+        bx1, bx2, bx3, bx4, bx5, bx6 = st.columns([W_AREA, W_RESP, W_RESP, W_RESP, W_TAREA, W_EVA], gap="small")
         with bx6:
             do_save_eval = st.form_submit_button("✅ Evaluar", use_container_width=True, disabled=not CAN_EDIT)
 
