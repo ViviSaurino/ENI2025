@@ -870,6 +870,59 @@ st.markdown("""
   padding: 0 !important;
   margin: 0 !important;
 }
+
+/* ========== Camuflaje BLANCO para TODOS los toggles (5 barras) ========== */
+/* Aplica a: Nueva tarea (#ntbar), Actualizar estado (.topbar-ux),
+   y los otros bloques similares (.topbar-na, .topbar-pri, .topbar-eval)    */
+
+/* Limpia wrappers del botón dentro de cada toggle */
+:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon .stButton,
+:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon .stButton > div,
+:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon [data-testid^="baseButton"],
+:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon [data-testid^="baseButton"] > div{
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* El <button> real: fondo y borde BLANCOS (cuadrado invisible) */
+:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon .stButton > button,
+:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon [data-testid^="baseButton"] button,
+:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon button[kind]{
+  background: #ffffff !important;
+  border: 1px solid #ffffff !important;
+  box-shadow: none !important;
+  outline: none !important;
+
+  padding: 0 !important; margin: 0 !important;
+  min-width: 0 !important; min-height: 0 !important; height: auto !important;
+  border-radius: 0 !important;
+
+  /* (opcional) mantener tu alineación y tipografía del triángulo */
+  font-weight: 800 !important; font-size: 20px !important; line-height: 1 !important;
+  transform: translateY(8px);
+  color: inherit !important;
+  cursor: pointer !important;
+}
+
+/* Mantener BLANCO en hover/focus/active */
+:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon .stButton > button:hover,
+:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon .stButton > button:focus,
+:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon .stButton > button:active,
+:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon [data-testid^="baseButton"] button:hover,
+:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon [data-testid^="baseButton"] button:focus,
+:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon [data-testid^="baseButton"] button:active,
+:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon button[kind]:hover,
+:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon button[kind]:focus,
+:where(#ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval) .toggle-icon button[kind]:active{
+  background: #ffffff !important;
+  border-color: #ffffff !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -1860,6 +1913,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
