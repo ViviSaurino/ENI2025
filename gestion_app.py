@@ -870,7 +870,7 @@ st.markdown("""
   padding: 0 !important;
   margin: 0 !important;
 }
-
+            
 /* === CAMUFLAJE TOTAL: borde y fondo BLANCOS en TODOS los toggles === */
 /* Aplica a: #ntbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval */
 
@@ -941,6 +941,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+
 # ---------- Título ----------
 st.title("📂 Gestión - ENI 2025")
 
@@ -976,7 +977,7 @@ chev = "▾" if st.session_state.get("nt_visible", True) else "▸"
 
 # ---------- Barra superior (triangulito + píldora) alineada ----------
 st.markdown('<div id="ntbar" class="topbar">', unsafe_allow_html=True)
-c_toggle, c_pill = st.columns([0.028, 0.965], gap="medium")
+c_toggle, c_pill = st.columns([0.028, 0.965], gap="medium") 
 
 with c_toggle:
     st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
@@ -1145,7 +1146,7 @@ chev2 = "▾" if st.session_state["ux_visible"] else "▸"
 
 # ---------- Barra superior (triangulito + píldora) ALINEADA como "Nueva tarea" ----------
 st.markdown('<div class="topbar-ux">', unsafe_allow_html=True)
-c_toggle2, c_pill2 = st.columns([0.028, 0.965], gap="small")  # mismas proporciones
+c_toggle2, c_pill2 = st.columns([0.028, 0.965], gap="medium")
 
 with c_toggle2:
     st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
@@ -1290,7 +1291,7 @@ chev3 = "▾" if st.session_state["na_visible"] else "▸"
 
 # ---------- Barra superior (triangulito + píldora) ALINEADA como las demás ----------
 st.markdown('<div class="topbar-na">', unsafe_allow_html=True)
-c_toggle3, c_pill3 = st.columns([0.028, 0.965], gap="small")  # mismas proporciones
+c_toggle3, c_pill3 = st.columns([0.028, 0.965], gap="medium")
 
 with c_toggle3:
     st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
@@ -1462,7 +1463,7 @@ st.session_state.setdefault("pri_visible", True)
 chev_pri = "▾" if st.session_state["pri_visible"] else "▸"
 
 st.markdown('<div class="topbar-pri">', unsafe_allow_html=True)
-c_toggle_p, c_pill_p = st.columns([0.028, 0.965], gap="small")
+c_toggle_p, c_pill_p = st.columns([0.028, 0.965], gap="medium")
 with c_toggle_p:
     st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
     def _toggle_pri(): st.session_state["pri_visible"] = not st.session_state["pri_visible"]
@@ -1570,7 +1571,7 @@ st.session_state.setdefault("eva_visible", True)
 chev_eva = "▾" if st.session_state["eva_visible"] else "▸"
 
 st.markdown('<div class="topbar-eval">', unsafe_allow_html=True)
-c_toggle_e, c_pill_e = st.columns([0.028, 0.965], gap="small")
+c_toggle_e, c_pill_e = st.columns([0.028, 0.965], gap="medium")
 with c_toggle_e:
     st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
     def _toggle_eva(): st.session_state["eva_visible"] = not st.session_state["eva_visible"]
@@ -1927,18 +1928,3 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
