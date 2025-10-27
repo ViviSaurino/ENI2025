@@ -36,8 +36,8 @@ PILL_W_TAREA = PILL_W_HASTA
 # Ajuste fino POR COLUMNA para compensar padding interno de AgGrid (puedes moverlos a gusto)
 ALIGN_FIXES = {
     "Id":          0,   # mueve SOLO el ancho de la col "Id"
-    "Área":        100,
-    "Responsable": 100,
+    "Área":        40,
+    "Responsable": 40,
     "Tarea":       0,
     "Prioridad":   0,
     "Evaluación":  0,
@@ -2042,6 +2042,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
