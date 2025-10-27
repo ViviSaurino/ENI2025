@@ -1082,7 +1082,7 @@ if st.session_state.get("nt_visible", True):
             "Fecha inicio": f_ini,
             "Vencimiento": f_ven,
             "Fecha fin": f_fin,
-            # "Nuevo campo": nuevo_f1c3,  # si quieres guardarlo, descomenta esta línea
+            # "Ciclo de mejora": nuevo_f1c3,  # si quieres guardarlo, descomenta esta línea
         })
 
         new["Duración"]     = duration_days(new["Fecha inicio"], new["Vencimiento"])
@@ -1893,6 +1893,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
