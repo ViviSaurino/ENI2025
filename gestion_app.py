@@ -147,31 +147,6 @@ def _grid_options_evaluacion(df):
 allowed_emails  = st.secrets.get("auth", {}).get("allowed_emails", [])
 allowed_domains = st.secrets.get("auth", {}).get("allowed_domains", [])
 
-# 🔐 LOGIN (wrapper compatible con distintas firmas de google_login)
-def _do_login():
-    variants = [
-        dict(allowed_emails=allowed_emails, allowed_domains=allowed_domains, title="Inicia sesión para continuar"),
-        dict(allowed_emails=allowed_emails, allowed_domains=allowed_domains),
-        {},  # algunos auth_google solo aceptan () sin kwargs
-    ]
-    for kwargs in variants:
-        try:
-            return google_login(**kwargs)
-        except TypeError:
-            continue
-    try:
-        return google_login()
-    except Exception:
-        return None
-
-user = _do_login()
-if not user:
-    st.stop()
-
-with st.sidebar:
-    st.caption(f"Conectado: {user.get('email','')}")
-    st.button("Cerrar sesión", on_click=logout)
-
 # ========= Utilitario para exportar a Excel (auto-engine) =========
 def export_excel(df, filename: str = "ENI2025_tareas.xlsx", sheet_name: str = "Tareas", **kwargs):
     """
@@ -182,12 +157,15 @@ def export_excel(df, filename: str = "ENI2025_tareas.xlsx", sheet_name: str = "T
     from io import BytesIO
     import pandas as pd
 
+    # Alias de compatibilidad por si alguien pasa sheet=
     if "sheet" in kwargs and not sheet_name:
         sheet_name = kwargs.pop("sheet")
     else:
         kwargs.pop("sheet", None)
 
     buf = BytesIO()
+
+    # Elegir motor disponible: xlsxwriter -> openpyxl
     engine = None
     try:
         import xlsxwriter  # noqa: F401
@@ -197,13 +175,16 @@ def export_excel(df, filename: str = "ENI2025_tareas.xlsx", sheet_name: str = "T
             import openpyxl  # noqa: F401
             engine = "openpyxl"
         except Exception:
-            raise ImportError("No hay motor para Excel. Instala 'xlsxwriter' o 'openpyxl' en tu entorno.")
+            raise ImportError(
+                "No hay motor para Excel. Instala 'xlsxwriter' o 'openpyxl' en tu entorno."
+            )
 
     with pd.ExcelWriter(buf, engine=engine) as xw:
         sheet = sheet_name or "Tareas"
         (df if isinstance(df, pd.DataFrame) else pd.DataFrame(df)).to_excel(
             xw, sheet_name=sheet, index=False
         )
+        # Auto-anchos (solo si el motor lo permite)
         try:
             if engine == "xlsxwriter":
                 ws = xw.sheets[sheet]
@@ -233,6 +214,9 @@ if "COLS" not in globals():
         ["Id","Área","Responsable","Tarea","Prioridad","Evaluación","Fecha inicio","__DEL__"]
     )
 
+# 👇 Columnas a exportar a Excel (excluye columnas de control)
+COLS_XLSX = [c for c in COLS if c not in ("__DEL__", "DEL")]
+
 # 👇 Nombre de hoja por defecto para exportaciones (Excel/Sheets)
 if "TAB_NAME" not in globals():
     TAB_NAME = st.session_state.get("TAB_NAME", "Tareas")
@@ -250,9 +234,11 @@ if "_read_sheet_tab" not in globals():
             df = _pd.read_csv(csv_path, encoding="utf-8-sig")
         except (_pd.errors.EmptyDataError, ValueError):
             return _pd.DataFrame([], columns=COLS)
+        # Garantiza columnas esperadas
         for c in COLS:
             if c not in df.columns:
                 df[c] = None
+        # Ordena según COLS, dejando extras al final
         df = df[[c for c in COLS if c in df.columns] + [c for c in df.columns if c not in COLS]]
         return df
 
@@ -277,14 +263,18 @@ if "export_excel" not in globals():
         import pandas as pd
         buf = BytesIO()
         with pd.ExcelWriter(buf, engine="xlsxwriter") as xw:
-            (df if isinstance(df, pd.DataFrame) else pd.DataFrame(df)).to_excel(
-                xw, sheet_name=sheet_name, index=False
-            )
+            # Copia y elimina columnas de control si existieran
+            df_to_write = (df if isinstance(df, pd.DataFrame) else pd.DataFrame(df)).copy()
+            for _c in ("__DEL__", "DEL"):
+                if _c in df_to_write.columns:
+                    df_to_write.drop(columns=[_c], inplace=True)
+            df_to_write.to_excel(xw, sheet_name=sheet_name, index=False)
+            # Autoajuste simple de anchos
             ws = xw.sheets[sheet_name]
             try:
-                for i, col in enumerate((df.columns if isinstance(df, pd.DataFrame) else pd.DataFrame(df).columns)):
+                for i, col in enumerate(df_to_write.columns):
                     try:
-                        maxlen = int(pd.Series(df[col]).astype(str).map(len).max())
+                        maxlen = int(pd.Series(df_to_write[col]).astype(str).map(len).max())
                         maxlen = max(10, min(60, maxlen + 2))
                     except Exception:
                         maxlen = 12
@@ -1989,9 +1979,22 @@ with b_del:
 # 2) Exportar Excel
 with b_xlsx:
     try:
+        # Copia segura y limpia columnas de control antes de exportar
+        df_xlsx = st.session_state["df_main"].copy()
+        drop_cols = [c for c in ("__DEL__", "DEL") if c in df_xlsx.columns]
+        if drop_cols:
+            df_xlsx.drop(columns=drop_cols, inplace=True)
+
+        # Si existe COLS_XLSX, respeta ese orden; si no, sigue el actual
+        cols_order = globals().get("COLS_XLSX", [])
+        if cols_order:
+            cols_order = [c for c in cols_order if c in df_xlsx.columns]
+            if cols_order:
+                df_xlsx = df_xlsx.reindex(columns=cols_order)
+
         xlsx_b = export_excel(
-            st.session_state["df_main"][COLS],
-            sheet_name=TAB_NAME  # <- antes decía sheet=TAB_NAME
+            df_xlsx,
+            sheet_name=TAB_NAME  # (Ajuste 2) usar sheet_name, no 'sheet'
         )
         st.download_button(
             "⬇️ Exportar Excel",
@@ -2000,8 +2003,11 @@ with b_xlsx:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
         )
+    except ImportError:
+        st.error("No pude generar Excel: falta instalar 'xlsxwriter' u 'openpyxl' en el entorno.")
     except Exception as e:
         st.error(f"No pude generar Excel: {e}")
+
 
 # 3) Guardar (tabla local)
 with b_save_local:
@@ -2017,11 +2023,3 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
-
-
-
-
-
