@@ -718,7 +718,7 @@ st.markdown("""
 }
             
 /* Forzar tamaño visual del botón con escala */
-:root{ --toggle-scale: 0.75; } /* 0.70–0.85 suele verse bien */
+:root{ --toggle-scale: 0.65; } /* 0.70–0.85 suele verse bien */
 
 .topbar .toggle-icon .stButton>button,
 .topbar-ux .toggle-icon .stButton>button,
@@ -1679,3 +1679,4 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
