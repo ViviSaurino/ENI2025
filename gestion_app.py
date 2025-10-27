@@ -718,13 +718,14 @@ st.markdown("""
   margin-top: 10px !important;       /* valor base para todas */
 }
            
-/* === ULTRA-OVERRIDE FINAL: triángulo SIN caja dentro de .toggle-icon === */
-/* Apaga cualquier wrapper que añada fondo/borde/sombra/padding */
-.toggle-icon .stButton,
-.toggle-icon .stButton > div,
-.toggle-icon [data-testid^="baseButton"],
-.toggle-icon [data-testid^="baseButton"] > div,
-.toggle-icon [data-testid^="baseButton"] > div > div{
+/* ===== ULTRA PATCH: eliminar “cuadradito” del toggle SOLO en #ntbar ===== */
+
+/* 0) El contenedor de la columna NO debe aportar padding ni sombra */
+#ntbar .toggle-icon,
+#ntbar .toggle-icon .element-container,
+#ntbar .toggle-icon [data-testid="stVerticalBlock"],
+#ntbar .toggle-icon [data-testid="stHorizontalBlock"],
+#ntbar .toggle-icon [data-testid="stButton"]{
   background: transparent !important;
   border: 0 !important;
   box-shadow: none !important;
@@ -732,13 +733,30 @@ st.markdown("""
   margin: 0 !important;
 }
 
-/* El <button> real en cualquiera de sus rutas posibles */
-.toggle-icon .stButton button,
-.toggle-icon [data-testid^="baseButton"] button,
-.toggle-icon button[kind],
-.toggle-icon button[class*="primary"],
-.toggle-icon button[class*="secondary"],
-.toggle-icon [role="button"]{
+/* 1) Mata fondo/borde/sombra de TODOS los wrappers del botón en este bloque */
+#ntbar .toggle-icon .stButton,
+#ntbar .toggle-icon .stButton > div,
+#ntbar .toggle-icon [data-testid^="stButton"],
+#ntbar .toggle-icon [data-testid^="stButton"] > div,
+#ntbar .toggle-icon [data-testid^="baseButton"],
+#ntbar .toggle-icon [data-testid^="baseButton"] > div,
+#ntbar .toggle-icon [data-testid^="baseButton"] > div > div{
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  min-height: 0 !important;
+}
+
+/* 2) El <button> real (cubre todas las rutas nuevas de Streamlit) */
+#ntbar .toggle-icon .stButton button,
+#ntbar .toggle-icon [data-testid^="stButton"] button,
+#ntbar .toggle-icon [data-testid^="baseButton"] button,
+#ntbar .toggle-icon button[kind],
+#ntbar .toggle-icon button[class*="primary"],
+#ntbar .toggle-icon button[class*="secondary"],
+#ntbar .toggle-icon [role="button"]{
   background: transparent !important;
   background-image: none !important;
   border: 0 !important;
@@ -756,44 +774,49 @@ st.markdown("""
   min-height: 0 !important;
   border-radius: 0 !important;
 
-  /* texto/ícono del triángulo */
+  /* triángulo */
   font-weight: 800 !important;
-  font-size: 18px !important;
+  font-size: 20px !important;   /* tu tamaño */
   line-height: 1 !important;
-  transform: translateY(8px);   /* alinea con la píldora */
+  transform: translateY(8px);   /* alineado con la píldora */
   color: inherit !important;
   cursor: pointer !important;
 }
 
-/* Que hover/focus/active NO traigan de vuelta la caja */
-.toggle-icon .stButton button:hover,
-.toggle-icon .stButton button:focus,
-.toggle-icon .stButton button:active,
-.toggle-icon [data-testid^="baseButton"] button:hover,
-.toggle-icon [data-testid^="baseButton"] button:focus,
-.toggle-icon [data-testid^="baseButton"] button:active,
-.toggle-icon [role="button"]:hover,
-.toggle-icon [role="button"]:focus,
-.toggle-icon [role="button"]:active{
+/* 3) Evita que :hover/:focus/:active reintroduzcan estilos del tema */
+#ntbar .toggle-icon .stButton button:hover,
+#ntbar .toggle-icon .stButton button:focus,
+#ntbar .toggle-icon .stButton button:active,
+#ntbar .toggle-icon [data-testid^="stButton"] button:hover,
+#ntbar .toggle-icon [data-testid^="stButton"] button:focus,
+#ntbar .toggle-icon [data-testid^="stButton"] button:active,
+#ntbar .toggle-icon [data-testid^="baseButton"] button:hover,
+#ntbar .toggle-icon [data-testid^="baseButton"] button:focus,
+#ntbar .toggle-icon [data-testid^="baseButton"] button:active,
+#ntbar .toggle-icon [role="button"]:hover,
+#ntbar .toggle-icon [role="button"]:focus,
+#ntbar .toggle-icon [role="button"]:active{
   background: transparent !important;
   border: 0 !important;
   box-shadow: none !important;
   outline: 0 !important;
 }
 
-/* Por si el tema mete pseudo-elementos */
-.toggle-icon .stButton button::before,
-.toggle-icon .stButton button::after,
-.toggle-icon [data-testid^="baseButton"] button::before,
-.toggle-icon [data-testid^="baseButton"] button::after,
-.toggle-icon [role="button"]::before,
-.toggle-icon [role="button"]::after{
+/* 4) Por si el tema agrega pseudo-elementos decorativos */
+#ntbar .toggle-icon .stButton button::before,
+#ntbar .toggle-icon .stButton button::after,
+#ntbar .toggle-icon [data-testid^="stButton"] button::before,
+#ntbar .toggle-icon [data-testid^="stButton"] button::after,
+#ntbar .toggle-icon [data-testid^="baseButton"] button::before,
+#ntbar .toggle-icon [data-testid^="baseButton"] button::after,
+#ntbar .toggle-icon [role="button"]::before,
+#ntbar .toggle-icon [role="button"]::after{
   content: none !important;
   display: none !important;
 }
-
 </style>
 """, unsafe_allow_html=True)
+
 
 # ---------- Título ----------
 st.title("📂 Gestión - ENI 2025")
@@ -829,7 +852,7 @@ st.session_state.setdefault("nt_visible", True)
 chev = "▾" if st.session_state["nt_visible"] else "▸"
 
 # ---------- Barra superior (triangulito + píldora) alineada ----------
-st.markdown('<div class="topbar">', unsafe_allow_html=True)
+st.markdown('<div id="ntbar" class="topbar">', unsafe_allow_html=True)
 c_toggle, c_pill = st.columns([0.028, 0.965], gap="small")
 
 with c_toggle:
