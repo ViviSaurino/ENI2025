@@ -976,7 +976,7 @@ with c_toggle:
       }})();
     </script>
     """, unsafe_allow_html=True)
-    )
+  
 st.markdown('</div>', unsafe_allow_html=True)
 # ---------- fin barra superior ----------
 
@@ -1861,6 +1861,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
