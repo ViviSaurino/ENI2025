@@ -718,44 +718,40 @@ st.markdown("""
   margin-top: 10px !important;       /* valor base para todas */
 }
 
-/* === Eliminación total del recuadro del botón de triángulo === */
-.toggle-icon button,
-.toggle-icon [data-baseweb="button"],
-.toggle-icon [data-testid="baseButton-root"],
-.toggle-icon [data-testid="baseButton-primary"],
-.toggle-icon [data-testid="baseButton-secondary"] {
-  all: unset !important;               /* 🔥 borra todos los estilos heredados */
-  background: none !important;
-  border: none !important;
-  box-shadow: none !important;
-  outline: none !important;
+/* Checkbox como toggle de triángulo (sin cajita) */
+.toggle-icon [data-testid="stCheckbox"]{
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0 !important;
   padding: 0 !important;
   margin: 0 !important;
-  display: inline !important;
-  color: inherit !important;
-  font-size: 14px !important;          /* ajusta tamaño del triángulo */
-  line-height: 1 !important;
-  cursor: pointer !important;
 }
-
-/* Asegura que no se regenere el fondo en hover/focus/active */
-.toggle-icon button:hover,
-.toggle-icon button:focus,
-.toggle-icon button:active,
-.toggle-icon [data-baseweb="button"]:hover,
-.toggle-icon [data-baseweb="button"]:focus,
-.toggle-icon [data-baseweb="button"]:active {
-  all: unset !important;
-  color: inherit !important;
-  cursor: pointer !important;
+/* oculta el cuadrado del checkbox */
+.toggle-icon [data-testid="stCheckbox"] input{
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
 }
-
-/* Si Streamlit envuelve el botón en un div con fondo, se limpia también */
-.toggle-icon div,
-.toggle-icon span {
-  background: none !important;
-  border: none !important;
+/* por si aparece un svg */
+.toggle-icon [data-testid="stCheckbox"] svg{
+  display: none !important;
+}
+/* el triángulo es el label */
+.toggle-icon [data-testid="stCheckbox"] label{
+  background: transparent !important;
+  border: 0 !important;
   box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+  font-size: 14px !important;  /* ajusta 12–16 si quieres */
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  color: inherit !important;
 }
 
 </style>
@@ -804,12 +800,16 @@ with c_toggle:
     def _toggle_nt():
         st.session_state["nt_visible"] = not st.session_state["nt_visible"]
 
-    st.button(
-        chev,
-        key="nt_toggle_icon",
-        help="Mostrar/ocultar",
-        on_click=_toggle_nt
+    # 👉 reemplazo del botón por checkbox (muestra solo ▾/▸)
+    st.checkbox(
+        chev,                              # "▾" si abierto / "▸" si cerrado
+        key="nt_toggle_icon_cb",
+        value=st.session_state["nt_visible"],
+        on_change=_toggle_nt,
+        label_visibility="visible",
+        help="Mostrar/ocultar"
     )
+
     st.markdown('</div>', unsafe_allow_html=True)
 
 with c_pill:
