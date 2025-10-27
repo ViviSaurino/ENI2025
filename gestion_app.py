@@ -913,21 +913,25 @@ st.markdown('<div id="ntbar" class="topbar">', unsafe_allow_html=True)
 c_toggle, c_pill = st.columns([0.028, 0.965], gap="small")
 
 with c_toggle:
-    # Contenedor visual del toggle
     st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
 
-    # Botón: al hacer clic, invertimos el estado y Streamlit re-ejecuta
-    if st.button("▾" if st.session_state.get("nt_visible", True) else "▸",
-                 key="nt_toggle_icon",
-                 help="Mostrar/ocultar"):
+    # Igual que en "Actualizar estado": función on_click que invierte el estado
+    def _toggle_nt():
         st.session_state["nt_visible"] = not st.session_state.get("nt_visible", True)
+
+    st.button(
+        "▾" if st.session_state.get("nt_visible", True) else "▸",
+        key="nt_toggle_icon",
+        help="Mostrar/ocultar",
+        on_click=_toggle_nt
+    )
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- Estilos: camufla el cuadrado (borde y fondo BLANCOS, sin sombra) ---
+    # Camuflaje del cuadrado: fondo y borde BLANCOS (sin sombra)
     st.markdown("""
     <style>
-      /* Limpia wrappers del botón dentro del toggle */
+      /* Limpia wrappers del botón en este bloque */
       #ntbar .toggle-icon .stButton,
       #ntbar .toggle-icon .stButton > div,
       #ntbar .toggle-icon [data-testid^="baseButton"],
@@ -939,12 +943,11 @@ with c_toggle:
         margin: 0 !important;
       }
 
-      /* El <button> real: borde y fondo blancos (no se ve el cuadrado) */
+      /* El <button> real: borde y fondo blancos para "desaparecer" el cuadrado */
       #ntbar .toggle-icon .stButton > button,
-      #ntbar .toggle-icon [data-testid^="baseButton"] button,
-      #ntbar .toggle-icon button[kind] {
+      #ntbar .toggle-icon [data-testid^="baseButton"] button {
         background: #ffffff !important;
-        border: 1px solid #ffffff !important;   /* ← BLANCO, no plomo */
+        border: 1px solid #ffffff !important;   /* BLANCO (no plomo) */
         box-shadow: none !important;
         outline: none !important;
 
@@ -958,23 +961,20 @@ with c_toggle:
         font-weight: 800 !important;
         font-size: 20px !important;
         line-height: 1 !important;
-        transform: translateY(8px);
+        transform: translateY(8px);             /* alinear con la píldora */
         color: inherit !important;
         cursor: pointer !important;
       }
 
-      /* Mantén blanco en hover/focus/active (evita que vuelva el gris) */
+      /* Mantén blanco en hover/focus/active */
       #ntbar .toggle-icon .stButton > button:hover,
       #ntbar .toggle-icon .stButton > button:focus,
       #ntbar .toggle-icon .stButton > button:active,
       #ntbar .toggle-icon [data-testid^="baseButton"] button:hover,
       #ntbar .toggle-icon [data-testid^="baseButton"] button:focus,
-      #ntbar .toggle-icon [data-testid^="baseButton"] button:active,
-      #ntbar .toggle-icon button[kind]:hover,
-      #ntbar .toggle-icon button[kind]:focus,
-      #ntbar .toggle-icon button[kind]:active {
+      #ntbar .toggle-icon [data-testid^="baseButton"] button:active {
         background: #ffffff !important;
-        border-color: #ffffff !important;       /* ← BLANCO persistente */
+        border-color: #ffffff !important;
         box-shadow: none !important;
         outline: none !important;
       }
@@ -1872,6 +1872,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
