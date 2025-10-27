@@ -913,54 +913,66 @@ st.markdown('<div id="ntbar" class="topbar">', unsafe_allow_html=True)
 c_toggle, c_pill = st.columns([0.028, 0.965], gap="small")
 
 with c_toggle:
-    # Checkbox “fantasma” que controla el estado, pero sin cuadradito visible
+    # Triángulo sin “cajita”, y JS que busca #nt-section SOLO al hacer clic
     chev_now = "▾" if st.session_state.get("nt_visible", True) else "▸"
-    nt_val = st.checkbox(
-        label=chev_now,                  # mostramos el triángulo como etiqueta
-        value=st.session_state.get("nt_visible", True),
-        key="nt_tri",
-        help="Mostrar/ocultar"
-    )
-    # Sincroniza el estado real del colapsable con el checkbox
-    st.session_state["nt_visible"] = nt_val
 
-    # Estilos: ocultamos la cajita del checkbox y dejamos solo la etiqueta (el triángulo)
-    st.markdown("""
+    st.markdown(f"""
+    <div class="toggle-icon">
+      <a id="nt-toggle" href="#" title="Mostrar/ocultar">{chev_now}</a>
+    </div>
+
     <style>
-      /* Contenedor del checkbox en la barra */
-      #ntbar .toggle-icon [data-testid="stCheckbox"]{
-        display:inline-flex !important;
-        align-items:center !important;
-        gap:0 !important;
-        margin:0 !important;
-      }
-      /* Oculta totalmente la “caja” del checkbox */
-      #ntbar .toggle-icon [data-testid="stCheckbox"] input{
-        appearance:none !important;
-        -webkit-appearance:none !important;
-        width:0 !important; height:0 !important;
-        margin:0 !important; padding:0 !important;
-        border:none !important; outline:none !important;
-        box-shadow:none !important; background:transparent !important;
-      }
-      /* La etiqueta (nuestro triángulo) queda como único elemento visible/clicable */
-      #ntbar .toggle-icon [data-testid="stCheckbox"] label{
-        cursor:pointer !important;
+      /* Link-triángulo, sin caja */
+      #ntbar .toggle-icon #nt-toggle{{
+        display:inline-block !important;
+        text-decoration:none !important;
+        background:transparent !important;
+        border:none !important;
+        box-shadow:none !important;
+        outline:none !important;
+        padding:0 !important; margin:0 !important;
         font-weight:800 !important;
         font-size:20px !important;
         line-height:1 !important;
         transform: translateY(8px);
         color: inherit !important;
-        padding:0 !important; margin:0 !important;
-      }
-      /* Evita decoraciones en hover/focus */
-      #ntbar .toggle-icon [data-testid="stCheckbox"] label:hover,
-      #ntbar .toggle-icon [data-testid="stCheckbox"] label:focus{
+        cursor: pointer !important;
+      }}
+      #ntbar .toggle-icon #nt-toggle:focus,
+      #ntbar .toggle-icon #nt-toggle:hover,
+      #ntbar .toggle-icon #nt-toggle:active{{
         text-decoration:none !important;
         outline:none !important;
         box-shadow:none !important;
-      }
+      }}
     </style>
+
+    <script>
+      (function(){{
+        const a = document.getElementById('nt-toggle');
+        if(!a) return;
+
+        // Al hacer clic: busca #nt-section en ese momento y alterna display
+        a.addEventListener('click', function(e){{
+          e.preventDefault();
+          const sec = document.getElementById('nt-section');
+          if(!sec) return;  // si aún no está en el DOM, no hace nada
+          const isHidden = getComputedStyle(sec).display === 'none';
+          sec.style.display = isHidden ? 'block' : 'none';
+          a.textContent = isHidden ? '▾' : '▸';
+        }});
+
+        // Sincroniza el símbolo una vez cuando la sección ya existe
+        const sync = () => {{
+          const sec = document.getElementById('nt-section');
+          if(!sec) return;
+          const isHidden = getComputedStyle(sec).display === 'none';
+          a.textContent = isHidden ? '▸' : '▾';
+        }};
+        requestAnimationFrame(sync);
+        setTimeout(sync, 0);
+      }})();
+    </script>
     """, unsafe_allow_html=True)
 
 with c_pill:
@@ -1854,6 +1866,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
