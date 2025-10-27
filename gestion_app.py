@@ -873,7 +873,7 @@ st.markdown("""
             
 /* Más espacio entre las indicaciones (help-strip) y la sección */
 #nt-help, #ux-help, #na-help, #pri-help, #eva-help{
-  margin-bottom: 34px !important;   /* súbelo a 22–24px si quieres más aire */
+  margin-bottom: 40px !important;   /* súbelo a 22–24px si quieres más aire */
 }
 
 /* Y por si alguna tarjeta está muy pegada, dale un respiro arriba */
@@ -1875,5 +1875,6 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
