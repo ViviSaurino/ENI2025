@@ -376,6 +376,9 @@ st.markdown("""
   --blue-pill-bd: #0EA5E9;
   --blue-pill-fg: #ffffff;
 
+  /* Alto unificado de botón y píldora */
+  --pill-h: 36px;
+
   /* Ancho de las píldoras (Nueva tarea / Editar estado / Nueva alerta) */
   --pill-width: 168px;
 
@@ -383,9 +386,9 @@ st.markdown("""
   --pill-azul:      #94BEEA;
   --pill-azul-bord: #94BEEA;
 
-  /* ===== Píldoras rosadas para Prioridad / Evaluación ===== */
-  --pill-rosa:      #67D3C4;  /* color muestra */
-  --pill-rosa-bord: #67D3C4;  /* borde un poco más oscuro */
+  /* ===== Píldoras para Prioridad / Evaluación ===== */
+  --pill-rosa:      #67D3C4;
+  --pill-rosa-bord: #67D3C4;
 }
 
 /* =================== Inputs =================== */
@@ -422,15 +425,13 @@ st.markdown("""
   border-right: 1px solid #ECE6FF !important;
   transition: width .2s ease, min-width .2s ease;
 }
-
 /* Sidebar ABIERTA -> 200px */
 [data-testid="stSidebar"][aria-expanded="true"]{
   width: 200px !important;
   min-width: 200px !important;
 }
 [data-testid="stSidebar"][aria-expanded="true"] > div{ width: 200px !important; }
-
-/* Sidebar CERRADA -> ocupa 0px (el centro se expande a todo el ancho) */
+/* Sidebar CERRADA -> 0px (contenido se expande) */
 [data-testid="stSidebar"][aria-expanded="false"]{
   width: 0 !important;
   min-width: 0 !important;
@@ -469,9 +470,9 @@ st.markdown("""
   width: var(--pill-width) !important;
   justify-content: center !important;
   box-shadow: 0 6px 16px rgba(148,190,234,.3) !important;
-  min-height:36px !important;
+  min-height: var(--pill-h) !important;
+  height: var(--pill-h) !important;
   line-height:1 !important;
-  transform: translateY(11px); /* ↓ sube/baja la píldora si hace falta */
   white-space: nowrap !important;
   font-size: 14px !important;
 }
@@ -484,13 +485,14 @@ st.markdown("""
 .toggle-icon .stButton>button{
   padding: 0px !important;
   min-width: 32px !important;
-  height: 32px !important;
+  height: var(--pill-h) !important;
   border-radius: 10px !important;
   background: var(--lilac-600) !important;
   border: 1px solid var(--lilac-600) !important;
   color: #ffffff !important;
   font-weight: 800 !important;
   line-height: 1 !important;
+  display:inline-flex !important; align-items:center !important;
   box-shadow: 0 4px 12px rgba(139,92,246,.25) !important;
 }
 .toggle-icon .stButton>button:hover{ filter: brightness(.98) !important; }
@@ -630,7 +632,7 @@ st.markdown("""
 .topbar-ux .stButton>button,
 .topbar-na .stButton>button,
 .pill-btn .stButton>button{
-  height:36px !important;
+  height: var(--pill-h) !important;
   padding:0 16px !important;
   border-radius:10px !important;
   display:inline-flex !important; align-items:center !important;
@@ -650,11 +652,11 @@ st.markdown("""
   display:inline-flex !important; align-items:center !important;
 }
 .topbar-pri .stButton>button, .topbar-eval .stButton>button{
-  height:36px !important; padding:0 16px !important; border-radius:10px !important;
+  height: var(--pill-h) !important; padding:0 16px !important; border-radius:10px !important;
   display:inline-flex !important; align-items:center !important;
 }
 
-/* ===== Píldoras ROSA (Prioridad y Evaluación) — versión final ===== */
+/* ===== Píldoras ROSA (Prioridad y Evaluación) ===== */
 .form-title-pri,
 .form-title-eval{
   display:inline-flex !important;
@@ -673,9 +675,9 @@ st.markdown("""
   width: var(--pill-width) !important;
   justify-content:center !important;
   box-shadow:0 6px 16px rgba(214,154,194,.30) !important;
-  min-height:36px !important;
+  min-height: var(--pill-h) !important;
+  height: var(--pill-h) !important;
   line-height:1 !important;
-  transform: translateY(11px) !important;
 }
 
 /* Franjas de ayuda específicas */
@@ -691,45 +693,49 @@ st.markdown("""
 @media (max-width: 980px){
   .form-title-pri, .form-title-eval{ width: auto !important; }
 }
-            
-/* Quita el espacio vertical que mete Streamlit entre elementos */
+
+/* ===== Compactar espacios entre bloques ===== */
 .block-container [data-testid="stVerticalBlock"]{
-  row-gap: 6px !important;   /* antes ~24px; prueba 4–10px */
+  row-gap: 6px !important;
   gap: 6px !important;
 }
-
-/* Aún más compacto solo para los bloques que contienen las barras/píldoras */
 .block-container [data-testid="stVerticalBlock"]:has(.topbar),
 .block-container [data-testid="stVerticalBlock"]:has(.topbar-ux),
 .block-container [data-testid="stVerticalBlock"]:has(.topbar-na),
 .block-container [data-testid="stVerticalBlock"]:has(.topbar-pri),
 .block-container [data-testid="stVerticalBlock"]:has(.topbar-eval){
-  row-gap: 4px !important;   /* ↓ ajusta aquí si lo quieres pegadísimo (2px) */
+  row-gap: 4px !important;
   gap: 4px !important;
 }
-
-/* También reduce el gap de los bloques de columnas que envuelven el triangulito + píldora */
 .block-container [data-testid="stHorizontalBlock"]:has(.topbar),
 .block-container [data-testid="stHorizontalBlock"]:has(.topbar-ux),
 .block-container [data-testid="stHorizontalBlock"]:has(.topbar-na),
 .block-container [data-testid="stHorizontalBlock"]:has(.topbar-pri),
 .block-container [data-testid="stHorizontalBlock"]:has(.topbar-eval){
   column-gap: 8px !important;
-  gap: 8px !important;        /* por si el tema usa 'gap' en lugar de 'column-gap' */
+  gap: 8px !important;
 }
-
-/* Sin márgenes extra en el contenedor inmediato de cada barra */
 .block-container .element-container:has(.topbar),
 .block-container .element-container:has(.topbar-ux),
 .block-container .element-container:has(.topbar-na),
 .block-container .element-container:has(.topbar-pri),
 .block-container .element-container:has(.topbar-eval){
   margin-top: 2px !important;
-  margin-bottom: 6px !important;  /* bájalo a 2–4px si quieres todavía menos */
+  margin-bottom: 6px !important;
 }
 
+/* ===== Alineación robusta botón + píldora en TODAS las barras ===== */
+/* Garantiza consistencia en cualquier DPI/zoom/navegador */
+.topbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval{
+  align-items: center !important; /* redundante pero explícito */
 }
-
+.block-container .stMarkdown:has(.form-title),
+.block-container .stMarkdown:has(.form-title-ux),
+.block-container .stMarkdown:has(.form-title-na),
+.block-container .stMarkdown:has(.form-title-pri),
+.block-container .stMarkdown:has(.form-title-eval){
+  margin: 0 !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
