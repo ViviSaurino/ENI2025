@@ -717,22 +717,22 @@ st.markdown("""
   margin-top: 10px !important;       /* valor base para todas */
 }
             
-/* Forzar tamaño visual del botón con escala */
-:root{ --toggle-scale: 0.65; } /* 0.70–0.85 suele verse bien */
-
+/* Botón toggle como ícono puro (sin caja) */
 .topbar .toggle-icon .stButton>button,
 .topbar-ux .toggle-icon .stButton>button,
 .topbar-na .toggle-icon .stButton>button,
 .topbar-pri .toggle-icon .stButton>button,
 .topbar-eval .toggle-icon .stButton>button{
-  transform: scale(var(--toggle-scale)) !important;
-  transform-origin: left center !important;
-  /* Si la caja reserva espacio, compénsalo con margen negativo */
-  margin-right: calc(-1 * (1 - var(--toggle-scale)) * 36px) !important;
-  /* Asegura que no crezcan por estilos del tema */
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
   padding: 0 !important;
+  width: auto !important;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
   line-height: 1 !important;
-  font-size: 12px !important; /* baja si aún lo ves grande */
+  font-size: 16px !important; /* ajusta 12–18px a gusto */
 }
                        
 </style>
@@ -1679,4 +1679,3 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
