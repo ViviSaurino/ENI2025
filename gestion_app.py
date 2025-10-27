@@ -718,53 +718,62 @@ st.markdown("""
   margin-top: 10px !important;       /* valor base para todas */
 }
 
-/* ==== Triángulo más pequeño y compacto ==== */
-.toggle-icon .stButton > button {
-  width: 12px !important;          /* antes 32px → más angosto */
-  min-width: 22px !important;
-  height: 12px !important;         /* antes 32px → más bajo */
-  border-radius: 6px !important;   /* esquinas suaves */
-  font-size: 13px !important;      /* triángulo proporcional */
-  line-height: 1 !important;
+/* === TRIÁNGULO MINI: reduce tamaño real y visual, y pega la píldora === */
+
+/* 1) Quita tamaños mínimos del botón que impone BaseWeb */
+.topbar .toggle-icon .stButton > button,
+.topbar-ux .toggle-icon .stButton > button,
+.topbar-na .toggle-icon .stButton > button,
+.topbar-pri .toggle-icon .stButton > button,
+.topbar-eval .toggle-icon .stButton > button{
+  min-width: 0 !important;
+  width: auto !important;
+  min-height: 0 !important;
+  height: auto !important;
   padding: 0 !important;
-  background: var(--lilac-600) !important;
-  border: 1px solid var(--lilac-600) !important;
-  color: #fff !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  box-shadow: 0 2px 6px rgba(139,92,246,0.25) !important;
+  line-height: 1 !important;
 }
 
-/* Hover/focus compactos */
-.toggle-icon .stButton > button:hover,
-.toggle-icon .stButton > button:focus {
-  filter: brightness(0.96) !important;
-  box-shadow: 0 2px 6px rgba(139,92,246,0.35) !important;
-}
-
-/* Margen más ajustado respecto a la píldora */
-.topbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval {
-  gap: 4px !important;  /* reduce separación entre triángulo y píldora */
-}
-
-            /* Encoge el botón del triángulo sin pelear con estilos internos */
+/* 2) Escala el botón (reduce lo que ves) */
 .topbar .toggle-icon,
 .topbar-ux .toggle-icon,
 .topbar-na .toggle-icon,
 .topbar-pri .toggle-icon,
 .topbar-eval .toggle-icon{
-  transform: scale(0.72);            /* ajusta 0.60–0.85 a gusto */
-  transform-origin: left center;     /* que encoja hacia la izquierda */
+  transform: scale(0.65) !important;     /* ← prueba 0.55–0.80 */
+  transform-origin: left center !important;
 }
 
-/* Evita que el layout agregue alto extra */
-.topbar .toggle-icon .stButton,
-.topbar-ux .toggle-icon .stButton,
-.topbar-na .toggle-icon .stButton,
-.topbar-pri .toggle-icon .stButton,
-.topbar-eval .toggle-icon .stButton{
-  line-height: 0 !important;
+/* 3) Reduce el espacio que “reserva” la columna (tirando del contenedor) */
+.topbar .toggle-icon,
+.topbar-ux .toggle-icon,
+.topbar-na .toggle-icon,
+.topbar-pri .toggle-icon,
+.topbar-eval .toggle-icon{
+  margin-right: -10px !important;        /* pega más la píldora */
+  margin-top: -2px !important;           /* ajusta vertical si hace falta */
+}
+
+/* 4) Evita que algún tema le vuelva a dar tamaño en hover/focus */
+.topbar .toggle-icon .stButton > button:is(:hover,:focus,:active),
+.topbar-ux .toggle-icon .stButton > button:is(:hover,:focus,:active),
+.topbar-na .toggle-icon .stButton > button:is(:hover,:focus,:active),
+.topbar-pri .toggle-icon .stButton > button:is(:hover,:focus,:active),
+.topbar-eval .toggle-icon .stButton > button:is(:hover,:focus,:active){
+  min-width: 0 !important;
+  width: auto !important;
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 0 !important;
+}
+
+/* 5) (opcional) Triángulo un poco más fino */
+.topbar .toggle-icon .stButton > button,
+.topbar-ux .toggle-icon .stButton > button,
+.topbar-na .toggle-icon .stButton > button,
+.topbar-pri .toggle-icon .stButton > button,
+.topbar-eval .toggle-icon .stButton > button{
+  font-size: 12px !important;            /* baja a 11 si quieres micro */
 }
 
 </style>
