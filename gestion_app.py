@@ -35,9 +35,9 @@ PILL_W_TAREA = PILL_W_HASTA
 
 # Ajuste fino POR COLUMNA para compensar padding interno de AgGrid (puedes moverlos a gusto)
 ALIGN_FIXES = {
-    "Id":          40,   # mueve SOLO el ancho de la col "Id"
-    "Área":        40,
-    "Responsable": 40,
+    "Id":          0,   # mueve SOLO el ancho de la col "Id"
+    "Área":        0,
+    "Responsable": 0,
     "Tarea":       0,
     "Prioridad":   0,
     "Evaluación":  0,
@@ -127,8 +127,7 @@ def _grid_options_evaluacion(df):
 
 # ---------------- CSS overlays: “rayitas” alineadas a los filtros ----------------
 def _inject_header_guides_prioridad():
-    """Dibuja líneas verticales en el header de #prior-grid exactamente donde
-    terminan las columnas Id, Área, Responsable, Tarea, Prioridad."""
+    """Rayitas alineadas sin tapar el grid: overlay en el header (::after)."""
     w_id   = COL_W_ID        + ALIGN_FIXES.get("Id", 0)
     w_area = COL_W_AREA      + ALIGN_FIXES.get("Área", 0)
     w_resp = PILL_W_RESP     + ALIGN_FIXES.get("Responsable", 0)
@@ -137,20 +136,23 @@ def _inject_header_guides_prioridad():
 
     css = f"""
     <style>
-    #prior-grid .ag-header-viewport{{
-      --w-id:   {w_id}px;
-      --w-area: {w_area}px;
-      --w-resp: {w_resp}px;
-      --w-tar:  {w_tar}px;
-      --w-pri:  {w_prio}px;
-
-      /* acumulados */
+    #prior-grid .ag-header {{
+      position: relative;                 /* ancla overlay en el header */
+    }}
+    #prior-grid .ag-header::after {{
+      content: "";
+      position: absolute;
+      left: 0; right: 0; bottom: 0;       /* pegado a la base del header */
+      height: 0;                          /* el alto lo dan los gradientes */
+      pointer-events: none;               /* no intercepta clics */
+      z-index: 2;                         /* por encima del header, no del body */
+      /* variables de ancho reales */
+      --w-id:{w_id}px; --w-area:{w_area}px; --w-resp:{w_resp}px; --w-tar:{w_tar}px; --w-pri:{w_prio}px;
       --x1: var(--w-id);
       --x2: calc(var(--x1) + var(--w-area));
       --x3: calc(var(--x2) + var(--w-resp));
       --x4: calc(var(--x3) + var(--w-tar));
       --x5: calc(var(--x4) + var(--w-pri));
-
       background-image:
         linear-gradient(to right, transparent calc(var(--x1) - 1px), #E9ECEF calc(var(--x1) - 1px), #E9ECEF var(--x1), transparent var(--x1)),
         linear-gradient(to right, transparent calc(var(--x2) - 1px), #E9ECEF calc(var(--x2) - 1px), #E9ECEF var(--x2), transparent var(--x2)),
@@ -158,17 +160,14 @@ def _inject_header_guides_prioridad():
         linear-gradient(to right, transparent calc(var(--x4) - 1px), #E9ECEF calc(var(--x4) - 1px), #E9ECEF var(--x4), transparent var(--x4)),
         linear-gradient(to right, transparent calc(var(--x5) - 1px), #E9ECEF calc(var(--x5) - 1px), #E9ECEF var(--x5), transparent var(--x5));
       background-repeat: no-repeat;
-      background-size: 100% 100%;
-      background-position-y: bottom;  /* pegar a la línea inferior del header */
-      padding-left: 0px !important;   /* microajuste global si lo necesitas */
+      background-size: 100% 1px;          /* 1px de grosor de línea */
     }}
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
 
 def _inject_header_guides_evaluacion():
-    """Dibuja líneas verticales en el header de #eval-grid exactamente donde
-    terminan las columnas Id, Área, Responsable, Tarea, Evaluación."""
+    """Rayitas alineadas para Evaluación (overlay en el header ::after)."""
     w_id   = COL_W_ID         + ALIGN_FIXES.get("Id", 0)
     w_area = COL_W_AREA       + ALIGN_FIXES.get("Área", 0)
     w_resp = PILL_W_RESP      + ALIGN_FIXES.get("Responsable", 0)
@@ -177,19 +176,22 @@ def _inject_header_guides_evaluacion():
 
     css = f"""
     <style>
-    #eval-grid .ag-header-viewport{{
-      --w-id:   {w_id}px;
-      --w-area: {w_area}px;
-      --w-resp: {w_resp}px;
-      --w-tar:  {w_tar}px;
-      --w-eva:  {w_eval}px;
-
+    #eval-grid .ag-header {{
+      position: relative;
+    }}
+    #eval-grid .ag-header::after {{
+      content: "";
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 0;
+      pointer-events: none;
+      z-index: 2;
+      --w-id:{w_id}px; --w-area:{w_area}px; --w-resp:{w_resp}px; --w-tar:{w_tar}px; --w-eva:{w_eval}px;
       --x1: var(--w-id);
       --x2: calc(var(--x1) + var(--w-area));
       --x3: calc(var(--x2) + var(--w-resp));
       --x4: calc(var(--x3) + var(--w-tar));
       --x5: calc(var(--x4) + var(--w-eva));
-
       background-image:
         linear-gradient(to right, transparent calc(var(--x1) - 1px), #E9ECEF calc(var(--x1) - 1px), #E9ECEF var(--x1), transparent var(--x1)),
         linear-gradient(to right, transparent calc(var(--x2) - 1px), #E9ECEF calc(var(--x2) - 1px), #E9ECEF var(--x2), transparent var(--x2)),
@@ -197,9 +199,7 @@ def _inject_header_guides_evaluacion():
         linear-gradient(to right, transparent calc(var(--x4) - 1px), #E9ECEF calc(var(--x4) - 1px), #E9ECEF var(--x4), transparent var(--x4)),
         linear-gradient(to right, transparent calc(var(--x5) - 1px), #E9ECEF calc(var(--x5) - 1px), #E9ECEF var(--x5), transparent var(--x5));
       background-repeat: no-repeat;
-      background-size: 100% 100%;
-      background-position-y: bottom;
-      padding-left: 0px !important;
+      background-size: 100% 1px;
     }}
     </style>
     """
@@ -2042,6 +2042,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
