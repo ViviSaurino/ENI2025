@@ -718,7 +718,7 @@ st.markdown("""
 }
             
 /* Tamaño específico del botón con triángulo */
-:root{ --toggle-size: 20px; }  /* ajusta: 28–32px suele verse bien */
+:root{ --toggle-size: 10px; }  /* ajusta: 28–32px suele verse bien */
 
 .toggle-icon .stButton>button{
   width: var(--toggle-size) !important;
@@ -1672,4 +1672,5 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
