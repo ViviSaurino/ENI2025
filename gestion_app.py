@@ -25,6 +25,17 @@ import streamlit as st
 from st_aggrid import GridOptionsBuilder
 from auth_google import google_login, logout
 
+# ===== Ajuste 1: Constantes y fallbacks (deben estar antes del formulario) =====
+AREAS_OPC = st.session_state.get(
+    "AREAS_OPC",
+    ["Planeamiento", "Base de datos", "Metodología", "Consistencia"]
+)
+ESTADO = ["No iniciado", "En curso", "Terminado", "Cancelado", "Pausado"]
+CUMPLIMIENTO = ["Entregado a tiempo", "Entregado con retraso", "No entregado", "En riesgo de retraso"]
+SI_NO = ["Sí", "No"]
+# ===============================================================================
+
+# ===== Ajuste 3: Reglas de anchos (igualar columnas) =====
 # Anchos de píldoras (mantenlos sincronizados con tu CSS)
 PILL_W_AREA  = 168  # píldora "Área"
 PILL_W_RESP  = 220  # píldora "Responsable"
@@ -39,15 +50,27 @@ ALIGN_FIXES = {
     "Tarea":       10,
     "Prioridad":   10,
     "Evaluación":  10,
+    "Desde":       10,   # por si existe la columna "Desde"
 }
 
-# Reglas pedidas (base sin ajuste)
-COL_W_ID         = PILL_W_AREA                 # Id = ancho píldora Área
-COL_W_AREA       = PILL_W_RESP                 # Área = píldora Responsable
-COL_W_DESDE      = PILL_W_RESP                 # Desde = píldora Responsable
-COL_W_TAREA      = PILL_W_TAREA                # Tarea = píldora Hasta
-COL_W_PRIORIDAD  = COL_W_TAREA + COL_W_ID      # Prioridad = Tarea + Id
-COL_W_EVALUACION = COL_W_TAREA + COL_W_ID      # Evaluación = Tarea + Id
+# Reglas pedidas de equivalencias
+COL_W_ID         = PILL_W_AREA                  # Id = ancho píldora Área
+COL_W_AREA       = PILL_W_RESP                  # Área = píldora Responsable
+COL_W_DESDE      = PILL_W_RESP                  # Desde = píldora Responsable
+COL_W_TAREA      = PILL_W_TAREA                 # Tarea = píldora Hasta
+COL_W_PRIORIDAD  = COL_W_TAREA + COL_W_ID       # Prioridad = Tarea + Id
+COL_W_EVALUACION = COL_W_TAREA + COL_W_ID       # Evaluación = Tarea + Id
+
+# Mapa centralizado para usarlo en los grid options (suma del ALIGN_FIXES incluida)
+COLUMN_WIDTHS = {
+    "Id":          COL_W_ID        + ALIGN_FIXES.get("Id", 0),
+    "Área":        COL_W_AREA      + ALIGN_FIXES.get("Área", 0),
+    "Responsable": PILL_W_RESP     + ALIGN_FIXES.get("Responsable", 0),
+    "Tarea":       COL_W_TAREA     + ALIGN_FIXES.get("Tarea", 0),
+    "Prioridad":   COL_W_PRIORIDAD + ALIGN_FIXES.get("Prioridad", 0),
+    "Evaluación":  COL_W_EVALUACION+ ALIGN_FIXES.get("Evaluación", 0),
+    "Desde":       COL_W_DESDE     + ALIGN_FIXES.get("Desde", 0),  # opcional
+}
 
 # ===== IDs por Área (PL, BD, CO, ME) =====
 # (normalizamos a minúsculas para evitar fallos por mayúsculas/acentos)
@@ -95,13 +118,16 @@ def _grid_options_prioridad(df):
         headerHeight=42
     )
     # Definición de columnas y anchos exactos + ajuste fino por columna
-    gob.configure_column("Id",            width=COL_W_ID        + ALIGN_FIXES.get("Id", 0),          editable=False)
-    gob.configure_column("Área",          width=COL_W_AREA      + ALIGN_FIXES.get("Área", 0),        editable=False)
-    gob.configure_column("Responsable",   width=PILL_W_RESP     + ALIGN_FIXES.get("Responsable", 0), editable=False)
-    gob.configure_column("Tarea",         width=COL_W_TAREA     + ALIGN_FIXES.get("Tarea", 0),       editable=False)
+    gob.configure_column("Id",            width=COLUMN_WIDTHS["Id"],          editable=False)
+    gob.configure_column("Área",          width=COLUMN_WIDTHS["Área"],        editable=False)
+    gob.configure_column("Responsable",   width=COLUMN_WIDTHS["Responsable"], editable=False)
+    # "Desde" solo si existe en el df (no intrusivo)
+    if "Desde" in df.columns:
+        gob.configure_column("Desde",     width=COLUMN_WIDTHS["Desde"],       editable=False)
+    gob.configure_column("Tarea",         width=COLUMN_WIDTHS["Tarea"],       editable=False)
     gob.configure_column(
         "Prioridad",
-        width=COL_W_PRIORIDAD + ALIGN_FIXES.get("Prioridad", 0),
+        width=COLUMN_WIDTHS["Prioridad"],
         editable=True,
         cellEditor="agSelectCellEditor",
         cellEditorParams={"values": ["Urgente", "Alta", "Media", "Baja"]}
@@ -119,13 +145,15 @@ def _grid_options_evaluacion(df):
         rowHeight=38,
         headerHeight=42
     )
-    gob.configure_column("Id",           width=COL_W_ID        + ALIGN_FIXES.get("Id", 0),           editable=False)
-    gob.configure_column("Área",         width=COL_W_AREA      + ALIGN_FIXES.get("Área", 0),         editable=False)
-    gob.configure_column("Responsable",  width=PILL_W_RESP     + ALIGN_FIXES.get("Responsable", 0),  editable=False)
-    gob.configure_column("Tarea",        width=COL_W_TAREA     + ALIGN_FIXES.get("Tarea", 0),        editable=False)
+    gob.configure_column("Id",           width=COLUMN_WIDTHS["Id"],          editable=False)
+    gob.configure_column("Área",         width=COLUMN_WIDTHS["Área"],        editable=False)
+    gob.configure_column("Responsable",  width=COLUMN_WIDTHS["Responsable"], editable=False)
+    if "Desde" in df.columns:
+        gob.configure_column("Desde",    width=COLUMN_WIDTHS["Desde"],       editable=False)
+    gob.configure_column("Tarea",        width=COLUMN_WIDTHS["Tarea"],       editable=False)
     gob.configure_column(
         "Evaluación",
-        width=COL_W_EVALUACION + ALIGN_FIXES.get("Evaluación", 0),
+        width=COLUMN_WIDTHS["Evaluación"],
         editable=True,
         cellEditor="agSelectCellEditor",
         cellEditorParams={"values": [5,4,3,2,1]}
@@ -175,6 +203,7 @@ if "df_main" not in st.session_state:
     if "Calificación" in base.columns:
         base["Calificación"] = pd.to_numeric(base["Calificación"], errors="coerce").fillna(0).astype(int)
     st.session_state["df_main"] = base[COLS + ["__DEL__"]].copy()
+
 
 # ---------- CSS ----------
 st.markdown("""
@@ -522,15 +551,15 @@ st.markdown("""
 #na-help,
 #pri-help,
 #eva-help{
-  transform: none !important;        /* anula subidas previas */
-  margin-top: 10px !important;       /* ajusta separación con la píldora */
-  margin-bottom: 14px !important;    /* separación con tarjeta/tabla */
+  transform: none !important;
+  margin-top: 10px !important;
+  margin-bottom: 14px !important;
 }
 .help-strip,
 .form-card > .help-strip{
-  margin-top: 10px !important;       /* valor base para todas */
+  margin-top: 10px !important;
 }
-           
+
 /* ===== ULTRA PATCH: eliminar “cuadradito” del toggle SOLO en #ntbar ===== */
 
 /* 0) El contenedor de la columna NO debe aportar padding ni sombra */
@@ -562,7 +591,7 @@ st.markdown("""
   min-height: 0 !important;
 }
 
-/* 2) El <button> real (cubre todas las rutas nuevas de Streamlit) */
+/* 2) El <button> real */
 #ntbar .toggle-icon .stButton button,
 #ntbar .toggle-icon [data-testid^="stButton"] button,
 #ntbar .toggle-icon [data-testid^="baseButton"] button,
@@ -577,8 +606,6 @@ st.markdown("""
   outline: 0 !important;
   -webkit-appearance: none !important;
   appearance: none !important;
-
-  /* sin “caja” */
   padding: 0 !important;
   margin: 0 !important;
   width: auto !important;
@@ -587,11 +614,10 @@ st.markdown("""
   min-height: 0 !important;
   border-radius: 0 !important;
 
-  /* triángulo */
   font-weight: 800 !important;
-  font-size: 20px !important;   /* tu tamaño */
+  font-size: 20px !important;
   line-height: 1 !important;
-  transform: translateY(8px);   /* alineado con la píldora */
+  transform: translateY(8px);
   color: inherit !important;
   cursor: pointer !important;
 }
@@ -627,10 +653,8 @@ st.markdown("""
   content: none !important;
   display: none !important;
 }
-            
-/* ========== NUCLEAR RESET PARA EL TOGGLE EN #ntbar ========== */
 
-/* Apaga cualquier fondo/borde/sombra de wrappers cercanos */
+/* ========== NUCLEAR RESET PARA EL TOGGLE EN #ntbar ========== */
 #ntbar .toggle-icon *,
 #ntbar .toggle-icon *::before,
 #ntbar .toggle-icon *::after{
@@ -639,28 +663,22 @@ st.markdown("""
   border: 0 !important;
   box-shadow: none !important;
 }
-
-/* Reset TOTAL del botón (vence clases, data-testid e inline styles) */
 #ntbar .toggle-icon :is(button, [role="button"], [data-testid^="baseButton"] button){
-  all: unset !important;            /* 💥 borra TODOS los estilos previos */
+  all: unset !important;
   display: inline !important;
   cursor: pointer !important;
   user-select: none !important;
-
-  /* Nuestro look del chevron */
   font-weight: 800 !important;
   font-size: 20px !important;
   line-height: 1 !important;
   color: inherit !important;
-  transform: translateY(8px);       /* alinea con la píldora */
+  transform: translateY(8px);
   -webkit-appearance: none !important;
   appearance: none !important;
   padding: 0 !important;
   margin: 0 !important;
   border-radius: 0 !important;
 }
-
-/* Estados hover/focus/active SIN caja jamás */
 #ntbar .toggle-icon :is(button, [role="button"], [data-testid^="baseButton"] button):hover,
 #ntbar .toggle-icon :is(button, [role="button"], [data-testid^="baseButton"] button):focus,
 #ntbar .toggle-icon :is(button, [role="button"], [data-testid^="baseButton"] button):active{
@@ -673,8 +691,6 @@ st.markdown("""
   color: inherit !important;
   transform: translateY(8px);
 }
-
-/* Por si algún wrapper fuerza alturas mínimas */
 #ntbar .toggle-icon [data-testid],
 #ntbar .toggle-icon .stButton,
 #ntbar .toggle-icon .stButton > div{
@@ -683,22 +699,22 @@ st.markdown("""
   padding: 0 !important;
   margin: 0 !important;
 }
-            
+
 /* Más espacio entre las indicaciones (help-strip) y la sección */
 #nt-help, #ux-help, #na-help, #pri-help, #eva-help{
-  margin-bottom: 40px !important;   /* súbelo a 22–24px si quieres más aire */
+  margin-bottom: 40px !important;
 }
 
-/* Y por si alguna tarjeta está muy pegada, dale un respiro arriba */
+/* Respiro superior para tarjetas */
 #nt-section .form-card,
 #ux-section .form-card,
 #na-section .form-card,
 #pri-section .form-card,
 #eva-section .form-card{
-  margin-top: 6px !important;       /* ajusta 0–12px a gusto */
+  margin-top: 6px !important;
 }
 
-<style id="ag-align-fix">
+/* ===== (ag-align-fix) integrado al bloque principal ===== */
 /* quita padding lateral que desalineaba 1–2px */
 #prior-grid .ag-header-viewport,
 #prior-grid .ag-center-cols-viewport,
@@ -1380,6 +1396,7 @@ if st.session_state["pri_visible"]:
         df_pri = _clean_df_for_grid(df_tab)
         grid_opt_pri = _grid_options_prioridad(df_pri)
 
+        # ⬇️ Paso 4: wrapper con ID para aplicar el CSS de alineación
         st.markdown('<div id="prior-grid">', unsafe_allow_html=True)
         grid_pri = AgGrid(
             df_pri,
@@ -1513,7 +1530,8 @@ if st.session_state["eva_visible"]:
         if not df_tab_e.empty:
             df_tab_e["Evaluación"] = 5
         else:
-            df_tab_e["Evaluación"] = []
+            # ✅ fix: crear columna vacía con dtype int (evita error de longitud)
+            df_tab_e["Evaluación"] = pd.Series(dtype=int)
 
         df_tab_e["Id"] = df_tab_e["Id"].astype(str)
 
@@ -1521,6 +1539,7 @@ if st.session_state["eva_visible"]:
         df_eval_tab = _clean_df_for_grid(df_tab_e)
         grid_opt_eval = _grid_options_evaluacion(df_eval_tab)
 
+        # ⬇️ Paso 4: wrapper con ID para aplicar el CSS de alineación
         st.markdown('<div id="eval-grid">', unsafe_allow_html=True)
         grid_eval = AgGrid(
             df_eval_tab,
