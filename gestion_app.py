@@ -24,6 +24,10 @@ if not hasattr(_stc, "components"):
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, JsCode, DataReturnMode
 
 # ======= Utilidades de tablas (Prioridad / Evaluación) =======
+import streamlit as st
+from st_aggrid import GridOptionsBuilder
+from auth_google import google_login, logout
+
 # Anchos de píldoras (mantenlos sincronizados con tu CSS)
 PILL_W_AREA  = 168  # píldora "Área"
 PILL_W_RESP  = 220  # píldora "Responsable"
@@ -48,6 +52,34 @@ COL_W_DESDE      = PILL_W_RESP                 # Desde = píldora Responsable
 COL_W_TAREA      = PILL_W_TAREA                # Tarea = píldora Hasta
 COL_W_PRIORIDAD  = COL_W_TAREA + COL_W_ID      # Prioridad = Tarea + Id
 COL_W_EVALUACION = COL_W_TAREA + COL_W_ID      # Evaluación = Tarea + Id
+
+# ===== IDs por Área (PL, BD, CO, ME) =====
+AREA_PREFIX = {
+    "Planeamiento":   "PL",
+    "Base de Datos":  "BD",
+    "Consistencia":   "CO",
+    "Metodología":    "ME",
+}
+
+def next_id_area(df, area: str) -> str:
+    """
+    Devuelve el siguiente ID incremental con prefijo por área.
+    Ejemplo: Planeamiento -> PL1, PL2, ...
+    """
+    import pandas as pd
+    pref = AREA_PREFIX.get(str(area).strip(), "OT")
+    # Extrae la parte numérica de los IDs que ya tengan ese prefijo exactamente
+    serie_ids = df.get("Id", pd.Series([], dtype=str)).astype(str)
+    nums = (
+        serie_ids.str.extract(rf"^{pref}(\d+)$")[0]
+        .dropna()
+    )
+    try:
+        mx = nums.astype(int).max()
+        nxt = int(mx) + 1 if pd.notna(mx) else 1
+    except Exception:
+        nxt = 1
+    return f"{pref}{nxt}"
 
 def _clean_df_for_grid(df):
     # quita índice para no mostrar una columna sin nombre
@@ -943,6 +975,7 @@ EMO_PRIORIDAD   = {"🔥 Alta": "Alta", "✨ Media": "Media", "🍃 Baja": "Baja
 EMO_ESTADO      = {"🍼 No iniciado": "No iniciado","⏳ En curso": "En curso","✅ Terminado": "Terminado","🛑 Cancelado": "Cancelado","⏸️ Pausado": "Pausado"}
 EMO_SI_NO       = {"✅ Sí": "Sí", "🚫 No": "No"}
 
+
 # ================== Formulario ==================
 
 # Estado inicial del colapsable
@@ -1109,7 +1142,7 @@ if st.session_state.get("nt_visible", True):
             f_fin = combine_dt(ff_d, ff_t)
             new.update({
                 "Área": area,
-                "Id": next_id(df),
+                "Id": next_id_area(df, area),
                 "Tarea": tarea,
                 "Tipo": tipo,
                 "Responsable": resp,
@@ -1369,6 +1402,7 @@ if st.session_state["na_visible"]:
             df_tasks = df_tasks[df_tasks["Área"] == area_filtro]
         if resp_filtro != "Todos":
             df_tasks = df_tasks[df_tasks["Responsable"].astype(str) == resp_filtro]
+
         # Filtrar por rango (usamos 'Fecha inicio' cuando existe)
         df_tasks["Fecha inicio"] = pd.to_datetime(df_tasks.get("Fecha inicio"), errors="coerce")
         if f_desde:
@@ -1376,16 +1410,18 @@ if st.session_state["na_visible"]:
         if f_hasta:
             df_tasks = df_tasks[df_tasks["Fecha inicio"].dt.date <= f_hasta]
 
-        # Construimos opciones de tarea (mostramos nombre, pero mapeamos al Id)
+        # Construimos opciones de tarea (mostramos "Tarea (Id: XXX)" pero mapeamos al Id)
         df_tasks = df_tasks.dropna(subset=["Id"]).copy()
         df_tasks["Tarea_str"] = df_tasks["Tarea"].astype(str).replace({"nan": ""})
-        opciones_tarea = ["— Selecciona —"] + df_tasks["Tarea_str"].tolist()
-        tarea_sel = r1_tarea.selectbox("Tarea", opciones_tarea, index=0, key="alerta_tarea_sel")
+        df_tasks["Tarea_op"]  = df_tasks["Tarea_str"] + "  (Id: " + df_tasks["Id"].astype(str) + ")"
+
+        opciones_tarea = ["— Selecciona —"] + df_tasks["Tarea_op"].tolist()
+        tarea_op_sel = r1_tarea.selectbox("Tarea", opciones_tarea, index=0, key="alerta_tarea_sel")
 
         # Id automático (solo lectura) en base a la tarea elegida
         id_auto = ""
-        if tarea_sel != "— Selecciona —":
-            m = df_tasks["Tarea_str"] == tarea_sel
+        if tarea_op_sel != "— Selecciona —":
+            m = df_tasks["Tarea_op"] == tarea_op_sel
             if m.any():
                 id_auto = str(df_tasks.loc[m, "Id"].iloc[0])
         r1_id.text_input("Id", value=id_auto, disabled=True, key="alerta_id_auto")
@@ -1422,18 +1458,24 @@ if st.session_state["na_visible"]:
                 df = st.session_state["df_main"].copy()
                 m = df["Id"].astype(str) == id_target
 
+                # Columnas alineadas con el Historial
                 df.loc[m, "¿Generó alerta?"] = genero_alerta
                 df.loc[m, "Tipo de alerta"]  = tipo_alerta
-                df.loc[m, "Fecha detectada"] = combine_dt(fa_d, fa_t)
                 df.loc[m, "¿Se corrigió?"]   = corr_alerta
+                df.loc[m, "Fecha alerta"]    = combine_dt(fa_d, fa_t)
                 df.loc[m, "Fecha corregida"] = combine_dt(fc_d, fc_t)
 
                 st.session_state["df_main"] = df.copy()
                 _save_local(df[COLS].copy())
                 ok, msg = _write_sheet_tab(df[COLS].copy())
-                st.success(f"✔ Alerta vinculada a la tarea {id_target}. {msg}") if ok else st.warning(f"Actualizado localmente. {msg}")
+
+                if ok:
+                    st.success(f"✔ Alerta vinculada a la tarea {id_target}. {msg}")
+                else:
+                    st.warning(f"Actualizado localmente. {msg}")
 
     st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
+
 
 # ====== CONTROL DE EDICIÓN (JEFATURA) ======
 ALLOWED_BOSS_EMAILS = {"stephanysg18@gmail.com.pe"}  # lo ajustarás luego
@@ -1813,7 +1855,6 @@ if df_view.empty:
 else:
     df_grid = df_view.reindex(columns=cols_order + extra).copy()
 
-
 # === GRID OPTIONS ===
 gob = GridOptionsBuilder.from_dataframe(df_grid)
 
@@ -2040,5 +2081,3 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
