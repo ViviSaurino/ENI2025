@@ -913,55 +913,54 @@ st.markdown('<div id="ntbar" class="topbar">', unsafe_allow_html=True)
 c_toggle, c_pill = st.columns([0.028, 0.965], gap="small")
 
 with c_toggle:
-    # Triángulo como LINK (sin “cuadradito”)
-    st.markdown(f"""
-    <div class="toggle-icon">
-      <a id="nt-toggle" href="#" title="Mostrar/ocultar">{chev}</a>
-    </div>
+    # Checkbox “fantasma” que controla el estado, pero sin cuadradito visible
+    chev_now = "▾" if st.session_state.get("nt_visible", True) else "▸"
+    nt_val = st.checkbox(
+        label=chev_now,                  # mostramos el triángulo como etiqueta
+        value=st.session_state.get("nt_visible", True),
+        key="nt_tri",
+        help="Mostrar/ocultar"
+    )
+    # Sincroniza el estado real del colapsable con el checkbox
+    st.session_state["nt_visible"] = nt_val
 
+    # Estilos: ocultamos la cajita del checkbox y dejamos solo la etiqueta (el triángulo)
+    st.markdown("""
     <style>
-      /* Chevron sin caja */
-      #ntbar .toggle-icon #nt-toggle{{
-        display:inline-block !important;
-        text-decoration:none !important;
-        background:transparent !important;
-        border:none !important;
-        box-shadow:none !important;
-        outline:none !important;
-        padding:0 !important; margin:0 !important;
+      /* Contenedor del checkbox en la barra */
+      #ntbar .toggle-icon [data-testid="stCheckbox"]{
+        display:inline-flex !important;
+        align-items:center !important;
+        gap:0 !important;
+        margin:0 !important;
+      }
+      /* Oculta totalmente la “caja” del checkbox */
+      #ntbar .toggle-icon [data-testid="stCheckbox"] input{
+        appearance:none !important;
+        -webkit-appearance:none !important;
+        width:0 !important; height:0 !important;
+        margin:0 !important; padding:0 !important;
+        border:none !important; outline:none !important;
+        box-shadow:none !important; background:transparent !important;
+      }
+      /* La etiqueta (nuestro triángulo) queda como único elemento visible/clicable */
+      #ntbar .toggle-icon [data-testid="stCheckbox"] label{
+        cursor:pointer !important;
         font-weight:800 !important;
         font-size:20px !important;
         line-height:1 !important;
         transform: translateY(8px);
         color: inherit !important;
-        cursor: pointer !important;
-      }}
-      #ntbar .toggle-icon #nt-toggle:focus,
-      #ntbar .toggle-icon #nt-toggle:active,
-      #ntbar .toggle-icon #nt-toggle:hover{{
+        padding:0 !important; margin:0 !important;
+      }
+      /* Evita decoraciones en hover/focus */
+      #ntbar .toggle-icon [data-testid="stCheckbox"] label:hover,
+      #ntbar .toggle-icon [data-testid="stCheckbox"] label:focus{
         text-decoration:none !important;
         outline:none !important;
         box-shadow:none !important;
-      }}
+      }
     </style>
-
-    <script>
-      (function(){{
-        const a = document.getElementById('nt-toggle');
-        if(!a) return;
-        const sec = document.getElementById('nt-section');
-        if(!sec) return;
-
-        a.addEventListener('click', function(e){{
-          e.preventDefault();
-          const visible = sec.style.display !== 'none';
-          // alterna visualmente
-          sec.style.display = visible ? 'none' : 'block';
-          // cambia el símbolo
-          a.textContent = visible ? '▸' : '▾';
-        }});
-      }})();
-    </script>
     """, unsafe_allow_html=True)
 
 with c_pill:
@@ -1855,6 +1854,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
