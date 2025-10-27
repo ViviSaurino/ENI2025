@@ -718,32 +718,34 @@ st.markdown("""
   margin-top: 10px !important;       /* valor base para todas */
 }
 
-/* oculta el cuadrado del checkbox */
-.toggle-icon [data-testid="stCheckbox"] input{
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  width: 0 !important;
-  height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: 0 !important;
-}
-/* por si aparece un svg */
-.toggle-icon [data-testid="stCheckbox"] svg{
-  display: none !important;
-}
-/* el triángulo es el label */
-.toggle-icon [data-testid="stCheckbox"] label{
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
+/* ==== Triángulo más pequeño y compacto ==== */
+.toggle-icon .stButton > button {
+  width: 22px !important;          /* antes 32px → más angosto */
+  min-width: 22px !important;
+  height: 22px !important;         /* antes 32px → más bajo */
+  border-radius: 6px !important;   /* esquinas suaves */
+  font-size: 13px !important;      /* triángulo proporcional */
   line-height: 1 !important;
-  font-size: 14px !important;  /* ajusta 12–16 si quieres */
-  font-weight: 700 !important;
-  cursor: pointer !important;
-  color: inherit !important;
+  padding: 0 !important;
+  background: var(--lilac-600) !important;
+  border: 1px solid var(--lilac-600) !important;
+  color: #fff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 2px 6px rgba(139,92,246,0.25) !important;
+}
+
+/* Hover/focus compactos */
+.toggle-icon .stButton > button:hover,
+.toggle-icon .stButton > button:focus {
+  filter: brightness(0.96) !important;
+  box-shadow: 0 2px 6px rgba(139,92,246,0.35) !important;
+}
+
+/* Margen más ajustado respecto a la píldora */
+.topbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval {
+  gap: 4px !important;  /* reduce separación entre triángulo y píldora */
 }
 
 </style>
@@ -792,16 +794,12 @@ with c_toggle:
     def _toggle_nt():
         st.session_state["nt_visible"] = not st.session_state["nt_visible"]
 
-    # 👉 reemplazo del botón por checkbox (muestra solo ▾/▸)
-    st.checkbox(
-        chev,                              # "▾" si abierto / "▸" si cerrado
-        key="nt_toggle_icon_cb",
-        value=st.session_state["nt_visible"],
-        on_change=_toggle_nt,
-        label_visibility="visible",
-        help="Mostrar/ocultar"
+    st.button(
+        chev,
+        key="nt_toggle_icon",
+        help="Mostrar/ocultar",
+        on_click=_toggle_nt
     )
-
     st.markdown('</div>', unsafe_allow_html=True)
 
 with c_pill:
@@ -865,7 +863,7 @@ if st.session_state["nt_visible"]:
                                label_visibility="collapsed", key="ff_t") if ff_d else None
 
         with c2_7:
-            submitted = st.form_submit_button("💾 Guardar", use_container_width=True)
+            submitted = st.form_submit_button("💾 Agregar y guardar", use_container_width=True)
 
     if submitted:
         df = st.session_state["df_main"].copy()
@@ -901,6 +899,7 @@ if st.session_state["nt_visible"]:
         st.success(f"✔ Tarea agregada ({new['Id']}). {msg}") if ok else st.warning(f"Agregado localmente. {msg}")
 
     st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
+
 
 # ================== Actualizar estado ==================
 
