@@ -590,34 +590,9 @@ st.markdown("""
 }
 .form-card > .help-strip{
   margin-top: 0px !important;
-  margin-bottom: 84px !important;
+  margin-bottom: 14px !important;
 }
 .help-strip strong{ display:inline-block !important; }
-
-/* SOLO la de “Nueva tarea” */
-#nt-help{
-  position: relative !important;
-  transform: translateY(-12px) !important;
-  margin-top: 0 !important;
-  margin-bottom: 10px !important;
-  display: block !important;
-}
-/* SOLO la de “Editar/Cambiar estado” */
-#ux-help{
-  position: relative !important;
-  transform: translateY(-12px) !important;
-  margin-top: 0 !important;
-  margin-bottom: 10px !important;
-  display: block !important;
-}
-/* SOLO la de “Nueva alerta” */
-#na-help{
-  position: relative !important;
-  transform: translateY(-12px) !important;
-  margin-top: 0 !important;
-  margin-bottom: 10px !important;
-  display: block !important;
-}
 
 /* =================== Topbar (expander + píldora) =================== */
 .topbar, .topbar-ux, .topbar-na{
@@ -680,15 +655,6 @@ st.markdown("""
   line-height:1 !important;
 }
 
-/* Franjas de ayuda específicas */
-#pri-help, #eva-help{
-  position: relative !important;
-  transform: translateY(-12px) !important;
-  margin-top: 0 !important;
-  margin-bottom: 10px !important;
-  display: block !important;
-}
-
 /* Responsivo */
 @media (max-width: 980px){
   .form-title-pri, .form-title-eval{ width: auto !important; }
@@ -725,9 +691,8 @@ st.markdown("""
 }
 
 /* ===== Alineación robusta botón + píldora en TODAS las barras ===== */
-/* Garantiza consistencia en cualquier DPI/zoom/navegador */
 .topbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval{
-  align-items: center !important; /* redundante pero explícito */
+  align-items: center !important;
 }
 .block-container .stMarkdown:has(.form-title),
 .block-container .stMarkdown:has(.form-title-ux),
@@ -735,6 +700,21 @@ st.markdown("""
 .block-container .stMarkdown:has(.form-title-pri),
 .block-container .stMarkdown:has(.form-title-eval){
   margin: 0 !important;
+}
+
+/* === Override para bajar indicaciones (todas y por sección) === */
+#nt-help,
+#ux-help,
+#na-help,
+#pri-help,
+#eva-help{
+  transform: none !important;        /* anula subidas previas */
+  margin-top: 10px !important;       /* ajusta separación con la píldora */
+  margin-bottom: 14px !important;    /* separación con tarjeta/tabla */
+}
+.help-strip,
+.form-card > .help-strip{
+  margin-top: 10px !important;       /* valor base para todas */
 }
 </style>
 """, unsafe_allow_html=True)
@@ -1006,7 +986,7 @@ if st.session_state["ux_visible"]:
         # Botón debajo de "Estado" con el mismo ancho
         with c_estado:
             st.write("")  # separador fino
-            do_update_estado = st.form_submit_button("⚙️ Actualizar", use_container_width=True)
+            do_update_estado = st.form_submit_button("🔗 Vincular estado", use_container_width=True)
 
     # Lógica de guardado
     if 'do_update_estado' in locals() and do_update_estado:
@@ -1146,7 +1126,7 @@ if st.session_state["na_visible"]:
 
         # Botón exactamente debajo de "Fecha alerta corregida" (mismo ancho)
         with r2_fc:
-            sub_alerta = st.form_submit_button("🔗 Agregar", use_container_width=True)
+            sub_alerta = st.form_submit_button("🔗 Vincular alerta", use_container_width=True)
 
         # ---------- Lógica al enviar ----------
         if sub_alerta:
@@ -1294,7 +1274,7 @@ if st.session_state["pri_visible"]:
         # Toma lo editado (mantiene el nombre 'edited' para no romper tu lógica de guardado)
         edited = pd.DataFrame(grid_pri["data"]) if isinstance(grid_pri, dict) and "data" in grid_pri else df_pri.copy()
 
-        # === Botón con el MISMO ancho (1.2) que "Vincular alerta-tarea" ===
+        # === Botón con el MISMO ancho (1.2) que "Vincular alerta" ===
         b1, b2, b3, b4, b5, b6 = st.columns([A, F, 1.1, 1.1, 1.0, 0.995], gap="medium")
         with b6:
             do_save_pri = st.form_submit_button("🧭 Dar prioridad", use_container_width=True, disabled=not CAN_EDIT)
@@ -1402,7 +1382,7 @@ if st.session_state["eva_visible"]:
         # Mantén el nombre edited_eval para tu lógica de guardado
         edited_eval = pd.DataFrame(grid_eval["data"]) if isinstance(grid_eval, dict) and "data" in grid_eval else df_eval_tab.copy()
 
-        # === Botón con el MISMO ancho (1.2) que "Vincular alerta-tarea" ===
+        # === Botón con el MISMO ancho (1.2) que "Vincular alerta" ===
         bx1, bx2, bx3, bx4, bx5, bx6 = st.columns([A, F, 1.1, 1.1, 1.0, 0.995], gap="medium")
         with bx6:
             do_save_eval = st.form_submit_button("✅ Evaluar", use_container_width=True, disabled=not CAN_EDIT)
@@ -1680,12 +1660,3 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
-
-
-
-
-
-
