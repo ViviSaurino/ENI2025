@@ -985,8 +985,8 @@ with c_toggle:
       }
       #ntbar .toggle-icon .stButton > button,
       #ntbar .toggle-icon [data-testid^="baseButton"] button{
-        background: #ffffff !important;            /* fondo blanco */
-        border: 1px solid #ffffff !important;      /* borde blanco */
+        background: #ffffff !important;
+        border: 1px solid #ffffff !important;
         box-shadow: none !important;
         outline: none !important;
         padding: 0 !important; margin: 0 !important;
@@ -1094,38 +1094,59 @@ if st.session_state.get("nt_visible", True):
             submitted = st.form_submit_button("💾 Agregar y guardar", use_container_width=True)
 
     if submitted:
-        df = st.session_state["df_main"].copy()
-        new = blank_row()
-        f_ini = combine_dt(fi_d, fi_t)
-        f_ven = combine_dt(v_d,  v_t)
-        f_fin = combine_dt(ff_d, ff_t)
-        new.update({
-            "Área": area,
-            "Id": next_id(df),
-            "Tarea": tarea,
-            "Tipo": tipo,
-            "Responsable": resp,
-            "Fase": fase,
-            "Complejidad": compl,
-            "Estado": estado,
-            "Fecha inicio": f_ini,
-            "Vencimiento": f_ven,
-            "Fecha fin": f_fin,
-            # "Ciclo de mejora": nuevo_f1c3,  # si quieres guardarlo, descomenta esta línea
-        })
+        try:
+            # 1) Base actual
+            df = st.session_state["df_main"].copy()
 
-        new["Duración"]     = duration_days(new["Fecha inicio"], new["Vencimiento"])
-        new["Días hábiles"] = business_days(new["Fecha inicio"], new["Vencimiento"])
+            # Garantiza existencia de columna "Ciclo de mejora"
+            if "Ciclo de mejora" not in df.columns:
+                df["Ciclo de mejora"] = ""
 
-        df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
-        st.session_state["df_main"] = df.copy()
-        path_ok = os.path.join("data", "tareas.csv")
-        os.makedirs("data", exist_ok=True)
-        df.reindex(columns=COLS, fill_value=None).to_csv(
-            path_ok, index=False, encoding="utf-8-sig", mode="w"
-        )
-        ok, msg = _write_sheet_tab(df[COLS].copy())
-        st.success(f"✔ Tarea agregada ({new['Id']}). {msg}") if ok else st.warning(f"Agregado localmente. {msg}")
+            # 2) Construye la nueva fila
+            new = blank_row()
+            f_ini = combine_dt(fi_d, fi_t)
+            f_ven = combine_dt(v_d,  v_t)
+            f_fin = combine_dt(ff_d, ff_t)
+            new.update({
+                "Área": area,
+                "Id": next_id(df),
+                "Tarea": tarea,
+                "Tipo": tipo,
+                "Responsable": resp,
+                "Fase": fase,
+                "Complejidad": compl,
+                "Estado": estado,
+                "Fecha inicio": f_ini,
+                "Vencimiento": f_ven,
+                "Fecha fin": f_fin,
+                # "Ciclo de mejora": nuevo_f1c3,  # si lo quieres activar, descomenta
+                "Detalle": detalle,
+            })
+
+            new["Duración"]     = duration_days(new["Fecha inicio"], new["Vencimiento"])
+            new["Días hábiles"] = business_days(new["Fecha inicio"], new["Vencimiento"])
+
+            # 3) Inserta y normaliza tipos de fecha
+            df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
+            for c in ["Fecha inicio", "Vencimiento", "Fecha fin"]:
+                if c in df.columns:
+                    df[c] = pd.to_datetime(df[c], errors="coerce")
+
+            # 4) Actualiza estado global y guarda CSV local
+            st.session_state["df_main"] = df.copy()
+
+            os.makedirs("data", exist_ok=True)
+            path_ok = os.path.join("data", "tareas.csv")
+            df.reindex(columns=COLS, fill_value=None).to_csv(
+                path_ok, index=False, encoding="utf-8-sig", mode="w"
+            )
+
+            # 5) Mensaje textual (solo string) y refresco
+            st.success(f"✔ Tarea agregada (Id {new['Id']}).")
+            st.rerun()
+
+        except Exception as e:
+            st.error(f"No pude guardar la nueva tarea: {e}")
 
     st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
 
@@ -2019,4 +2040,5 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
