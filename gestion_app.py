@@ -718,73 +718,83 @@ st.markdown("""
   margin-top: 10px !important;       /* valor base para todas */
 }
 
-/* === Toggle solo como triángulo (sin caja), override definitivo === */
-.topbar .toggle-icon .stButton,
-.topbar-ux .toggle-icon .stButton,
-.topbar-na .toggle-icon .stButton,
-.topbar-pri .toggle-icon .stButton,
-.topbar-eval .toggle-icon .stButton{
-  padding: 0 !important;
-  margin: 0 !important;
-  line-height: 0 !important;
+/* ===== Killer override: toggle como triángulo puro, sin caja (funciona con BaseWeb) ===== */
+.toggle-icon :is(
+  [data-baseweb="button"],
+  [data-testid="baseButton-primary"],
+  [data-testid="baseButton-secondary"],
+  button
+){
+  /* quita caja */
   background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-.topbar .toggle-icon .stButton > button,
-.topbar-ux .toggle-icon .stButton > button,
-.topbar-na .toggle-icon .stButton > button,
-.topbar-pri .toggle-icon .stButton > button,
-.topbar-eval .toggle-icon .stButton > button,
-.toggle-icon [data-testid="baseButton-secondary"],
-.toggle-icon [data-testid="baseButton-primary"]{
-  background: transparent !important;
-  border: none !important;
+  background-color: transparent !important;
+  border: 0 !important;
   box-shadow: none !important;
   outline: none !important;
-  padding: 0 !important;
-  width: auto !important;
+
+  /* quita tamaño mínimo que pone BaseWeb */
   min-width: 0 !important;
+  width: auto !important;
   height: auto !important;
   min-height: 0 !important;
   line-height: 1 !important;
+  padding: 0 !important;
+  margin: 0 !important;
   border-radius: 0 !important;
-  color: inherit !important;            /* usa el color de texto actual */
+
+  /* por si el tema usa variables internas de botón */
+  --button-min-width: 0px !important;
 }
-/* Asegura que en estados hover/focus/active no vuelva la caja */
-.topbar .toggle-icon .stButton > button:hover,
-.topbar .toggle-icon .stButton > button:focus,
-.topbar .toggle-icon .stButton > button:active,
-.topbar-ux .toggle-icon .stButton > button:hover,
-.topbar-ux .toggle-icon .stButton > button:focus,
-.topbar-ux .toggle-icon .stButton > button:active,
-.topbar-na .toggle-icon .stButton > button:hover,
-.topbar-na .toggle-icon .stButton > button:focus,
-.topbar-na .toggle-icon .stButton > button:active,
-.topbar-pri .toggle-icon .stButton > button:hover,
-.topbar-pri .toggle-icon .stButton > button:focus,
-.topbar-pri .toggle-icon .stButton > button:active,
-.topbar-eval .toggle-icon .stButton > button:hover,
-.topbar-eval .toggle-icon .stButton > button:focus,
-.topbar-eval .toggle-icon .stButton > button:active{
+
+/* algunos temas envuelven el botón en un div/span con estilos: límpialos también */
+.toggle-icon :is(.stButton, [data-testid="baseButton-root"], span, div){
   background: transparent !important;
-  border: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+}
+
+/* elimina cualquier pseudo-elemento que pinte la “caja” */
+.toggle-icon :is(
+  [data-baseweb="button"],
+  [data-testid="baseButton-primary"],
+  [data-testid="baseButton-secondary"],
+  button
+)::before,
+.toggle-icon :is(
+  [data-baseweb="button"],
+  [data-testid="baseButton-primary"],
+  [data-testid="baseButton-secondary"],
+  button
+)::after{
+  content: none !important;
+  display: none !important;
+}
+
+/* asegura que en hover/focus/active no reaparezca */
+.toggle-icon :is(
+  [data-baseweb="button"],
+  [data-testid="baseButton-primary"],
+  [data-testid="baseButton-secondary"],
+  button
+):is(:hover,:focus,:active){
+  background: transparent !important;
+  background-color: transparent !important;
+  border: 0 !important;
   box-shadow: none !important;
   outline: none !important;
 }
-/* Por si el tema inyecta pseudo-elementos */
-.topbar .toggle-icon .stButton > button::before,
-.topbar .toggle-icon .stButton > button::after,
-.topbar-ux .toggle-icon .stButton > button::before,
-.topbar-ux .toggle-icon .stButton > button::after,
-.topbar-na .toggle-icon .stButton > button::before,
-.topbar-na .toggle-icon .stButton > button::after,
-.topbar-pri .toggle-icon .stButton > button::before,
-.topbar-pri .toggle-icon .stButton > button::after,
-.topbar-eval .toggle-icon .stButton > button::before,
-.topbar-eval .toggle-icon .stButton > button::after{
-  content: none !important;
-  display: none !important;
+
+/* tamaño del triángulo (texto) — ajústalo si quieres más chico/grande */
+.toggle-icon :is(
+  [data-baseweb="button"],
+  [data-testid="baseButton-primary"],
+  [data-testid="baseButton-secondary"],
+  button
+){
+  font-size: 14px !important; /* prueba 12–16px */
 }
 </style>
 """, unsafe_allow_html=True)
