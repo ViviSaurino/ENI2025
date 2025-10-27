@@ -1031,7 +1031,7 @@ if st.session_state.get("nt_visible", True):
         fase    = r1c2.text_input("Fase", placeholder="Etapa")
 
         # Nueva celda (mismo ancho que “Estado”)
-        nuevo_f1c3 = r1c3.text_input("Nuevo campo", placeholder="—")
+        nuevo_f1c3 = r1c3.text_input("Ciclo de mejora", placeholder="—")
 
         tarea   = r1c4.text_input("Tarea", placeholder="Describe la tarea")
         detalle = r1c5.text_input("Detalle", placeholder="Información adicional (opcional)")
@@ -1893,6 +1893,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
