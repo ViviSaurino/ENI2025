@@ -34,15 +34,12 @@ ESTADO = ["No iniciado", "En curso", "Terminado", "Cancelado", "Pausado"]
 CUMPLIMIENTO = ["Entregado a tiempo", "Entregado con retraso", "No entregado", "En riesgo de retraso"]
 SI_NO = ["Sí", "No"]
 
-
 # ===== Ajuste 3: Reglas de anchos (igualar columnas) =====
-# Anchos de píldoras (mantenlos sincronizados con tu CSS)
 PILL_W_AREA  = 168  # píldora "Área"
 PILL_W_RESP  = 220  # píldora "Responsable"
 PILL_W_HASTA = 220  # píldora "Hasta"
 PILL_W_TAREA = PILL_W_HASTA
 
-# Ajuste fino POR COLUMNA para compensar padding interno de AgGrid
 ALIGN_FIXES = {
     "Id":          10,
     "Área":        10,
@@ -50,18 +47,16 @@ ALIGN_FIXES = {
     "Tarea":       10,
     "Prioridad":   10,
     "Evaluación":  10,
-    "Desde":       10,   # por si existe la columna "Desde"
+    "Desde":       10,
 }
 
-# Reglas pedidas de equivalencias
-COL_W_ID         = PILL_W_AREA                  # Id = ancho píldora Área
-COL_W_AREA       = PILL_W_RESP                  # Área = píldora Responsable
-COL_W_DESDE      = PILL_W_RESP                  # Desde = píldora Responsable
-COL_W_TAREA      = PILL_W_TAREA                 # Tarea = píldora Hasta
-COL_W_PRIORIDAD  = COL_W_TAREA + COL_W_ID       # Prioridad = Tarea + Id
-COL_W_EVALUACION = COL_W_TAREA + COL_W_ID       # Evaluación = Tarea + Id
+COL_W_ID         = PILL_W_AREA
+COL_W_AREA       = PILL_W_RESP
+COL_W_DESDE      = PILL_W_RESP
+COL_W_TAREA      = PILL_W_TAREA
+COL_W_PRIORIDAD  = COL_W_TAREA + COL_W_ID
+COL_W_EVALUACION = COL_W_TAREA + COL_W_ID
 
-# Mapa centralizado para usarlo en los grid options (suma del ALIGN_FIXES incluida)
 COLUMN_WIDTHS = {
     "Id":          COL_W_ID        + ALIGN_FIXES.get("Id", 0),
     "Área":        COL_W_AREA      + ALIGN_FIXES.get("Área", 0),
@@ -69,11 +64,10 @@ COLUMN_WIDTHS = {
     "Tarea":       COL_W_TAREA     + ALIGN_FIXES.get("Tarea", 0),
     "Prioridad":   COL_W_PRIORIDAD + ALIGN_FIXES.get("Prioridad", 0),
     "Evaluación":  COL_W_EVALUACION+ ALIGN_FIXES.get("Evaluación", 0),
-    "Desde":       COL_W_DESDE     + ALIGN_FIXES.get("Desde", 0),  # opcional
+    "Desde":       COL_W_DESDE     + ALIGN_FIXES.get("Desde", 0),
 }
 
 # ===== IDs por Área (PL, BD, CO, ME) =====
-# (normalizamos a minúsculas para evitar fallos por mayúsculas/acentos)
 AREA_PREFIX = {
     "planeamiento":   "PL",
     "base de datos":  "BD",
@@ -82,19 +76,11 @@ AREA_PREFIX = {
 }
 
 def next_id_area(df, area: str) -> str:
-    """
-    Devuelve el siguiente ID incremental con prefijo por área.
-    Ejemplo: Planeamiento -> PL1, PL2, ...
-    """
     import pandas as pd
     area_key = str(area).strip().lower()
     pref = AREA_PREFIX.get(area_key, "OT")
-    # Extrae la parte numérica de los IDs que ya tengan ese prefijo exactamente
     serie_ids = df.get("Id", pd.Series([], dtype=str)).astype(str)
-    nums = (
-        serie_ids.str.extract(rf"^{pref}(\d+)$")[0]
-        .dropna()
-    )
+    nums = (serie_ids.str.extract(rf"^{pref}(\d+)$")[0]).dropna()
     try:
         mx = nums.astype(int).max()
         nxt = int(mx) + 1 if pd.notna(mx) else 1
@@ -103,7 +89,6 @@ def next_id_area(df, area: str) -> str:
     return f"{pref}{nxt}"
 
 def _clean_df_for_grid(df):
-    # quita índice para no mostrar una columna sin nombre
     if df.index.name is not None:
         df.index.name = None
     return df.reset_index(drop=True).copy()
@@ -117,11 +102,9 @@ def _grid_options_prioridad(df):
         rowHeight=38,
         headerHeight=42
     )
-    # Definición de columnas y anchos exactos + ajuste fino por columna
     gob.configure_column("Id",            width=COLUMN_WIDTHS["Id"],          editable=False)
     gob.configure_column("Área",          width=COLUMN_WIDTHS["Área"],        editable=False)
     gob.configure_column("Responsable",   width=COLUMN_WIDTHS["Responsable"], editable=False)
-    # "Desde" solo si existe en el df (no intrusivo)
     if "Desde" in df.columns:
         gob.configure_column("Desde",     width=COLUMN_WIDTHS["Desde"],       editable=False)
     gob.configure_column("Tarea",         width=COLUMN_WIDTHS["Tarea"],       editable=False)
@@ -132,7 +115,6 @@ def _grid_options_prioridad(df):
         cellEditor="agSelectCellEditor",
         cellEditorParams={"values": ["Urgente", "Alta", "Media", "Baja"]}
     )
-    # No autosize (para respetar widths)
     gob.configure_grid_options(suppressColumnVirtualisation=False)
     return gob.build()
 
@@ -165,20 +147,10 @@ def _grid_options_evaluacion(df):
 allowed_emails  = st.secrets.get("auth", {}).get("allowed_emails", [])
 allowed_domains = st.secrets.get("auth", {}).get("allowed_domains", [])
 
-# ❌ [QUITADO] Login + Sidebar
-# user = google_login(...)
-# with st.sidebar: ...
-
-
 # ========= Utilitario para exportar a Excel =========
 def export_excel(df, filename: str = "ENI2025_tareas.xlsx"):
-    """
-    Genera y retorna un buffer BytesIO con el XLSX de `df`.
-    (Úsalo en st.download_button; no escribe a disco.)
-    """
     from io import BytesIO
     import pandas as pd
-
     buf = BytesIO()
     with pd.ExcelWriter(buf, engine="xlsxwriter") as xw:
         sheet = "Tareas"
@@ -186,7 +158,6 @@ def export_excel(df, filename: str = "ENI2025_tareas.xlsx"):
             xw, sheet_name=sheet, index=False
         )
         ws = xw.sheets[sheet]
-        # Ajuste sencillo de ancho por columna
         try:
             for i, col in enumerate(df.columns):
                 try:
@@ -200,14 +171,10 @@ def export_excel(df, filename: str = "ENI2025_tareas.xlsx"):
     buf.seek(0)
     return buf
 
-
-# ========= Fallbacks seguros para evitar NameError =========
-# (Solo se usan si en tu app principal no existen estos símbolos.)
-
+# ========= Fallbacks seguros para evitar NameError / EmptyDataError =========
 import os as _os
 import pandas as _pd
 
-# Carpeta local y columnas mínimas por defecto
 if "DATA_DIR" not in globals():
     DATA_DIR = st.session_state.get("DATA_DIR", "data")
 if "COLS" not in globals():
@@ -215,29 +182,41 @@ if "COLS" not in globals():
         "COLS",
         ["Id","Área","Responsable","Tarea","Prioridad","Evaluación","Fecha inicio","__DEL__"]
     )
-
 _os.makedirs(DATA_DIR, exist_ok=True)
 
 if "_read_sheet_tab" not in globals():
     def _read_sheet_tab():
-        """Fallback: carga desde CSV local si existe; si no, DataFrame vacío con COLS."""
+        """Fallback robusto: si el CSV no existe, está vacío o corrupto,
+        devuelve un DataFrame vacío con columnas COLS."""
         csv_path = _os.path.join(DATA_DIR, "tareas.csv")
-        return _pd.read_csv(csv_path) if _os.path.exists(csv_path) else _pd.DataFrame([], columns=COLS)
+        if not _os.path.exists(csv_path) or _os.path.getsize(csv_path) == 0:
+            return _pd.DataFrame([], columns=COLS)
+        try:
+            df = _pd.read_csv(csv_path, encoding="utf-8-sig")
+        except (_pd.errors.EmptyDataError, ValueError):
+            # archivo vacío o ilegible: iniciamos limpio
+            return _pd.DataFrame([], columns=COLS)
+        # Garantizar columnas esperadas (agrega faltantes)
+        for c in COLS:
+            if c not in df.columns:
+                df[c] = None
+        # Ordenar según COLS (manteniendo extras al final)
+        df = df[[c for c in COLS if c in df.columns] + [c for c in df.columns if c not in COLS]]
+        return df
 
 if "_save_local" not in globals():
     def _save_local(df):
-        """Fallback: guarda CSV local en DATA_DIR."""
         csv_path = _os.path.join(DATA_DIR, "tareas.csv")
         try:
-            (df if isinstance(df, _pd.DataFrame) else _pd.DataFrame(df)).to_csv(csv_path, index=False)
+            (df if isinstance(df, _pd.DataFrame) else _pd.DataFrame(df)).to_csv(
+                csv_path, index=False, encoding="utf-8-sig"
+            )
         except Exception:
             pass
 
 if "_write_sheet_tab" not in globals():
     def _write_sheet_tab(df):
-        """Fallback: sin conexión a Google Sheets. No hace nada y devuelve aviso."""
         return False, "No conectado a Google Sheets (fallback activo)"
-
 
 # ===== Inicialización de visibilidad por única vez =====
 if "_ui_bootstrap" not in st.session_state:
