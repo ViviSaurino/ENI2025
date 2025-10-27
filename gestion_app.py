@@ -194,13 +194,10 @@ if "_read_sheet_tab" not in globals():
         try:
             df = _pd.read_csv(csv_path, encoding="utf-8-sig")
         except (_pd.errors.EmptyDataError, ValueError):
-            # archivo vacío o ilegible: iniciamos limpio
             return _pd.DataFrame([], columns=COLS)
-        # Garantizar columnas esperadas (agrega faltantes)
         for c in COLS:
             if c not in df.columns:
                 df[c] = None
-        # Ordenar según COLS (manteniendo extras al final)
         df = df[[c for c in COLS if c in df.columns] + [c for c in df.columns if c not in COLS]]
         return df
 
@@ -220,7 +217,6 @@ if "_write_sheet_tab" not in globals():
 
 # ===== Inicialización de visibilidad por única vez =====
 if "_ui_bootstrap" not in st.session_state:
-    # Secciones colapsadas por defecto al entrar
     st.session_state["nt_visible"]  = True   # Nueva tarea
     st.session_state["ux_visible"]  = True   # Editar estado
     st.session_state["na_visible"]  = True   # Nueva alerta
@@ -239,18 +235,25 @@ def render():
 
 # ---------- Estado inicial (RESTABLECIDO) ----------
 if "df_main" not in st.session_state:
+    # ✅ USAR SOLO el lector robusto; NO volver a leer con read_csv
     base = _read_sheet_tab()
-    if base is None or len(base) == 0:
-        csv_path = os.path.join(DATA_DIR, "tareas.csv")
-        base = pd.read_csv(csv_path) if os.path.exists(csv_path) else pd.DataFrame([], columns=COLS)
+    if base is None or not isinstance(base, pd.DataFrame):
+        base = pd.DataFrame([], columns=COLS)
+
+    # Garantizar columnas esperadas
     for c in COLS:
         if c not in base.columns:
             base[c] = None
+
+    # Columna de control
     if "__DEL__" not in base.columns:
         base["__DEL__"] = False
     base["__DEL__"] = base["__DEL__"].fillna(False).astype(bool)
+
+    # Normalización numérica si existe
     if "Calificación" in base.columns:
         base["Calificación"] = pd.to_numeric(base["Calificación"], errors="coerce").fillna(0).astype(int)
+
     st.session_state["df_main"] = base[COLS + ["__DEL__"]].copy()
 
 
@@ -1931,3 +1934,4 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
