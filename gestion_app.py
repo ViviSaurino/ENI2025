@@ -922,13 +922,16 @@ st.markdown('<div id="ntbar" class="topbar">', unsafe_allow_html=True)
 c_toggle, c_pill = st.columns([0.028, 0.965], gap="small")
 
 with c_toggle:
+    # Link puro que alterna ?nt=1/0 (recarga y actualiza el estado)
     next_state = "0" if st.session_state["nt_visible"] else "1"
+    chev_now = "▾" if st.session_state["nt_visible"] else "▸"
+
     st.markdown(f"""
     <div class="toggle-icon">
-      <a id="nt-toggle" href="#" title="Mostrar/ocultar">{'▾' if st.session_state["nt_visible"] else '▸'}</a>
+      <a id="nt-toggle" href="?nt={next_state}" title="Mostrar/ocultar">{chev_now}</a>
     </div>
-
     <style>
+      /* Chevron sin “caja” (link estilizado) */
       #ntbar .toggle-icon #nt-toggle{{
         display:inline-block !important;
         text-decoration:none !important;
@@ -952,23 +955,7 @@ with c_toggle:
         box-shadow:none !important;
       }}
     </style>
-
-    <script>
-      (function(){{
-        const el = document.getElementById('nt-toggle');
-        if(!el) return;
-        el.addEventListener('click', function(e){{
-          e.preventDefault();
-          const url = new URL(window.location);
-          const cur = url.searchParams.get('nt');
-          const next = (cur === '1') ? '0' : '1';
-          url.searchParams.set('nt', next);
-          window.location.href = url.toString();
-        }});
-      }})();
-    </script>
     """, unsafe_allow_html=True)
-
 with c_pill:
     # Píldora celeste (DIV, no botón; siempre azul)
     st.markdown(
@@ -1859,4 +1846,5 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
