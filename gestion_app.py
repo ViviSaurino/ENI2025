@@ -727,7 +727,7 @@ st.markdown("""
   min-height: var(--toggle-size) !important;
   padding: 0 !important;
   line-height: var(--toggle-size) !important; /* centra el ▾/▸ */
-  font-size: 14px !important;                /* si lo ves muy grande, baja a 12px */
+  font-size: 10px !important;                /* si lo ves muy grande, baja a 12px */
   border-radius: 8px !important;             /* opcional */
 }
                        
@@ -1675,3 +1675,4 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
