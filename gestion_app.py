@@ -814,6 +814,62 @@ st.markdown("""
   content: none !important;
   display: none !important;
 }
+            
+/* ========== NUCLEAR RESET PARA EL TOGGLE EN #ntbar ========== */
+
+/* Apaga cualquier fondo/borde/sombra de wrappers cercanos */
+#ntbar .toggle-icon *,
+#ntbar .toggle-icon *::before,
+#ntbar .toggle-icon *::after{
+  background: transparent !important;
+  background-color: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Reset TOTAL del botón (vence clases, data-testid e inline styles) */
+#ntbar .toggle-icon :is(button, [role="button"], [data-testid^="baseButton"] button){
+  all: unset !important;            /* 💥 borra TODOS los estilos previos */
+  display: inline !important;
+  cursor: pointer !important;
+  user-select: none !important;
+
+  /* Nuestro look del chevron */
+  font-weight: 800 !important;
+  font-size: 20px !important;
+  line-height: 1 !important;
+  color: inherit !important;
+  transform: translateY(8px);       /* alinea con la píldora */
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+}
+
+/* Estados hover/focus/active SIN caja jamás */
+#ntbar .toggle-icon :is(button, [role="button"], [data-testid^="baseButton"] button):hover,
+#ntbar .toggle-icon :is(button, [role="button"], [data-testid^="baseButton"] button):focus,
+#ntbar .toggle-icon :is(button, [role="button"], [data-testid^="baseButton"] button):active{
+  all: unset !important;
+  display: inline !important;
+  cursor: pointer !important;
+  font-weight: 800 !important;
+  font-size: 20px !important;
+  line-height: 1 !important;
+  color: inherit !important;
+  transform: translateY(8px);
+}
+
+/* Por si algún wrapper fuerza alturas mínimas */
+#ntbar .toggle-icon [data-testid],
+#ntbar .toggle-icon .stButton,
+#ntbar .toggle-icon .stButton > div{
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
