@@ -901,8 +901,18 @@ EMO_SI_NO       = {"✅ Sí": "Sí", "🚫 No": "No"}
 
 # ================== Formulario ==================
 
-# Estado inicial del colapsable
-st.session_state.setdefault("nt_visible", True)
+# ------ Estado inicial (lee ?nt=1/0 si existe) ------
+try:
+    qp = st.query_params
+except Exception:
+    qp = st.experimental_get_query_params()
+if "nt" in qp:
+    val = qp["nt"]
+    if isinstance(val, list):
+        val = val[0]
+    st.session_state["nt_visible"] = (val == "1")
+else:
+    st.session_state.setdefault("nt_visible", True)
 
 # Chevron (1 clic): ▾ abierto / ▸ cerrado
 chev = "▾" if st.session_state["nt_visible"] else "▸"
@@ -912,52 +922,38 @@ st.markdown('<div id="ntbar" class="topbar">', unsafe_allow_html=True)
 c_toggle, c_pill = st.columns([0.028, 0.965], gap="small")
 
 with c_toggle:
-    # === ESTILOS SOLO PARA ESTE TOGGLE (elimina la caja y alinea) ===
-    st.markdown("""
+    # Toggle como LINK (sin widget = sin cuadradito)
+    next_state = "0" if st.session_state["nt_visible"] else "1"
+    st.markdown(f"""
+    <div class="toggle-icon">
+      <a id="nt-toggle" href="?nt={next_state}" title="Mostrar/ocultar">{chev}</a>
+    </div>
     <style>
-      /* Aplica a cualquier botón que esté dentro de .toggle-icon en este bloque */
-      div:has(> .toggle-icon) + div, div:has(.toggle-icon) { } /* ancla el CSS */
-
-      .toggle-icon .stButton > button{
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        outline: none !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        width: auto !important;
-        min-width: 0 !important;
-        height: auto !important;
-        min-height: 0 !important;
-        line-height: 1 !important;
-        font-weight: 800 !important;
-        font-size: 20px !important;     /* ← tamaño del triángulo */
-        transform: translateY(8px);      /* ← bajadita para alinearlo con la píldora */
-      }
-      .toggle-icon .stButton > button:hover,
-      .toggle-icon .stButton > button:focus,
-      .toggle-icon .stButton > button:active{
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        outline: none !important;
-      }
+      /* Chevron limpio: sin caja, sin borde, sin sombra */
+      #ntbar .toggle-icon #nt-toggle{{
+        display:inline-block !important;
+        text-decoration:none !important;
+        background:transparent !important;
+        border:none !important;
+        box-shadow:none !important;
+        outline:none !important;
+        padding:0 !important; margin:0 !important;
+        font-weight:800 !important;
+        font-size:20px !important;
+        line-height:1 !important;
+        transform: translateY(8px);
+        color: inherit !important;
+        cursor: pointer !important;
+      }}
+      #ntbar .toggle-icon #nt-toggle:focus,
+      #ntbar .toggle-icon #nt-toggle:active,
+      #ntbar .toggle-icon #nt-toggle:hover{{
+        text-decoration:none !important;
+        outline:none !important;
+        box-shadow:none !important;
+      }}
     </style>
     """, unsafe_allow_html=True)
-
-    # Botón mínimo SOLO para ocultar/mostrar (no recarga la página)
-    st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
-
-    def _toggle_nt():
-        st.session_state["nt_visible"] = not st.session_state["nt_visible"]
-
-    st.button(
-        chev,
-        key="nt_toggle_icon",
-        help="Mostrar/ocultar",
-        on_click=_toggle_nt
-    )
-    st.markdown('</div>', unsafe_allow_html=True)
 
 with c_pill:
     # Píldora celeste (DIV, no botón; siempre azul)
