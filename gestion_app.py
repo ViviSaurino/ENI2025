@@ -792,7 +792,7 @@ with c_toggle:
              style="height:36px;display:flex;align-items:center;justify-content:center;">
           <a href="?nt={_next}" title="Mostrar/ocultar"
              style="display:inline-block;font-weight:800;font-size:20px;line-height:1;
-                    text-decoration:none;color:inherit;transform:translateY(2px);">
+                    text-decoration:none;color:inherit;transform:translateY(4px);">
             {chev}
           </a>
         </div>
@@ -1690,3 +1690,4 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
