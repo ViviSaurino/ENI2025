@@ -778,27 +778,56 @@ if nt_param in ("0", "1"):
 
 # Chevron (1 clic): ▾ abierto / ▸ cerrado
 chev  = "▾" if st.session_state["nt_visible"] else "▸"
-_next = "0" if st.session_state["nt_visible"] else "1"
 
 # ---------- Barra superior (triangulito + píldora) alineada ----------
 st.markdown('<div class="topbar">', unsafe_allow_html=True)
 c_toggle, c_pill = st.columns([0.028, 0.965], gap="small")
 
 with c_toggle:
-    # Triángulo como ENLACE minimal (sin caja), más grande y centrado verticalmente con la píldora
-    st.markdown(
-        f'''
-        <div class="toggle-icon"
-             style="height:36px;display:flex;align-items:center;justify-content:center;">
-          <a href="?nt={_next}" title="Mostrar/ocultar"
-             style="display:inline-block;font-weight:800;font-size:20px;line-height:1;
-                    text-decoration:none;color:inherit;transform:translateY(8px);">
-            {chev}
-          </a>
-        </div>
-        ''',
-        unsafe_allow_html=True
+    # Estilos ULTRA-específicos solo para ESTE toggle (por clave y contenedor)
+    st.markdown("""
+    <style>
+      #nt-toggle button{
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        outline: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: auto !important;
+        min-width: 0 !important;
+        height: auto !important;
+        min-height: 0 !important;
+        line-height: 1 !important;
+        font-weight: 800 !important;
+        font-size: 20px !important;   /* tamaño del triángulo */
+        transform: translateY(8px);    /* ↓ ajústalo si lo quieres un pelín más abajo */
+      }
+      #nt-toggle button:hover,
+      #nt-toggle button:focus,
+      #nt-toggle button:active{
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        outline: none !important;
+      }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Botón mínimo SOLO para ocultar/mostrar (no recarga la página)
+    st.markdown('<div id="nt-toggle" class="toggle-icon" style="height:36px;display:flex;align-items:center;">',
+                unsafe_allow_html=True)
+
+    def _toggle_nt():
+        st.session_state["nt_visible"] = not st.session_state["nt_visible"]
+
+    st.button(
+        chev,
+        key="nt_toggle_icon",
+        help="Mostrar/ocultar",
+        on_click=_toggle_nt
     )
+    st.markdown('</div>', unsafe_allow_html=True)
 
 with c_pill:
     # Píldora celeste (DIV, no botón; siempre azul)
@@ -812,7 +841,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 # --- Cuerpo (solo si está visible) ---
 if st.session_state["nt_visible"]:
 
-    # Tira de ayuda (SOLO de "Nueva tarea") — clase e ID específicos para moverla con CSS
+    # Tira de ayuda (SOLO de "Nueva tarea")
     st.markdown("""
     <div class="help-strip help-strip-nt" id="nt-help">
       ✳️ <strong>Completa los campos principales</strong> para registrar una nueva tarea
@@ -1690,6 +1719,3 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
