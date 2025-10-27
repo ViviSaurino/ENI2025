@@ -1006,7 +1006,7 @@ if st.session_state["ux_visible"]:
         # Botón debajo de "Estado" con el mismo ancho
         with c_estado:
             st.write("")  # separador fino
-            do_update_estado = st.form_submit_button("🔗 Vincular estado", use_container_width=True)
+            do_update_estado = st.form_submit_button("🔗 Actualizar", use_container_width=True)
 
     # Lógica de guardado
     if 'do_update_estado' in locals() and do_update_estado:
@@ -1146,7 +1146,7 @@ if st.session_state["na_visible"]:
 
         # Botón exactamente debajo de "Fecha alerta corregida" (mismo ancho)
         with r2_fc:
-            sub_alerta = st.form_submit_button("🔗 Vincular alerta", use_container_width=True)
+            sub_alerta = st.form_submit_button("🔗 Agregar", use_container_width=True)
 
         # ---------- Lógica al enviar ----------
         if sub_alerta:
@@ -1680,5 +1680,6 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
