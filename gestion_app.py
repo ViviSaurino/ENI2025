@@ -19,7 +19,7 @@ if not hasattr(_stc, "components"):
 
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, JsCode, DataReturnMode
 
-# ======= Utilidades de tablas (Prioridad / Evaluación) =======
+# ======= Utilidades de tablas (Prioridad / Evaluación) ======= 
 # (estos imports duplicados no hacen daño; los mantengo tal cual)
 import streamlit as st
 from st_aggrid import GridOptionsBuilder
@@ -33,7 +33,7 @@ AREAS_OPC = st.session_state.get(
 ESTADO = ["No iniciado", "En curso", "Terminado", "Cancelado", "Pausado"]
 CUMPLIMIENTO = ["Entregado a tiempo", "Entregado con retraso", "No entregado", "En riesgo de retraso"]
 SI_NO = ["Sí", "No"]
-# ===============================================================================
+
 
 # ===== Ajuste 3: Reglas de anchos (igualar columnas) =====
 # Anchos de píldoras (mantenlos sincronizados con tu CSS)
@@ -168,6 +168,37 @@ allowed_domains = st.secrets.get("auth", {}).get("allowed_domains", [])
 # ❌ [QUITADO] Login + Sidebar
 # user = google_login(...)
 # with st.sidebar: ...
+
+
+# ========= Ajuste: utilitario para exportar a Excel =========
+def export_excel(df, filename: str = "ENI2025_tareas.xlsx"):
+    """
+    Genera y retorna un buffer BytesIO con el XLSX de `df`.
+    (Úsalo en st.download_button; no escribe a disco.)
+    """
+    from io import BytesIO
+    import pandas as pd
+
+    buf = BytesIO()
+    with pd.ExcelWriter(buf, engine="xlsxwriter") as xw:
+        sheet = "Tareas"
+        (df if isinstance(df, pd.DataFrame) else pd.DataFrame(df)).to_excel(
+            xw, sheet_name=sheet, index=False
+        )
+        ws = xw.sheets[sheet]
+        # Ajuste sencillo de ancho por columna
+        try:
+            for i, col in enumerate(df.columns):
+                try:
+                    maxlen = int(pd.Series(df[col]).astype(str).map(len).max())
+                    maxlen = max(10, min(60, maxlen + 2))
+                except Exception:
+                    maxlen = 12
+                ws.set_column(i, i, maxlen)
+        except Exception:
+            pass
+    buf.seek(0)
+    return buf
 
 # ===== Inicialización de visibilidad por única vez =====
 if "_ui_bootstrap" not in st.session_state:
