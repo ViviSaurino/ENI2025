@@ -760,34 +760,25 @@ EMO_ESTADO      = {"🍼 No iniciado": "No iniciado","⏳ En curso": "En curso",
 EMO_SI_NO       = {"✅ Sí": "Sí", "🚫 No": "No"}
 
 # ================== Formulario ==================
-# Lee query param para sincronizar visibilidad con el triángulo-link (?nt=0/1)
-try:
-    nt_param = (st.query_params.get("nt") if hasattr(st, "query_params") else None)
-    if isinstance(nt_param, list):
-        nt_param = nt_param[0] if nt_param else None
-except Exception:
-    try:
-        nt_param = st.experimental_get_query_params().get("nt", [None])[0]
-    except Exception:
-        nt_param = None
 
 # Estado inicial del colapsable
 st.session_state.setdefault("nt_visible", True)
-if nt_param in ("0", "1"):
-    st.session_state["nt_visible"] = (nt_param == "1")
 
 # Chevron (1 clic): ▾ abierto / ▸ cerrado
-chev  = "▾" if st.session_state["nt_visible"] else "▸"
+chev = "▾" if st.session_state["nt_visible"] else "▸"
 
 # ---------- Barra superior (triangulito + píldora) alineada ----------
 st.markdown('<div class="topbar">', unsafe_allow_html=True)
 c_toggle, c_pill = st.columns([0.028, 0.965], gap="small")
 
 with c_toggle:
-    # Estilos ULTRA-específicos solo para ESTE toggle (por clave y contenedor)
+    # === ESTILOS SOLO PARA ESTE TOGGLE (elimina la caja y alinea) ===
     st.markdown("""
     <style>
-      #nt-toggle button{
+      /* Aplica a cualquier botón que esté dentro de .toggle-icon en este bloque */
+      div:has(> .toggle-icon) + div, div:has(.toggle-icon) { } /* ancla el CSS */
+
+      .toggle-icon .stButton > button{
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
@@ -800,12 +791,12 @@ with c_toggle:
         min-height: 0 !important;
         line-height: 1 !important;
         font-weight: 800 !important;
-        font-size: 20px !important;   /* tamaño del triángulo */
-        transform: translateY(8px);    /* ↓ ajústalo si lo quieres un pelín más abajo */
+        font-size: 20px !important;     /* ← tamaño del triángulo */
+        transform: translateY(8px);      /* ← bajadita para alinearlo con la píldora */
       }
-      #nt-toggle button:hover,
-      #nt-toggle button:focus,
-      #nt-toggle button:active{
+      .toggle-icon .stButton > button:hover,
+      .toggle-icon .stButton > button:focus,
+      .toggle-icon .stButton > button:active{
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
@@ -815,8 +806,7 @@ with c_toggle:
     """, unsafe_allow_html=True)
 
     # Botón mínimo SOLO para ocultar/mostrar (no recarga la página)
-    st.markdown('<div id="nt-toggle" class="toggle-icon" style="height:36px;display:flex;align-items:center;">',
-                unsafe_allow_html=True)
+    st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
 
     def _toggle_nt():
         st.session_state["nt_visible"] = not st.session_state["nt_visible"]
