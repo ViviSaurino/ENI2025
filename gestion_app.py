@@ -31,7 +31,7 @@ PILL_W_HASTA = 220  # píldora "Hasta"
 PILL_W_TAREA = PILL_W_HASTA
 
 # Ajuste fino para compensar padding interno de AgGrid (alinear “rayitas plomas”)
-ALIGN_FIX = 30  # si ves 1–2 px de desfase, prueba 8/12
+ALIGN_FIX = 40  # si ves 1–2 px de desfase, prueba 8/12
 
 # Reglas pedidas
 COL_W_ID         = PILL_W_AREA                 # Id = ancho píldora Área
@@ -1931,6 +1931,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
