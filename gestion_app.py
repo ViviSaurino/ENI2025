@@ -885,28 +885,27 @@ st.markdown("""
   margin-top: 6px !important;       /* ajusta 0–12px a gusto */
 }
 
-            /* Alinea bordes header/cuerpo y quita paddings que desplazan 1–2px */
+<style id="ag-align-fix">
+/* quita padding lateral que desalineaba 1–2px */
 #prior-grid .ag-header-viewport,
-#prior-grid .ag-center-cols-viewport{
-  padding-left: 0 !important;
-  padding-right: 0 !important;
+#prior-grid .ag-center-cols-viewport,
+#eval-grid  .ag-header-viewport,
+#eval-grid  .ag-center-cols-viewport{
+  padding-left:0 !important;
+  padding-right:0 !important;
 }
-
-/* Bordes de columna uniformes (que marcan las "líneas plomitas") */
-#prior-grid .ag-header-cell, 
-#prior-grid .ag-cell {
-  border-right: 1px solid #E9EDF3 !important;  /* mismo tono que usas */
-}
-
-/* Evita que el header se desplace distinto al body */
-#prior-grid .ag-header, 
-#prior-grid .ag-center-cols-container{
+/* evita corrimientos distintos entre header y body */
+#prior-grid .ag-header, #prior-grid .ag-center-cols-container,
+#eval-grid  .ag-header, #eval-grid  .ag-center-cols-container{
   transform: translateX(0) !important;
 }
-
+/* bordes de columnas uniformes (las “líneas plomitas”) */
+#prior-grid .ag-header-cell, #prior-grid .ag-cell,
+#eval-grid  .ag-header-cell, #eval-grid  .ag-cell{
+  border-right:1px solid #E9EDF3 !important;
+}
 </style>
 """, unsafe_allow_html=True)
-
 
 # ---------- Título ----------
 st.title("📂 Gestión - ENI 2025")
@@ -1508,6 +1507,8 @@ if st.session_state["pri_visible"]:
         df_pri = _clean_df_for_grid(df_tab)
         grid_opt_pri = _grid_options_prioridad(df_pri)
 
+        # ⬇⬇⬇ ENVOLTORIO para enganchar CSS de alineación (#prior-grid)
+        st.markdown('<div id="prior-grid">', unsafe_allow_html=True)
         grid_pri = AgGrid(
             df_pri,
             gridOptions=grid_opt_pri,
@@ -1522,6 +1523,8 @@ if st.session_state["pri_visible"]:
                 ".ag-body-viewport": {"height": "140px !important"},
             },
         )
+        st.markdown('</div>', unsafe_allow_html=True)
+        # ⬆⬆⬆ FIN ENVOLTORIO
 
         # Toma lo editado (mantiene el nombre 'edited' para no romper tu lógica de guardado)
         edited = pd.DataFrame(grid_pri["data"]) if isinstance(grid_pri, dict) and "data" in grid_pri else df_pri.copy()
@@ -1616,6 +1619,8 @@ if st.session_state["eva_visible"]:
         df_eval_tab = _clean_df_for_grid(df_tab_e)
         grid_opt_eval = _grid_options_evaluacion(df_eval_tab)
 
+        # ⬇⬇⬇ ENVOLTORIO para enganchar CSS de alineación (#eval-grid)
+        st.markdown('<div id="eval-grid">', unsafe_allow_html=True)
         grid_eval = AgGrid(
             df_eval_tab,
             gridOptions=grid_opt_eval,
@@ -1630,6 +1635,8 @@ if st.session_state["eva_visible"]:
                 ".ag-body-viewport": {"height": "140px !important"},
             },
         )
+        st.markdown('</div>', unsafe_allow_html=True)
+        # ⬆⬆⬆ FIN ENVOLTORIO
 
         # Mantén el nombre edited_eval para tu lógica de guardado
         edited_eval = pd.DataFrame(grid_eval["data"]) if isinstance(grid_eval, dict) and "data" in grid_eval else df_eval_tab.copy()
@@ -1655,3 +1662,259 @@ if st.session_state["eva_visible"]:
     elif not CAN_EDIT:
         st.info("🔒 Solo jefatura puede registrar evaluaciones.")
     st.markdown('</div>', unsafe_allow_html=True)  # form-card
+
+
+# ================== Historial ================== 
+ 
+st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+st.subheader("📝 Tareas recientes")
+st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
+df_view = st.session_state["df_main"].copy()
+
+# Mismas proporciones que usas arriba
+A = 1.2   # Área
+F = 1.2   # Fase
+T = 3.2   # Tarea / Tipo de alerta
+D = 2.4   # Detalle / (Fecha alerta + Fecha corregida)
+
+# Responsables (antes de filtrar)
+responsables = sorted([x for x in df_view["Responsable"].astype(str).unique() if x and x != "nan"])
+
+# ---- FILA DE 5 FILTROS (ancho sincronizado con la tarjeta de alertas) ----
+# Área = A+F | Responsable = T/2 | Estado = T/2 | Desde = D/2 | Hasta = D/2
+cA, cR, cE, cD, cH = st.columns([A + F, T/2, T/2, D/2, D/2], gap="medium")
+
+area_sel = cA.selectbox("Área", options=["Todas"] + AREAS_OPC, index=0)
+resp_sel = cR.selectbox("Responsable", options=["Todos"] + responsables, index=0)
+estado_sel = cE.selectbox("Estado", options=["Todos"] + ESTADO, index=0)
+
+# Calendarios (rango de fechas)
+f_desde = cD.date_input("Desde", value=None, key="f_desde")
+f_hasta = cH.date_input("Hasta",  value=None, key="f_hasta")
+
+# ---- Filtros de datos ----
+df_view["Fecha inicio"] = pd.to_datetime(df_view.get("Fecha inicio"), errors="coerce")
+
+if area_sel != "Todas":
+    df_view = df_view[df_view["Área"] == area_sel]
+if resp_sel != "Todos":
+    df_view = df_view[df_view["Responsable"].astype(str) == resp_sel]
+if estado_sel != "Todos":
+    df_view = df_view[df_view["Estado"] == estado_sel]
+if f_desde:
+    df_view = df_view[df_view["Fecha inicio"].dt.date >= f_desde]
+if f_hasta:
+    df_view = df_view[df_view["Fecha inicio"].dt.date <= f_hasta]
+st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
+
+# === ORDEN DE COLUMNAS: Id primero, luego Área y el resto ===
+grid_cols = ["Id", "Área"] + [c for c in COLS if c not in ("Id", "Área")]
+df_view = df_view[grid_cols + ["__DEL__"]]
+
+# === GRID OPTIONS ===
+gob = GridOptionsBuilder.from_dataframe(df_view)
+
+# que TODAS las columnas sean redimensionables, con wrap y alto automático en celdas (no en header)
+gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True)
+
+gob.configure_grid_options(
+    rowSelection="multiple",
+    suppressRowClickSelection=True,
+    domLayout="normal",
+    rowHeight=38,
+    headerHeight=42,          # encabezado compacto sin wrap
+    enableRangeSelection=True,
+    enableCellTextSelection=True,
+    singleClickEdit=True,
+    stopEditingWhenCellsLoseFocus=True,
+    undoRedoCellEditing=True,
+    enterMovesDown=True,
+    getRowId=JsCode("function(p){ return (p.data && (p.data.Id || p.data['Id'])) + ''; }"),
+)
+
+gob.configure_selection("multiple", use_checkbox=True)
+
+# Dejar Id y Área a la izquierda visibles
+gob.configure_column("Id",   editable=False, width=110, pinned="left")
+gob.configure_column("Área", editable=True,  width=160, pinned="left")
+
+gob.configure_column("__DEL__", hide=True)
+
+colw = {"Tarea":220,"Tipo":160,"Responsable":200,"Fase":140,"Complejidad":130,"Prioridad":130,"Estado":130,
+        "Fecha inicio":160,"Vencimiento":160,"Fecha fin":160,"Duración":110,"Días hábiles":120,
+        "Cumplimiento":180,"¿Generó alerta?":150,"Tipo de alerta":200,"¿Se corrigió?":140,"Evaluación":170,"Calificación":120}
+
+flag_formatter = JsCode("""
+function(p){ const v=String(p.value||'');
+  if(v==='Alta') return '🔴 Alta'; if(v==='Media') return '🟡 Media'; if(v==='Baja') return '🟢 Baja'; return v||'—'; }""")
+
+chip_style = JsCode("""
+function(p){
+  const v = String(p.value || '');
+  let bg='#E0E0E0', fg='#FFFFFF';
+  if (v==='No iniciado'){bg='#90A4AE'}
+  else if(v==='En curso'){bg='#B388FF'}
+  else if(v==='Terminado'){bg='#00C4B3'}
+  else if(v==='Cancelado'){bg='#FF2D95'}
+  else if(v==='Pausado'){bg='#7E57C2'}
+  else if(v==='Entregado a tiempo'){bg='#00C4B3'}
+  else if(v==='Entregado con retraso'){bg='#00ACC1'}
+  else if(v==='No entregado'){bg='#006064'}
+  else if(v==='En riesgo de retraso'){bg='#0277BD'}
+  else if(v==='Aprobada'){bg:'#8BC34A'; fg:'#0A2E00'}
+  else if(v==='Desaprobada'){bg:'#FF8A80'}
+  else if(v==='Pendiente de revisión'){bg='#BDBDBD'; fg:'#2B2B2B'}
+  else if(v==='Observada'){bg='#D7A56C'}
+  return { backgroundColor:bg, color:fg, fontWeight:'600', textAlign:'center',
+           borderRadius:'10px', padding:'4px 10px' };
+}""")
+
+fmt_dash = JsCode("""
+function(p){ if(p.value===null||p.value===undefined) return '—';
+  const s=String(p.value).trim().toLowerCase();
+  if(s===''||s==='nan'||s==='nat'||s==='none'||s==='null') return '—';
+  return String(p.value); }""")
+
+stars_fmt = JsCode("""
+function(p){
+  let n = parseInt(p.value||0); if(isNaN(n)||n<0) n=0; if(n>5) n=5;
+  return '★'.repeat(n) + '☆'.repeat(5-n);
+}""")
+
+for c, fx in [("Tarea",3), ("Tipo",2), ("Tipo de alerta",2), ("Responsable",2), ("Fase",1)]:
+    gob.configure_column(c, editable=True, minWidth=colw[c], flex=fx, valueFormatter=fmt_dash)
+
+for c in ["Complejidad", "Prioridad"]:
+    gob.configure_column(c, editable=True, cellEditor="agSelectCellEditor",
+                         cellEditorParams={"values": ["Alta","Media","Baja"]},
+                         valueFormatter=flag_formatter, minWidth=colw[c], maxWidth=220, flex=1)
+
+for c, vals in [("Estado", ESTADO), ("Cumplimiento", CUMPLIMIENTO), ("¿Generó alerta?", SI_NO),
+                ("¿Se corrigió?", SI_NO), ("Evaluación", ["Aprobada","Desaprobada","Pendiente de revisión","Observada","Cancelada","Pausada"])]:
+    gob.configure_column(c, editable=True, cellEditor="agSelectCellEditor",
+                         cellEditorParams={"values": vals}, cellStyle=chip_style, valueFormatter=fmt_dash,
+                         minWidth=colw.get(c, 120), maxWidth=260, flex=1)
+
+gob.configure_column("Calificación", editable=True, valueFormatter=stars_fmt,
+                     minWidth=colw["Calificación"], maxWidth=140, flex=0)
+
+# Editor de fecha/hora
+date_time_editor = JsCode("""
+class DateTimeEditor{
+  init(p){ this.eInput=document.createElement('input'); this.eInput.type='datetime-local';
+    this.eInput.classList.add('ag-input'); this.eInput.style.width='100%';
+    const v=p.value?new Date(p.value):null;
+    if(v&&!isNaN(v.getTime())){ const pad=n=>String(n).padStart(2,'0');
+      this.eInput.value=v.getFullYear()+'-'+pad(v.getMonth()+1)+'-'+pad(v.getDate())+'T'+pad(v.getHours())+':'+pad(v.getMinutes()); } }
+  getGui(){return this.eInput} afterGuiAttached(){this.eInput.focus()} getValue(){return this.eInput.value} }""")
+
+date_time_fmt = JsCode("""
+function(p){ if(p.value===null||p.value===undefined) return '—';
+  const d=new Date(String(p.value).trim()); if(isNaN(d.getTime())) return '—';
+  const pad=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes()); }""")
+
+for c in ["Fecha inicio","Vencimiento","Fecha fin"]:
+    gob.configure_column(c, editable=True, cellEditor=date_time_editor, valueFormatter=date_time_fmt,
+                         minWidth=colw[c], maxWidth=200, flex=1)
+
+dur_getter = JsCode("function(p){const s=p.data['Fecha inicio'],e=p.data['Vencimiento'];if(!s||!e)return null;const sd=new Date(s),ed=new Date(e);if(isNaN(sd.getTime()))return null;return Math.floor((ed-sd)/(1000*60*60*24));}")
+bd_getter  = JsCode("function(p){const s=p.data['Fecha inicio'],e=p.data['Vencimiento'];if(!s||!e)return null;let sd=new Date(s),ed=new Date(e);if(isNaN(sd.getTime()))return null;if(ed<sd)return 0;sd=new Date(sd.getFullYear(),sd.getMonth(),sd.getDate());ed=new Date(ed.getFullYear(),ed.getMonth(),ed.getDate());let c=0;const one=24*60*60*1000;for(let t=sd.getTime();t<=ed.getTime();t+=one){const d=new Date(t).getDay();if(d!==0&&d!==6)c++;}return c;}")
+
+gob.configure_column("Duración", editable=False, valueGetter=dur_getter, valueFormatter=fmt_dash, minWidth=colw["Duración"], maxWidth=130, flex=0)
+gob.configure_column("Días hábiles", editable=False, valueGetter=bd_getter, valueFormatter=fmt_dash, minWidth=colw["Días hábiles"], maxWidth=140, flex=0)
+
+# Tooltips en headers
+for col in df_view.columns:
+    gob.configure_column(col, headerTooltip=col)
+
+# === Autosize callbacks para que los headers se vean completos y horizontales ===
+autosize_on_ready = JsCode("""
+function(params){
+  const all = params.columnApi.getAllDisplayedColumns();
+  params.columnApi.autoSizeColumns(all, true); // true => tamaño por texto del HEADER
+}
+""")
+
+autosize_on_data = JsCode("""
+function(params){
+  if (params.api && params.api.getDisplayedRowCount() > 0){
+    const all = params.columnApi.getAllDisplayedColumns();
+    params.columnApi.autoSizeColumns(all, true);
+  }
+}
+""")
+
+# Inyecta los eventos al gridOptions ya construido
+grid_opts = gob.build()
+grid_opts["onGridReady"] = autosize_on_ready.js_code
+grid_opts["onFirstDataRendered"] = autosize_on_data.js_code
+grid_opts["onColumnEverythingChanged"] = autosize_on_data.js_code
+
+grid = AgGrid(
+    df_view, key="grid_historial", gridOptions=grid_opts, height=500,
+    fit_columns_on_grid_load=False,   # respeta autosize; no force fit
+    data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+    update_mode=(GridUpdateMode.VALUE_CHANGED | GridUpdateMode.MODEL_CHANGED | GridUpdateMode.FILTERING_CHANGED | GridUpdateMode.SORTING_CHANGED | GridUpdateMode.SELECTION_CHANGED),
+    allow_unsafe_jscode=True, theme="balham",
+)
+
+# Sincroniza ediciones por Id
+if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
+    try:
+        edited = pd.DataFrame(grid["data"]).copy()
+        base = st.session_state["df_main"].copy().set_index("Id")
+        st.session_state["df_main"] = base.combine_first(edited.set_index("Id")).reset_index()
+    except Exception:
+        pass
+
+# ---- Botones (ancho total = Área + Responsable) ----
+# Reutilizamos las mismas proporciones declaradas en el formulario: A, F, T, D
+total_btn_width = (A + F) + (T / 2)    # Área + Responsable
+btn_w = total_btn_width / 4
+
+b_del, b_xlsx, b_save_local, b_save_sheets, _spacer = st.columns(
+    [btn_w, btn_w, btn_w, btn_w, (T / 2) + D],  # el resto de la fila como espaciador
+    gap="medium"
+)
+
+# 1) Borrar seleccionados
+with b_del:
+    sel_rows = grid.get("selected_rows", []) if isinstance(grid, dict) else []
+    if st.button("🗑️ Borrar", use_container_width=True):
+        ids = pd.DataFrame(sel_rows)["Id"].astype(str).tolist() if sel_rows else []
+        if ids:
+            df0 = st.session_state["df_main"]
+            st.session_state["df_main"] = df0[~df0["Id"].astype(str).isin(ids)].copy()
+            st.success(f"Eliminadas {len(ids)} fila(s).")
+        else:
+            st.warning("No hay filas seleccionadas.")
+
+# 2) Exportar Excel
+with b_xlsx:
+    try:
+        xlsx_b = export_excel(st.session_state["df_main"][COLS], sheet=TAB_NAME)
+        st.download_button(
+            "⬇️ Exportar Excel",
+            data=xlsx_b,
+            file_name="tareas.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
+    except Exception as e:
+        st.error(f"No pude generar Excel: {e}")
+
+# 3) Guardar (tabla local)
+with b_save_local:
+    if st.button("💽 Guardar", use_container_width=True):
+        df = st.session_state["df_main"][COLS].copy()
+        _save_local(df.copy())  # guarda en data/tareas.csv
+        st.success("Datos guardados en la tabla local (CSV).")
+
+# 4) Subir a Sheets
+with b_save_sheets:
+    if st.button("📤 Subir a Sheets", use_container_width=True):
+        df = st.session_state["df_main"][COLS].copy()
+        _save_local(df.copy())  # opcional: respaldo local antes de subir
+        ok, msg = _write_sheet_tab(df.copy())
+        st.success(msg) if ok else st.warning(msg)
