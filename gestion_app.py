@@ -1534,6 +1534,7 @@ if st.session_state["pri_visible"]:
                 ".ag-root-wrapper": {"height": "180px !important"},
                 ".ag-body-viewport": {"height": "140px !important"},
             },
+            key="grid_prior"   # ← clave estable para que no “desaparezca”
         )
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -1648,6 +1649,7 @@ if st.session_state["eva_visible"]:
                 ".ag-root-wrapper": {"height": "180px !important"},
                 ".ag-body-viewport": {"height": "140px !important"},
             },
+            key="grid_eval"    # ← clave estable para que no “desaparezca”
         )
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -1939,24 +1941,3 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
