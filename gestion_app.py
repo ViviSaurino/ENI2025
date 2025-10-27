@@ -30,10 +30,18 @@ PILL_W_RESP  = 220  # píldora "Responsable"
 PILL_W_HASTA = 220  # píldora "Hasta"
 PILL_W_TAREA = PILL_W_HASTA
 
-# Ajuste fino para compensar padding interno de AgGrid (alinear “rayitas plomas”)
-ALIGN_FIX = 40  # si ves 1–2 px de desfase, prueba 8/12
+# Ajuste fino POR COLUMNA para compensar padding interno de AgGrid
+# (modifica solo estos números hasta que las “rayitas plomas” calcen perfecto)
+ALIGN_FIXES = {
+    "Id":          10,
+    "Área":        10,
+    "Responsable": 10,
+    "Tarea":       10,
+    "Prioridad":   10,
+    "Evaluación":  10,
+}
 
-# Reglas pedidas
+# Reglas pedidas (base sin ajuste)
 COL_W_ID         = PILL_W_AREA                 # Id = ancho píldora Área
 COL_W_AREA       = PILL_W_RESP                 # Área = píldora Responsable
 COL_W_DESDE      = PILL_W_RESP                 # Desde = píldora Responsable
@@ -56,14 +64,14 @@ def _grid_options_prioridad(df):
         rowHeight=38,
         headerHeight=42
     )
-    # Definición de columnas y anchos exactos + ajuste fino
-    gob.configure_column("Id",            width=COL_W_ID + ALIGN_FIX,        editable=False)
-    gob.configure_column("Área",          width=COL_W_AREA + ALIGN_FIX,      editable=False)
-    gob.configure_column("Responsable",   width=PILL_W_RESP + ALIGN_FIX,     editable=False)
-    gob.configure_column("Tarea",         width=COL_W_TAREA + ALIGN_FIX,     editable=False)
+    # Definición de columnas y anchos exactos + ajuste fino por columna
+    gob.configure_column("Id",            width=COL_W_ID        + ALIGN_FIXES.get("Id", 0),          editable=False)
+    gob.configure_column("Área",          width=COL_W_AREA      + ALIGN_FIXES.get("Área", 0),        editable=False)
+    gob.configure_column("Responsable",   width=PILL_W_RESP     + ALIGN_FIXES.get("Responsable", 0), editable=False)
+    gob.configure_column("Tarea",         width=COL_W_TAREA     + ALIGN_FIXES.get("Tarea", 0),       editable=False)
     gob.configure_column(
         "Prioridad",
-        width=COL_W_PRIORIDAD + ALIGN_FIX,
+        width=COL_W_PRIORIDAD + ALIGN_FIXES.get("Prioridad", 0),
         editable=True,
         cellEditor="agSelectCellEditor",
         cellEditorParams={"values": ["Urgente", "Alta", "Media", "Baja"]}
@@ -81,13 +89,13 @@ def _grid_options_evaluacion(df):
         rowHeight=38,
         headerHeight=42
     )
-    gob.configure_column("Id",           width=COL_W_ID + ALIGN_FIX,         editable=False)
-    gob.configure_column("Área",         width=COL_W_AREA + ALIGN_FIX,       editable=False)
-    gob.configure_column("Responsable",  width=PILL_W_RESP + ALIGN_FIX,      editable=False)
-    gob.configure_column("Tarea",        width=COL_W_TAREA + ALIGN_FIX,      editable=False)
+    gob.configure_column("Id",           width=COL_W_ID        + ALIGN_FIXES.get("Id", 0),           editable=False)
+    gob.configure_column("Área",         width=COL_W_AREA      + ALIGN_FIXES.get("Área", 0),         editable=False)
+    gob.configure_column("Responsable",  width=PILL_W_RESP     + ALIGN_FIXES.get("Responsable", 0),  editable=False)
+    gob.configure_column("Tarea",        width=COL_W_TAREA     + ALIGN_FIXES.get("Tarea", 0),        editable=False)
     gob.configure_column(
         "Evaluación",
-        width=COL_W_EVALUACION + ALIGN_FIX,
+        width=COL_W_EVALUACION + ALIGN_FIXES.get("Evaluación", 0),
         editable=True,
         cellEditor="agSelectCellEditor",
         cellEditorParams={"values": [5,4,3,2,1]}
@@ -1931,6 +1939,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
