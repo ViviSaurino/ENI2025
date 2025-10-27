@@ -1787,10 +1787,11 @@ extra = ["__DEL__"] if "__DEL__" in df_view.columns else []
 
 # --- SI ESTÁ VACÍO, IGUAL RENDERIZAMOS GRID CON HEADERS ---
 if df_view.empty:
-    st.info("No hay tareas que coincidan con los filtros vigentes.")
+    # sin mensaje: renderiza el grid vacío con headers
     df_grid = pd.DataFrame(columns=cols_order + extra)
 else:
     df_grid = df_view.reindex(columns=cols_order + extra).copy()
+
 
 # === GRID OPTIONS ===
 gob = GridOptionsBuilder.from_dataframe(df_grid)
@@ -2018,3 +2019,4 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
