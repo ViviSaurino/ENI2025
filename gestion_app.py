@@ -717,15 +717,18 @@ st.markdown("""
   margin-top: 10px !important;       /* valor base para todas */
 }
             
-/* Tamaño específico del botón con triángulo */
-:root{ --toggle-size: 10px; }  /* ajusta: 28–32px suele verse bien */
+/* ===== Forzar tamaño del botón triangulito (solo el toggle) ===== */
+:root{ --toggle-size: 28px; } /* ajusta 24–32px a gusto */
 
-.toggle-icon .stButton>button{
+.topbar .toggle-icon .stButton>button{
   width: var(--toggle-size) !important;
   min-width: var(--toggle-size) !important;
   height: var(--toggle-size) !important;
-  border-radius: 8px !important;   /* opcional: esquinas un poco más cerradas */
-  font-size: 14px !important;      /* opcional: tamaño del símbolo ▾/▸ */
+  min-height: var(--toggle-size) !important;
+  padding: 0 !important;
+  line-height: var(--toggle-size) !important; /* centra el ▾/▸ */
+  font-size: 14px !important;                /* si lo ves muy grande, baja a 12px */
+  border-radius: 8px !important;             /* opcional */
 }
                        
 </style>
@@ -1672,5 +1675,3 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
