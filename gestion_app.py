@@ -112,9 +112,9 @@ with st.sidebar:
 # ===== Inicialización de visibilidad por única vez =====
 if "_ui_bootstrap" not in st.session_state:
     # Secciones colapsadas por defecto al entrar
-    st.session_state["nt_visible"]  = False  # Nueva tarea
-    st.session_state["ux_visible"]  = False  # Editar estado
-    st.session_state["na_visible"]  = False  # Nueva alerta
+    st.session_state["nt_visible"]  = True  # Nueva tarea
+    st.session_state["ux_visible"]  = True  # Editar estado
+    st.session_state["na_visible"]  = True  # Nueva alerta
     st.session_state["pri_visible"] = False  # Prioridad
     st.session_state["eva_visible"] = False  # Evaluación
     st.session_state["_ui_bootstrap"] = True
@@ -1680,6 +1680,7 @@ with b_save_sheets:
         _save_local(df.copy())  # opcional: respaldo local antes de subir
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
