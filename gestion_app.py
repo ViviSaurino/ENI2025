@@ -785,10 +785,10 @@ st.markdown('<div class="topbar">', unsafe_allow_html=True)
 c_toggle, c_pill = st.columns([0.028, 0.965], gap="small")
 
 with c_toggle:
-    # Triángulo como ENLACE minimal (sin caja)
+    # Triángulo como ENLACE minimal (sin caja) y alineado a la misma altura de la píldora
     st.markdown(
         f'''
-        <div class="toggle-icon">
+        <div class="toggle-icon" style="height:36px;display:flex;align-items:center;">
           <a href="?nt={_next}" title="Mostrar/ocultar"
              style="display:inline-block;font-weight:800;font-size:14px;line-height:1;text-decoration:none;color:inherit;">
             {chev}
@@ -895,7 +895,6 @@ if st.session_state["nt_visible"]:
         st.success(f"✔ Tarea agregada ({new['Id']}). {msg}") if ok else st.warning(f"Agregado localmente. {msg}")
 
     st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
-
 
 # ================== Actualizar estado ==================
 
