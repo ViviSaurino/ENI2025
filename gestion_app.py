@@ -708,7 +708,7 @@ st.markdown("""
 .block-container .element-container:has(.topbar-na),
 .block-container .element-container:has(.topbar-pri),
 .block-container .element-container:has(.topbar-eval){
-  margin-top: 10px !important;
+  margin-top: 15px !important;
   margin-bottom: 6px !important;
 }
 
@@ -2062,6 +2062,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
