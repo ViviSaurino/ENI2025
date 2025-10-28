@@ -927,7 +927,7 @@ if st.session_state.get("nt_visible", True):
     </div>
     """, unsafe_allow_html=True)
 
-    # ===== CSS: fuerza 100% dentro del formulario =====
+    # ===== CSS: fuerzas 100% de controles =====
     st.markdown("""
     <style>
     #form-nt .stTextInput, 
@@ -966,18 +966,19 @@ if st.session_state.get("nt_visible", True):
     ]
 
     with st.form("form_nueva_tarea", clear_on_submit=True):
-        # ===== Proporciones UNIFICADAS para ambas filas =====
-        # Alineadas y con Detalle y Responsable del mismo ancho.
-        A  = 1.6   # Área / Tipo
-        Fw = 1.6   # Fase / Estado
-        T  = 2.5   # Tarea / Fecha de inicio
-        D  = 2.1   # Detalle de tarea / Hora de inicio
-        R  = 2.1   # Responsable / ID asignado
-        C  = 1.2   # Ciclo de mejora / (espaciador en fila 2)
-        B  = 1.6   # Botón (columna propia, separada)
+        # ===== Rejilla unificada (ambas filas) =====
+        # Más ancho para Fase y Tarea; Ciclo ocupa el extremo derecho;
+        # el botón va debajo (misma columna/ancho).
+        A  = 1.5   # Área / Tipo
+        Fw = 2.25  # Fase / Estado (≈ entra "Operación de campo")
+        T  = 3.00  # Tarea / Fecha de inicio (más ancho)
+        D  = 2.00  # Detalle de tarea / Hora de inicio
+        R  = 2.00  # Responsable / ID asignado
+        C  = 1.60  # Ciclo de mejora / Botón (mismo ancho, columna extrema)
+        # total 12.35 (los valores son relativos; lo importante es mantenerlos iguales en ambas filas)
 
-        # ============== FILA 1 (mismos 7 anchos) ==============
-        r1c1, r1c2, r1c3, r1c4, r1c5, r1c6, r1c7 = st.columns([A, Fw, T, D, R, C, B], gap="medium")
+        # ============== FILA 1 ==============
+        r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
 
         area = r1c1.selectbox("Área", options=AREAS_OPC, index=0, key="nt_area")
 
@@ -1000,11 +1001,8 @@ if st.session_state.get("nt_visible", True):
             key="nt_ciclo_mejora"
         )
 
-        # Espaciador para conservar la rejilla y no subir el botón
-        r1c7.write("")
-
-        # ============== FILA 2 (mismos 7 anchos y orden pedido) ==============
-        c2_1, c2_2, c2_3, c2_4, c2_5, c2_6, c2_7 = st.columns([A, Fw, T, D, R, C, B], gap="medium")
+        # ============== FILA 2 (misma malla) ==============
+        c2_1, c2_2, c2_3, c2_4, c2_5, c2_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
 
         tipo   = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría")
         estado = _opt_map(c2_2, "Estado", EMO_ESTADO, "No iniciado")
@@ -1020,11 +1018,8 @@ if st.session_state.get("nt_visible", True):
             id_preview = ""
         c2_5.text_input("ID asignado", value=id_preview, disabled=True)
 
-        # Espaciador (debajo de Ciclo) → separa visualmente del botón
-        c2_6.write("")
-
-        # Botón en su propia columna, alineado con la fila 2 y separado del ciclo
-        with c2_7:
+        # Botón (debajo de Ciclo de mejora, MISMO ancho y columna)
+        with c2_6:
             submitted = st.form_submit_button("💾 Agregar y guardar", use_container_width=True)
 
     # ============== POST Submit ==============
@@ -1033,17 +1028,17 @@ if st.session_state.get("nt_visible", True):
             # 1) Base actual
             df = st.session_state["df_main"].copy()
 
-            # Garantiza existencia de columna "Ciclo de mejora"
+            # Garantiza "Ciclo de mejora"
             if "Ciclo de mejora" not in df.columns:
                 df["Ciclo de mejora"] = ""
 
-            # 2) Construye la nueva fila
+            # 2) Nueva fila
             f_ini = combine_dt(fi_d, fi_t)
 
             new = blank_row()
             new.update({
                 "Área": area,
-                "Id": next_id_area(df, area),   # Asigna el ID final a guardar
+                "Id": next_id_area(df, area),   # ID real guardado
                 "Tarea": tarea,
                 "Tipo": tipo,
                 "Responsable": resp,
@@ -1054,18 +1049,17 @@ if st.session_state.get("nt_visible", True):
                 "Detalle": detalle,
             })
 
-            # 3) Inserta y normaliza tipos de fecha
+            # 3) Inserta + normaliza fecha
             df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
             if "Fecha inicio" in df.columns:
                 df["Fecha inicio"] = pd.to_datetime(df["Fecha inicio"], errors="coerce")
 
-            # 4) Actualiza estado global y guarda CSV local
+            # 4) Estado y guardado CSV
             st.session_state["df_main"] = df.copy()
-
             os.makedirs("data", exist_ok=True)
-            path_ok = os.path.join("data", "tareas.csv")
             df.reindex(columns=COLS, fill_value=None).to_csv(
-                path_ok, index=False, encoding="utf-8-sig", mode="w"
+                os.path.join("data", "tareas.csv"),
+                index=False, encoding="utf-8-sig", mode="w"
             )
 
             # 5) Mensaje y refresco
@@ -1870,6 +1864,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
