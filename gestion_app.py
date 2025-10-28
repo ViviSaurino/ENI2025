@@ -894,6 +894,7 @@ EMO_SI_NO       = {"✅ Sí": "Sí", "🚫 No": "No"}
 st.session_state.setdefault("nt_visible", True)
 chev = "▾" if st.session_state.get("nt_visible", True) else "▸"
 
+# ---------- Barra superior ----------
 st.markdown('<div id="ntbar" class="topbar">', unsafe_allow_html=True)
 c_toggle, c_pill = st.columns([0.028, 0.965], gap="medium") 
 with c_toggle:
@@ -905,51 +906,63 @@ with c_toggle:
 with c_pill:
     st.markdown('<div class="form-title">&nbsp;&nbsp;📝&nbsp;&nbsp;Nueva tarea</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
+# ---------- fin barra superior ----------
 
 submitted = False
 
 if st.session_state.get("nt_visible", True):
-
-    # === Parche de ANCHOS (fuerza 100% en todos los widgets del formulario) ===
-    st.markdown("""
-    <style>
-    /* Limita el alcance SOLO al formulario de nueva tarea */
-    #form-nt .stTextInput > div,
-    #form-nt .stSelectbox > div,
-    #form-nt .stDateInput > div,
-    #form-nt .stTimeInput > div,
-    #form-nt .stTextArea > div { width: 100% !important; }
-
-    #form-nt input[type="text"],
-    #form-nt input[type="search"],
-    #form-nt textarea { width: 100% !important; max-width: none !important; }
-
-    /* Select (baseweb) a 100% */
-    #form-nt [data-baseweb="select"] { width: 100% !important; }
-
-    /* Contenedores internos de date/time */
-    #form-nt [data-testid="stDateInput"] > div { width: 100% !important; }
-    #form-nt [data-testid^="stTimeInput"] > div { width: 100% !important; }
-
-    /* Botón del formulario a 100% del ancho de su columna */
-    #form-nt [data-testid^="baseButton"] button {
-      width: 100% !important;
-      display: block !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    # ========================================================================
-
+    # Nota: ayuda de sección
     st.markdown("""
     <div class="help-strip help-strip-nt" id="nt-help">
       ✳️ <strong>Completa los campos principales</strong> para registrar una nueva tarea
     </div>
     """, unsafe_allow_html=True)
 
-    # Tarjeta con borde + envoltorio con id único
+    # ===== CSS: fuerza 100% dentro del formulario =====
+    st.markdown("""
+    <style>
+    /* Limitar el alcance al formulario de nueva tarea */
+    #form-nt .stTextInput, 
+    #form-nt .stSelectbox, 
+    #form-nt .stDateInput, 
+    #form-nt .stTimeInput, 
+    #form-nt .stTextArea { width: 100% !important; }
+
+    #form-nt .stTextInput > div,
+    #form-nt .stSelectbox > div,
+    #form-nt .stDateInput > div,
+    #form-nt .stTimeInput > div,
+    #form-nt .stTextArea > div { width: 100% !important; max-width: none !important; }
+
+    /* Inputs reales */
+    #form-nt input[type="text"],
+    #form-nt input[type="search"],
+    #form-nt textarea { width: 100% !important; max-width: none !important; }
+
+    /* Select (BaseWeb) */
+    #form-nt [data-baseweb="select"] { width: 100% !important; }
+    #form-nt [data-baseweb="select"] > div { width: 100% !important; }
+    #form-nt [data-baseweb="select"] input { width: 100% !important; }
+
+    /* Date y Time input internos */
+    #form-nt [data-testid="stDateInput"] input { width: 100% !important; }
+    #form-nt [data-testid^="stTimeInput"] input { width: 100% !important; }
+    #form-nt [data-testid^="stTimeInput"] > div { width: 100% !important; }
+
+    /* Botón de enviar a 100% del contenedor de su columna */
+    #form-nt .stButton, 
+    #form-nt .stButton > button, 
+    #form-nt [data-testid^="baseButton"] button {
+      width: 100% !important;
+      display: block !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    # ================================================
+
     st.markdown('<div class="form-card" id="form-nt">', unsafe_allow_html=True)
 
-    # --------- Catálogo de fases ----------
+    # Catálogo de fases
     FASES = [
         "Capacitación",
         "Post-capacitación",
@@ -959,17 +972,16 @@ if st.session_state.get("nt_visible", True):
     ]
 
     with st.form("form_nueva_tarea", clear_on_submit=True):
-        # ===== Ratios (puedes afinarlos si deseas milimétrico) =====
-        # F1: Área | Fase |  Tarea (mayor) | Detalle | Responsable (muy ancho) | Id
-        # F2: Tipo | Ciclo | Estado         | Fecha   | Hora                    | Id
-        A = 1.2
-        F = 1.2
-        T = 2.7
-        D = 1.9
-        R = 3.4   # Responsable ANCHO
-        I = 1.2   # Id (y botón) igual que “Estado” de abajo (ajustable)
+        # ===== Proporciones (mismas para Fila 1 y Fila 2) =====
+        # Área, Fase, Tarea, Detalle, Responsable (ancho), Id (estrecho)
+        A = 1.2   # Área / Tipo
+        F = 1.2   # Fase / Ciclo
+        T = 2.9   # Tarea / Estado
+        D = 1.9   # Detalle / Fecha inicio
+        R = 3.6   # Responsable / Hora inicio  (responsable MUY ancho)
+        I = 1.2   # Id (y botón) — debe alinear con “Estado” de la sección inferior
 
-        # -------- Fila 1 --------
+        # ===== Fila 1 =====
         r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, F, T, D, R, I], gap="medium")
         area = r1c1.selectbox("Área", options=AREAS_OPC, index=0, key="nt_area")
         fase = r1c2.selectbox("Fase", options=FASES, index=None,
@@ -977,9 +989,10 @@ if st.session_state.get("nt_visible", True):
         tarea   = r1c3.text_input("Tarea", placeholder="Describe la tarea")
         detalle = r1c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)")
         resp    = r1c5.text_input("Responsable", placeholder="Nombre")
-        r1c6.empty()  # espacio para alinear el Id de abajo
+        # en r1c6 dejamos vacío para alinear con Id abajo
+        r1c6.empty()
 
-        # -------- Fila 2 --------
+        # ===== Fila 2 =====
         c2_1, c2_2, c2_3, c2_4, c2_5, c2_6 = st.columns([A, F, T, D, R, I], gap="medium")
         tipo = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría")
         ciclo_mejora = c2_2.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
@@ -987,7 +1000,7 @@ if st.session_state.get("nt_visible", True):
         fi_d   = c2_4.date_input("Fecha de inicio", value=None, key="fi_d")
         fi_t   = c2_5.time_input("Hora de inicio", value=None, step=60, key="fi_t")
 
-        # Id “preview”
+        # Id “preview” (deshabilitado)
         try:
             _df_tmp = st.session_state["df_main"]
             id_preview = next_id_area(_df_tmp, area)
@@ -995,7 +1008,7 @@ if st.session_state.get("nt_visible", True):
             id_preview = ""
         c2_6.text_input("Id", value=id_preview, disabled=True)
 
-        # Botón exactamente en la MISMA columna (mismo ancho que Id)
+        # ===== Botón (MISMA columna y ancho que Id) =====
         b1, b2, b3, b4, b5, b_id = st.columns([A, F, T, D, R, I], gap="medium")
         with b_id:
             submitted = st.form_submit_button("💾 Agregar y guardar", use_container_width=True)
@@ -1005,6 +1018,7 @@ if st.session_state.get("nt_visible", True):
             df = st.session_state["df_main"].copy()
             if "Ciclo de mejora" not in df.columns:
                 df["Ciclo de mejora"] = ""
+
             f_ini = combine_dt(fi_d, fi_t)
 
             new = blank_row()
@@ -1035,7 +1049,8 @@ if st.session_state.get("nt_visible", True):
         except Exception as e:
             st.error(f"No pude guardar la nueva tarea: {e}")
 
-    st.markdown('</div>', unsafe_allow_html=True)  # cierra #form-nt y .form-card
+    st.markdown('</div>', unsafe_allow_html=True)  # cierra #form-nt
+
 
 
 # ================== Actualizar estado ==================
@@ -1975,6 +1990,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
