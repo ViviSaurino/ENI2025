@@ -30,7 +30,7 @@ AREAS_OPC = st.session_state.get(
     "AREAS_OPC",
     ["Jefatura", "Gestión", "Metodología", "Base de datos", "Capacitación", "Monitoreo", "Consistencia"]
 )
-ESTADO = ["No iniciado", "En curso", "Terminado", "Cancelado", "Pausado"]
+ESTADO = ["No iniciado", "En curso"]
 CUMPLIMIENTO = ["Entregado a tiempo", "Entregado con retraso", "No entregado", "En riesgo de retraso"]
 SI_NO = ["Sí", "No"]
 
@@ -2059,6 +2059,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
