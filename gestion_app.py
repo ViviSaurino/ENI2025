@@ -684,7 +684,7 @@ st.markdown("""
 
 /* ===== Compactar espacios entre bloques ===== */
 .block-container [data-testid="stVerticalBlock"]{
-  row-gap: 10px !important;
+  row-gap: 20px !important;
   gap: 6px !important;
 }
 .block-container [data-testid="stVerticalBlock"]:has(.topbar),
@@ -2062,6 +2062,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
