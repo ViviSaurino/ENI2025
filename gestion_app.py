@@ -1188,7 +1188,8 @@ if st.session_state["ux_visible"]:
             # separador vertical para alinear el botón con los inputs de la fila
             st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)  # ajusta 24–36px si lo necesitas
             do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
-            
+
+
     # ===== Filtra (si se presiona Buscar) =====
     df_filtrado = df_all.copy()
     if do_buscar:
@@ -1263,10 +1264,9 @@ if st.session_state["ux_visible"]:
         update_mode=GridUpdateMode.VALUE_CHANGED,
         fit_columns_on_grid_load=False,
         enable_enterprise_modules=False,
-        reload_data=False
+        reload_data=False,
+        height=260  # ← AJUSTE ÚNICO: altura de la tabla (modifica este valor si deseas otra altura)
     )
-
-    st.caption("👉 Completa *Estado/Fecha/Hora modificado*. Formatos sugeridos: **Fecha** `YYYY-MM-DD`, **Hora** `HH:mm`.")
 
     # ===== Botón Guardar abajo a la derecha =====
     _spacer, _btncol = st.columns([A+Fw+T_width+D+R, C], gap="medium")
@@ -1325,6 +1325,7 @@ if st.session_state["ux_visible"]:
                 st.error(f"No pude guardar los cambios: {e}")
 
     st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
+
 
 
 # ================== Nueva alerta ==================
@@ -2119,6 +2120,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
