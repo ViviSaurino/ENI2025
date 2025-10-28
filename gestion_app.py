@@ -1186,7 +1186,7 @@ if st.session_state["ux_visible"]:
 
         with c_btn:
             # separador vertical para alinear el botón con los inputs de la fila
-            st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)  # ajusta 24–36px si lo necesitas
+            st.markdown("<div style='height:36px'></div>", unsafe_allow_html=True)  # ajusta 24–36px si lo necesitas
             do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
             
     # ===== Filtra (si se presiona Buscar) =====
@@ -2119,6 +2119,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
