@@ -889,7 +889,6 @@ EMO_PRIORIDAD   = {"🔥 Alta": "Alta", "✨ Media": "Media", "🍃 Baja": "Baja
 EMO_ESTADO      = {"🍼 No iniciado": "No iniciado","⏳ En curso": "En curso","✅ Terminado": "Terminado","🛑 Cancelado": "Cancelado","⏸️ Pausado": "Pausado"}
 EMO_SI_NO       = {"✅ Sí": "Sí", "🚫 No": "No"}
 
-
 # ================== Formulario ================== 
 
 # Estado inicial del colapsable
@@ -1026,8 +1025,13 @@ if st.session_state.get("nt_visible", True):
         )
         # =====================================================================
 
-        # Nueva celda (mismo ancho que “Estado”)
-        nuevo_f1c3 = r1c3.text_input("Ciclo de mejora", placeholder="—")
+        # ✅ CAMBIO: Ciclo de mejora como lista (1, 2, 3, +4) con valor inicial 1
+        ciclo_mejora = r1c3.selectbox(
+            "Ciclo de mejora",
+            options=["1", "2", "3", "+4"],
+            index=0,
+            key="nt_ciclo_mejora"
+        )
 
         tarea   = r1c4.text_input("Tarea", placeholder="Describe la tarea")
         detalle = r1c5.text_input("Detalle", placeholder="Información adicional (opcional)")
@@ -1086,7 +1090,7 @@ if st.session_state.get("nt_visible", True):
                 "Fecha inicio": f_ini,
                 "Vencimiento": f_ven,
                 "Fecha fin": f_fin,
-                # "Ciclo de mejora": nuevo_f1c3,  # si lo quieres activar, descomenta
+                "Ciclo de mejora": ciclo_mejora,  # ✅ guardamos el ciclo elegido
                 "Detalle": detalle,
             })
 
@@ -2055,5 +2059,6 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
