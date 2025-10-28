@@ -956,14 +956,13 @@ if st.session_state.get("nt_visible", True):
     ]
 
     with st.form("form_nueva_tarea", clear_on_submit=True):
-        # ===== Proporciones NUEVAS =====
-        # (único cambio solicitado)
+        # ===== Proporciones (ajuste solicitado) =====
         A = 1.8   # Área / Tipo
-        F = 2.2   # Fase / Ciclo  ← más ancho para que no se trunque
-        T = 2.6   # Tarea / Estado
+        F = 2.2   # Fase / Ciclo
+        T = 3.0   # Tarea / Estado   ← más ancho
         D = 1.7   # Detalle / Fecha inicio
-        R = 3.5   # Responsable / Hora inicio
-        I = 1.2   # Id / Botón
+        R = 3.1   # Responsable / Hora inicio  ← un poco más angosto
+        I = 1.5   # Id / Botón       ← más ancho
 
         # ===== Fila 1 =====
         r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, F, T, D, R, I], gap="medium")
@@ -974,15 +973,15 @@ if st.session_state.get("nt_visible", True):
         detalle = r1c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)")
         resp    = r1c5.text_input("Responsable", placeholder="Nombre")
 
-        # Id “preview” (deshabilitado) en la MISMA columna angosta (I)
+        # ID preview (deshabilitado) — etiqueta actualizada
         try:
             _df_tmp = st.session_state["df_main"]
             id_preview = next_id_area(_df_tmp, area)
         except Exception:
             id_preview = ""
-        r1c6.text_input("Id", value=id_preview, disabled=True)
+        r1c6.text_input("ID asignado", value=id_preview, disabled=True)
 
-        # ===== Fila 2 ===== (alineada 1:1 con la fila 1)
+        # ===== Fila 2 (alineada 1:1) =====
         c2_1, c2_2, c2_3, c2_4, c2_5, c2_6 = st.columns([A, F, T, D, R, I], gap="medium")
         tipo = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría")
         ciclo_mejora = c2_2.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
@@ -990,7 +989,6 @@ if st.session_state.get("nt_visible", True):
         fi_d   = c2_4.date_input("Fecha de inicio", value=None, key="fi_d")
         fi_t   = c2_5.time_input("Hora de inicio", value=None, step=60, key="fi_t")
 
-        # Botón (en la MISMA columna I del Id, así comparten ancho)
         with c2_6:
             submitted = st.form_submit_button("💾 Agregar y guardar", use_container_width=True)
 
@@ -1031,7 +1029,6 @@ if st.session_state.get("nt_visible", True):
             st.error(f"No pude guardar la nueva tarea: {e}")
 
     st.markdown('</div>', unsafe_allow_html=True)  # cierra #form-nt
-
 
 
 # ================== Actualizar estado ==================
@@ -1971,6 +1968,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
