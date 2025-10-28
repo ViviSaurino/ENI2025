@@ -288,6 +288,43 @@ if "export_excel" not in globals():
         return buf
 
 
+# ====== ⬇️⬇️ NUEVO: CSS de espaciado entre título, píldoras y secciones ⬇️⬇️ ======
+st.markdown("""
+<style>
+/* Espacio debajo del H1 principal */
+.block-container h1 {
+  margin-bottom: 18px !important;
+}
+
+/* Barras superiores con las píldoras (nueva tarea / editar estado / nueva alerta) */
+.topbar, .topbar-ux, .topbar-na {
+  margin-top: 12px !important;       /* arriba de la píldora */
+  margin-bottom: 12px !important;    /* abajo de la píldora  */
+}
+
+/* Evitar márgenes extra del botón */
+.topbar .stButton, .topbar-ux .stButton, .topbar-na .stButton {
+  margin: 0 !important;
+}
+
+/* Tira de ayuda */
+.help-strip {
+  margin-top: 6px !important;
+  margin-bottom: 12px !important;
+}
+
+/* Tarjetas/secciones (formularios, tablas, etc.) */
+.form-card {
+  margin-top: 10px !important;       /* distancia entre píldora y tarjeta */
+  margin-bottom: 28px !important;    /* separación con la siguiente sección */
+  padding-top: 12px !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ====== ⬆️⬆️ FIN CSS de espaciado ⬆️⬆️ ======
+
+
 # ===== Inicialización de visibilidad por única vez =====
 if "_ui_bootstrap" not in st.session_state:
     st.session_state["nt_visible"]  = True   # Nueva tarea
@@ -357,6 +394,23 @@ st.markdown("""
   --pill-rosa:      #67D3C4;
   --pill-rosa-bord: #67D3C4;
 }
+
+/* ======= ESPACIADO GLOBAL AÑADIDO ======= */
+/* Más aire debajo del título principal */
+.block-container h1{
+  margin-bottom: 18px !important;
+}
+/* Margen arriba/abajo para TODAS las barras con píldoras */
+.topbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval{
+  margin-top: 12px !important;
+  margin-bottom: 12px !important;
+}
+/* Separación general entre tarjetas/secciones */
+.form-card{
+  margin-top: 10px !important;      /* respiro arriba */
+  margin-bottom: 28px !important;   /* respiro abajo entre secciones */
+}
+/* ======================================= */
 
 /* =================== Inputs =================== */
 .form-card [data-baseweb="input"] > div,
@@ -473,7 +527,7 @@ st.markdown("""
   overflow: visible !important;
   white-space: nowrap !important;
   text-overflow: clip !important;
-  width: fit-content !important;
+  width: fit-content !重要;
   min-width: 240px !important;
 }
 .form-card [data-baseweb="select"] [role="combobox"]{
@@ -2008,29 +2062,3 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
