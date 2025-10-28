@@ -898,120 +898,184 @@ FASES = [
     "Operación de campo",
 ]
 
-# ====== CSS del form: 100% de ancho en inputs/botón ======
-st.markdown("""
-<style>
-#form-nt .stTextInput, 
-#form-nt .stSelectbox, 
-#form-nt .stDateInput, 
-#form-nt .stTimeInput, 
-#form-nt .stTextArea { width: 100% !important; }
-#form-nt .stTextInput > div,
-#form-nt .stSelectbox > div,
-#form-nt .stDateInput > div,
-#form-nt .stTimeInput > div,
-#form-nt .stTextArea > div { width: 100% !important; max-width: none !important; }
-#form-nt [data-baseweb="select"],
-#form-nt [data-baseweb="select"] > div,
-#form-nt [data-baseweb="select"] input { width: 100% !important; }
-#form-nt [data-testid="stDateInput"] input,
-#form-nt [data-testid^="stTimeInput"] input { width: 100% !important; }
-#form-nt [data-testid^="stTimeInput"] > div { width: 100% !important; }
-/* Botón siempre a 100% del contenedor */
-#form-nt .stButton, 
-#form-nt .stButton > button, 
-#form-nt [data-testid^="baseButton"] button {
-  width: 100% !important; display:block !important;
-}
-</style>
-""", unsafe_allow_html=True)
+# ================== Formulario ==================
 
-st.markdown('<div class="form-card" id="form-nt">', unsafe_allow_html=True)
+st.session_state.setdefault("nt_visible", True)
+chev = "▾" if st.session_state.get("nt_visible", True) else "▸"
 
-with st.form("form_nueva_tarea", clear_on_submit=True):
-
-    # ---------------- proporciones ----------------
-    # Fila 1: Área, Fase, Tarea, Detalle, Responsable, Ciclo (y nada de botón acá)
-    # Fila 2: Tipo, Estado, Fecha, Hora, ID asignado, Botón
-    A = 1.6   # Área / Tipo
-    Fw = 1.6  # Fase / Estado
-    T = 2.5   # Tarea
-    D = 2.1   # Detalle de tarea (un poco más ancho)
-    R = 2.1   # Responsable (mismo ancho que Detalle)
-    C = 1.2   # Ciclo de mejora / ID asignado
-    B = 1.4   # Botón (columna propia en segunda fila, separado de Ciclo)
-
-    # ---------------- Fila 1 ----------------
-    r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
-    area = r1c1.selectbox("Área", options=AREAS_OPC, index=0, key="nt_area")
-    fase = r1c2.selectbox("Fase", options=FASES, index=None,
-                          placeholder="Selecciona una fase", key="nt_fase")
-    tarea = r1c3.text_input("Tarea", placeholder="Describe la tarea")
-    detalle = r1c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)")
-    resp = r1c5.text_input("Responsable", placeholder="Nombre")
-
-    ciclo_mejora = r1c6.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
-
-    # ---------------- Fila 2 ----------------
-    c2_1, c2_2, c2_3, c2_4, c2_5, c2_6 = st.columns([A, Fw, D, R, C, B], gap="medium")
-    tipo   = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría")
-
-    estado = _opt_map(c2_2, "Estado", EMO_ESTADO, "No iniciado")
-
-    fi_d = c2_3.date_input("Fecha de inicio", value=None, key="fi_d")
-    fi_t = c2_4.time_input("Hora de inicio", value=None, step=60, key="fi_t")
-
-    # ID preview en la penúltima columna (C), mismo ancho que ciclo
-    try:
-        _df_tmp = st.session_state["df_main"]
-        id_preview = next_id_area(_df_tmp, area)
-    except Exception:
-        id_preview = ""
-    c2_5.text_input("ID asignado", value=id_preview, disabled=True)
-
-    # Botón en su propia columna (B), mismo nivel de fila 2 y separado del ciclo
-    with c2_6:
-        submitted = st.form_submit_button("💾 Agregar y guardar", use_container_width=True)
-
-# ---- fin del with st.form ----
-
-if submitted:
-    try:
-        df = st.session_state["df_main"].copy()
-        if "Ciclo de mejora" not in df.columns:
-            df["Ciclo de mejora"] = ""
-
-        f_ini = combine_dt(fi_d, fi_t)
-
-        new = blank_row()
-        new.update({
-            "Área": area,
-            "Id": next_id_area(df, area),
-            "Tarea": tarea,
-            "Tipo": tipo,
-            "Responsable": resp,
-            "Fase": fase,
-            "Estado": estado,
-            "Fecha inicio": f_ini,
-            "Ciclo de mejora": ciclo_mejora,
-            "Detalle": detalle,
-        })
-
-        df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
-        if "Fecha inicio" in df.columns:
-            df["Fecha inicio"] = pd.to_datetime(df["Fecha inicio"], errors="coerce")
-
-        st.session_state["df_main"] = df.copy()
-        os.makedirs("data", exist_ok=True)
-        df.reindex(columns=COLS, fill_value=None).to_csv(
-            os.path.join("data","tareas.csv"), index=False, encoding="utf-8-sig", mode="w"
-        )
-        st.success(f"✔ Tarea agregada (Id {new['Id']}).")
-        st.rerun()
-    except Exception as e:
-        st.error(f"No pude guardar la nueva tarea: {e}")
-
+# ---------- Barra superior ----------
+st.markdown('<div id="ntbar" class="topbar">', unsafe_allow_html=True)
+c_toggle, c_pill = st.columns([0.028, 0.965], gap="medium")
+with c_toggle:
+    st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
+    def _toggle_nt():
+        st.session_state["nt_visible"] = not st.session_state.get("nt_visible", True)
+    st.button(chev, key="nt_toggle_icon", help="Mostrar/ocultar", on_click=_toggle_nt)
+    st.markdown('</div>', unsafe_allow_html=True)
+with c_pill:
+    st.markdown('<div class="form-title">&nbsp;&nbsp;📝&nbsp;&nbsp;Nueva tarea</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
+# ---------- fin barra superior ----------
+
+submitted = False
+
+if st.session_state.get("nt_visible", True):
+    # Tira de ayuda
+    st.markdown("""
+    <div class="help-strip help-strip-nt" id="nt-help">
+      ✳️ <strong>Completa los campos principales</strong> para registrar una nueva tarea
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ===== CSS: fuerza 100% dentro del formulario =====
+    st.markdown("""
+    <style>
+    #form-nt .stTextInput, 
+    #form-nt .stSelectbox, 
+    #form-nt .stDateInput, 
+    #form-nt .stTimeInput, 
+    #form-nt .stTextArea { width: 100% !important; }
+    #form-nt .stTextInput > div,
+    #form-nt .stSelectbox > div,
+    #form-nt .stDateInput > div,
+    #form-nt .stTimeInput > div,
+    #form-nt .stTextArea > div { width: 100% !important; max-width: none !important; }
+    #form-nt [data-baseweb="select"],
+    #form-nt [data-baseweb="select"] > div,
+    #form-nt [data-baseweb="select"] input { width: 100% !important; }
+    #form-nt [data-testid="stDateInput"] input,
+    #form-nt [data-testid^="stTimeInput"] input { width: 100% !important; }
+    #form-nt [data-testid^="stTimeInput"] > div { width: 100% !important; }
+    #form-nt .stButton, 
+    #form-nt .stButton > button, 
+    #form-nt [data-testid^="baseButton"] button {
+      width: 100% !important; display:block !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown('<div class="form-card" id="form-nt">', unsafe_allow_html=True)
+
+    # Catálogo de fases
+    FASES = [
+        "Capacitación",
+        "Post-capacitación",
+        "Pre-consistencia",
+        "Consistencia",
+        "Operación de campo",
+    ]
+
+    with st.form("form_nueva_tarea", clear_on_submit=True):
+        # ===== Proporciones UNIFICADAS para ambas filas =====
+        # Alineadas y con Detalle y Responsable del mismo ancho.
+        A  = 1.6   # Área / Tipo
+        Fw = 1.6   # Fase / Estado
+        T  = 2.5   # Tarea / Fecha de inicio
+        D  = 2.1   # Detalle de tarea / Hora de inicio
+        R  = 2.1   # Responsable / ID asignado
+        C  = 1.2   # Ciclo de mejora / (espaciador en fila 2)
+        B  = 1.6   # Botón (columna propia, separada)
+
+        # ============== FILA 1 (mismos 7 anchos) ==============
+        r1c1, r1c2, r1c3, r1c4, r1c5, r1c6, r1c7 = st.columns([A, Fw, T, D, R, C, B], gap="medium")
+
+        area = r1c1.selectbox("Área", options=AREAS_OPC, index=0, key="nt_area")
+
+        fase = r1c2.selectbox(
+            "Fase",
+            options=FASES,
+            index=None,
+            placeholder="Selecciona una fase",
+            key="nt_fase"
+        )
+
+        tarea   = r1c3.text_input("Tarea", placeholder="Describe la tarea")
+        detalle = r1c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)")
+        resp    = r1c5.text_input("Responsable", placeholder="Nombre")
+
+        ciclo_mejora = r1c6.selectbox(
+            "Ciclo de mejora",
+            options=["1", "2", "3", "+4"],
+            index=0,
+            key="nt_ciclo_mejora"
+        )
+
+        # Espaciador para conservar la rejilla y no subir el botón
+        r1c7.write("")
+
+        # ============== FILA 2 (mismos 7 anchos y orden pedido) ==============
+        c2_1, c2_2, c2_3, c2_4, c2_5, c2_6, c2_7 = st.columns([A, Fw, T, D, R, C, B], gap="medium")
+
+        tipo   = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría")
+        estado = _opt_map(c2_2, "Estado", EMO_ESTADO, "No iniciado")
+
+        fi_d   = c2_3.date_input("Fecha de inicio", value=None, key="fi_d")
+        fi_t   = c2_4.time_input("Hora de inicio", value=None, step=60, key="fi_t")
+
+        # ID asignado (debajo de Responsable)
+        try:
+            _df_tmp = st.session_state["df_main"]
+            id_preview = next_id_area(_df_tmp, area)
+        except Exception:
+            id_preview = ""
+        c2_5.text_input("ID asignado", value=id_preview, disabled=True)
+
+        # Espaciador (debajo de Ciclo) → separa visualmente del botón
+        c2_6.write("")
+
+        # Botón en su propia columna, alineado con la fila 2 y separado del ciclo
+        with c2_7:
+            submitted = st.form_submit_button("💾 Agregar y guardar", use_container_width=True)
+
+    # ============== POST Submit ==============
+    if submitted:
+        try:
+            # 1) Base actual
+            df = st.session_state["df_main"].copy()
+
+            # Garantiza existencia de columna "Ciclo de mejora"
+            if "Ciclo de mejora" not in df.columns:
+                df["Ciclo de mejora"] = ""
+
+            # 2) Construye la nueva fila
+            f_ini = combine_dt(fi_d, fi_t)
+
+            new = blank_row()
+            new.update({
+                "Área": area,
+                "Id": next_id_area(df, area),   # Asigna el ID final a guardar
+                "Tarea": tarea,
+                "Tipo": tipo,
+                "Responsable": resp,
+                "Fase": fase,
+                "Estado": estado,
+                "Fecha inicio": f_ini,
+                "Ciclo de mejora": ciclo_mejora,
+                "Detalle": detalle,
+            })
+
+            # 3) Inserta y normaliza tipos de fecha
+            df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
+            if "Fecha inicio" in df.columns:
+                df["Fecha inicio"] = pd.to_datetime(df["Fecha inicio"], errors="coerce")
+
+            # 4) Actualiza estado global y guarda CSV local
+            st.session_state["df_main"] = df.copy()
+
+            os.makedirs("data", exist_ok=True)
+            path_ok = os.path.join("data", "tareas.csv")
+            df.reindex(columns=COLS, fill_value=None).to_csv(
+                path_ok, index=False, encoding="utf-8-sig", mode="w"
+            )
+
+            # 5) Mensaje y refresco
+            st.success(f"✔ Tarea agregada (Id {new['Id']}).")
+            st.rerun()
+
+        except Exception as e:
+            st.error(f"No pude guardar la nueva tarea: {e}")
+
+    st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
 
 
 # ================== Nueva alerta ==================
@@ -1806,6 +1870,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
