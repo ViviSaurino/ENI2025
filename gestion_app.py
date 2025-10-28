@@ -1018,8 +1018,9 @@ if st.session_state.get("nt_visible", True):
             id_preview = ""
         c2_5.text_input("ID asignado", value=id_preview, disabled=True)
 
-        # Botón (debajo de Ciclo de mejora, MISMO ancho y columna)
+        # Botón (debajo de Ciclo de mejora, MISMO ancho y columna) + spacer para alinear altura
         with c2_6:
+            st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
             submitted = st.form_submit_button("💾 Agregar y guardar", use_container_width=True)
 
     # ============== POST Submit ==============
@@ -1070,6 +1071,7 @@ if st.session_state.get("nt_visible", True):
             st.error(f"No pude guardar la nueva tarea: {e}")
 
     st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
+
 
 # ================== Actualizar estado ==================
 
@@ -2008,6 +2010,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
