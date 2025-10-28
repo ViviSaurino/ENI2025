@@ -1320,7 +1320,13 @@ if st.session_state["na_visible"]:
         r1_area, r1_resp, r1_desde, r1_hasta, r1_tarea, r1_id = st.columns([A, F, 1.1, 1.1, 1.0, 2.4], gap="medium")
 
         # --- Fila 1: filtros + selección de tarea e Id automático ---
-        area_filtro = _opt_map(r1_area, "Área", EMO_AREA, "Jefatura","Gestión", "Metodología","Base de datos","Monitoreo","Capacitación","Consitencia")
+        # ✅ FIX: selector de Área con catálogo AREAS_OPC (evita TypeError de _opt_map)
+        area_filtro = r1_area.selectbox(
+            "Área",
+            options=AREAS_OPC,
+            index=0,
+            key="na_area"
+        )
 
         # lista de responsables (según df actual)
         df_all = st.session_state["df_main"].copy()
@@ -2049,4 +2055,5 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
