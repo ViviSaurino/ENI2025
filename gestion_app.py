@@ -891,53 +891,33 @@ EMO_SI_NO       = {"✅ Sí": "Sí", "🚫 No": "No"}
 
 # ================== Formulario ================== 
 
-# Estado inicial del colapsable
 st.session_state.setdefault("nt_visible", True)
-
-# Chevron (▾ abierto / ▸ cerrado)
 chev = "▾" if st.session_state.get("nt_visible", True) else "▸"
 
-# ---------- Barra superior (triangulito + píldora) alineada ----------
 st.markdown('<div id="ntbar" class="topbar">', unsafe_allow_html=True)
 c_toggle, c_pill = st.columns([0.028, 0.965], gap="medium") 
-
 with c_toggle:
     st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
-
-    def _toggle_nt():
-        st.session_state["nt_visible"] = not st.session_state.get("nt_visible", True)
-
+    def _toggle_nt(): st.session_state["nt_visible"] = not st.session_state.get("nt_visible", True)
     st.button(chev, key="nt_toggle_icon", help="Mostrar/ocultar", on_click=_toggle_nt)
     st.markdown('</div>', unsafe_allow_html=True)
-
-    # Camuflaje botón
-    st.markdown("""
-    <style>
+    st.markdown("""<style>
       #ntbar .toggle-icon .stButton, #ntbar .toggle-icon .stButton > div,
       #ntbar .toggle-icon [data-testid^="baseButton"],
       #ntbar .toggle-icon [data-testid^="baseButton"] > div{
-        background: transparent !important; border: none !important; box-shadow: none !important;
-        padding: 0 !important; margin: 0 !important;
-      }
-      #ntbar .toggle-icon .stButton > button,
-      #ntbar .toggle-icon [data-testid^="baseButton"] button{
-        background:#fff !important; border:1px solid #fff !important; box-shadow:none !important;
-        padding:0 !important; margin:0 !important; min-width:0 !important; min-height:0 !important; height:auto !important;
-        border-radius:0 !important; font-weight:800 !important; font-size:20px !important; line-height:1 !important;
-        transform: translateY(8px); color: inherit !important; cursor: pointer !important;
-      }
-    </style>
-    """, unsafe_allow_html=True)
-
+        background:transparent!important;border:none!important;box-shadow:none!important;padding:0!important;margin:0!important;}
+      #ntbar .toggle-icon .stButton > button, #ntbar .toggle-icon [data-testid^="baseButton"] button{
+        background:#fff!important;border:1px solid #fff!important;box-shadow:none!important;padding:0!important;margin:0!important;
+        min-width:0!important;min-height:0!important;height:auto!important;border-radius:0!important;font-weight:800!important;
+        font-size:20px!important;line-height:1!important;transform:translateY(8px);color:inherit!important;cursor:pointer!important;}
+    </style>""", unsafe_allow_html=True)
 with c_pill:
     st.markdown('<div class="form-title">&nbsp;&nbsp;📝&nbsp;&nbsp;Nueva tarea</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
-# ---------- fin barra superior ----------
 
 submitted = False
 
 if st.session_state.get("nt_visible", True):
-
     st.markdown("""
     <div class="help-strip help-strip-nt" id="nt-help">
       ✳️ <strong>Completa los campos principales</strong> para registrar una nueva tarea
@@ -946,48 +926,37 @@ if st.session_state.get("nt_visible", True):
 
     st.markdown('<div class="form-card">', unsafe_allow_html=True)
 
-    # Catálogo de fases
     FASES = ["Capacitación","Post-capacitación","Pre-consistencia","Consistencia","Operación de campo"]
 
     with st.form("form_nueva_tarea", clear_on_submit=True):
-        # ---- Reglas de ancho para ALINEAR filas ----
-        A = 1.2   # Área / Tipo de tarea
-        F = 1.2   # Fase / Ciclo de mejora
-        T = 2.1   # Tarea / Estado (ocupa el mismo espacio para alinear)
-        D = 2.4   # Detalle / Fecha de inicio
-        R = 1.2   # Responsable / Hora de inicio
-        I = 0.9   # Id (col extra a la derecha en la fila 2)
+        # ===== mismas proporciones para FILA 1, FILA 2 y FILA 3 (botón) =====
+        A = 1.2   # Área / Tipo
+        F = 1.2   # Fase / Ciclo
+        T = 2.1   # Tarea / Estado
+        D = 2.4   # Detalle / Fecha inicio
+        R = 1.2   # Responsable / Hora inicio
+        I = 0.9   # Id  / Botón
 
-        # ====== Fila 1 (ÁREA, FASE, TAREA, DETALLE, RESPONSABLE) ======
-        r1_area, r1_fase, r1_tarea, r1_det, r1_resp = st.columns([A, F, T, D, R], gap="medium")
+        # ---------------- Fila 1: Área | Fase | Tarea | Detalle | Responsable | (espaciador de Id) -------------
+        r1_area, r1_fase, r1_tarea, r1_det, r1_resp, r1_pad = st.columns([A, F, T, D, R, I], gap="medium")
 
         area = r1_area.selectbox("Área", options=AREAS_OPC, index=0, key="nt_area")
-
-        fase = r1_fase.selectbox(
-            "Fase", options=FASES, index=None, placeholder="Selecciona una fase", key="nt_fase"
-        )
-
+        fase = r1_fase.selectbox("Fase", options=FASES, index=None, placeholder="Selecciona una fase", key="nt_fase")
         tarea   = r1_tarea.text_input("Tarea", placeholder="Describe la tarea")
         detalle = r1_det.text_input("Detalle de tarea", placeholder="Información adicional (opcional)")
         resp    = r1_resp.text_input("Responsable", placeholder="Nombre")
+        r1_pad.empty()  # mantiene alineación con la columna Id de la fila 2
 
-        # ====== Fila 2 (TIPO, CICLO, ESTADO, FECHA INICIO, HORA INICIO, ID) ======
+        # ---------------- Fila 2: Tipo | Ciclo | Estado | Fecha inicio | Hora inicio | Id -----------------------
         c2_tipo, c2_ciclo, c2_estado, c2_fini, c2_hini, c2_id = st.columns([A, F, T, D, R, I], gap="medium")
 
         tipo = c2_tipo.text_input("Tipo de tarea", placeholder="Tipo o categoría")
-
-        ciclo_mejora = c2_ciclo.selectbox(
-            "Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora"
-        )
-
+        ciclo_mejora = c2_ciclo.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
         estado = _opt_map(c2_estado, "Estado", EMO_ESTADO, "No iniciado")
 
         fi_d = c2_fini.date_input("Fecha de inicio", value=None, key="fi_d")
-        fi_t = c2_hini.time_input(
-            "Hora de inicio", value=None, step=60, key="fi_t"
-        ) if fi_d else None
+        fi_t = c2_hini.time_input("Hora de inicio", value=None, step=60, key="fi_t") if fi_d else None
 
-        # Id preliminar (solo lectura) calculado por área
         try:
             _df_tmp = st.session_state["df_main"]
             id_preview = next_id_area(_df_tmp, area)
@@ -995,19 +964,19 @@ if st.session_state.get("nt_visible", True):
             id_preview = ""
         c2_id.text_input("Id", value=id_preview, disabled=True)
 
-        # Botón enviar
-        submitted = st.form_submit_button("💾 Agregar y guardar", use_container_width=True)
+        # ---------------- Fila 3: botón únicamente en la columna de Id -----------------------------------------
+        c3_a, c3_b, c3_c, c3_d, c3_e, c3_id = st.columns([A, F, T, D, R, I], gap="medium")
+        with c3_id:
+            submitted = st.form_submit_button("💾 Agregar y guardar", use_container_width=True)
 
     if submitted:
         try:
             df = st.session_state["df_main"].copy()
-
             if "Ciclo de mejora" not in df.columns:
                 df["Ciclo de mejora"] = ""
 
             new = blank_row()
             f_ini = combine_dt(fi_d, fi_t)
-
             new.update({
                 "Área": area,
                 "Id": next_id_area(df, area),
@@ -1021,25 +990,20 @@ if st.session_state.get("nt_visible", True):
                 "Detalle": detalle,
             })
 
-            # Inserta y normaliza fechas
             df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
             if "Fecha inicio" in df.columns:
                 df["Fecha inicio"] = pd.to_datetime(df["Fecha inicio"], errors="coerce")
 
             st.session_state["df_main"] = df.copy()
-
             os.makedirs("data", exist_ok=True)
-            path_ok = os.path.join("data", "tareas.csv")
-            df.reindex(columns=COLS, fill_value=None).to_csv(path_ok, index=False, encoding="utf-8-sig", mode="w")
-
+            df.reindex(columns=COLS, fill_value=None).to_csv(os.path.join("data","tareas.csv"),
+                                                             index=False, encoding="utf-8-sig", mode="w")
             st.success(f"✔ Tarea agregada (Id {new['Id']}).")
             st.rerun()
-
         except Exception as e:
             st.error(f"No pude guardar la nueva tarea: {e}")
 
     st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
-
 
 # ================== Actualizar estado ==================
 
@@ -1978,6 +1942,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
