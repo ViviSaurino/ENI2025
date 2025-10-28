@@ -989,6 +989,7 @@ if st.session_state.get("nt_visible", True):
         "Pre-consistencia",
         "Consistencia",
         "Operación de campo",
+        "Monitoreo",
     ]
     # ------------------------------------------------------------
 
@@ -1013,10 +1014,11 @@ if st.session_state.get("nt_visible", True):
         # -------- Fila 1: Área | Fase | [Nueva celda] | Tarea | Detalle --------
         r1c1, r1c2, r1c3, r1c4, r1c5 = st.columns([A, F, W_ESTADO, T, D], gap="medium")
 
-        area    = _opt_map(r1c1, "Área", EMO_AREA, "Jefatura","Gestión", "Metodología","Base de datos","Monitoreo","Capacitación","Consitencia")
+        # Usa tu lista AREAS_OPC definida arriba
+        area = r1c1.selectbox("Área", options=AREAS_OPC, index=0, key="nt_area")
 
         # ====== CAMBIO: Fase ahora es un selectbox (lista desplegable) ======
-        fase    = r1c2.selectbox(
+        fase = r1c2.selectbox(
             "Fase",
             options=FASES,
             index=None,
