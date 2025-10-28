@@ -684,7 +684,7 @@ st.markdown("""
 
 /* ===== Compactar espacios entre bloques ===== */
 .block-container [data-testid="stVerticalBlock"]{
-  row-gap: 20px !important;
+  row-gap: 10px !important;
   gap: 6px !important;
 }
 .block-container [data-testid="stVerticalBlock"]:has(.topbar),
@@ -708,7 +708,7 @@ st.markdown("""
 .block-container .element-container:has(.topbar-na),
 .block-container .element-container:has(.topbar-pri),
 .block-container .element-container:has(.topbar-eval){
-  margin-top: 2px !important;
+  margin-top: 10px !important;
   margin-bottom: 6px !important;
 }
 
@@ -2062,6 +2062,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
