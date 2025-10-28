@@ -901,16 +901,6 @@ with c_toggle:
     def _toggle_nt(): st.session_state["nt_visible"] = not st.session_state.get("nt_visible", True)
     st.button(chev, key="nt_toggle_icon", help="Mostrar/ocultar", on_click=_toggle_nt)
     st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown("""<style>
-      #ntbar .toggle-icon .stButton, #ntbar .toggle-icon .stButton > div,
-      #ntbar .toggle-icon [data-testid^="baseButton"],
-      #ntbar .toggle-icon [data-testid^="baseButton"] > div{
-        background:transparent!important;border:none!important;box-shadow:none!important;padding:0!important;margin:0!important;}
-      #ntbar .toggle-icon .stButton > button, #ntbar .toggle-icon [data-testid^="baseButton"] button{
-        background:#fff!important;border:1px solid #fff!important;box-shadow:none!important;padding:0!important;margin:0!important;
-        min-width:0!important;min-height:0!important;height:auto!important;border-radius:0!important;font-weight:800!important;
-        font-size:20px!important;line-height:1!important;transform:translateY(8px);color:inherit!important;cursor:pointer!important;}
-    </style>""", unsafe_allow_html=True)
 with c_pill:
     st.markdown('<div class="form-title">&nbsp;&nbsp;📝&nbsp;&nbsp;Nueva tarea</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
@@ -929,27 +919,30 @@ if st.session_state.get("nt_visible", True):
     FASES = ["Capacitación","Post-capacitación","Pre-consistencia","Consistencia","Operación de campo"]
 
     with st.form("form_nueva_tarea", clear_on_submit=True):
-        # ===== mismas proporciones para FILA 1, FILA 2 y FILA 3 (botón) =====
-        A = 1.2   # Área / Tipo
-        F = 1.2   # Fase / Ciclo
-        T = 2.1   # Tarea / Estado
-        D = 2.4   # Detalle / Fecha inicio
-        R = 1.2   # Responsable / Hora inicio
-        I = 0.9   # Id  / Botón
+        # ===== Proporciones corregidas =====
+        #  Fila 1: Área | Fase | Tarea | Detalle | Responsable | (pad de Id)
+        #  Fila 2: Tipo | Ciclo | Estado | Fecha inicio | Hora inicio | Id
+        #  Fila 3: (botón en la misma columna que Id)
+        A = 1.2    # Área / Tipo
+        F = 1.2    # Fase / Ciclo
+        T = 2.1    # Tarea / Estado
+        D = 2.4    # Detalle / (no se usa en fila 2)
+        R = 1.6    # Responsable (↔ más ancho, línea roja)
+        I = 0.9    # Id (↔ mismo ancho para el botón)
+        FINI = 1.0 # Fecha de inicio (↔ angosto, línea azul)
+        HINI = 1.0 # Hora de inicio  (↔ angosto, línea azul)
 
-        # ---------------- Fila 1: Área | Fase | Tarea | Detalle | Responsable | (espaciador de Id) -------------
+        # ---------------- Fila 1 ----------------
         r1_area, r1_fase, r1_tarea, r1_det, r1_resp, r1_pad = st.columns([A, F, T, D, R, I], gap="medium")
-
         area = r1_area.selectbox("Área", options=AREAS_OPC, index=0, key="nt_area")
         fase = r1_fase.selectbox("Fase", options=FASES, index=None, placeholder="Selecciona una fase", key="nt_fase")
         tarea   = r1_tarea.text_input("Tarea", placeholder="Describe la tarea")
         detalle = r1_det.text_input("Detalle de tarea", placeholder="Información adicional (opcional)")
         resp    = r1_resp.text_input("Responsable", placeholder="Nombre")
-        r1_pad.empty()  # mantiene alineación con la columna Id de la fila 2
+        r1_pad.empty()  # mantiene alineación con la columna Id
 
-        # ---------------- Fila 2: Tipo | Ciclo | Estado | Fecha inicio | Hora inicio | Id -----------------------
-        c2_tipo, c2_ciclo, c2_estado, c2_fini, c2_hini, c2_id = st.columns([A, F, T, D, R, I], gap="medium")
-
+        # ---------------- Fila 2 ----------------
+        c2_tipo, c2_ciclo, c2_estado, c2_fini, c2_hini, c2_id = st.columns([A, F, T, FINI, HINI, I], gap="medium")
         tipo = c2_tipo.text_input("Tipo de tarea", placeholder="Tipo o categoría")
         ciclo_mejora = c2_ciclo.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
         estado = _opt_map(c2_estado, "Estado", EMO_ESTADO, "No iniciado")
@@ -964,8 +957,8 @@ if st.session_state.get("nt_visible", True):
             id_preview = ""
         c2_id.text_input("Id", value=id_preview, disabled=True)
 
-        # ---------------- Fila 3: botón únicamente en la columna de Id -----------------------------------------
-        c3_a, c3_b, c3_c, c3_d, c3_e, c3_id = st.columns([A, F, T, D, R, I], gap="medium")
+        # ---------------- Fila 3: botón en la columna del Id --------------
+        c3_a, c3_b, c3_c, c3_d, c3_e, c3_id = st.columns([A, F, T, FINI, HINI, I], gap="medium")
         with c3_id:
             submitted = st.form_submit_button("💾 Agregar y guardar", use_container_width=True)
 
@@ -1004,6 +997,7 @@ if st.session_state.get("nt_visible", True):
             st.error(f"No pude guardar la nueva tarea: {e}")
 
     st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
+
 
 # ================== Actualizar estado ==================
 
@@ -1942,6 +1936,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
