@@ -967,15 +967,13 @@ if st.session_state.get("nt_visible", True):
 
     with st.form("form_nueva_tarea", clear_on_submit=True):
         # ===== Rejilla unificada (ambas filas) =====
-        # Más ancho para Fase y Tarea; Ciclo ocupa el extremo derecho;
-        # el botón va debajo (misma columna/ancho).
-        A  = 1.5   # Área / Tipo
-        Fw = 2.25  # Fase / Estado (≈ entra "Operación de campo")
-        T  = 3.00  # Tarea / Fecha de inicio (más ancho)
+        # Ajustes solicitados: A más ancho; Fw un poco más angosto (pero cabe “Operación de campo”).
+        A  = 1.80  # Área / Tipo  (↑ para calzar con la píldora de 'Nueva tarea')
+        Fw = 2.10  # Fase / Estado (↓ leve, pero muestra “Operación de campo” completo)
+        T  = 3.00  # Tarea / Fecha de inicio
         D  = 2.00  # Detalle de tarea / Hora de inicio
         R  = 2.00  # Responsable / ID asignado
-        C  = 1.60  # Ciclo de mejora / Botón (mismo ancho, columna extrema)
-        # total 12.35 (los valores son relativos; lo importante es mantenerlos iguales en ambas filas)
+        C  = 1.60  # Ciclo de mejora / Botón
 
         # ============== FILA 1 ==============
         r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
@@ -1018,7 +1016,7 @@ if st.session_state.get("nt_visible", True):
             id_preview = ""
         c2_5.text_input("ID asignado", value=id_preview, disabled=True)
 
-        # Botón (debajo de Ciclo de mejora, MISMO ancho y columna) + spacer para alinear altura
+        # Botón (debajo de Ciclo de mejora) con spacer para alinear altura
         with c2_6:
             st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
             submitted = st.form_submit_button("💾 Agregar y guardar", use_container_width=True)
@@ -2010,6 +2008,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
