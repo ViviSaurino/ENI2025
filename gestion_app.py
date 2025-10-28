@@ -28,7 +28,7 @@ from auth_google import google_login, logout
 # ===== Ajuste 1: Constantes y fallbacks (deben estar antes del formulario) =====
 AREAS_OPC = st.session_state.get(
     "AREAS_OPC",
-    ["Planeamiento", "Base de datos", "Metodología", "Consistencia"]
+    ["Jefatura", "Gestión", "Metodología", "Base de datos", "Capacitación", "Monitoreo", "Consistencia"]
 )
 ESTADO = ["No iniciado", "En curso", "Terminado", "Cancelado", "Pausado"]
 CUMPLIMIENTO = ["Entregado a tiempo", "Entregado con retraso", "No entregado", "En riesgo de retraso"]
@@ -69,10 +69,13 @@ COLUMN_WIDTHS = {
 
 # ===== IDs por Área (PL, BD, CO, ME) =====
 AREA_PREFIX = {
-    "planeamiento":   "PL",
-    "base de datos":  "BD",
-    "consistencia":   "CO",
-    "metodología":    "ME",
+    "Jefatura":  "JF",
+    "Gestión":  "GE",
+    "Metodología":  "MT",
+    "Base de datos":  "BD",
+    "Monitoreo":  "MO",
+    "Capacitación":  "CA",
+    "Consistencia":  "CO",
 }
 
 def next_id_area(df, area: str) -> str:
@@ -873,10 +876,13 @@ def _opt_map(container, label, mapping, default_value):
 
 # Emojis/colores
 EMO_AREA = {
-    "💜 Planeamiento": "Planeamiento",
-    "💖 Base de datos": "Base de datos",
-    "🟧 Metodología": "Metodología",
-    "🔷 Consistencia": "Consistencia",
+    "😃 Jefatura": "Jefatura",
+    "✏️ Gestión": "Gestión",
+    "💻 Base de datos": "Base de datos",
+    "📈  Metodología": "Metodología",
+    "🔠 Monitoreo": "Monitoreo",
+    "🥇 Capacitación": "Capacitación",
+    "💾 Consistencia": "Consistencia",
 }
 EMO_COMPLEJIDAD = {"🔴 Alta": "Alta", "🟡 Media": "Media", "🟢 Baja": "Baja"}
 EMO_PRIORIDAD   = {"🔥 Alta": "Alta", "✨ Media": "Media", "🍃 Baja": "Baja"}
@@ -983,7 +989,6 @@ if st.session_state.get("nt_visible", True):
         "Pre-consistencia",
         "Consistencia",
         "Operación de campo",
-        "Monitoreo",
     ]
     # ------------------------------------------------------------
 
@@ -1008,7 +1013,7 @@ if st.session_state.get("nt_visible", True):
         # -------- Fila 1: Área | Fase | [Nueva celda] | Tarea | Detalle --------
         r1c1, r1c2, r1c3, r1c4, r1c5 = st.columns([A, F, W_ESTADO, T, D], gap="medium")
 
-        area    = _opt_map(r1c1, "Área", EMO_AREA, "Planeamiento")
+        area    = _opt_map(r1c1, "Área", EMO_AREA, "Jefatura","Gestión", "Metodología","Base de datos","Monitoreo","Capacitación","Consitencia")
 
         # ====== CAMBIO: Fase ahora es un selectbox (lista desplegable) ======
         fase    = r1c2.selectbox(
@@ -1314,7 +1319,7 @@ if st.session_state["na_visible"]:
         r1_area, r1_resp, r1_desde, r1_hasta, r1_tarea, r1_id = st.columns([A, F, 1.1, 1.1, 1.0, 2.4], gap="medium")
 
         # --- Fila 1: filtros + selección de tarea e Id automático ---
-        area_filtro = _opt_map(r1_area, "Área", EMO_AREA, "Planeamiento")
+        area_filtro = _opt_map(r1_area, "Área", EMO_AREA, "Jefatura","Gestión", "Metodología","Base de datos","Monitoreo","Capacitación","Consitencia")
 
         # lista de responsables (según df actual)
         df_all = st.session_state["df_main"].copy()
@@ -1411,7 +1416,7 @@ ALLOWED_BOSS_EMAILS = {"stephanysg18@gmail.com.pe"}  # lo ajustarás luego
 CAN_EDIT = True
 
 # ====== FALLBACKS para listados ======
-AREAS_OPC = st.session_state.get("AREAS_OPC", ["Planeamiento"])
+AREAS_OPC = st.session_state.get("AREAS_OPC", ["Jefatura","Gestión", "Metodología","Base de datos","Monitoreo","Capacitación","Consitencia"])
 
 # ====== UTILIDAD: filtro común para tablas ======
 def _filtra_dataset(df_base, area, responsable, desde, hasta):
@@ -2043,4 +2048,3 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
