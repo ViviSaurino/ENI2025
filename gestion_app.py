@@ -1129,8 +1129,6 @@ if st.session_state.get("nt_visible", True):
 
 # Estado inicial del colapsable de esta sección
 st.session_state.setdefault("ux_visible", True)
-
-# Chevron (1 clic) para esta barra
 chev2 = "▾" if st.session_state["ux_visible"] else "▸"
 
 # ---------- Barra superior (triangulito + píldora) ALINEADA como "Nueva tarea" ----------
@@ -1139,31 +1137,18 @@ c_toggle2, c_pill2 = st.columns([0.028, 0.965], gap="medium")
 
 with c_toggle2:
     st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
-
     def _toggle_ux():
         st.session_state["ux_visible"] = not st.session_state["ux_visible"]
-
-    st.button(
-        chev2,
-        key="ux_toggle_icon",
-        help="Mostrar/ocultar",
-        on_click=_toggle_ux
-    )
+    st.button(chev2, key="ux_toggle_icon", help="Mostrar/ocultar", on_click=_toggle_ux)
     st.markdown('</div>', unsafe_allow_html=True)
 
 with c_pill2:
-    # Píldora celeste (igual estética/ancho que la otra)
-    st.markdown(
-        '<div class="form-title-ux">&nbsp;&nbsp;🔁&nbsp;&nbsp;Editar estado</div>',
-        unsafe_allow_html=True
-    )
+    st.markdown('<div class="form-title-ux">&nbsp;&nbsp;🔁&nbsp;&nbsp;Editar estado</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 # ---------- fin barra superior ----------
 
-# --- Cuerpo (solo si está visible) ---
 if st.session_state["ux_visible"]:
 
-    # Tira de ayuda SOLO para esta sección (con clase + id propios)
     st.markdown("""
     <div class="help-strip help-strip-ux" id="ux-help">
       🔄 <strong>Actualiza el estado</strong> de una tarea ya registrada usando los filtros
@@ -1173,47 +1158,37 @@ if st.session_state["ux_visible"]:
     # Tarjeta con borde
     st.markdown('<div class="form-card">', unsafe_allow_html=True)
 
-    # ====== Garantiza columnas mínimas necesarias ======
+    # ===== Proporciones (idénticas a la sección "Nueva tarea") =====
+    A, Fw, T_width, D, R, C = 1.5, 2.25, 3.00, 2.00, 2.00, 1.60
+
+    # Base y columnas mínimas
     df_all = st.session_state["df_main"].copy()
     for col_req in ["Estado", "Fecha estado", "Hora estado"]:
         if col_req not in df_all.columns:
             df_all[col_req] = None
 
-    # ====== Filtros en UNA línea: Área, Fase, Responsable, Desde, Hasta, Buscar ======
-    # Proporciones pensadas para alinearse con la sección superior
-    A = 1.4   # Área
-    F = 1.6   # Fase
-    R = 1.6   # Responsable
-    D1 = 1.2  # Desde
-    D2 = 1.2  # Hasta
-    B = 0.9   # Botón Buscar
-
+    # ===== Filtros (1 línea): Área, Fase, Responsable, Desde, Hasta, Buscar =====
     with st.form("ux_filtros", clear_on_submit=False):
-        c_area, c_fase, c_resp, c_desde, c_hasta, c_btn = st.columns([A, F, R, D1, D2, B], gap="medium")
+        c_area, c_fase, c_resp, c_desde, c_hasta, c_btn = st.columns([A, Fw, T_width, D, R, C], gap="medium")
 
-        # Área
-        ux_area = c_area.selectbox("Área", options=["Todas"] + AREAS_OPC, index=0, key="ux_area")
+        ux_area = c_area.selectbox("Área", ["Todas"] + AREAS_OPC, index=0, key="ux_area")
 
-        # Fase
         fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
-        ux_fase = c_fase.selectbox("Fase", options=["Todas"] + fases_all, index=0, key="ux_fase")
+        ux_fase = c_fase.selectbox("Fase", ["Todas"] + fases_all, index=0, key="ux_fase")
 
-        # Responsable (filtrado por área si aplica)
+        # Responsable filtrado por área si aplica
         df_resp_src = df_all if ux_area == "Todas" else df_all[df_all["Área"] == ux_area]
         responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
-        ux_resp = c_resp.selectbox("Responsable", options=["Todos"] + responsables_all, index=0, key="ux_resp")
+        ux_resp = c_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0, key="ux_resp")
 
-        # Rango de fechas (sobre Fecha inicio si existe; si no, sobre Fecha estado)
         ux_desde = c_desde.date_input("Desde", value=None, key="ux_desde")
         ux_hasta = c_hasta.date_input("Hasta",  value=None, key="ux_hasta")
 
         do_buscar = c_btn.form_submit_button("🔍 Buscar", use_container_width=True)
 
-    # ====== Aplica búsqueda ======
-    df_filtrado = pd.DataFrame([])
+    # ===== Filtra (si se presiona Buscar) =====
+    df_filtrado = df_all.copy()
     if do_buscar:
-        df_filtrado = df_all.copy()
-
         if ux_area != "Todas":
             df_filtrado = df_filtrado[df_filtrado["Área"] == ux_area]
         if ux_fase != "Todas" and "Fase" in df_filtrado.columns:
@@ -1221,7 +1196,7 @@ if st.session_state["ux_visible"]:
         if ux_resp != "Todos":
             df_filtrado = df_filtrado[df_filtrado["Responsable"].astype(str) == ux_resp]
 
-        # por Fecha inicio si existe; si no, por Fecha estado
+        # Filtra por fechas: sobre "Fecha inicio" si existe; si no, sobre "Fecha estado"
         base_fecha_col = "Fecha inicio" if "Fecha inicio" in df_filtrado.columns else "Fecha estado"
         if base_fecha_col in df_filtrado.columns:
             fcol = pd.to_datetime(df_filtrado[base_fecha_col], errors="coerce")
@@ -1230,73 +1205,73 @@ if st.session_state["ux_visible"]:
             if ux_hasta:
                 df_filtrado = df_filtrado[fcol <= (pd.to_datetime(ux_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
 
-        # ====== Prepara la tabla para edición ======
-        cols_view = [
-            "Id", "Tarea",
-            "Estado", "Fecha estado", "Hora estado"
-        ]
-        for c in cols_view:
-            if c not in df_filtrado.columns:
-                df_filtrado[c] = None
+    # ===== Tabla (siempre visible, incluso vacía) =====
+    cols_view = [
+        "Id", "Tarea",
+        "Estado", "Fecha estado", "Hora estado"
+    ]
+    for c in cols_view:
+        if c not in df_filtrado.columns:
+            df_filtrado[c] = None
 
-        df_view = df_filtrado[cols_view].copy()
-        df_view.rename(columns={
-            "Estado": "Estado actual",
-            "Fecha estado": "Fecha estado actual",
-            "Hora estado": "Hora estado actual"
-        }, inplace=True)
+    df_view = df_filtrado[cols_view].copy()
+    df_view.rename(columns={
+        "Estado": "Estado actual",
+        "Fecha estado": "Fecha estado actual",
+        "Hora estado": "Hora estado actual"
+    }, inplace=True)
 
-        # columnas editables (vacías al inicio)
-        df_view["Estado modificado"] = ""
-        df_view["Fecha estado modificado"] = ""
-        df_view["Hora estado modificado"] = ""
+    # columnas editables (para cambios)
+    df_view["Estado modificado"] = ""
+    df_view["Fecha estado modificado"] = ""
+    df_view["Hora estado modificado"] = ""
 
-        st.markdown("**Resultados**")
-        # ====== AgGrid: solo columnas 'modificadas' editables ======
-        gob = GridOptionsBuilder.from_dataframe(df_view)
-        gob.configure_grid_options(
-            suppressMovableColumns=True,
-            domLayout="normal",
-            ensureDomOrder=True,
-            rowHeight=38,
-            headerHeight=42,
-        )
+    st.markdown("**Resultados**")
 
-        # No editar columnas actuales
-        for c_ro in ["Id", "Tarea", "Estado actual", "Fecha estado actual", "Hora estado actual"]:
-            gob.configure_column(c_ro, editable=False)
+    gob = GridOptionsBuilder.from_dataframe(df_view)
+    gob.configure_grid_options(
+        suppressMovableColumns=True,
+        domLayout="normal",
+        ensureDomOrder=True,
+        rowHeight=38,
+        headerHeight=42,
+    )
 
-        # Editables: Estado modificado (select), fechas/horas como texto
-        ESTADOS_OPC = ["", "En curso", "Terminado", "Pausado", "Cancelado", "Eliminado"]
-        gob.configure_column(
-            "Estado modificado",
-            editable=True,
-            cellEditor="agSelectCellEditor",
-            cellEditorParams={"values": ESTADOS_OPC},
-            width=180,
-        )
-        gob.configure_column("Fecha estado modificado", editable=True, width=180)  # YYYY-MM-DD
-        gob.configure_column("Hora estado modificado",   editable=True, width=150)  # HH:mm
+    # Solo lectura
+    for c_ro in ["Id", "Tarea", "Estado actual", "Fecha estado actual", "Hora estado actual"]:
+        gob.configure_column(c_ro, editable=False)
 
-        grid = AgGrid(
-            df_view,
-            gridOptions=gob.build(),
-            data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
-            update_mode=GridUpdateMode.VALUE_CHANGED,
-            fit_columns_on_grid_load=False,
-            enable_enterprise_modules=False,
-            reload_data=False
-        )
+    # Editables
+    ESTADOS_OPC = ["", "En curso", "Terminado", "Pausado", "Cancelado", "Eliminado"]
+    gob.configure_column(
+        "Estado modificado",
+        editable=True,
+        cellEditor="agSelectCellEditor",
+        cellEditorParams={"values": ESTADOS_OPC},
+        width=180,
+    )
+    gob.configure_column("Fecha estado modificado", editable=True, width=180)  # YYYY-MM-DD
+    gob.configure_column("Hora estado modificado",   editable=True, width=150)  # HH:mm
 
-        st.caption("👉 Completa las columnas *modificadas*. Formatos sugeridos: **Fecha** `YYYY-MM-DD`, **Hora** `HH:mm`.")
+    grid = AgGrid(
+        df_view,
+        gridOptions=gob.build(),
+        data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+        update_mode=GridUpdateMode.VALUE_CHANGED,
+        fit_columns_on_grid_load=False,
+        enable_enterprise_modules=False,
+        reload_data=False
+    )
 
-        # ====== Guardar cambios ======
+    st.caption("👉 Completa *Estado/Fecha/Hora modificado*. Formatos sugeridos: **Fecha** `YYYY-MM-DD`, **Hora** `HH:mm`.")
+
+    # ===== Botón Guardar abajo a la derecha =====
+    _spacer, _btncol = st.columns([A+Fw+T_width+D+R, C], gap="medium")
+    with _btncol:
         if st.button("💾 Guardar cambios", use_container_width=True):
             try:
                 df_editado = pd.DataFrame(grid["data"]).copy()
                 df_base = st.session_state["df_main"].copy()
-
-                # Asegura columnas en base
                 for col_req in ["Estado", "Fecha estado", "Hora estado"]:
                     if col_req not in df_base.columns:
                         df_base[col_req] = None
@@ -1311,7 +1286,6 @@ if st.session_state["ux_visible"]:
                     f_mod   = str(row.get("Fecha estado modificado", "")).strip()
                     h_mod   = str(row.get("Hora estado modificado", "")).strip()
 
-                    # si no hay nada modificado, salta
                     if not est_mod and not f_mod and not h_mod:
                         continue
 
@@ -1319,22 +1293,18 @@ if st.session_state["ux_visible"]:
                     if not m.any():
                         continue
 
-                    # Aplica cambios SOLO donde se haya provisto algo
                     if est_mod:
                         df_base.loc[m, "Estado"] = est_mod
                     if f_mod:
-                        # validación sencilla
                         try:
                             _ = pd.to_datetime(f_mod)
                             df_base.loc[m, "Fecha estado"] = f_mod
                         except Exception:
                             pass
                     if h_mod:
-                        # validación simple HH:mm
                         hh_ok = True
                         try:
-                            _hh, _mm = h_mod.split(":")
-                            _ = int(_hh); _ = int(_mm)
+                            _hh, _mm = h_mod.split(":"); _ = int(_hh); _ = int(_mm)
                         except Exception:
                             hh_ok = False
                         if hh_ok:
@@ -2146,6 +2116,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
