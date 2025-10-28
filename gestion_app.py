@@ -1019,7 +1019,7 @@ if st.session_state.get("nt_visible", True):
         # Botón (debajo de Ciclo de mejora) con spacer para alinear altura
         with c2_6:
             st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
-            submitted = st.form_submit_button("💾 Agregar y guardar", use_container_width=True)
+            submitted = st.form_submit_button("💾 Agregar", use_container_width=True)
 
     # ============== POST Submit ==============
     if submitted:
@@ -2008,6 +2008,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
