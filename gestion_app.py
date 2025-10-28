@@ -293,7 +293,7 @@ st.markdown("""
 <style>
 /* Espacio debajo del H1 principal */
 .block-container h1 {
-  margin-bottom: 18px !important;
+  margin-bottom: 25px !important;
 }
 
 /* Barras superiores con las píldoras (nueva tarea / editar estado / nueva alerta) */
@@ -2062,3 +2062,4 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
