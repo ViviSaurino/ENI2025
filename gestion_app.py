@@ -884,7 +884,7 @@ EMO_ESTADO      = {"🍼 No iniciado": "No iniciado","⏳ En curso": "En curso",
 EMO_SI_NO       = {"✅ Sí": "Sí", "🚫 No": "No"}
 
 
-# ================== Formulario ==================
+# ================== Formulario ================== 
 
 # Estado inicial del colapsable
 st.session_state.setdefault("nt_visible", True)
@@ -976,6 +976,17 @@ if st.session_state.get("nt_visible", True):
     # Tarjeta con tu borde
     st.markdown('<div class="form-card">', unsafe_allow_html=True)
 
+    # --------- NUEVO: catálogo de fases para el select ----------
+    FASES = [
+        "Capacitación",
+        "Post-capacitación",
+        "Pre-consistencia",
+        "Consistencia",
+        "Operación de campo",
+        "Monitoreo",
+    ]
+    # ------------------------------------------------------------
+
     with st.form("form_nueva_tarea", clear_on_submit=True):
         # ----- Proporciones para cuadrar anchos entre filas -----
         A = 1.2   # Área  y  Tipo
@@ -998,7 +1009,16 @@ if st.session_state.get("nt_visible", True):
         r1c1, r1c2, r1c3, r1c4, r1c5 = st.columns([A, F, W_ESTADO, T, D], gap="medium")
 
         area    = _opt_map(r1c1, "Área", EMO_AREA, "Planeamiento")
-        fase    = r1c2.text_input("Fase", placeholder="Etapa")
+
+        # ====== CAMBIO: Fase ahora es un selectbox (lista desplegable) ======
+        fase    = r1c2.selectbox(
+            "Fase",
+            options=FASES,
+            index=None,
+            placeholder="Selecciona una fase",
+            key="nt_fase"
+        )
+        # =====================================================================
 
         # Nueva celda (mismo ancho que “Estado”)
         nuevo_f1c3 = r1c3.text_input("Ciclo de mejora", placeholder="—")
@@ -1054,7 +1074,7 @@ if st.session_state.get("nt_visible", True):
                 "Tarea": tarea,
                 "Tipo": tipo,
                 "Responsable": resp,
-                "Fase": fase,
+                "Fase": fase,   # <- mantiene el valor seleccionado
                 "Complejidad": compl,
                 "Estado": estado,
                 "Fecha inicio": f_ini,
@@ -2023,3 +2043,4 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
