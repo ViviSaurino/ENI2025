@@ -1071,6 +1071,150 @@ if st.session_state.get("nt_visible", True):
 
     st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
 
+# ================== Actualizar estado ==================
+
+# Estado inicial del colapsable de esta sección
+st.session_state.setdefault("ux_visible", True)
+
+# Chevron (1 clic) para esta barra
+chev2 = "▾" if st.session_state["ux_visible"] else "▸"
+
+# ---------- Barra superior (triangulito + píldora) ALINEADA como "Nueva tarea" ----------
+st.markdown('<div class="topbar-ux">', unsafe_allow_html=True)
+c_toggle2, c_pill2 = st.columns([0.028, 0.965], gap="medium")
+
+with c_toggle2:
+    st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
+
+    def _toggle_ux():
+        st.session_state["ux_visible"] = not st.session_state["ux_visible"]
+
+    st.button(
+        chev2,
+        key="ux_toggle_icon",
+        help="Mostrar/ocultar",
+        on_click=_toggle_ux
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with c_pill2:
+    # Píldora celeste (igual estética/ancho que la otra)
+    st.markdown(
+        '<div class="form-title-ux">&nbsp;&nbsp;🔁&nbsp;&nbsp;Editar estado</div>',
+        unsafe_allow_html=True
+    )
+st.markdown('</div>', unsafe_allow_html=True)
+# ---------- fin barra superior ----------
+
+# --- Cuerpo (solo si está visible) ---
+if st.session_state["ux_visible"]:
+
+    # Tira de ayuda SOLO para esta sección (con clase + id propios)
+    st.markdown("""
+    <div class="help-strip help-strip-ux" id="ux-help">
+      🔄 <strong>Actualiza el estado</strong> de una tarea ya registrada usando los filtros
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Tarjeta con borde
+    st.markdown('<div class="form-card">', unsafe_allow_html=True)
+
+    # Reutilizamos exactamente las mismas proporciones del formulario superior:
+    A = 1.2   # => igual que "Tipo de tarea"
+    F = 1.2   # => igual que "Responsable"
+    # Estado / Complejidad / Fecha inicio / Vencimiento / Fecha fin en el form superior
+    W_ESTADO = 1.1
+    W_COMP   = 1.1
+    W_FINI   = 1.0
+    W_VENC   = 1.2
+    W_FFIN   = 1.2
+
+    df_all = st.session_state["df_main"].copy()
+
+    with st.form("form_actualizar_estado", clear_on_submit=False):
+        # Área(A), Responsable(F), Desde(1.1), Hasta(1.1), Tarea(1.0), Id(1.2), Estado(1.2)
+        c_area, c_resp, c_desde, c_hasta, c_tarea, c_id, c_estado = st.columns(
+            [A, F, W_ESTADO, W_COMP, W_FINI, W_VENC, W_FFIN], gap="medium"
+        )
+
+        # Área
+        upd_area = c_area.selectbox("Área", options=["Todas"] + AREAS_OPC, index=0, key="upd_area")
+
+        # Responsable (filtrado por área si aplica)
+        df_resp = df_all if upd_area == "Todas" else df_all[df_all["Área"] == upd_area]
+        responsables_all = sorted([x for x in df_resp["Responsable"].astype(str).unique() if x and x != "nan"])
+        upd_resp_sel = c_resp.selectbox("Responsable", options=["Todos"] + responsables_all, index=0, key="upd_resp_sel")
+
+        # Desde / Hasta (rango de fechas sobre "Fecha inicio")
+        upd_desde = c_desde.date_input("Desde", value=None, key="upd_desde")
+        upd_hasta = c_hasta.date_input("Hasta",  value=None, key="upd_hasta")
+
+        # Dataset filtrado para lista de tareas
+        df_filt = df_all.copy()
+        if upd_area != "Todas":
+            df_filt = df_filt[df_filt["Área"] == upd_area]
+        if upd_resp_sel != "Todos":
+            df_filt = df_filt[df_filt["Responsable"].astype(str) == upd_resp_sel]
+        if "Fecha inicio" in df_filt.columns:
+            fcol = pd.to_datetime(df_filt["Fecha inicio"], errors="coerce")
+            if upd_desde:
+                df_filt = df_filt[fcol >= pd.to_datetime(upd_desde)]
+            if upd_hasta:
+                df_filt = df_filt[fcol <= (pd.to_datetime(upd_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
+
+        # Tarea
+        tareas_opts = ["— Selecciona —"] + sorted([t for t in df_filt["Tarea"].astype(str).unique() if t and t != "nan"])
+        upd_tarea = c_tarea.selectbox("Tarea", options=tareas_opts, index=0, key="upd_tarea")
+
+        # Id (autollenado, solo lectura)
+        id_auto = ""
+        if upd_tarea and upd_tarea != "— Selecciona —":
+            m = (df_all["Tarea"].astype(str) == upd_tarea)
+            if upd_area != "Todas": m &= (df_all["Área"] == upd_area)
+            if upd_resp_sel != "Todos": m &= (df_all["Responsable"].astype(str) == upd_resp_sel)
+            if "Fecha inicio" in df_all.columns:
+                f_all = pd.to_datetime(df_all["Fecha inicio"], errors="coerce")
+                if upd_desde:
+                    m &= f_all >= pd.to_datetime(upd_desde)
+                if upd_hasta:
+                    m &= f_all <= (pd.to_datetime(upd_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))
+            hit = df_all[m]
+            if not hit.empty:
+                id_auto = str(hit.iloc[0]["Id"])
+        c_id.text_input("Id", value=id_auto, disabled=True, key="upd_id_show", placeholder="—")
+
+        # Estado (igual a la familia de “Fecha fin” en ancho)
+        upd_estado = c_estado.selectbox("Estado", options=["En curso", "Terminado", "Cancelado", "Pausado"], key="upd_estado_sel")
+
+        # Botón debajo de "Estado" con el mismo ancho
+        with c_estado:
+            st.write("")  # separador fino
+            do_update_estado = st.form_submit_button("🔗 Actualizar", use_container_width=True)
+
+    # Lógica de guardado
+    if 'do_update_estado' in locals() and do_update_estado:
+        if not id_auto:
+            st.warning("Selecciona una tarea para obtener su Id antes de guardar.")
+        else:
+            df = st.session_state["df_main"].copy()
+            m = df["Id"].astype(str).str.strip().str.lower() == id_auto.strip().lower()
+            if not m.any():
+                st.warning("No se encontró la tarea con el Id proporcionado.")
+            else:
+                old_state = str(df.loc[m, "Estado"].iloc[0]) if "Estado" in df.columns else ""
+                df.loc[m, "Estado"] = upd_estado
+
+                # Timestamps por estado (si existen en el modelo)
+                ts_map = {"En curso":"Ts_en_curso","Terminado":"Ts_terminado","Cancelado":"Ts_cancelado","Pausado":"Ts_pausado"}
+                col_ts = ts_map.get(upd_estado)
+                if col_ts in df.columns:
+                    df.loc[m, col_ts] = now_ts()
+
+                st.session_state["df_main"] = df.copy()
+                _save_local(df[COLS].copy())
+                st.success(f"✔ Estado actualizado: {old_state} → {upd_estado} (Id: {id_auto}).")
+
+    st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
 
 # ================== Nueva alerta ==================
 
@@ -1864,6 +2008,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
