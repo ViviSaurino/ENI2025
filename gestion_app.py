@@ -957,13 +957,13 @@ if st.session_state.get("nt_visible", True):
 
     with st.form("form_nueva_tarea", clear_on_submit=True):
         # ===== Proporciones NUEVAS =====
-        # Pensadas para: Área y Fase más anchas; Responsable llega al borde; Id estrecho.
-        A = 1.7   # Área / Tipo  (más ancho)
-        F = 1.7   # Fase / Ciclo (más ancho)
-        T = 2.7   # Tarea / Estado
-        D = 1.8   # Detalle / Fecha inicio
-        R = 3.9   # Responsable / Hora inicio  (ocupa hasta casi el final)
-        I = 1.2   # Id / Botón (estrecho, mismo ancho arriba/abajo)
+        # (único cambio solicitado)
+        A = 1.8   # Área / Tipo
+        F = 2.2   # Fase / Ciclo  ← más ancho para que no se trunque
+        T = 2.6   # Tarea / Estado
+        D = 1.7   # Detalle / Fecha inicio
+        R = 3.5   # Responsable / Hora inicio
+        I = 1.2   # Id / Botón
 
         # ===== Fila 1 =====
         r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, F, T, D, R, I], gap="medium")
@@ -1031,6 +1031,7 @@ if st.session_state.get("nt_visible", True):
             st.error(f"No pude guardar la nueva tarea: {e}")
 
     st.markdown('</div>', unsafe_allow_html=True)  # cierra #form-nt
+
 
 
 # ================== Actualizar estado ==================
@@ -1970,6 +1971,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
