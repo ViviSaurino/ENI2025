@@ -919,30 +919,29 @@ if st.session_state.get("nt_visible", True):
     FASES = ["Capacitación","Post-capacitación","Pre-consistencia","Consistencia","Operación de campo"]
 
     with st.form("form_nueva_tarea", clear_on_submit=True):
-        # ===== Proporciones corregidas =====
-        #  Fila 1: Área | Fase | Tarea | Detalle | Responsable | (pad de Id)
-        #  Fila 2: Tipo | Ciclo | Estado | Fecha inicio | Hora inicio | Id
-        #  Fila 3: (botón en la misma columna que Id)
-        A = 1.2    # Área / Tipo
-        F = 1.2    # Fase / Ciclo
-        T = 2.1    # Tarea / Estado
-        D = 2.4    # Detalle / (no se usa en fila 2)
-        R = 1.6    # Responsable (↔ más ancho, línea roja)
-        I = 0.9    # Id (↔ mismo ancho para el botón)
-        FINI = 1.0 # Fecha de inicio (↔ angosto, línea azul)
-        HINI = 1.0 # Hora de inicio  (↔ angosto, línea azul)
+        # ===== Anchos alineados entre filas =====
+        # Fila 1:  Área | Fase |  Tarea (más ancho) | Detalle (medio) | Responsable (ancho) | pad/Id
+        # Fila 2:  Tipo | Ciclo | Estado             | Fecha inicio    | Hora inicio          | Id
+        A   = 1.2   # Área / Tipo
+        F   = 1.2   # Fase / Ciclo
+        T   = 2.6   # Tarea / Estado  (↔ más ancho que Detalle)
+        D   = 2.0   # Detalle / Fecha inicio
+        R   = 1.8   # Responsable / Hora inicio (↔ más ancho para que no se corte)
+        I   = 1.0   # Id (también define el ancho del botón)
 
         # ---------------- Fila 1 ----------------
         r1_area, r1_fase, r1_tarea, r1_det, r1_resp, r1_pad = st.columns([A, F, T, D, R, I], gap="medium")
+
         area = r1_area.selectbox("Área", options=AREAS_OPC, index=0, key="nt_area")
         fase = r1_fase.selectbox("Fase", options=FASES, index=None, placeholder="Selecciona una fase", key="nt_fase")
         tarea   = r1_tarea.text_input("Tarea", placeholder="Describe la tarea")
         detalle = r1_det.text_input("Detalle de tarea", placeholder="Información adicional (opcional)")
         resp    = r1_resp.text_input("Responsable", placeholder="Nombre")
-        r1_pad.empty()  # mantiene alineación con la columna Id
+        r1_pad.empty()  # mantiene la columna para alinear con el Id
 
-        # ---------------- Fila 2 ----------------
-        c2_tipo, c2_ciclo, c2_estado, c2_fini, c2_hini, c2_id = st.columns([A, F, T, FINI, HINI, I], gap="medium")
+        # ---------------- Fila 2 (alineada) ----------------
+        c2_tipo, c2_ciclo, c2_estado, c2_fini, c2_hini, c2_id = st.columns([A, F, T, D, R, I], gap="medium")
+
         tipo = c2_tipo.text_input("Tipo de tarea", placeholder="Tipo o categoría")
         ciclo_mejora = c2_ciclo.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
         estado = _opt_map(c2_estado, "Estado", EMO_ESTADO, "No iniciado")
@@ -950,6 +949,7 @@ if st.session_state.get("nt_visible", True):
         fi_d = c2_fini.date_input("Fecha de inicio", value=None, key="fi_d")
         fi_t = c2_hini.time_input("Hora de inicio", value=None, step=60, key="fi_t") if fi_d else None
 
+        # Vista previa de Id (no editable)
         try:
             _df_tmp = st.session_state["df_main"]
             id_preview = next_id_area(_df_tmp, area)
@@ -958,7 +958,7 @@ if st.session_state.get("nt_visible", True):
         c2_id.text_input("Id", value=id_preview, disabled=True)
 
         # ---------------- Fila 3: botón en la columna del Id --------------
-        c3_a, c3_b, c3_c, c3_d, c3_e, c3_id = st.columns([A, F, T, FINI, HINI, I], gap="medium")
+        c3_a, c3_b, c3_c, c3_d, c3_e, c3_id = st.columns([A, F, T, D, R, I], gap="medium")
         with c3_id:
             submitted = st.form_submit_button("💾 Agregar y guardar", use_container_width=True)
 
@@ -969,7 +969,7 @@ if st.session_state.get("nt_visible", True):
                 df["Ciclo de mejora"] = ""
 
             new = blank_row()
-            f_ini = combine_dt(fi_d, fi_t)
+            f_ini = combine_dt(fi_d, fi_t)  # combina fecha + hora
             new.update({
                 "Área": area,
                 "Id": next_id_area(df, area),
@@ -1936,6 +1936,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
