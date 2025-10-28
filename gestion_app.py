@@ -956,13 +956,14 @@ if st.session_state.get("nt_visible", True):
     ]
 
     with st.form("form_nueva_tarea", clear_on_submit=True):
-        # ===== Proporciones (ajuste pedido) =====
+        # ===== Proporciones (ajuste: Detalle y Responsable mismo ancho;
+        #      botón claramente en la fila 2 con espacio superior) =====
         A = 1.8   # Área / Tipo
-        F = 2.2   # Fase / (antes Ciclo) ahora irá Estado
-        T = 3.0   # Tarea / (antes Estado)
-        D = 2.0   # Detalle / Fecha inicio  ← más ancho
-        R = 2.6   # Responsable / Hora inicio ← un poco más angosto
-        I = 1.8   # Última columna (en fila 1 ahora Ciclo; en fila 2 ID / Botón)
+        F = 2.2   # Fase / Estado
+        T = 3.0   # Tarea / Fecha inicio
+        D = 2.35  # Detalle de tarea  ← un poco más ancho
+        R = 2.35  # Responsable       ← un poco más angosto (igual a D)
+        I = 1.8   # Última columna (fila 1: Ciclo; fila 2: ID / Botón)
 
         # ===== Fila 1 =====
         r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, F, T, D, R, I], gap="medium")
@@ -972,63 +973,12 @@ if st.session_state.get("nt_visible", True):
         tarea   = r1c3.text_input("Tarea", placeholder="Describe la tarea")
         detalle = r1c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)")
         resp    = r1c5.text_input("Responsable", placeholder="Nombre")
-        # 👉 En la última columna de la fila 1 ahora va CICLO DE MEJORA
+        # Ciclo de mejora al final de la fila 1
         ciclo_mejora = r1c6.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
 
-        # ===== Fila 2 ===== (nuevo orden)
-        c2_1, c2_2, c2_3, c2_4, c2_5, c2_6 = st.columns([A, F, T, D, R, I], gap="medium")
-        tipo   = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría")
-        estado = _opt_map(c2_2, "Estado", EMO_ESTADO, "No iniciado")
-        fi_d   = c2_3.date_input("Fecha de inicio", value=None, key="fi_d")
-        fi_t   = c2_4.time_input("Hora de inicio", value=None, step=60, key="fi_t")
+        # ===== Fila 2 =====
+        c2_1
 
-        # ID asignado (deshabilitado) y botón al costado
-        try:
-            _df_tmp = st.session_state["df_main"]
-            id_preview = next_id_area(_df_tmp, area)
-        except Exception:
-            id_preview = ""
-        c2_5.text_input("ID asignado", value=id_preview, disabled=True)
-        with c2_6:
-            submitted = st.form_submit_button("💾 Agregar y guardar", use_container_width=True)
-
-    if submitted:
-        try:
-            df = st.session_state["df_main"].copy()
-            if "Ciclo de mejora" not in df.columns:
-                df["Ciclo de mejora"] = ""
-
-            f_ini = combine_dt(fi_d, fi_t)
-
-            new = blank_row()
-            new.update({
-                "Área": area,
-                "Id": next_id_area(df, area),
-                "Tarea": tarea,
-                "Tipo": tipo,
-                "Responsable": resp,
-                "Fase": fase,
-                "Estado": estado,
-                "Fecha inicio": f_ini,
-                "Ciclo de mejora": ciclo_mejora,
-                "Detalle": detalle,
-            })
-
-            df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
-            if "Fecha inicio" in df.columns:
-                df["Fecha inicio"] = pd.to_datetime(df["Fecha inicio"], errors="coerce")
-
-            st.session_state["df_main"] = df.copy()
-            os.makedirs("data", exist_ok=True)
-            df.reindex(columns=COLS, fill_value=None).to_csv(
-                os.path.join("data","tareas.csv"), index=False, encoding="utf-8-sig", mode="w"
-            )
-            st.success(f"✔ Tarea agregada (Id {new['Id']}).")
-            st.rerun()
-        except Exception as e:
-            st.error(f"No pude guardar la nueva tarea: {e}")
-
-    st.markdown('</div>', unsafe_allow_html=True)  # cierra #form-nt
 
 # ================== Nueva alerta ==================
 
@@ -1822,6 +1772,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
