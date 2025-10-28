@@ -315,7 +315,7 @@ st.markdown("""
 
 /* Tarjetas/secciones (formularios, tablas, etc.) */
 .form-card {
-  margin-top: 10px !important;       /* distancia entre píldora y tarjeta */
+  margin-top: 15px !important;       /* distancia entre píldora y tarjeta */
   margin-bottom: 28px !important;    /* separación con la siguiente sección */
   padding-top: 12px !important;
 }
@@ -881,7 +881,7 @@ st.markdown("""
 
 /* Más espacio entre las indicaciones (help-strip) y la sección */
 #nt-help, #ux-help, #na-help, #pri-help, #eva-help{
-  margin-bottom: 18px !important;
+  margin-bottom: 15px !important;
 }
 
 /* Respiro superior para tarjetas */
@@ -2062,5 +2062,6 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
