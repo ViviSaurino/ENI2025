@@ -920,15 +920,15 @@ if st.session_state.get("nt_visible", True):
     FASES = ["Capacitación","Post-capacitación","Pre-consistencia","Consistencia","Operación de campo"]
 
     with st.form("form_nueva_tarea", clear_on_submit=True):
-        # ===== Anchos alineados (fila 1 y fila 2) =====
-        # F1: Área | Fase |  Tarea (ancho) | Detalle (medio) | Responsable (más ancho) | Id
-        # F2: Tipo | Ciclo | Estado         | Fecha inicio    | Hora inicio             | Id
-        A = 1.2     # Área / Tipo
-        F = 1.2     # Fase / Ciclo
-        T = 2.6     # Tarea / Estado
-        D = 2.0     # Detalle / Fecha inicio
-        R = 2.3     # Responsable / Hora inicio  ← aumentado para que no se corte
-        I = 0.9     # Id + botón
+        # ===== Ratios de ancho (alineados entre filas) =====
+        # F1: Área | Fase |  Tarea         | Detalle         | Responsable (ancho) | Id
+        # F2: Tipo | Ciclo | Estado         | Fecha de inicio | Hora de inicio      | Id
+        A = 1.2
+        F = 1.2
+        T = 2.7     # Tarea (mayor que Detalle)
+        D = 1.9     # Detalle (medio)
+        R = 3.2     # Responsable (ancho “línea roja”)
+        I = 1.1     # Id (igual al “Estado” de abajo / “línea azul”)
 
         # --------------- Fila 1 ---------------
         r1_area, r1_fase, r1_tarea, r1_det, r1_resp, r1_idpad = st.columns([A, F, T, D, R, I], gap="medium")
@@ -938,7 +938,7 @@ if st.session_state.get("nt_visible", True):
         tarea   = r1_tarea.text_input("Tarea", placeholder="Describe la tarea")
         detalle = r1_det.text_input("Detalle de tarea", placeholder="Información adicional (opcional)")
         resp    = r1_resp.text_input("Responsable", placeholder="Nombre")
-        r1_idpad.empty()  # mantiene el hueco alineado con el Id
+        r1_idpad.empty()  # hueco alineado con Id
 
         # --------------- Fila 2 (alineada) ---------------
         c2_tipo, c2_ciclo, c2_estado, c2_fini, c2_hini, c2_id = st.columns([A, F, T, D, R, I], gap="medium")
@@ -947,11 +947,10 @@ if st.session_state.get("nt_visible", True):
         ciclo_mejora = c2_ciclo.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
         estado = _opt_map(c2_estado, "Estado", EMO_ESTADO, "No iniciado")
 
-        # Fecha y hora SIEMPRE visibles (la hora queda al costado)
         fi_d = c2_fini.date_input("Fecha de inicio", value=None, key="fi_d")
         fi_t = c2_hini.time_input("Hora de inicio", value=None, step=60, key="fi_t")
 
-        # Vista previa de Id (solo lectura)
+        # Id (preview)
         try:
             _df_tmp = st.session_state["df_main"]
             id_preview = next_id_area(_df_tmp, area)
@@ -959,7 +958,7 @@ if st.session_state.get("nt_visible", True):
             id_preview = ""
         c2_id.text_input("Id", value=id_preview, disabled=True)
 
-        # -------- Botón (mismo ancho de la columna Id) --------
+        # Botón con el MISMO ancho de la col. Id (I)
         b_a, b_b, b_c, b_d, b_e, b_id = st.columns([A, F, T, D, R, I], gap="medium")
         with b_id:
             submitted = st.form_submit_button("💾 Agregar y guardar", use_container_width=True)
@@ -970,7 +969,6 @@ if st.session_state.get("nt_visible", True):
             if "Ciclo de mejora" not in df.columns:
                 df["Ciclo de mejora"] = ""
 
-            # Combinar fecha + hora
             f_ini = combine_dt(fi_d, fi_t)
 
             new = blank_row()
@@ -1942,6 +1940,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
