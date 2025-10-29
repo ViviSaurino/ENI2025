@@ -1322,8 +1322,7 @@ with c_toggle2:
     st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
     def _toggle_ux():
         st.session_state["ux_visible"] = not st.session_state["ux_visible"]
-    # 🔧 clave única para evitar DuplicateWidgetID
-    st.button(chev2, key="ux_toggle_icon__uniq", help="Mostrar/ocultar", on_click=_toggle_ux)
+    st.button(chev2, key="ux_toggle_icon", help="Mostrar/ocultar", on_click=_toggle_ux)
     st.markdown('</div>', unsafe_allow_html=True)
 with c_pill2:
     st.markdown('<div class="form-title-ux">&nbsp;&nbsp;🔁&nbsp;&nbsp;Editar estado</div>', unsafe_allow_html=True)
@@ -1342,7 +1341,6 @@ if st.session_state["ux_visible"]:
     st.markdown('<div id="ux-section">', unsafe_allow_html=True)
     st.markdown("""
     <style>
-      /* Fuerza 100% en inputs/selects/fechas dentro de esta sección */
       #ux-section .form-card [data-baseweb="input"] > div,
       #ux-section .form-card [data-baseweb="textarea"] > div,
       #ux-section .form-card [data-baseweb="select"] > div,
@@ -1350,16 +1348,11 @@ if st.session_state["ux_visible"]:
         width:100% !important; max-width:none !important; box-sizing:border-box !important; min-width:0 !important;
       }
       #ux-section .form-card [data-baseweb="select"] [role="combobox"]{ width:100% !important; }
-
-      /* Neutraliza min-width heredado SOLO en las 3 primeras celdas de la 1ª fila (Área, Fase, Responsable) */
-      #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1)
-        > [data-testid="column"]:nth-of-type(-n+3) [data-baseweb="select"] > div{
-        min-width:0 !important; width:100% !important;
-      }
     </style>
     """, unsafe_allow_html=True)
 
     # ===== Proporciones EXACTAS usadas en "Nueva tarea" (fila de 6 controles) =====
+    # Mantenlas aquí sincronizadas con la fila de "Nueva tarea":
     W_AREA, W_FASE, W_RESP, W_DESDE, W_HASTA, W_BTN = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
     # Base
@@ -1371,7 +1364,7 @@ if st.session_state["ux_visible"]:
     st.markdown('<div class="form-card">', unsafe_allow_html=True)
 
     # ===== Filtros (alineados 1:1 con "Nueva tarea") =====
-    with st.form("ux_filtros", clear_on_submit=False):
+    with st.form(key="ux_filtros_form", clear_on_submit=False):
         c_area, c_fase, c_resp, c_desde, c_hasta, c_btn = st.columns(
             [W_AREA, W_FASE, W_RESP, W_DESDE, W_HASTA, W_BTN], gap="medium"
         )
@@ -1390,7 +1383,7 @@ if st.session_state["ux_visible"]:
 
         with c_btn:
             st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
-            do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
+            do_buscar = st.form_submit_button("🔍 Buscar", key="ux_buscar_btn", use_container_width=True)
 
     # ===== Filtrado =====
     df_filtrado = df_all.copy()
@@ -1452,9 +1445,9 @@ if st.session_state["ux_visible"]:
     )
 
     # ===== Botón Guardar (alineado al último corte) =====
-    _spacer, _btncol = st.columns([W_AREA+W_FASE+W_RESP+W_DESDE+W_HASTA, W_BTN], gap="medium")
+    _spacer, _btncol = st.columns([W_AREA + W_FASE + W_RESP + W_DESDE + W_HASTA, W_BTN], gap="medium")
     with _btncol:
-        if st.button("💾 Guardar cambios", use_container_width=True):
+        if st.button("💾 Guardar cambios", key="ux_guardar_btn", use_container_width=True):
             try:
                 df_editado = pd.DataFrame(grid["data"]).copy()
                 df_base = st.session_state["df_main"].copy()
@@ -1465,7 +1458,7 @@ if st.session_state["ux_visible"]:
                 cambios = 0
                 for _, row in df_editado.iterrows():
                     id_row = str(row.get("Id", "")).strip()
-                    if not id_row: 
+                    if not id_row:
                         continue
                     est_mod = str(row.get("Estado modificado", "")).strip()
                     f_mod   = str(row.get("Fecha estado modificado", "")).strip()
@@ -1475,15 +1468,23 @@ if st.session_state["ux_visible"]:
                     m = df_base["Id"].astype(str).str.strip() == id_row
                     if not m.any():
                         continue
-                    if est_mod: df_base.loc[m, "Estado"] = est_mod
+                    if est_mod:
+                        df_base.loc[m, "Estado"] = est_mod
                     if f_mod:
-                        try: _ = pd.to_datetime(f_mod); df_base.loc[m, "Fecha estado"] = f_mod
-                        except Exception: pass
+                        try:
+                            _ = pd.to_datetime(f_mod)
+                            df_base.loc[m, "Fecha estado"] = f_mod
+                        except Exception:
+                            pass
                     if h_mod:
                         ok = True
-                        try: hh, mm = h_mod.split(":"); int(hh); int(mm)
-                        except Exception: ok = False
-                        if ok: df_base.loc[m, "Hora estado"] = h_mod
+                        try:
+                            hh, mm = h_mod.split(":")
+                            int(hh); int(mm)
+                        except Exception:
+                            ok = False
+                        if ok:
+                            df_base.loc[m, "Hora estado"] = h_mod
                     cambios += 1
 
                 if cambios > 0:
@@ -1497,6 +1498,7 @@ if st.session_state["ux_visible"]:
 
     st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
     st.markdown('</div>', unsafe_allow_html=True)  # cierra #ux-section
+
 
 
 # =========================== PRIORIDAD ===============================
@@ -2100,6 +2102,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
