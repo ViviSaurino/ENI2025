@@ -309,7 +309,7 @@ st.markdown("""
 
 /* Tira de ayuda */
 .help-strip {
-  margin-top: 6px !important;
+  margin-top: 8px !important;
   margin-bottom: 12px !important;
 }
 
@@ -2252,6 +2252,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
