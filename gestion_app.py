@@ -28,7 +28,7 @@ st.markdown("""
 /* Reduce el espacio entre la franja de indicaciones y el formulario en TODAS las secciones */
 .help-strip,
 .help-strip-nt, .help-strip-ux, .help-strip-na, .help-strip-pri, .help-strip-eval{
-  margin-bottom: 8px !important;      /* ⇦ ajusta aquí (4–10px recomendado) */
+  margin-bottom: 88px !important;      /* ⇦ ajusta aquí (4–10px recomendado) */
 }
 
 /* Evita que la tarjeta agregue espacio extra por arriba */
@@ -2281,6 +2281,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
