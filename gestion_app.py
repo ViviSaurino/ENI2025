@@ -1131,7 +1131,7 @@ if st.session_state.get("nt_visible", True):
 st.session_state.setdefault("ux_visible", True)
 chev2 = "▾" if st.session_state["ux_visible"] else "▸"
 
-# ---------- Barra superior (triangulito + píldora) ALINEADA como "Nueva tarea" ----------
+# ---------- Barra superior (triangulito + píldora) ----------
 st.markdown('<div class="topbar-ux">', unsafe_allow_html=True)
 c_toggle2, c_pill2 = st.columns([0.028, 0.965], gap="medium")
 
@@ -1155,14 +1155,40 @@ if st.session_state["ux_visible"]:
     </div>
     """, unsafe_allow_html=True)
 
-    # === Wrapper para aplicar CSS específico de anchos en esta sección ===
+    # --- Wrapper de la sección para aplicar CSS local de anchos ---
     st.markdown('<div id="ux-section">', unsafe_allow_html=True)
 
-    # CSS puntual: ensancha la 1ª celda (Área) como en "Nueva tarea"
+    # CSS: igualar comportamiento de #form-nt (inputs al 100%) y anchos de la fila
     st.markdown("""
     <style>
-    #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1)
-      > [data-testid="column"]:first-child [data-baseweb="select"] > div{
+      /* 1) Dentro de EDITAR ESTADO, todos los controles ocupan el 100% del ancho de su columna */
+      #ux-section .stTextInput > div,
+      #ux-section .stSelectbox > div,
+      #ux-section .stDateInput > div,
+      #ux-section .stTimeInput > div,
+      #ux-section [data-baseweb="input"] > div,
+      #ux-section [data-baseweb="select"] > div,
+      #ux-section [data-baseweb="datepicker"] > div{
+        width: 100% !important;
+        max-width: none !important;
+        box-sizing: border-box !important;
+      }
+      #ux-section [data-baseweb="select"],
+      #ux-section [data-baseweb="select"] [role="combobox"]{
+        width: 100% !important;
+      }
+
+      /* 2) Anula el fit-content heredado en selects SOLO en esta sección */
+      #ux-section .form-card [data-baseweb="select"] > div{
+        width: 100% !important;
+        min-width: 0 !important;
+        white-space: nowrap !important;
+        text-overflow: clip !important;
+      }
+
+      /* 3) Ensancha la primera celda (Área) como en 'Nueva tarea' */
+      #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1)
+        > [data-testid="column"]:first-child [data-baseweb="select"] > div{
         min-width: 300px !important;
       }
     </style>
@@ -1180,7 +1206,7 @@ if st.session_state["ux_visible"]:
         if col_req not in df_all.columns:
             df_all[col_req] = None
 
-    # ===== Filtros (1 línea): Área, Fase, Responsable, Desde, Hasta, Buscar =====
+    # ===== Filtros =====
     with st.form("ux_filtros", clear_on_submit=False):
         c_area, c_fase, c_resp, c_desde, c_hasta, c_btn = st.columns([A, Fw, T_width, D, R, C], gap="medium")
 
@@ -1189,7 +1215,6 @@ if st.session_state["ux_visible"]:
         fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
         ux_fase = c_fase.selectbox("Fase", ["Todas"] + fases_all, index=0, key="ux_fase")
 
-        # Responsable filtrado por área si aplica
         df_resp_src = df_all if ux_area == "Todas" else df_all[df_all["Área"] == ux_area]
         responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
         ux_resp = c_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0, key="ux_resp")
@@ -1198,11 +1223,10 @@ if st.session_state["ux_visible"]:
         ux_hasta = c_hasta.date_input("Hasta",  value=None, key="ux_hasta")
 
         with c_btn:
-            # separador vertical para alinear el botón con los inputs de la fila
             st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
             do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
-    # ===== Filtra (si se presiona Buscar) =====
+    # ===== Filtrado =====
     df_filtrado = df_all.copy()
     if do_buscar:
         if ux_area != "Todas":
@@ -1212,7 +1236,6 @@ if st.session_state["ux_visible"]:
         if ux_resp != "Todos":
             df_filtrado = df_filtrado[df_filtrado["Responsable"].astype(str) == ux_resp]
 
-        # Filtra por fechas: sobre "Fecha inicio" si existe; si no, sobre "Fecha estado"
         base_fecha_col = "Fecha inicio" if "Fecha inicio" in df_filtrado.columns else "Fecha estado"
         if base_fecha_col in df_filtrado.columns:
             fcol = pd.to_datetime(df_filtrado[base_fecha_col], errors="coerce")
@@ -1222,10 +1245,7 @@ if st.session_state["ux_visible"]:
                 df_filtrado = df_filtrado[fcol <= (pd.to_datetime(ux_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
 
     # ===== Tabla (siempre visible, incluso vacía) =====
-    cols_view = [
-        "Id", "Tarea",
-        "Estado", "Fecha estado", "Hora estado"
-    ]
+    cols_view = ["Id", "Tarea", "Estado", "Fecha estado", "Hora estado"]
     for c in cols_view:
         if c not in df_filtrado.columns:
             df_filtrado[c] = None
@@ -1237,7 +1257,6 @@ if st.session_state["ux_visible"]:
         "Hora estado": "Hora estado actual"
     }, inplace=True)
 
-    # columnas editables (para cambios)
     df_view["Estado modificado"] = ""
     df_view["Fecha estado modificado"] = ""
     df_view["Hora estado modificado"] = ""
@@ -1252,22 +1271,17 @@ if st.session_state["ux_visible"]:
         rowHeight=38,
         headerHeight=42,
     )
-
-    # Solo lectura
     for c_ro in ["Id", "Tarea", "Estado actual", "Fecha estado actual", "Hora estado actual"]:
         gob.configure_column(c_ro, editable=False)
 
-    # Editables
     ESTADOS_OPC = ["", "En curso", "Terminado", "Pausado", "Cancelado", "Eliminado"]
-    gob.configure_column(
-        "Estado modificado",
-        editable=True,
-        cellEditor="agSelectCellEditor",
-        cellEditorParams={"values": ESTADOS_OPC},
-        width=180,
-    )
-    gob.configure_column("Fecha estado modificado", editable=True, width=180)  # YYYY-MM-DD
-    gob.configure_column("Hora estado modificado",   editable=True, width=150)  # HH:mm
+    gob.configure_column("Estado modificado",
+                         editable=True,
+                         cellEditor="agSelectCellEditor",
+                         cellEditorParams={"values": ESTADOS_OPC},
+                         width=180)
+    gob.configure_column("Fecha estado modificado", editable=True, width=180)
+    gob.configure_column("Hora estado modificado",   editable=True, width=150)
 
     grid = AgGrid(
         df_view,
@@ -1277,10 +1291,10 @@ if st.session_state["ux_visible"]:
         fit_columns_on_grid_load=False,
         enable_enterprise_modules=False,
         reload_data=False,
-        height=180  # altura de la tabla
+        height=180
     )
 
-    # ===== Botón Guardar abajo a la derecha =====
+
     _spacer, _btncol = st.columns([A+Fw+T_width+D+R, C], gap="medium")
     with _btncol:
         if st.button("💾 Guardar cambios", use_container_width=True):
@@ -1296,20 +1310,15 @@ if st.session_state["ux_visible"]:
                     id_row = str(row.get("Id", "")).strip()
                     if not id_row:
                         continue
-
                     est_mod = str(row.get("Estado modificado", "")).strip()
                     f_mod   = str(row.get("Fecha estado modificado", "")).strip()
                     h_mod   = str(row.get("Hora estado modificado", "")).strip()
-
                     if not est_mod and not f_mod and not h_mod:
                         continue
-
                     m = df_base["Id"].astype(str).str.strip() == id_row
                     if not m.any():
                         continue
-
-                    if est_mod:
-                        df_base.loc[m, "Estado"] = est_mod
+                    if est_mod: df_base.loc[m, "Estado"] = est_mod
                     if f_mod:
                         try:
                             _ = pd.to_datetime(f_mod)
@@ -1317,14 +1326,12 @@ if st.session_state["ux_visible"]:
                         except Exception:
                             pass
                     if h_mod:
-                        hh_ok = True
+                        ok = True
                         try:
-                            _hh, _mm = h_mod.split(":"); _ = int(_hh); _ = int(_mm)
+                            hh, mm = h_mod.split(":"); int(hh); int(mm)
                         except Exception:
-                            hh_ok = False
-                        if hh_ok:
-                            df_base.loc[m, "Hora estado"] = h_mod
-
+                            ok = False
+                        if ok: df_base.loc[m, "Hora estado"] = h_mod
                     cambios += 1
 
                 if cambios > 0:
@@ -2132,6 +2139,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
