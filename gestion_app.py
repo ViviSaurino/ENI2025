@@ -1362,11 +1362,18 @@ if st.session_state["na_visible"]:
 
     st.markdown('<div class="form-card">', unsafe_allow_html=True)
 
+    
     # ===== Fila 1 — misma línea y anchos que EDITAR ESTADO =====
     with st.form("na_filtros", clear_on_submit=False):
         c_area, c_fase, c_resp, c_desde, c_hasta, c_buscar = st.columns(
             [W_AREA, W_FASE, W_RESP, W_DESDE, W_HASTA, W_BTN], gap="medium"
         )
+        ...
+        with c_buscar:
+            st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
+            # ❌ QUITAR el key=... (provoca TypeError y el aviso "Missing Submit Button")
+            na_do_buscar = st.form_submit_button("🔍 Buscar")
+
 
         AREAS_OPC = st.session_state.get("AREAS_OPC", ["Jefatura","Gestión","Metodología","Base de datos","Monitoreo","Capacitación","Consistencia"])
         na_area  = c_area.selectbox("Área", AREAS_OPC, index=0, key="na_area")
@@ -1534,7 +1541,6 @@ if st.session_state["na_visible"]:
 
     st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
     st.markdown('</div>', unsafe_allow_html=True)  # cierra #na-section
-
 
 # =========================== PRIORIDAD ===============================
 
@@ -2137,5 +2143,6 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
