@@ -1299,15 +1299,14 @@ st.session_state.setdefault("est_visible", True)
 # ---------- CSS: quitar negrita en headers de la tabla ----------
 st.markdown("""
 <style>
-/* Quita la negrita del header en ag-Grid SOLO para esta sección */
 #editar-estado-card .ag-theme-alpine .ag-header-cell-label{
-  font-weight: 400 !important;
+  font-weight: 400 !important;   /* sin negrita */
 }
 #nota-est-seleccion { display:none; }
 </style>
 """, unsafe_allow_html=True)
 
-# ---------- Barra superior (igual estilo a "Nueva tarea") ----------
+# ---------- Barra superior ----------
 st.markdown('<div id="estbar" class="topbar">', unsafe_allow_html=True)
 c_est_toggle, c_est_pill = st.columns([0.028, 0.965], gap="medium")
 with c_est_toggle:
@@ -1323,7 +1322,6 @@ st.markdown('</div>', unsafe_allow_html=True)
 # ---------- fin barra superior ----------
 
 if st.session_state.get("est_visible", True):
-    # Tira de ayuda
     st.markdown(
         '<div class="help-strip">🔷 <strong>Actualiza el estado</strong> de una tarea ya registrada usando los filtros</div>',
         unsafe_allow_html=True
@@ -1331,7 +1329,6 @@ if st.session_state.get("est_visible", True):
 
     st.markdown('<div class="form-card" id="editar-estado-card">', unsafe_allow_html=True)
 
-    # ===== Base =====
     if "df_main" not in st.session_state or st.session_state["df_main"] is None or len(st.session_state["df_main"]) == 0:
         st.info("Aún no hay tareas para editar.")
         st.markdown("</div>", unsafe_allow_html=True)
@@ -1346,12 +1343,11 @@ if st.session_state.get("est_visible", True):
             if c not in df_all.columns:
                 df_all[c] = None
 
-        # ===== Filtros (ajuste de anchos para que el botón quede EN LA MISMA FILA) =====
+        # ===== Filtros (Buscar en la MISMA FILA) =====
         areas = ["Todas"] + sorted([x for x in df_all["Área"].dropna().unique()])
         fases = ["Todas"] + sorted([x for x in df_all["Fase"].dropna().unique()])
         resps = ["Todos"] + sorted([x for x in df_all["Responsable"].dropna().unique()])
 
-        # anchos un poco menores + gap medio → no se rompe la fila
         f1, f2, f3, f4, f5, f6 = st.columns([0.9, 0.9, 0.95, 0.9, 0.9, 0.6], gap="medium")
         f_area  = f1.selectbox("Área", options=areas, index=0, key="est_f_area")
         f_fase  = f2.selectbox("Fase", options=fases, index=0, key="est_f_fase")
@@ -1359,52 +1355,53 @@ if st.session_state.get("est_visible", True):
         f_from  = f4.date_input("Desde", value=None, key="est_f_from")
         f_to    = f5.date_input("Hasta", value=None, key="est_f_to")
         with f6:
-            # pequeño empuje para alinearlo verticalmente con los inputs
             st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-            buscar  = st.button("🔍 Buscar", use_container_width=True, key="est_buscar")
+            buscar = st.button("🔍 Buscar", use_container_width=True, key="est_buscar")
 
-        # Siempre preparar caché al inicio o al buscar → así la tabla aparece
+        # Construye caché al cargar y al buscar (para que aparezca la tabla)
         if buscar or "df_edit_cache" not in st.session_state:
             df_f = df_all.copy()
             if "Fecha inicio" in df_f.columns:
                 df_f["Fecha inicio"] = pd.to_datetime(df_f["Fecha inicio"], errors="coerce")
-            mask = pd.Series([True] * len(df_f))
+            mask = pd.Series(True, index=df_f.index)
             if f_area != "Todas": mask &= (df_f["Área"] == f_area)
             if f_fase != "Todas": mask &= (df_f["Fase"] == f_fase)
             if f_resp != "Todos": mask &= (df_f["Responsable"] == f_resp)
-            if f_from: mask &= (df_f["Fecha inicio"].dt.date >= f_from)
-            if f_to:   mask &= (df_f["Fecha inicio"].dt.date <= f_to)
-            st.session_state["df_edit_cache"] = df_f[mask].copy()
+            if f_from is not None: mask &= (df_f["Fecha inicio"].dt.date >= f_from)
+            if f_to   is not None: mask &= (df_f["Fecha inicio"].dt.date <= f_to)
+            st.session_state["df_edit_cache"] = df_f.loc[mask].copy()
 
-        df_res = st.session_state.get("df_edit_cache", pd.DataFrame()).copy()
+        df_res = st.session_state.get("df_edit_cache", pd.DataFrame()).copy().reset_index(drop=True)
+        n = len(df_res)
+        s_empty = pd.Series([""]*n, dtype=object)  # fallback seguro con longitud correcta
 
-        # ===== Tabla =====
-        def _fmt_d(x):
-            try: return pd.to_datetime(x).date().strftime("%Y-%m-%d")
-            except: return ""
-        def _fmt_t(x):
-            try: return pd.to_datetime(x).strftime("%H:%M")
-            except: return ""
-
+        # ===== Tabla (robusta, sin errores de longitud) =====
+        # Asegura serie de fechas base
         if "Fecha inicio" in df_res.columns:
-            # Garantiza dtype fecha para aplicar _fmt_d/_fmt_t cuando falte registro
-            df_res["Fecha inicio"] = pd.to_datetime(df_res["Fecha inicio"], errors="coerce")
+            fi = pd.to_datetime(df_res["Fecha inicio"], errors="coerce")
+        else:
+            fi = pd.to_datetime(pd.Series([None]*n))
+
+        def _fmt_d_safe(ts):
+            return ts.apply(lambda d: d.date().strftime("%Y-%m-%d") if pd.notna(d) else "")
+        def _fmt_t_safe(ts):
+            return ts.apply(lambda d: d.strftime("%H:%M") if pd.notna(d) else "")
+
+        fea = df_res["Fecha estado actual"] if "Fecha estado actual" in df_res else s_empty
+        fea_out = fea.where(fea.notna(), _fmt_d_safe(fi)).fillna("")
+
+        hea = df_res["Hora estado actual"] if "Hora estado actual" in df_res else s_empty
+        hea_out = hea.where(hea.notna(), _fmt_t_safe(fi)).fillna("")
 
         view = pd.DataFrame({
-            "Id": df_res.get("Id", pd.Series([], dtype=object)),
-            "Tarea": df_res.get("Tarea", pd.Series([], dtype=object)).fillna(""),
-            "Estado actual": df_res.get("Estado", pd.Series([], dtype=object)).fillna(""),
-            "Fecha estado actual": df_res.get("Fecha estado actual", pd.Series([], dtype=object)).where(
-                pd.notna(df_res.get("Fecha estado actual", pd.Series([], dtype=object))),
-                df_res.get("Fecha inicio", pd.Series([], dtype=object)).apply(_fmt_d) if "Fecha inicio" in df_res else ""
-            ).fillna(""),
-            "Hora estado actual": df_res.get("Hora estado actual", pd.Series([], dtype=object)).where(
-                pd.notna(df_res.get("Hora estado actual", pd.Series([], dtype=object))),
-                df_res.get("Fecha inicio", pd.Series([], dtype=object)).apply(_fmt_t) if "Fecha inicio" in df_res else ""
-            ).fillna(""),
-            "Estado modificado": df_res.get("Estado modificado", pd.Series([], dtype=object)).fillna(""),
-            "Fecha estado modificado": df_res.get("Fecha estado modificado", pd.Series([], dtype=object)).fillna(""),
-            "Hora estado modificado": df_res.get("Hora estado modificado", pd.Series([], dtype=object)).fillna(""),
+            "Id": df_res["Id"] if "Id" in df_res else s_empty,
+            "Tarea": df_res["Tarea"].fillna("") if "Tarea" in df_res else s_empty,
+            "Estado actual": df_res["Estado"].fillna("") if "Estado" in df_res else s_empty,
+            "Fecha estado actual": fea_out,
+            "Hora estado actual":  hea_out,
+            "Estado modificado": df_res["Estado modificado"].fillna("") if "Estado modificado" in df_res else s_empty,
+            "Fecha estado modificado": df_res["Fecha estado modificado"].fillna("") if "Fecha estado modificado" in df_res else s_empty,
+            "Hora estado modificado":  df_res["Hora estado modificado"].fillna("") if "Hora estado modificado" in df_res else s_empty,
         })
 
         gob = GridOptionsBuilder.from_dataframe(view)
@@ -1447,8 +1444,7 @@ if st.session_state.get("est_visible", True):
                         df2.at[i0,"Fecha estado modificado"] = ts.strftime("%Y-%m-%d")
                         df2.at[i0,"Hora estado modificado"]  = ts.strftime("%H:%M")
                         df2 = df2.loc[:, ~pd.Index(df2.columns).duplicated()].copy()
-                        if not df2.index.is_unique:
-                            df2 = df2.reset_index(drop=True)
+                        if not df2.index.is_unique: df2 = df2.reset_index(drop=True)
                         st.session_state["df_main"] = df2.copy()
                         os.makedirs("data", exist_ok=True)
                         df2.to_csv(os.path.join("data","tareas.csv"), index=False, encoding="utf-8-sig")
@@ -1458,6 +1454,8 @@ if st.session_state.get("est_visible", True):
                     st.error(f"No pude actualizar: {e}")
 
     st.markdown("</div>", unsafe_allow_html=True)
+# ================== /EDITAR ESTADO ==================
+
 
 
 # ================== Nueva alerta ==================
@@ -2406,6 +2404,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
