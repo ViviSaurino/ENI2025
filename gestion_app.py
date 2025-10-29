@@ -1162,38 +1162,34 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 if st.session_state.get("nt_visible", True):
 
-    # ===== CSS (el rectángulo envuelve el formulario) =====
+    # ===== CSS: el card envuelve AL FORM (no usamos wrapper HTML) =====
     st.markdown("""
     <style>
-      /* Card que ENVUELVE el formulario */
-      #form-nt{
+      /* Hacemos que el propio st.form luzca como 'form-card' */
+      [data-testid="stForm"]{
         background:#ffffff !important;
         border:1px solid #E6EEF8 !important;
         border-radius:12px !important;
         padding:16px 18px 12px 18px !important;
         box-shadow:0 1px 2px rgba(16,24,40,.04) !important;
-        display:block;
       }
-      /* Inputs a ancho completo dentro del card */
-      #form-nt .stTextInput, 
-      #form-nt .stSelectbox, 
-      #form-nt .stDateInput, 
-      #form-nt .stTimeInput, 
-      #form-nt .stTextArea { width: 100% !important; }
-      #form-nt .stTextInput > div,
-      #form-nt .stSelectbox > div,
-      #form-nt .stDateInput > div,
-      #form-nt .stTimeInput > div,
-      #form-nt .stTextArea > div { width: 100% !important; max-width: none !important; }
-      #form-nt [data-testid="stDateInput"] input,
-      #form-nt [data-testid^="stTimeInput"] input { width: 100% !important; }
+      /* Inputs a ancho completo SOLO dentro del form */
+      [data-testid="stForm"] .stTextInput, 
+      [data-testid="stForm"] .stSelectbox, 
+      [data-testid="stForm"] .stDateInput, 
+      [data-testid="stForm"] .stTimeInput, 
+      [data-testid="stForm"] .stTextArea { width: 100% !important; }
+      [data-testid="stForm"] .stTextInput > div,
+      [data-testid="stForm"] .stSelectbox > div,
+      [data-testid="stForm"] .stDateInput > div,
+      [data-testid="stForm"] .stTimeInput > div,
+      [data-testid="stForm"] .stTextArea > div { width: 100% !important; max-width: none !important; }
+      [data-testid="stForm"] [data-testid="stDateInput"] input,
+      [data-testid="stForm"] [data-testid^="stTimeInput"] input { width: 100% !important; }
     </style>
     """, unsafe_allow_html=True)
 
-    # ===== Wrapper: card que ENVUELVE al st.form =====
-    st.markdown('<div class="form-card" id="form-nt">', unsafe_allow_html=True)
-
-    # Todo el formulario va dentro del form (para que quede DENTRO del card)
+    # ===== Todo dentro del st.form (el card ya lo envuelve) =====
     with st.form("nt_form_card", clear_on_submit=False):
         # Proporciones de columnas (tus originales)
         A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
@@ -1213,7 +1209,7 @@ if st.session_state.get("nt_visible", True):
         tipo   = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría", key="nt_tipo")
         estado = _opt_map(c2_2, "Estado", EMO_ESTADO, "No iniciado")
 
-        # Fecha editable + callback inmediato (sigue funcionando dentro del form)
+        # Fecha editable + callback inmediato
         st.session_state.setdefault("fi_d", None)
         st.session_state.setdefault("fi_t", None)
         c2_3.date_input("Fecha de inicio", key="fi_d", on_change=_auto_time_on_date)
@@ -1237,12 +1233,10 @@ if st.session_state.get("nt_visible", True):
             id_preview = f"{prefix}_" if prefix else ""
         c2_5.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
 
-        # Botón (submit del form para que quede dentro del card)
+        # Botón (submit del form)
         with c2_6:
             st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
             submitted = st.form_submit_button("➕ Agregar", use_container_width=True)
-
-    st.markdown('</div>', unsafe_allow_html=True)  # cierra el card que ENVUELVE al form
 
     # ---------- Guardado ----------
     if submitted:
@@ -1303,6 +1297,7 @@ if st.session_state.get("nt_visible", True):
 
     # Separación vertical
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
+
 
 
 # ================== EDITAR ESTADO (mismo layout que "Nueva alerta") ==================
@@ -2464,6 +2459,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
