@@ -1162,84 +1162,85 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 if st.session_state.get("nt_visible", True):
 
-    # ====== SCOPE + CSS (MISMO estilo de tarjeta que en “Nueva alerta”) ======
-    st.markdown('<div id="nt-section">', unsafe_allow_html=True)
+    # ===== CSS: rectángulo que ENVUELVE el formulario =====
     st.markdown("""
     <style>
-      /* Card que ENVUELVE el formulario (idéntico a otras secciones) */
-      #nt-section .form-card{
-        background:#ffffff; border:1px solid #E6EEF8; border-radius:12px;
-        padding:16px 18px 12px 18px; box-shadow:0 1px 2px rgba(16,24,40,.04);
+      #form-nt{
+        background:#ffffff !important;
+        border:1px solid #E6EEF8 !important;
+        border-radius:12px !important;
+        padding:16px 18px 12px 18px !important;
+        box-shadow:0 1px 2px rgba(16,24,40,.04) !important;
+        display:block;
       }
-      /* Inputs a ancho completo SOLO dentro de esta sección */
-      #nt-section .stTextInput, 
-      #nt-section .stSelectbox, 
-      #nt-section .stDateInput, 
-      #nt-section .stTimeInput, 
-      #nt-section .stTextArea { width: 100% !important; }
-      #nt-section .stTextInput > div,
-      #nt-section .stSelectbox > div,
-      #nt-section .stDateInput > div,
-      #nt-section .stTimeInput > div,
-      #nt-section .stTextArea > div { width: 100% !important; max-width: none !important; }
-      #nt-section [data-testid="stDateInput"] input,
-      #nt-section [data-testid^="stTimeInput"] input { width: 100% !important; }
+      #form-nt .stTextInput, 
+      #form-nt .stSelectbox, 
+      #form-nt .stDateInput, 
+      #form-nt .stTimeInput, 
+      #form-nt .stTextArea { width: 100% !important; }
+      #form-nt .stTextInput > div,
+      #form-nt .stSelectbox > div,
+      #form-nt .stDateInput > div,
+      #form-nt .stTimeInput > div,
+      #form-nt .stTextArea > div { width: 100% !important; max-width: none !important; }
+      #form-nt [data-testid="stDateInput"] input,
+      #form-nt [data-testid^="stTimeInput"] input { width: 100% !important; }
     </style>
     """, unsafe_allow_html=True)
 
-    # ====== Wrapper QUE SÍ ENVUELVE al st.form (como en Nueva alerta) ======
-    st.markdown('<div class="form-card" id="form-nt-card">', unsafe_allow_html=True)
+    # ===== Card contenedor (rectángulo alrededor de las celdas) =====
+    st.markdown('<div class="form-card" id="form-nt">', unsafe_allow_html=True)
 
-    with st.form("nt_form_card", clear_on_submit=False):
-        # Proporciones de columnas (tus originales)
-        A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
+    # Proporciones originales
+    A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
-        # ---------- FILA 1 ----------
-        r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
-        area = r1c1.selectbox("Área", options=AREAS_OPC, index=0, key="nt_area")
-        FASES = ["Capacitación", "Post-capacitación", "Pre-consistencia", "Consistencia", "Operación de campo"]
-        fase = r1c2.selectbox("Fase", options=FASES, index=None, placeholder="Selecciona una fase", key="nt_fase")
-        tarea   = r1c3.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
-        detalle = r1c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle")
-        resp    = r1c5.text_input("Responsable", placeholder="Nombre", key="nt_resp")
-        ciclo_mejora = r1c6.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
+    # ---------- FILA 1 ----------
+    r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
+    area = r1c1.selectbox("Área", options=AREAS_OPC, index=0, key="nt_area")
+    FASES = ["Capacitación","Post-capacitación","Pre-consistencia","Consistencia","Operación de campo"]
+    fase = r1c2.selectbox("Fase", options=FASES, index=None, placeholder="Selecciona una fase", key="nt_fase")
+    tarea   = r1c3.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
+    detalle = r1c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle")
+    resp    = r1c5.text_input("Responsable", placeholder="Nombre", key="nt_resp")
+    ciclo_mejora = r1c6.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
 
-        # ---------- FILA 2 ----------
-        c2_1, c2_2, c2_3, c2_4, c2_5, c2_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
-        tipo   = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría", key="nt_tipo")
-        estado = _opt_map(c2_2, "Estado", EMO_ESTADO, "No iniciado")
+    # ---------- FILA 2 ----------
+    c2_1, c2_2, c2_3, c2_4, c2_5, c2_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
+    tipo   = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría", key="nt_tipo")
+    estado = _opt_map(c2_2, "Estado", EMO_ESTADO, "No iniciado")
 
-        # Fecha editable + callback inmediato
-        st.session_state.setdefault("fi_d", None)
-        st.session_state.setdefault("fi_t", None)
-        c2_3.date_input("Fecha de inicio", key="fi_d", on_change=_auto_time_on_date)
+    # Fecha editable + callback inmediato (permitido fuera de st.form)
+    st.session_state.setdefault("fi_d", None)
+    st.session_state.setdefault("fi_t", None)
+    c2_3.date_input("Fecha de inicio", key="fi_d", on_change=_auto_time_on_date)
 
-        # Hora auto (solo lectura)
-        _t = st.session_state.get("fi_t")
-        _t_txt = ""
-        if _t is not None:
-            try:
-                _t_txt = _t.strftime("%H:%M")
-            except Exception:
-                _t_txt = str(_t)
-        c2_4.text_input("Hora de inicio (auto)", value=_t_txt, disabled=True, help="Se asigna al elegir la fecha", key="fi_t_view")
+    # Hora auto (solo lectura)
+    _t = st.session_state.get("fi_t")
+    _t_txt = ""
+    if _t is not None:
+        try:
+            _t_txt = _t.strftime("%H:%M")
+        except Exception:
+            _t_txt = str(_t)
+    c2_4.text_input("Hora de inicio (auto)", value=_t_txt, disabled=True,
+                    help="Se asigna al elegir la fecha", key="fi_t_view")
 
-        # ID preview
-        _df_tmp = st.session_state.get("df_main", pd.DataFrame()).copy() if "df_main" in st.session_state else pd.DataFrame()
-        prefix = make_id_prefix(st.session_state.get("nt_area", area), st.session_state.get("nt_resp", resp))
-        if st.session_state.get("fi_d"):
-            id_preview = next_id_by_person(_df_tmp, st.session_state.get("nt_area", area), st.session_state.get("nt_resp", resp))
-        else:
-            id_preview = f"{prefix}_" if prefix else ""
-        c2_5.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
+    # ID preview
+    _df_tmp = st.session_state.get("df_main", pd.DataFrame()).copy() if "df_main" in st.session_state else pd.DataFrame()
+    prefix = make_id_prefix(st.session_state.get("nt_area", area), st.session_state.get("nt_resp", resp))
+    if st.session_state.get("fi_d"):
+        id_preview = next_id_by_person(_df_tmp, st.session_state.get("nt_area", area), st.session_state.get("nt_resp", resp))
+    else:
+        id_preview = f"{prefix}_" if prefix else ""
+    c2_5.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
 
-        # Botón (submit del form)
-        with c2_6:
-            st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
-            submitted = st.form_submit_button("➕ Agregar", use_container_width=True)
+    # Botón (no form → sin restricciones y alineado)
+    submitted = False
+    with c2_6:
+        st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
+        submitted = st.button("➕ Agregar", use_container_width=True, key="btn_agregar")
 
-    st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
-    st.markdown('</div>', unsafe_allow_html=True)  # cierra #nt-section
+    st.markdown('</div>', unsafe_allow_html=True)  # cierra form-card
 
     # ---------- Guardado ----------
     if submitted:
@@ -2462,6 +2463,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
