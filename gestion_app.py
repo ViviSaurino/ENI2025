@@ -78,6 +78,24 @@ def combine_dt(d, t):
         return pd.NaT
 
 
+def _auto_time_on_date():
+    """
+    Callback para usar con date_input (fuera del st.form):
+    - Si hay fecha (fi_d) y no hay hora (fi_t), coloca la hora actual (sin segundos).
+    Requiere `import streamlit as st` en el módulo principal.
+    """
+    # Nota: este callback debe ejecutarse en un contexto donde 'st' esté importado.
+    try:
+        # Sólo fija hora si existe fecha y aún no hay hora establecida
+        if st.session_state.get("fi_d") and not st.session_state.get("fi_t"):
+            now = datetime.now().replace(second=0, microsecond=0)
+            st.session_state["fi_t"] = now.time()
+    except NameError:
+        # Si 'st' no está disponible en este alcance, no hacemos nada
+        # (en el módulo principal debe existir: `import streamlit as st`)
+        pass
+
+
 # ================== Utilidad: fila en blanco ==================
 def blank_row():
     """
@@ -1051,66 +1069,91 @@ FASES = [
     "Operación de campo",
 ]
 
+
 # ================== Utilidades de ID ==================
 import re
+import pandas as pd
 from datetime import datetime
 
 def _area_initial(area: str) -> str:
+    """
+    Devuelve la primera letra alfabética del nombre del área (incluye tildes) en MAYÚSCULA.
+    Ej.: 'Jefatura' -> 'J', 'monitoreo' -> 'M'
+    """
     if not area:
         return ""
-    m = re.search(r"[A-Za-zÁÉÍÓÚÜÑ]", str(area))
-    return (m.group(0) if m else "").upper()
+    m = re.search(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]", str(area))
+    return (m.group(0).upper() if m else "")
 
 def _person_initials(nombre: str) -> str:
     """
     Toma la primera letra del nombre y la primera del primer apellido.
-    Ej: 'Vivian Saurino' -> 'VS'; 'Elías A. Aguirre' -> 'EA'
+    Ej.: 'Vivian Saurino' -> 'VS'; 'Elías A. Aguirre' -> 'EA'
+    Maneja puntos e iniciales sueltas.
     """
     if not nombre:
         return ""
-    # Limpia y separa
-    parts = [p for p in re.split(r"\s+", nombre.strip()) if p]
+    # Limpia separando por espacios y descartando vacíos
+    parts = [p for p in re.split(r"\s+", str(nombre).strip()) if p]
     if not parts:
         return ""
-    ini1 = re.sub(r"[^A-Za-zÁÉÍÓÚÜÑ]", "", parts[0])[:1].upper() if parts else ""
-    # busca primer token que no sea inicial suelta tipo "A." ni con guión
+    # Primera inicial (nombre)
+    ini1 = re.sub(r"[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ]", "", parts[0])[:1].upper() if parts else ""
+    # Segunda inicial (primer apellido que no sea inicial suelta tipo "A.")
     ini2 = ""
     for p in parts[1:]:
-        t = re.sub(r"[^A-Za-zÁÉÍÓÚÜÑ]", "", p)
-        if t and len(t) >= 1:
+        t = re.sub(r"[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ]", "", p)
+        if t:
             ini2 = t[0].upper()
             break
     return f"{ini1}{ini2}"
 
 def make_id_prefix(area: str, responsable: str) -> str:
-    """Ej: 'Jefatura' + 'Vivian Saurino' -> 'JVS'."""
+    """
+    Construye el prefijo del ID: [primera letra de área][inicial nombre][inicial apellido]
+    Ej.: 'Jefatura' + 'Vivian Saurino' -> 'JVS'
+    """
     a = _area_initial(area)
     p = _person_initials(responsable)
     return f"{a}{p}"
 
 def next_id_by_person(df: pd.DataFrame, area: str, responsable: str) -> str:
     """
-    Cuenta cuántas tareas existen con el mismo prefijo y devuelve el siguiente:
-    Prefijo = [primera letra de área][inicial nombre][inicial apellido] + '_'
-    Ej: 'JVS_1', 'JVS_2', ...  'MEA_1', etc.
+    Devuelve el siguiente ID correlativo para el prefijo calculado a partir de área y responsable.
+    Formato: PREFIJO + '_' + correlativo (1, 2, 3, ...)
+    Ej.: 'JVS_1', 'JVS_2', 'MEA_1', etc.
+    Cuenta existentes en df['Id'] que empiezan con 'PREFIJO_'.
     """
     prefix = make_id_prefix(area, responsable)
     if not prefix:
         return ""
-    col = "Id" if "Id" in df.columns else None
-    if col is None or df.empty:
+    if "Id" not in df.columns or df.empty:
         seq = 1
     else:
-        serie = df[col].astype(str).fillna("")
+        serie = df["Id"].astype(str).fillna("")
         seq = 1 + serie.str.startswith(prefix + "_").sum()
     return f"{prefix}_{seq}"
 
-# ====== Callback: poner hora automática cuando se elige fecha ======
-def _auto_time_on_date():
-    # Si hay fecha y no hay hora, pone la hora actual (al minuto)
-    if st.session_state.get("fi_d") and not st.session_state.get("fi_t"):
-        now = datetime.now().replace(second=0, microsecond=0)
-        st.session_state["fi_t"] = now.time()
+# ====== Callback opcional: poner hora automática cuando se elige fecha ======
+# Nota: este callback se usa con date_input FUERA del st.form (porque dentro no disparan on_change).
+# Se define aquí de forma segura por si 'st' no está importado en este módulo.
+if "_auto_time_on_date" not in globals():
+    def _auto_time_on_date():
+        """
+        Si hay fecha (fi_d) y no hay hora (fi_t) en st.session_state,
+        fija la hora actual (sin segundos). Requiere que en el módulo principal exista:
+        `import streamlit as st`.
+        """
+        try:
+            # 'st' debe existir en el módulo principal
+            import streamlit as st  # import local y seguro
+            if st.session_state.get("fi_d") and not st.session_state.get("fi_t"):
+                now = datetime.now().replace(second=0, microsecond=0)
+                st.session_state["fi_t"] = now.time()
+        except Exception:
+            # Si no hay streamlit o no hay session_state, simplemente no hacemos nada.
+            pass
+
 
 # ================== Formulario ==================
 
@@ -1289,6 +1332,236 @@ if st.session_state.get("nt_visible", True):
 
     # Cierre wrappers
     st.markdown("</div></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
+
+
+# ================== Actualizar estado ==================
+
+# Estado inicial del colapsable de esta sección
+st.session_state.setdefault("ux_visible", True)
+chev2 = "▾" if st.session_state["ux_visible"] else "▸"
+
+# ---------- Barra superior (triangulito + píldora) ALINEADA como "Nueva tarea" ----------
+st.markdown('<div class="topbar-ux">', unsafe_allow_html=True)
+c_toggle2, c_pill2 = st.columns([0.028, 0.965], gap="medium")
+
+with c_toggle2:
+    st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
+    def _toggle_ux():
+        st.session_state["ux_visible"] = not st.session_state["ux_visible"]
+    # key única para evitar colisiones con otros toggles
+    st.button(chev2, key="ux_toggle_icon_v2", help="Mostrar/ocultar", on_click=_toggle_ux)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with c_pill2:
+    st.markdown('<div class="form-title-ux">&nbsp;&nbsp;🔁&nbsp;&nbsp;Editar estado</div>', unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
+# ---------- fin barra superior ----------
+
+if st.session_state["ux_visible"]:
+
+    # ====== CONTENEDOR LOCAL + PATCH de anchos/min-width ======
+    st.markdown('<div id="ux-section">', unsafe_allow_html=True)
+    st.markdown("""
+    <style>
+      /* fuerza 100% de inputs/select/datepicker en esta tarjeta */
+      #ux-section .form-card [data-baseweb="input"] > div,
+      #ux-section .form-card [data-baseweb="textarea"] > div,
+      #ux-section .form-card [data-baseweb="select"] > div,
+      #ux-section .form-card [data-baseweb="datepicker"] > div{
+        width:100% !important; max-width:none !important; box-sizing:border-box !important; min-width:0 !important;
+      }
+      #ux-section .form-card [data-baseweb="select"] [role="combobox"]{ width:100% !important; }
+
+      /* PATCH: quita min-width heredado en las 3 primeras celdas de la 1ª fila del form */
+      #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1)
+        > [data-testid="column"]:nth-of-type(-n+3) [data-baseweb="select"] > div,
+      #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1)
+        > [data-testid="column"]:nth-of-type(-n+3) [data-baseweb="input"] > div{
+        min-width:0 !important; width:100% !important; box-sizing:border-box !important;
+      }
+
+      /* Reduce micro-espacio entre help-strip y tarjeta */
+      .section-ux .help-strip-ux + .form-card{ margin-top: 6px !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # ===== Wrapper UNIDO: help-strip + form-card (sin hueco de por medio) =====
+    st.markdown("""
+    <div class="section-ux">
+      <div class="help-strip help-strip-ux" id="ux-help">
+        🔄 <strong>Actualiza el estado</strong> de una tarea ya registrada usando los filtros
+      </div>
+      <div class="form-card">
+    """, unsafe_allow_html=True)
+
+    # ===== Proporciones (idénticas a la sección "Nueva tarea") =====
+    A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60   # ← mismas de Nueva tarea
+
+    # Base y columnas mínimas
+    df_all = st.session_state["df_main"].copy()
+    for col_req in ["Estado", "Fecha estado", "Hora estado"]:
+        if col_req not in df_all.columns:
+            df_all[col_req] = None
+
+    # ===== Filtros (1 línea): Área, Fase, Responsable, Desde, Hasta, Buscar =====
+    with st.form("ux_filtros_v2", clear_on_submit=False):  # key única para evitar colisiones
+        c_area, c_fase, c_resp, c_desde, c_hasta, c_btn = st.columns([A, Fw, T_width, D, R, C], gap="medium")
+
+        ux_area = c_area.selectbox("Área", ["Todas"] + AREAS_OPC, index=0, key="ux_area")
+
+        fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+        ux_fase = c_fase.selectbox("Fase", ["Todas"] + fases_all, index=0, key="ux_fase")
+
+        # Responsable filtrado por área si aplica
+        df_resp_src = df_all if ux_area == "Todas" else df_all[df_all["Área"] == ux_area]
+        responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+        ux_resp = c_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0, key="ux_resp")
+
+        ux_desde = c_desde.date_input("Desde", value=None, key="ux_desde")
+        ux_hasta = c_hasta.date_input("Hasta",  value=None, key="ux_hasta")
+
+        with c_btn:
+            # separador vertical para alinear el botón con los inputs de la fila
+            st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
+            do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
+
+    # ===== Filtra (si se presiona Buscar) =====
+    df_filtrado = df_all.copy()
+    if do_buscar:
+        if ux_area != "Todas":
+            df_filtrado = df_filtrado[df_filtrado["Área"] == ux_area]
+        if ux_fase != "Todas" and "Fase" in df_filtrado.columns:
+            df_filtrado = df_filtrado[df_filtrado["Fase"].astype(str) == ux_fase]
+        if ux_resp != "Todos":
+            df_filtrado = df_filtrado[df_filtrado["Responsable"].astype(str) == ux_resp]
+
+        # Filtra por fechas: sobre "Fecha inicio" si existe; si no, sobre "Fecha estado"
+        base_fecha_col = "Fecha inicio" if "Fecha inicio" in df_filtrado.columns else "Fecha estado"
+        if base_fecha_col in df_filtrado.columns:
+            fcol = pd.to_datetime(df_filtrado[base_fecha_col], errors="coerce")
+            if ux_desde:
+                df_filtrado = df_filtrado[fcol >= pd.to_datetime(ux_desde)]
+            if ux_hasta:
+                df_filtrado = df_filtrado[fcol <= (pd.to_datetime(ux_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
+
+    # ===== Tabla (siempre visible, incluso vacía) =====
+    cols_view = ["Id", "Tarea", "Estado", "Fecha estado", "Hora estado"]
+    for c in cols_view:
+        if c not in df_filtrado.columns:
+            df_filtrado[c] = None
+
+    df_view = df_filtrado[cols_view].copy()
+    df_view.rename(columns={
+        "Estado": "Estado actual",
+        "Fecha estado": "Fecha estado actual",
+        "Hora estado": "Hora estado actual"
+    }, inplace=True)
+
+    # columnas editables (para cambios)
+    df_view["Estado modificado"] = ""
+    df_view["Fecha estado modificado"] = ""
+    df_view["Hora estado modificado"]  = ""
+
+    st.markdown("**Resultados**")
+
+    gob = GridOptionsBuilder.from_dataframe(df_view)
+    gob.configure_grid_options(
+        suppressMovableColumns=True,
+        domLayout="normal",
+        ensureDomOrder=True,
+        rowHeight=38,
+        headerHeight=42,
+    )
+
+    # Solo lectura
+    for c_ro in ["Id", "Tarea", "Estado actual", "Fecha estado actual", "Hora estado actual"]:
+        gob.configure_column(c_ro, editable=False)
+
+    # Editables
+    ESTADOS_OPC = ["", "En curso", "Terminado", "Pausado", "Cancelado", "Eliminado"]
+    gob.configure_column(
+        "Estado modificado",
+        editable=True,
+        cellEditor="agSelectCellEditor",
+        cellEditorParams={"values": ESTADOS_OPC},
+        width=180,
+    )
+    gob.configure_column("Fecha estado modificado", editable=True, width=180)  # YYYY-MM-DD
+    gob.configure_column("Hora estado modificado",   editable=True, width=150)  # HH:mm
+
+    grid = AgGrid(
+        df_view,
+        gridOptions=gob.build(),
+        data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+        update_mode=GridUpdateMode.VALUE_CHANGED,
+        fit_columns_on_grid_load=False,
+        enable_enterprise_modules=False,
+        reload_data=False,
+        height=220
+    )
+
+    # ===== Botón Guardar abajo a la derecha =====
+    _spacer, _btncol = st.columns([A+Fw+T_width+D+R, C], gap="medium")
+    with _btncol:
+        if st.button("💾 Guardar cambios", key="ux_guardar_btn_v2", use_container_width=True):
+            try:
+                df_editado = pd.DataFrame(grid["data"]).copy()
+                df_base = st.session_state["df_main"].copy()
+                for col_req in ["Estado", "Fecha estado", "Hora estado"]:
+                    if col_req not in df_base.columns:
+                        df_base[col_req] = None
+
+                cambios = 0
+                for _, row in df_editado.iterrows():
+                    id_row = str(row.get("Id", "")).strip()
+                    if not id_row:
+                        continue
+
+                    est_mod = str(row.get("Estado modificado", "")).strip()
+                    f_mod   = str(row.get("Fecha estado modificado", "")).strip()
+                    h_mod   = str(row.get("Hora estado modificado", "")).strip()
+
+                    if not est_mod and not f_mod and not h_mod:
+                        continue
+
+                    m = df_base["Id"].astype(str).str.strip() == id_row
+                    if not m.any():
+                        continue
+
+                    if est_mod:
+                        df_base.loc[m, "Estado"] = est_mod
+                    if f_mod:
+                        try:
+                            _ = pd.to_datetime(f_mod)
+                            df_base.loc[m, "Fecha estado"] = f_mod
+                        except Exception:
+                            pass
+                    if h_mod:
+                        hh_ok = True
+                        try:
+                            _hh, _mm = h_mod.split(":"); _ = int(_hh); _ = int(_mm)
+                        except Exception:
+                            hh_ok = False
+                        if hh_ok:
+                            df_base.loc[m, "Hora estado"] = h_mod
+
+                    cambios += 1
+
+                if cambios > 0:
+                    st.session_state["df_main"] = df_base.copy()
+                    _save_local(df_base[COLS].copy() if set(COLS).issubset(df_base.columns) else df_base.copy())
+                    st.success(f"✔ Cambios guardados: {cambios} fila(s) actualizada(s).")
+                else:
+                    st.info("No se detectaron cambios para guardar.")
+            except Exception as e:
+                st.error(f"No pude guardar los cambios: {e}")
+
+    # Cierra form-card + section-ux y el contenedor local
+    st.markdown('</div></div>', unsafe_allow_html=True)   # cierra .form-card y .section-ux
+    st.markdown('</div>', unsafe_allow_html=True)         # cierra #ux-section
+
+    # Separación vertical entre secciones
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
 
 
@@ -2238,11 +2511,3 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
-
-
-
-
-
