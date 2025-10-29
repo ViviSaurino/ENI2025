@@ -1170,11 +1170,14 @@ if st.session_state.get("nt_visible", True):
     </div>
     """, unsafe_allow_html=True)
 
-    # ===== CSS: marco (card) aplicado al container que tenga el sentinel =====
+    # ===== Wrapper de SECCIÓN para aislar el card SOLO aquí =====
+    st.markdown('<div id="nt-section">', unsafe_allow_html=True)
+
+    # ===== CSS: aplica card solo al container de esta sección =====
     st.markdown("""
     <style>
-      /* Aplica el card al VerticalBlock que CONTIENE el sentinel (sin exigir hijo directo) */
-      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel){
+      /* Card SOLO dentro de #nt-section (evita el borde gigante global) */
+      #nt-section div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel){
         background:#ffffff;
         border:1px solid #E6EEF8;
         border-radius:12px;
@@ -1182,23 +1185,23 @@ if st.session_state.get("nt_visible", True):
         box-shadow:0 1px 2px rgba(16,24,40,.04);
         margin-top:8px;
       }
-      /* Inputs a ancho completo SOLO dentro de ese bloque */
-      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextInput,
-      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stSelectbox,
-      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stDateInput,
-      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTimeInput,
-      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextArea{
+      /* Inputs ancho completo SOLO dentro de ese card */
+      #nt-section div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextInput,
+      #nt-section div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stSelectbox,
+      #nt-section div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stDateInput,
+      #nt-section div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTimeInput,
+      #nt-section div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextArea{
         width:100% !important;
       }
-      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextInput > div,
-      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stSelectbox > div,
-      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stDateInput > div,
-      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTimeInput > div,
-      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextArea > div{
+      #nt-section div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextInput > div,
+      #nt-section div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stSelectbox > div,
+      #nt-section div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stDateInput > div,
+      #nt-section div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTimeInput > div,
+      #nt-section div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextArea > div{
         width:100% !important; max-width:none !important;
       }
-      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) [data-testid="stDateInput"] input,
-      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) [data-testid^="stTimeInput"] input{
+      #nt-section div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) [data-testid="stDateInput"] input,
+      #nt-section div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) [data-testid^="stTimeInput"] input{
         width:100% !important;
       }
     </style>
@@ -1207,7 +1210,7 @@ if st.session_state.get("nt_visible", True):
     # ===== Contenedor ENMARCADO: todo va DENTRO =====
     submitted = False
     with st.container():
-        # Sentinel para que el CSS detecte este bloque
+        # Sentinel para que el CSS detecte este bloque (y solo éste)
         st.markdown('<span id="nt-card-sentinel"></span>', unsafe_allow_html=True)
 
         # Proporciones originales
@@ -1255,6 +1258,9 @@ if st.session_state.get("nt_visible", True):
         with c2_6:
             st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
             submitted = st.button("➕ Agregar", use_container_width=True, key="btn_agregar")
+
+    # Cierre del wrapper de sección (importante para no afectar otras secciones)
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # ---------- Guardado ----------
     if submitted:
@@ -1309,8 +1315,8 @@ if st.session_state.get("nt_visible", True):
         except Exception as e:
             st.error(f"No pude guardar la nueva tarea: {e}")
 
-    # Separación vertical
-    st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
+# Separación vertical
+st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
 
 
 # ================== EDITAR ESTADO (mismo layout que "Nueva alerta") ==================
@@ -2472,6 +2478,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
