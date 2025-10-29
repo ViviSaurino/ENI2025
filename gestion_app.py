@@ -1296,12 +1296,35 @@ if st.session_state.get("nt_visible", True):
 # ================== EDITAR ESTADO (alineado y sin negritas) ==================
 st.session_state.setdefault("est_visible", True)
 
-# ---------- CSS: quitar negrita en headers de la tabla ----------
+# ---------- CSS específico ----------
 st.markdown("""
 <style>
+/* Quita negrita en headers de la tabla sólo aquí */
 #editar-estado-card .ag-theme-alpine .ag-header-cell-label{
-  font-weight: 400 !important;   /* sin negrita */
+  font-weight: 400 !important;
 }
+
+/* Tarjeta de filtros tipo "Nueva alerta" */
+#editar-estado-card .filters-card{
+  background: #fff;
+  border: 1px solid rgba(0,0,0,.06);
+  border-radius: 12px;
+  padding: 16px 16px 12px 16px;
+  margin-top: 8px;
+}
+
+/* Alinea verticalmente los controles en una misma línea */
+#editar-estado-card .filters-card [data-testid="stHorizontalBlock"]{
+  align-items: end;
+}
+
+/* Botón Buscar a la misma altura que los inputs */
+#editar-estado-card .filters-card .stButton > button{
+  height: 38px;          /* como los inputs */
+  margin-top: 0px !important;
+}
+
+/* Oculta cualquier aviso viejo bajo la tabla */
 #nota-est-seleccion { display:none; }
 </style>
 """, unsafe_allow_html=True)
@@ -1343,62 +1366,52 @@ if st.session_state.get("est_visible", True):
             if c not in df_all.columns:
                 df_all[c] = None
 
-        # ===== Filtros (Buscar en la MISMA FILA) =====
+        # ====== Filtros (dentro de card, misma fila) ======
+        st.markdown('<div class="filters-card">', unsafe_allow_html=True)
         areas = ["Todas"] + sorted([x for x in df_all["Área"].dropna().unique()])
         fases = ["Todas"] + sorted([x for x in df_all["Fase"].dropna().unique()])
         resps = ["Todos"] + sorted([x for x in df_all["Responsable"].dropna().unique()])
 
-        f1, f2, f3, f4, f5, f6 = st.columns([0.9, 0.9, 0.95, 0.9, 0.9, 0.6], gap="medium")
+        f1, f2, f3, f4, f5, f6 = st.columns([0.9, 0.9, 1.0, 0.9, 0.9, 0.6], gap="medium")
         f_area  = f1.selectbox("Área", options=areas, index=0, key="est_f_area")
         f_fase  = f2.selectbox("Fase", options=fases, index=0, key="est_f_fase")
         f_resp  = f3.selectbox("Responsable", options=resps, index=0, key="est_f_resp")
-        f_from  = f4.date_input("Desde", value=None, key="est_f_from")
-        f_to    = f5.date_input("Hasta", value=None, key="est_f_to")
+        f_from  = f4.date_input("Desde", key="est_f_from")
+        f_to    = f5.date_input("Hasta", key="est_f_to")
         with f6:
-            st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
             buscar = st.button("🔍 Buscar", use_container_width=True, key="est_buscar")
+        st.markdown('</div>', unsafe_allow_html=True)  # /filters-card
 
-        # Construye caché al cargar y al buscar (para que aparezca la tabla)
-        if buscar or "df_edit_cache" not in st.session_state:
-            df_f = df_all.copy()
-            if "Fecha inicio" in df_f.columns:
-                df_f["Fecha inicio"] = pd.to_datetime(df_f["Fecha inicio"], errors="coerce")
-            mask = pd.Series(True, index=df_f.index)
-            if f_area != "Todas": mask &= (df_f["Área"] == f_area)
-            if f_fase != "Todas": mask &= (df_f["Fase"] == f_fase)
-            if f_resp != "Todos": mask &= (df_f["Responsable"] == f_resp)
-            if f_from is not None: mask &= (df_f["Fecha inicio"].dt.date >= f_from)
-            if f_to   is not None: mask &= (df_f["Fecha inicio"].dt.date <= f_to)
-            st.session_state["df_edit_cache"] = df_f.loc[mask].copy()
+        # ====== Cache de resultados (siempre la calculamos al cargar y al buscar) ======
+        df_f = df_all.copy()
+        if "Fecha inicio" in df_f.columns:
+            df_f["Fecha inicio"] = pd.to_datetime(df_f["Fecha inicio"], errors="coerce")
+        mask = pd.Series(True, index=df_f.index)
+        if f_area != "Todas": mask &= (df_f["Área"] == f_area)
+        if f_fase != "Todas": mask &= (df_f["Fase"] == f_fase)
+        if f_resp != "Todos": mask &= (df_f["Responsable"] == f_resp)
+        if f_from: mask &= (df_f["Fecha inicio"].dt.date >= f_from)
+        if f_to:   mask &= (df_f["Fecha inicio"].dt.date <= f_to)
+        st.session_state["df_edit_cache"] = df_f.loc[mask].copy()
 
-        df_res = st.session_state.get("df_edit_cache", pd.DataFrame()).copy().reset_index(drop=True)
+        df_res = st.session_state["df_edit_cache"].copy().reset_index(drop=True)
         n = len(df_res)
-        s_empty = pd.Series([""]*n, dtype=object)  # fallback seguro con longitud correcta
+        s_empty = pd.Series([""]*n, dtype=object)
 
-        # ===== Tabla (robusta, sin errores de longitud) =====
-        # Asegura serie de fechas base
-        if "Fecha inicio" in df_res.columns:
-            fi = pd.to_datetime(df_res["Fecha inicio"], errors="coerce")
-        else:
-            fi = pd.to_datetime(pd.Series([None]*n))
+        # ====== Tabla (siempre visible; headers sin negrita) ======
+        fi = pd.to_datetime(df_res["Fecha inicio"], errors="coerce") if "Fecha inicio" in df_res else pd.to_datetime(pd.Series([None]*n))
 
-        def _fmt_d_safe(ts):
-            return ts.apply(lambda d: d.date().strftime("%Y-%m-%d") if pd.notna(d) else "")
-        def _fmt_t_safe(ts):
-            return ts.apply(lambda d: d.strftime("%H:%M") if pd.notna(d) else "")
+        def _fmt_d_safe(ts): return ts.apply(lambda d: d.date().strftime("%Y-%m-%d") if pd.notna(d) else "")
+        def _fmt_t_safe(ts): return ts.apply(lambda d: d.strftime("%H:%M") if pd.notna(d) else "")
 
         fea = df_res["Fecha estado actual"] if "Fecha estado actual" in df_res else s_empty
-        fea_out = fea.where(fea.notna(), _fmt_d_safe(fi)).fillna("")
-
-        hea = df_res["Hora estado actual"] if "Hora estado actual" in df_res else s_empty
-        hea_out = hea.where(hea.notna(), _fmt_t_safe(fi)).fillna("")
-
+        hea = df_res["Hora estado actual"]  if "Hora estado actual"  in df_res else s_empty
         view = pd.DataFrame({
             "Id": df_res["Id"] if "Id" in df_res else s_empty,
             "Tarea": df_res["Tarea"].fillna("") if "Tarea" in df_res else s_empty,
             "Estado actual": df_res["Estado"].fillna("") if "Estado" in df_res else s_empty,
-            "Fecha estado actual": fea_out,
-            "Hora estado actual":  hea_out,
+            "Fecha estado actual": fea.where(fea.notna(), _fmt_d_safe(fi)).fillna(""),
+            "Hora estado actual":  hea.where(hea.notna(), _fmt_t_safe(fi)).fillna(""),
             "Estado modificado": df_res["Estado modificado"].fillna("") if "Estado modificado" in df_res else s_empty,
             "Fecha estado modificado": df_res["Fecha estado modificado"].fillna("") if "Fecha estado modificado" in df_res else s_empty,
             "Hora estado modificado":  df_res["Hora estado modificado"].fillna("") if "Hora estado modificado" in df_res else s_empty,
@@ -1407,7 +1420,7 @@ if st.session_state.get("est_visible", True):
         gob = GridOptionsBuilder.from_dataframe(view)
         gob.configure_selection("single", use_checkbox=True)
         gob.configure_pagination(paginationAutoPageSize=True)
-        gob.configure_grid_options(domLayout="normal")  # sin headerClass → sin negrita
+        gob.configure_grid_options(domLayout="normal")
         grid = AgGrid(
             view,
             gridOptions=gob.build(),
@@ -1419,7 +1432,7 @@ if st.session_state.get("est_visible", True):
         )
         sel = grid.get("selected_rows", [])
 
-        # ===== Acción de actualización =====
+        # ====== Actualizar estado ======
         if sel:
             sel_id = sel[0]["Id"]
             estados_lst = list(EMO_ESTADO.keys()) if "EMO_ESTADO" in globals() else \
@@ -1427,7 +1440,6 @@ if st.session_state.get("est_visible", True):
             u1, u2 = st.columns([1.0, .8])
             nuevo_estado = u1.selectbox("Nuevo estado", options=estados_lst, key="est_nuevo_estado")
             aplicar = u2.button("✅ Actualizar estado", use_container_width=True, key="est_aplicar")
-
             if aplicar:
                 try:
                     df2 = st.session_state["df_main"].copy()
@@ -2404,6 +2416,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
