@@ -1214,21 +1214,6 @@ if st.session_state.get("nt_visible", True):
       <div class="form-card" id="form-nt">
     """, unsafe_allow_html=True)
 
-    # ---------- Fila en vivo FECHA / HORA (fuera del form para activar on_change) ----------
-    # Claves base
-    st.session_state.setdefault("fi_d", None)
-    st.session_state.setdefault("fi_t", None)
-    # Misma malla de columnas para alinear visualmente con el form
-    A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
-    c0_1, c0_2, c0_3, c0_4, c0_5, c0_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
-    # Controles en vivo (NO usar 'value' cuando usamos 'key')
-    c0_3.date_input("Fecha de inicio", key="fi_d", on_change=_auto_time_on_date)
-    c0_4.time_input("Hora de inicio", key="fi_t", step=60)
-    # Si ya hay fecha pero no hora (primer render), fijar hora ahora
-    if st.session_state.get("fi_d") and not st.session_state.get("fi_t"):
-        _auto_time_on_date()
-    # ---------- Fin Fila en vivo FECHA / HORA ----------
-
     # Catálogo de fases
     FASES = ["Capacitación", "Post-capacitación", "Pre-consistencia", "Consistencia", "Operación de campo"]
 
@@ -1248,13 +1233,9 @@ if st.session_state.get("nt_visible", True):
         tipo   = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría")
         estado = _opt_map(c2_2, "Estado", EMO_ESTADO, "No iniciado")
 
-        # ⛳ IMPORTANTE: dentro del form ya NO ponemos date_input/time_input.
-        # Leemos lo que eligió la usuaria en la fila en vivo:
-        fi_d = st.session_state.get("fi_d")
-        fi_t = st.session_state.get("fi_t")
-        # (Opcional) Puedes mostrar un texto guía en esas celdas:
-        # c2_3.caption("Usa la fecha de arriba")
-        # c2_4.caption("La hora se autollenará")
+        # Fecha / hora dentro del form (como estaba)
+        fi_d = c2_3.date_input("Fecha de inicio", value=None, key="fi_d")
+        fi_t = c2_4.time_input("Hora de inicio", value=st.session_state.get("fi_t"), step=60, key="fi_t")
 
         # ===== ID Asignado (preview) =====
         try:
@@ -1262,7 +1243,6 @@ if st.session_state.get("nt_visible", True):
         except Exception:
             _df_tmp = pd.DataFrame()
 
-        # Usamos lo que haya en session_state (si aún no se envía el form, puede estar vacío)
         area_ss = st.session_state.get("nt_area", area)
         resp_ss = st.session_state.get("nt_resp", resp)
 
@@ -1351,6 +1331,7 @@ if st.session_state.get("nt_visible", True):
     # Cierre wrappers
     st.markdown("</div></div>", unsafe_allow_html=True)
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
+
 
 
 # ================== Nueva alerta ==================
@@ -2299,5 +2280,6 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
