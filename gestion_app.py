@@ -25,19 +25,22 @@ SECTION_GAP = 30  # píxeles de separación vertical entre secciones
 
 # ================== Utilidades de fecha/hora ==================
 from datetime import datetime, date, time
+import pytz
+
+LIMA_TZ = pytz.timezone("America/Lima")
+
+def now_lima_trimmed():
+    """Hora actual en Lima sin segundos/microsegundos."""
+    return datetime.now(LIMA_TZ).replace(second=0, microsecond=0)
 
 def combine_dt(d, t):
     """
-    Une una fecha (date o str) y una hora (time o str 'HH:mm') en un pd.Timestamp.
-    • Si falta la fecha, devuelve pd.NaT.
-    • Si falta la hora, asume 00:00.
-    • Maneja cadenas con formato 'YYYY-MM-DD' y 'HH:mm'.
+    Une fecha (date|str) y hora (time|str 'HH:mm') en pd.Timestamp.
+    Si falta fecha -> NaT. Si falta hora -> 00:00.
     """
-    # Si no hay fecha, no se puede construir un datetime
     if d in (None, "", pd.NaT):
         return pd.NaT
 
-    # Normaliza fecha
     if isinstance(d, str):
         d_parsed = pd.to_datetime(d, errors="coerce")
         if pd.isna(d_parsed):
@@ -50,14 +53,12 @@ def combine_dt(d, t):
     else:
         return pd.NaT
 
-    # Si no hay hora, usar 00:00
     if t in (None, "", "HH:mm", pd.NaT):
         try:
             return pd.Timestamp(datetime.combine(d, time(0, 0)))
         except Exception:
             return pd.NaT
 
-    # Normaliza hora
     if isinstance(t, str):
         try:
             hh, mm = t.strip().split(":")
@@ -71,29 +72,16 @@ def combine_dt(d, t):
     else:
         return pd.NaT
 
-    # Construye timestamp final
     try:
         return pd.Timestamp(datetime.combine(d, t))
     except Exception:
         return pd.NaT
 
 
+# ===== Hora auto al elegir fecha (usa zona Lima) =====
 def _auto_time_on_date():
-    """
-    Callback para usar con date_input (fuera del st.form):
-    - Si hay fecha (fi_d) y no hay hora (fi_t), coloca la hora actual (sin segundos).
-    Requiere `import streamlit as st` en el módulo principal.
-    """
-    # Nota: este callback debe ejecutarse en un contexto donde 'st' esté importado.
-    try:
-        # Sólo fija hora si existe fecha y aún no hay hora establecida
-        if st.session_state.get("fi_d") and not st.session_state.get("fi_t"):
-            now = datetime.now().replace(second=0, microsecond=0)
-            st.session_state["fi_t"] = now.time()
-    except NameError:
-        # Si 'st' no está disponible en este alcance, no hacemos nada
-        # (en el módulo principal debe existir: `import streamlit as st`)
-        pass
+    if st.session_state.get("fi_d"):
+        st.session_state["fi_t"] = now_lima_trimmed().time()
 
 
 # ================== Utilidad: fila en blanco ==================
@@ -1153,7 +1141,6 @@ if "_auto_time_on_date" not in globals():
             # Si no hay streamlit o no hay session_state, simplemente no hacemos nada.
             pass
 
-
 # ================== Formulario ==================
 
 st.session_state.setdefault("nt_visible", True)
@@ -1173,8 +1160,6 @@ with c_pill:
 st.markdown('</div>', unsafe_allow_html=True)
 # ---------- fin barra superior ----------
 
-submitted = False
-
 if st.session_state.get("nt_visible", True):
 
     # ===== CSS =====
@@ -1190,139 +1175,91 @@ if st.session_state.get("nt_visible", True):
     #form-nt .stDateInput > div,
     #form-nt .stTimeInput > div,
     #form-nt .stTextArea > div { width: 100% !important; max-width: none !important; }
-    #form-nt [data-baseweb="select"],
-    #form-nt [data-baseweb="select"] > div,
-    #form-nt [data-baseweb="select"] input { width: 100% !important; }
     #form-nt [data-testid="stDateInput"] input,
     #form-nt [data-testid^="stTimeInput"] input { width: 100% !important; }
-    #form-nt [data-testid^="stTimeInput"] > div { width: 100% !important; }
-    #form-nt .stButton, 
-    #form-nt .stButton > button, 
-    #form-nt [data-testid^="baseButton"] button {
-      width: 100% !important; display:block !important;
-    }
-    .section-nt .help-strip-nt + .form-card{ margin-top: 6px !important; }
+    /* minificar espacio entre la fila viva y el form */
+    .section-nt .live-row { margin-bottom: 0px !important; }
+    .section-nt .form-card { margin-top: 6px !important; }
     </style>
     """, unsafe_allow_html=True)
 
-    # ===== Wrapper UNIDO =====
+    # ===== Wrapper =====
     st.markdown("""
     <div class="section-nt">
       <div class="help-strip help-strip-nt" id="nt-help">
         ✳️ <strong>Completa los campos principales</strong> para registrar una nueva tarea
       </div>
-      <div class="form-card" id="form-nt">
     """, unsafe_allow_html=True)
 
-    # ---------- Fila "en vivo" SOLO para FECHA/HORA, en el MISMO LUGAR (2ª fila) ----------
-    # Claves base
+    # ====== Malla base (proporciones iguales a tu 2ª fila) ======
+    A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
+
+    # ---------- Fila "viva" (misma 2ª fila: fecha/hora) ----------
+    st.markdown('<div class="live-row">', unsafe_allow_html=True)
+    r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
+
+    # Inicializar claves
     st.session_state.setdefault("fi_d", None)
     st.session_state.setdefault("fi_t", None)
 
-    A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
-    # Esta fila usa el MISMO grid que tu segunda fila
-    _r2_1, _r2_2, r2_date, r2_time, _r2_5, _r2_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
+    # Fecha editable + callback inmediato (ajusta hora en Lima)
+    r2c3.date_input("Fecha de inicio", key="fi_d", on_change=_auto_time_on_date)
 
-    # Fecha editable con callback inmediato
-    r2_date.date_input("Fecha de inicio", key="fi_d", on_change=_auto_time_on_date)
-
-    # Hora NO editable: se muestra lo que haya en session_state (se llena en el callback)
-    _fi_t_show = st.session_state.get("fi_t")
-    _fi_t_text = ""
-    if _fi_t_show is not None:
+    # Hora no editable: muestra lo que dejó el callback
+    _t = st.session_state.get("fi_t")
+    _t_txt = ""
+    if _t is not None:
         try:
-            _fi_t_text = _fi_t_show.strftime("%H:%M")
+            _t_txt = _t.strftime("%H:%M")
         except Exception:
-            _fi_t_text = str(_fi_t_show)
-    r2_time.text_input("Hora de inicio (auto)", value=_fi_t_text, disabled=True,
-                       help="Se establece automáticamente al elegir la fecha")
+            _t_txt = str(_t)
+    r2c4.text_input("Hora de inicio (auto)", value=_t_txt, disabled=True,
+                    help="Se establece automáticamente al elegir la fecha")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    # Si ya hay fecha pero aún no hora (primer render), forzar ahora mismo
-    if st.session_state.get("fi_d") and not st.session_state.get("fi_t"):
-        _auto_time_on_date()
-        # actualizar el texto mostrado
-        _fi_t_show = st.session_state.get("fi_t")
-        if _fi_t_show:
-            try:
-                _fi_t_text = _fi_t_show.strftime("%H:%M")
-            except Exception:
-                _fi_t_text = str(_fi_t_show)
-
-    # Catálogo de fases
-    FASES = ["Capacitación", "Post-capacitación", "Pre-consistencia", "Consistencia", "Operación de campo"]
-
+    # ---------- Form (resto de campos; huecos en las columnas 3 y 4) ----------
+    st.markdown('<div class="form-card" id="form-nt">', unsafe_allow_html=True)
     with st.form("form_nueva_tarea", clear_on_submit=True):
-        # Rejilla FILA 1 (igual que siempre)
         r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
-
         area = r1c1.selectbox("Área", options=AREAS_OPC, index=0, key="nt_area")
+        FASES = ["Capacitación", "Post-capacitación", "Pre-consistencia", "Consistencia", "Operación de campo"]
         fase = r1c2.selectbox("Fase", options=FASES, index=None, placeholder="Selecciona una fase", key="nt_fase")
         tarea   = r1c3.text_input("Tarea", placeholder="Describe la tarea")
         detalle = r1c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)")
         resp    = r1c5.text_input("Responsable", placeholder="Nombre", key="nt_resp")
         ciclo_mejora = r1c6.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
 
-        # Rejilla FILA 2: dejamos huecos en c2_3 y c2_4 (los ocupó la fila en vivo)
-        c2_1, c2_2, _c2_3_gap, _c2_4_gap, c2_5, c2_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
+        c2_1, c2_2, c2_3_gap, c2_4_gap, c2_5, c2_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
         tipo   = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría")
         estado = _opt_map(c2_2, "Estado", EMO_ESTADO, "No iniciado")
-        # huecos para mantener alineación
-        _c2_3_gap.markdown("<div style='height:36px'></div>", unsafe_allow_html=True)
-        _c2_4_gap.markdown("<div style='height:36px'></div>", unsafe_allow_html=True)
 
-        # ===== ID Asignado (preview) =====
-        try:
-            _df_tmp = st.session_state.get("df_main", pd.DataFrame()).copy()
-        except Exception:
-            _df_tmp = pd.DataFrame()
+        # Huecos para respetar el alineamiento (donde ya dibujamos fecha/hora arriba)
+        c2_3_gap.markdown("<div style='height:36px'></div>", unsafe_allow_html=True)
+        c2_4_gap.markdown("<div style='height:36px'></div>", unsafe_allow_html=True)
 
+        # ID preview
+        _df_tmp = st.session_state.get("df_main", pd.DataFrame()).copy() if "df_main" in st.session_state else pd.DataFrame()
         area_ss = st.session_state.get("nt_area", area)
         resp_ss = st.session_state.get("nt_resp", resp)
-
-        prefix = make_id_prefix(area_ss, resp_ss)          # ej. JVS
+        prefix = make_id_prefix(area_ss, resp_ss)
         if st.session_state.get("fi_d"):
-            id_preview = next_id_by_person(_df_tmp, area_ss, resp_ss)   # ej. JVS_1
+            id_preview = next_id_by_person(_df_tmp, area_ss, resp_ss)
         else:
-            id_preview = f"{prefix}_" if prefix else ""                 # ej. JVS_
-
+            id_preview = f"{prefix}_" if prefix else ""
         c2_5.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
 
         with c2_6:
             st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
             submitted = st.form_submit_button("➕ Agregar", use_container_width=True)
 
-    # ---------- Utilidad local para guardar sin reindex ----------
-    def sanitize_df_for_save(df_in: pd.DataFrame, target_cols=None) -> pd.DataFrame:
-        df_out = df_in.copy()
-        if "DEL" in df_out.columns and "__DEL__" in df_out.columns:
-            df_out["__DEL__"] = df_out["__DEL__"].fillna(False) | df_out["DEL"].fillna(False)
-            df_out = df_out.drop(columns=["DEL"])
-        elif "DEL" in df_out.columns:
-            df_out = df_out.rename(columns={"DEL": "__DEL__"})
-        df_out = df_out.loc[:, ~pd.Index(df_out.columns).duplicated()].copy()
-        if not df_out.index.is_unique:
-            df_out = df_out.reset_index(drop=True)
-        if target_cols:
-            target = list(dict.fromkeys(list(target_cols)))
-            for c in target:
-                if c not in df_out.columns:
-                    df_out[c] = None
-            ordered = [c for c in target] + [c for c in df_out.columns if c not in target]
-            df_out = df_out.loc[:, ordered].copy()
-        return df_out
-
-    # ============== POST Submit ==============
+    # ---------- Guardado ----------
     if submitted:
         try:
-            from datetime import datetime
-
             df = st.session_state["df_main"].copy()
+            # utilitario de saneo que ya tienes
             df = sanitize_df_for_save(df, COLS if "COLS" in globals() else None)
 
-            if "Ciclo de mejora" not in df.columns:
-                df["Ciclo de mejora"] = ""
-
-            # f_ini se arma con lo que ya quedó en session_state por el callback en vivo
+            # Timestamp final (ya está en session_state por el callback vivo)
             f_ini = combine_dt(st.session_state.get("fi_d"), st.session_state.get("fi_t"))
 
             new = blank_row()
@@ -1344,19 +1281,18 @@ if st.session_state.get("nt_visible", True):
                 df["Fecha inicio"] = pd.to_datetime(df["Fecha inicio"], errors="coerce")
 
             df = sanitize_df_for_save(df, COLS if "COLS" in globals() else None)
-
             st.session_state["df_main"] = df.copy()
+
             os.makedirs("data", exist_ok=True)
             df.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig", mode="w")
 
             st.success(f"✔ Tarea agregada (Id {new['Id']}).")
             st.rerun()
-
         except Exception as e:
             st.error(f"No pude guardar la nueva tarea: {e}")
 
-    # Cierre wrappers
-    st.markdown("</div></div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)  # cierra form-card
+    st.markdown("</div>", unsafe_allow_html=True)  # cierra section-nt
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
 
 
@@ -2307,6 +2243,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
