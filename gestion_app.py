@@ -1163,20 +1163,35 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 if st.session_state.get("nt_visible", True):
 
-    # ===== CSS mínimo para espaciar help-strip y tarjeta, solo aquí =====
+    # ===== CSS local SOLO para esta sección (sin afectar nada más) =====
     st.markdown("""
     <style>
-      .section-nt .help-strip + .form-card{ margin-top: 6px !important; }
+      /* Tarjeta propia de Nueva tarea (no usamos :has, no hay borde global) */
+      .nt-card{
+        background:#ffffff; border:1px solid #E6EEF8; border-radius:12px;
+        padding:16px 18px 12px 18px; box-shadow:0 1px 2px rgba(16,24,40,.04);
+        width:100%;
+      }
+      /* Separación entre la franja de ayuda y la tarjeta */
+      .section-nt .help-strip + .nt-card{ margin-top: 6px; }
+
+      /* Inputs a ancho completo SOLO dentro de la tarjeta */
+      .nt-card .stTextInput, .nt-card .stSelectbox, .nt-card .stDateInput,
+      .nt-card .stTimeInput, .nt-card .stTextArea { width:100% !important; }
+      .nt-card .stTextInput > div, .nt-card .stSelectbox > div, .nt-card .stDateInput > div,
+      .nt-card .stTimeInput > div, .nt-card .stTextArea > div { width:100% !important; max-width:none !important; }
+      .nt-card [data-testid="stDateInput"] input,
+      .nt-card [data-testid^="stTimeInput"] input { width:100% !important; }
     </style>
     """, unsafe_allow_html=True)
 
-    # ===== Wrapper UNIDO: help-strip (arriba) + tarjeta (abajo) =====
+    # ===== Wrapper UNIDO: ayuda arriba + TARJETA abajo (como Editar estado) =====
     st.markdown("""
     <div class="section-nt">
       <div class="help-strip">
         ✳️ Completa: <strong>Área, Fase, Tarea, Responsable y Fecha</strong>. La hora es automática.
       </div>
-      <div class="form-card" id="nt-card">
+      <div class="nt-card">
     """, unsafe_allow_html=True)
 
     submitted = False
@@ -1205,8 +1220,7 @@ if st.session_state.get("nt_visible", True):
     c2_3.date_input("Fecha de inicio", key="fi_d", on_change=_auto_time_on_date)
 
     # Hora auto (solo lectura)
-    _t = st.session_state.get("fi_t")
-    _t_txt = ""
+    _t = st.session_state.get("fi_t"); _t_txt = ""
     if _t is not None:
         try: _t_txt = _t.strftime("%H:%M")
         except Exception: _t_txt = str(_t)
@@ -1227,7 +1241,7 @@ if st.session_state.get("nt_visible", True):
         st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
         submitted = st.button("➕ Agregar", use_container_width=True, key="btn_agregar")
 
-    # ===== Cerrar tarjeta + sección =====
+    # ===== Cerrar TARJETA y sección =====
     st.markdown("</div></div>", unsafe_allow_html=True)
 
     # ---------- Guardado ----------
@@ -1285,7 +1299,6 @@ if st.session_state.get("nt_visible", True):
 
 # Separación vertical
 st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
-
 
 
 # ================== EDITAR ESTADO (mismo layout que "Nueva alerta") ==================
@@ -2447,6 +2460,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
