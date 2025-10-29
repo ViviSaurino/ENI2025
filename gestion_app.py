@@ -1162,34 +1162,34 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 if st.session_state.get("nt_visible", True):
 
-    # ===== CSS: el card envuelve AL FORM (no usamos wrapper HTML) =====
+    # ====== SCOPE + CSS (MISMO estilo de tarjeta que en “Nueva alerta”) ======
+    st.markdown('<div id="nt-section">', unsafe_allow_html=True)
     st.markdown("""
     <style>
-      /* Hacemos que el propio st.form luzca como 'form-card' */
-      [data-testid="stForm"]{
-        background:#ffffff !important;
-        border:1px solid #E6EEF8 !important;
-        border-radius:12px !important;
-        padding:16px 18px 12px 18px !important;
-        box-shadow:0 1px 2px rgba(16,24,40,.04) !important;
+      /* Card que ENVUELVE el formulario (idéntico a otras secciones) */
+      #nt-section .form-card{
+        background:#ffffff; border:1px solid #E6EEF8; border-radius:12px;
+        padding:16px 18px 12px 18px; box-shadow:0 1px 2px rgba(16,24,40,.04);
       }
-      /* Inputs a ancho completo SOLO dentro del form */
-      [data-testid="stForm"] .stTextInput, 
-      [data-testid="stForm"] .stSelectbox, 
-      [data-testid="stForm"] .stDateInput, 
-      [data-testid="stForm"] .stTimeInput, 
-      [data-testid="stForm"] .stTextArea { width: 100% !important; }
-      [data-testid="stForm"] .stTextInput > div,
-      [data-testid="stForm"] .stSelectbox > div,
-      [data-testid="stForm"] .stDateInput > div,
-      [data-testid="stForm"] .stTimeInput > div,
-      [data-testid="stForm"] .stTextArea > div { width: 100% !important; max-width: none !important; }
-      [data-testid="stForm"] [data-testid="stDateInput"] input,
-      [data-testid="stForm"] [data-testid^="stTimeInput"] input { width: 100% !important; }
+      /* Inputs a ancho completo SOLO dentro de esta sección */
+      #nt-section .stTextInput, 
+      #nt-section .stSelectbox, 
+      #nt-section .stDateInput, 
+      #nt-section .stTimeInput, 
+      #nt-section .stTextArea { width: 100% !important; }
+      #nt-section .stTextInput > div,
+      #nt-section .stSelectbox > div,
+      #nt-section .stDateInput > div,
+      #nt-section .stTimeInput > div,
+      #nt-section .stTextArea > div { width: 100% !important; max-width: none !important; }
+      #nt-section [data-testid="stDateInput"] input,
+      #nt-section [data-testid^="stTimeInput"] input { width: 100% !important; }
     </style>
     """, unsafe_allow_html=True)
 
-    # ===== Todo dentro del st.form (el card ya lo envuelve) =====
+    # ====== Wrapper QUE SÍ ENVUELVE al st.form (como en Nueva alerta) ======
+    st.markdown('<div class="form-card" id="form-nt-card">', unsafe_allow_html=True)
+
     with st.form("nt_form_card", clear_on_submit=False):
         # Proporciones de columnas (tus originales)
         A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
@@ -1237,6 +1237,9 @@ if st.session_state.get("nt_visible", True):
         with c2_6:
             st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
             submitted = st.form_submit_button("➕ Agregar", use_container_width=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
+    st.markdown('</div>', unsafe_allow_html=True)  # cierra #nt-section
 
     # ---------- Guardado ----------
     if submitted:
@@ -2459,6 +2462,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
