@@ -1438,7 +1438,7 @@ if st.session_state["na_visible"]:
 
         with c_buscar:
             st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
-            na_do_buscar = st.form_submit_button("🔍 Buscar", key="na_buscar_btn_v2", use_container_width=True)
+            na_do_buscar = st.form_submit_button("🔍 Buscar", key="na_buscar_btn_v2")
 
     # Construye dataset de tareas según filtros (tras Buscar)
     df_tasks = df_all.copy()
@@ -2124,4 +2124,5 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
