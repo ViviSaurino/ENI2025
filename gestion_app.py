@@ -38,7 +38,7 @@ st.markdown("""
 .help-strip-na + .form-card,
 .help-strip-pri + .form-card,
 .help-strip-eval + .form-card{
-  margin-top: 400px !important;   /* ← ajusta aquí (4–12px) */
+  margin-top: 6px !important;   /* ← ajusta aquí (4–12px) */
 }
 
 /* 3) Si Streamlit inserta wrappers entre medio, usa hermano general (~) */
@@ -2308,6 +2308,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
