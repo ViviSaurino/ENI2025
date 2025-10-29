@@ -22,23 +22,50 @@ from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, JsCode, DataRe
 # ================== Constantes de layout / UI ==================
 SECTION_GAP = 65  # píxeles de separación vertical entre secciones
 
-# —— Ajuste global: acercar la línea de indicaciones (help-strip) a sus campos ——
 st.markdown("""
 <style>
-/* Reduce el espacio entre la franja de indicaciones y el formulario en TODAS las secciones */
+/* ===== Acercar la franja de indicaciones a su formulario en TODAS las secciones ===== */
+
+/* 1) Quita margen inferior de la franja */
 .help-strip,
 .help-strip-nt, .help-strip-ux, .help-strip-na, .help-strip-pri, .help-strip-eval{
-  margin-bottom: 88px !important;      /* ⇦ ajusta aquí (4–10px recomendado) */
+  margin-bottom: 0 !important;
 }
 
-/* Evita que la tarjeta agregue espacio extra por arriba */
-.form-card{
-  margin-top: 6px !important;         /* ⇦ ajusta si quieres aún más compacto */
+/* 2) Si la .form-card viene inmediatamente después → margen mínimo */
+.help-strip-nt + .form-card,
+.help-strip-ux + .form-card,
+.help-strip-na + .form-card,
+.help-strip-pri + .form-card,
+.help-strip-eval + .form-card{
+  margin-top: 6px !important;   /* ← ajusta aquí (4–12px) */
 }
 
-/* Opcional: compactar espacio entre etiqueta y control */
-[data-testid="stForm"] label{
-  margin-bottom: 2px !important;      /* ⇦ 2–4px suele verse bien */
+/* 3) Si Streamlit inserta wrappers entre medio, usa hermano general (~) */
+.help-strip-nt ~ .form-card,
+.help-strip-ux ~ .form-card,
+.help-strip-na ~ .form-card,
+.help-strip-pri ~ .form-card,
+.help-strip-eval ~ .form-card{
+  margin-top: 6px !important;   /* ← mismo valor que arriba */
+}
+
+/* 4) Compactar el padding superior del form embebido dentro de la tarjeta */
+.form-card [data-testid="stForm"]{
+  padding-top: 4px !important;  /* reduce aire interno arriba */
+  margin-top: 0 !important;
+}
+
+/* 5) Etiquetas más pegadas a los controles */
+.form-card label{
+  margin-bottom: 2px !important;
+}
+
+/* 6) (Opcional) Reducir el gap vertical que añade Streamlit entre bloques
+      que contienen la franja (ayuda si aún ves huecos raros) */
+.block-container [data-testid="stVerticalBlock"] > div:has(.help-strip,
+  .help-strip-nt, .help-strip-ux, .help-strip-na, .help-strip-pri, .help-strip-eval){
+  margin-bottom: 0 !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -2281,6 +2308,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
