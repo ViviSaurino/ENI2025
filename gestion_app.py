@@ -1155,6 +1155,19 @@ if st.session_state["ux_visible"]:
     </div>
     """, unsafe_allow_html=True)
 
+    # === Wrapper para aplicar CSS específico de anchos en esta sección ===
+    st.markdown('<div id="ux-section">', unsafe_allow_html=True)
+
+    # CSS puntual: ensancha la 1ª celda (Área) como en "Nueva tarea"
+    st.markdown("""
+    <style>
+    #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1)
+      > [data-testid="column"]:first-child [data-baseweb="select"] > div{
+        min-width: 300px !important;
+      }
+    </style>
+    """, unsafe_allow_html=True)
+
     # Tarjeta con borde
     st.markdown('<div class="form-card">', unsafe_allow_html=True)
 
@@ -1324,6 +1337,7 @@ if st.session_state["ux_visible"]:
                 st.error(f"No pude guardar los cambios: {e}")
 
     st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
+    st.markdown('</div>', unsafe_allow_html=True)  # cierra #ux-section
 
 
 # ================== Nueva alerta ==================
@@ -2118,6 +2132,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
