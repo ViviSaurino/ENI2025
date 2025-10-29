@@ -1379,6 +1379,14 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 if st.session_state["na_visible"]:
 
+    # --- contenedor local + css: botones al 100% del ancho de su columna ---
+    st.markdown('<div id="na-section">', unsafe_allow_html=True)
+    st.markdown("""
+    <style>
+      #na-section .stButton > button { width: 100% !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
     st.markdown("""
     <div class="help-strip help-strip-na" id="na-help">
       ⚠️ <strong>Vincula una alerta</strong> a una tarea ya registrada
@@ -1418,7 +1426,7 @@ if st.session_state["na_visible"]:
 
         with c_buscar:
             st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
-            na_do_buscar = st.form_submit_button("🔍 Buscar")
+            na_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
     # ===== Filtrado de tareas (para llenar la tabla) =====
     df_tasks = df_all.copy()
@@ -1505,7 +1513,7 @@ if st.session_state["na_visible"]:
     # ===== Guardar (aplica cambios por Id en df_main) =====
     _sp, _btn = st.columns([A+Fw+T_width+D+R, C], gap="medium")
     with _btn:
-        if st.button("💾 Guardar cambios"):
+        if st.button("💾 Guardar cambios", use_container_width=True):
             try:
                 df_edit = pd.DataFrame(grid["data"]).copy()
                 df_base = st.session_state["df_main"].copy()
@@ -1544,6 +1552,7 @@ if st.session_state["na_visible"]:
                 st.error(f"No pude guardar los cambios: {e}")
 
     st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
+    st.markdown('</div>', unsafe_allow_html=True)  # cierra #na-section
 
 
 # =========================== PRIORIDAD ===============================
@@ -2147,6 +2156,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
