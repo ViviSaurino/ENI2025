@@ -1314,191 +1314,230 @@ if st.session_state["ux_visible"]:
 
 # Estado inicial del colapsable de esta sección
 st.session_state.setdefault("na_visible", True)
-
-# Chevron (1 clic) para esta barra
 chev3 = "▾" if st.session_state["na_visible"] else "▸"
 
-# ---------- Barra superior (triangulito + píldora) ALINEADA como las demás ----------
+# ---------- Barra superior (triangulito + píldora) ALINEADA ----------
 st.markdown('<div class="topbar-na">', unsafe_allow_html=True)
 c_toggle3, c_pill3 = st.columns([0.028, 0.965], gap="medium")
-
 with c_toggle3:
     st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
-
     def _toggle_na():
         st.session_state["na_visible"] = not st.session_state["na_visible"]
-
-    st.button(
-        chev3,
-        key="na_toggle_icon",
-        help="Mostrar/ocultar",
-        on_click=_toggle_na
-    )
+    st.button(chev3, key="na_toggle_icon", help="Mostrar/ocultar", on_click=_toggle_na)
     st.markdown('</div>', unsafe_allow_html=True)
-
 with c_pill3:
-    # Píldora celeste (igual estética/ancho que las otras)
-    st.markdown(
-        '<div class="form-title-na">&nbsp;&nbsp;⚠️&nbsp;&nbsp;Nueva alerta</div>',
-        unsafe_allow_html=True
-    )
+    st.markdown('<div class="form-title-na">&nbsp;&nbsp;⚠️&nbsp;&nbsp;Nueva alerta</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 # ---------- fin barra superior ----------
 
-# --- Cuerpo (solo si está visible) ---
 if st.session_state["na_visible"]:
 
-    # Tira de ayuda SOLO para esta sección (con clase + id propios)
     st.markdown("""
     <div class="help-strip help-strip-na" id="na-help">
-      ⚠️ <strong>Vincula una alerta</strong> a una tarea ya registrada
+      🚨 <strong>Registra y actualiza alertas</strong> sobre tareas ya creadas. Filtra, busca y edita los campos de alerta.
     </div>
     """, unsafe_allow_html=True)
 
-    # Tarjeta con borde
+    # ====== CONTENEDOR LOCAL (neutraliza min-width y fuerza 100%) ======
+    st.markdown('<div id="na-section">', unsafe_allow_html=True)
+    st.markdown("""
+    <style>
+      #na-section .form-card [data-baseweb="input"] > div,
+      #na-section .form-card [data-baseweb="textarea"] > div,
+      #na-section .form-card [data-baseweb="select"] > div,
+      #na-section .form-card [data-baseweb="datepicker"] > div{
+        width:100% !important; max-width:none !important; min-width:0 !important; box-sizing:border-box !important;
+      }
+      #na-section .form-card [data-baseweb="select"] [role="combobox"]{
+        width:100% !important; max-width:none !important; min-width:0 !important; box-sizing:border-box !important;
+      }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # ===== Proporciones IDENTICAS a "Nueva tarea"/"Editar estado" =====
+    W_AREA, W_FASE, W_RESP, W_DESDE, W_HASTA, W_BTN = 1.5, 2.25, 3.00, 2.00, 2.00, 1.60
+
+    # Base
+    df_all = st.session_state["df_main"].copy()
+
+    # Asegura columnas de alerta en el modelo
+    ALERT_COLS = [
+        "Generó alerta", "Tipo de alerta", "Fecha de alerta", "Hora de alerta",
+        "Se corrigió la alerta", "Fecha de corrección", "Hora de corrección", "N° de alerta"
+    ]
+    for col in ALERT_COLS:
+        if col not in df_all.columns:
+            df_all[col] = None
+
     st.markdown('<div class="form-card">', unsafe_allow_html=True)
 
-    with st.form("form_nueva_alerta", clear_on_submit=True):
-        # ===== Usamos las mismas proporciones base del formulario superior =====
-        A = 1.2   # Área
-        F = 1.2   # Responsable
-        # Para igualar: Desde = 1.1 (Estado), Hasta = 1.1 (Complejidad), Tarea = 1.0 (Fecha inicio)
-        # Id = 2.4 (suma de 'Id' + 'Estado' de arriba)
-        r1_area, r1_resp, r1_desde, r1_hasta, r1_tarea, r1_id = st.columns([A, F, 1.1, 1.1, 1.0, 2.4], gap="medium")
-
-        # --- Fila 1: filtros + selección de tarea e Id automático ---
-        # ✅ FIX: selector de Área con catálogo AREAS_OPC (evita TypeError de _opt_map)
-        area_filtro = r1_area.selectbox(
-            "Área",
-            options=AREAS_OPC,
-            index=0,
-            key="na_area"
+    # ===== Filtros (MISMA LÍNEA Y ANCHOS) =====
+    with st.form("na_filtros", clear_on_submit=False):
+        c_area, c_fase, c_resp, c_desde, c_hasta, c_btn = st.columns(
+            [W_AREA, W_FASE, W_RESP, W_DESDE, W_HASTA, W_BTN], gap="medium"
         )
 
-        # lista de responsables (según df actual)
-        df_all = st.session_state["df_main"].copy()
-        responsables_all = sorted([x for x in df_all["Responsable"].astype(str).unique() if x and x != "nan"])
-        resp_filtro = r1_resp.selectbox("Responsable", options=["Todos"] + responsables_all, index=0)
+        na_area = c_area.selectbox("Área", ["Todas"] + AREAS_OPC, index=0, key="na_area")
 
-        f_desde = r1_desde.date_input("Desde", value=None, key="alerta_desde")
-        f_hasta = r1_hasta.date_input("Hasta", value=None, key="alerta_hasta")
+        fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+        na_fase = c_fase.selectbox("Fase", ["Todas"] + fases_all, index=0, key="na_fase")
 
-        # Filtrado para el combo de tareas
-        df_tasks = df_all.copy()
-        if area_filtro:
-            df_tasks = df_tasks[df_tasks["Área"] == area_filtro]
-        if resp_filtro != "Todos":
-            df_tasks = df_tasks[df_tasks["Responsable"].astype(str) == resp_filtro]
+        src_resp = df_all if na_area == "Todas" else df_all[df_all["Área"] == na_area]
+        responsables_all = sorted([x for x in src_resp.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+        na_resp = c_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0, key="na_resp")
 
-        # Filtrar por rango (usamos 'Fecha inicio' cuando existe)
-        df_tasks["Fecha inicio"] = pd.to_datetime(df_tasks.get("Fecha inicio"), errors="coerce")
-        if f_desde:
-            df_tasks = df_tasks[df_tasks["Fecha inicio"].dt.date >= f_desde]
-        if f_hasta:
-            df_tasks = df_tasks[df_tasks["Fecha inicio"].dt.date <= f_hasta]
+        na_desde = c_desde.date_input("Desde", value=None, key="na_desde")
+        na_hasta = c_hasta.date_input("Hasta",  value=None, key="na_hasta")
 
-        # Construimos opciones de tarea (mostramos "Tarea (Id: XXX)" pero mapeamos al Id)
-        df_tasks = df_tasks.dropna(subset=["Id"]).copy()
-        df_tasks["Tarea_str"] = df_tasks["Tarea"].astype(str).replace({"nan": ""})
-        df_tasks["Tarea_op"]  = df_tasks["Tarea_str"] + "  (Id: " + df_tasks["Id"].astype(str) + ")"
+        with c_btn:
+            st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
+            do_buscar_alerta = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
-        opciones_tarea = ["— Selecciona —"] + df_tasks["Tarea_op"].tolist()
-        tarea_op_sel = r1_tarea.selectbox("Tarea", opciones_tarea, index=0, key="alerta_tarea_sel")
+    # ===== Filtrado =====
+    df_filtrado = df_all.copy()
+    if do_buscar_alerta:
+        if na_area != "Todas":
+            df_filtrado = df_filtrado[df_filtrado["Área"] == na_area]
+        if na_fase != "Todas" and "Fase" in df_filtrado.columns:
+            df_filtrado = df_filtrado[df_filtrado["Fase"].astype(str) == na_fase]
+        if na_resp != "Todos":
+            df_filtrado = df_filtrado[df_filtrado["Responsable"].astype(str) == na_resp]
 
-        # Id automático (solo lectura) en base a la tarea elegida
-        id_auto = ""
-        if tarea_op_sel != "— Selecciona —":
-            m = df_tasks["Tarea_op"] == tarea_op_sel
-            if m.any():
-                id_auto = str(df_tasks.loc[m, "Id"].iloc[0])
-        r1_id.text_input("Id", value=id_auto, disabled=True, key="alerta_id_auto")
+        # Rango de fechas: usa "Fecha inicio" si existe; si no, usa "Fecha de alerta" (si existiera)
+        base_fecha_col = "Fecha inicio" if "Fecha inicio" in df_filtrado.columns else ("Fecha de alerta" if "Fecha de alerta" in df_filtrado.columns else None)
+        if base_fecha_col and base_fecha_col in df_filtrado.columns:
+            fcol = pd.to_datetime(df_filtrado[base_fecha_col], errors="coerce")
+            if na_desde:
+                df_filtrado = df_filtrado[fcol >= pd.to_datetime(na_desde)]
+            if na_hasta:
+                df_filtrado = df_filtrado[fcol <= (pd.to_datetime(na_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
 
-        # -------- Fila 2: ¿Generó? | ¿Se corrigió? | Tipo | Fecha | Fecha corregida (+ botón debajo) --------
-        # Alineamos cortes: (A) | (F) | (T) | (D/2) | (D/2)
-        r2_gen, r2_corr, r2_tipo, r2_fa, r2_fc = st.columns([A, F, 3.2, 1.2, 1.2], gap="medium")
+    # ===== Tabla (siempre visible, orden y nombres pedidos) =====
+    # Asegura columnas base
+    for c0 in ["Id", "Tarea"]:
+        if c0 not in df_filtrado.columns:
+            df_filtrado[c0] = None
+    for c1 in ALERT_COLS:
+        if c1 not in df_filtrado.columns:
+            df_filtrado[c1] = None
 
-        genero_alerta = _opt_map(r2_gen,  "¿Generó alerta?",        EMO_SI_NO, "No")
-        corr_alerta   = _opt_map(r2_corr, "¿Se corrigió la alerta?", EMO_SI_NO, "No")
+    df_view = pd.DataFrame({
+        "Id": df_filtrado["Id"].astype(str),
+        "Tarea": df_filtrado["Tarea"],
+        "Generó alerta?": df_filtrado["Generó alerta"],
+        "Tipo de alerta": df_filtrado["Tipo de alerta"],
+        "Fecha de alerta": df_filtrado["Fecha de alerta"],
+        "Hora de alerta": df_filtrado["Hora de alerta"],
+        "¿Se corrigió la alerta?": df_filtrado["Se corrigió la alerta"],
+        "Fecha de corrección": df_filtrado["Fecha de corrección"],
+        "Hora de corrección": df_filtrado["Hora de corrección"],
+        "N° de alerta": df_filtrado["N° de alerta"]
+    })
 
-        tipo_alerta = r2_tipo.text_input("Tipo de alerta", placeholder="(opcional)", key="alerta_tipo")
+    st.markdown("**Resultados**")
 
-        fa_d = r2_fa.date_input("Fecha de alerta", value=None, key="alerta_fa_d")
-        fa_t = r2_fa.time_input("Hora alerta", value=None, step=60,
-                                label_visibility="collapsed", key="alerta_fa_t") if fa_d else None
+    gob = GridOptionsBuilder.from_dataframe(df_view)
+    gob.configure_grid_options(
+        suppressMovableColumns=True, domLayout="normal", ensureDomOrder=True,
+        rowHeight=38, headerHeight=42
+    )
 
-        fc_d = r2_fc.date_input("Fecha alerta corregida", value=None, key="alerta_fc_d")
-        fc_t = r2_fc.time_input("Hora alerta corregida", value=None, step=60,
-                                label_visibility="collapsed", key="alerta_fc_t") if fc_d else None
+    # Solo lectura
+    for c_ro in ["Id", "Tarea"]:
+        gob.configure_column(c_ro, editable=False)
 
-        # Botón exactamente debajo de "Fecha alerta corregida" (mismo ancho)
-        with r2_fc:
-            sub_alerta = st.form_submit_button("⚙️ Agregar", use_container_width=True)
+    # Editables
+    SI_NO_OPC = ["", "Sí", "No"]
+    N_ALERTA_OPC = ["1", "2", "3", "+4"]
 
-        # ---------- Lógica al enviar ----------
-        if sub_alerta:
-            id_target = id_auto.strip()
-            if not id_target:
-                st.warning("Selecciona primero una tarea para obtener su Id.")
-            elif id_target not in st.session_state["df_main"]["Id"].astype(str).values:
-                st.warning("El Id seleccionado no existe en el historial.")
-            else:
-                df = st.session_state["df_main"].copy()
-                m = df["Id"].astype(str) == id_target
+    gob.configure_column(
+        "Generó alerta?",
+        editable=True,
+        cellEditor="agSelectCellEditor",
+        cellEditorParams={"values": SI_NO_OPC},
+        width=160
+    )
+    gob.configure_column("Tipo de alerta", editable=True, width=220)
+    gob.configure_column("Fecha de alerta", editable=True, width=160)  # YYYY-MM-DD
+    gob.configure_column("Hora de alerta",   editable=True, width=140)  # HH:mm
+    gob.configure_column(
+        "¿Se corrigió la alerta?",
+        editable=True,
+        cellEditor="agSelectCellEditor",
+        cellEditorParams={"values": SI_NO_OPC},
+        width=190
+    )
+    gob.configure_column("Fecha de corrección", editable=True, width=170)  # YYYY-MM-DD
+    gob.configure_column("Hora de corrección",   editable=True, width=150)  # HH:mm
+    gob.configure_column(
+        "N° de alerta",
+        editable=True,
+        cellEditor="agSelectCellEditor",
+        cellEditorParams={"values": N_ALERTA_OPC},
+        width=130
+    )
 
-                # Columnas alineadas con el Historial
-                df.loc[m, "¿Generó alerta?"] = genero_alerta
-                df.loc[m, "Tipo de alerta"]  = tipo_alerta
-                df.loc[m, "¿Se corrigió?"]   = corr_alerta
-                df.loc[m, "Fecha alerta"]    = combine_dt(fa_d, fa_t)
-                df.loc[m, "Fecha corregida"] = combine_dt(fc_d, fc_t)
+    grid_alert = AgGrid(
+        df_view,
+        gridOptions=gob.build(),
+        data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+        update_mode=GridUpdateMode.VALUE_CHANGED,
+        fit_columns_on_grid_load=False,
+        enable_enterprise_modules=False,
+        reload_data=False,
+        height=180
+    )
 
-                st.session_state["df_main"] = df.copy()
-                _save_local(df[COLS].copy())
-                ok, msg = _write_sheet_tab(df[COLS].copy())
+    st.caption("👉 Edita los campos de alerta. Formatos sugeridos: **Fecha** `YYYY-MM-DD`, **Hora** `HH:mm`. Usa *Sí/No* y *1/2/3/+4* en los desplegables.")
 
-                if ok:
-                    st.success(f"✔ Alerta vinculada a la tarea {id_target}. {msg}")
+    # ===== Botón Guardar (alineado al último corte) =====
+    _spacer, _btncol = st.columns([W_AREA+W_FASE+W_RESP+W_DESDE+W_HASTA, W_BTN], gap="medium")
+    with _btncol:
+        if st.button("💾 Guardar alertas", use_container_width=True):
+            try:
+                df_editado = pd.DataFrame(grid_alert["data"]).copy()
+                df_base = st.session_state["df_main"].copy()
+                for col in ALERT_COLS:
+                    if col not in df_base.columns:
+                        df_base[col] = None
+
+                cambios = 0
+                for _, row in df_editado.iterrows():
+                    id_row = str(row.get("Id", "")).strip()
+                    if not id_row:
+                        continue
+                    m = df_base["Id"].astype(str).str.strip() == id_row
+                    if not m.any():
+                        continue
+
+                    # Toma valores si vienen no vacíos
+                    def _set(col_vista, col_base, val):
+                        v = "" if val is None else str(val).strip()
+                        if v != "":
+                            df_base.loc[m, col_base] = v
+                            return 1
+                        return 0    
+
+                    _set("Generó alerta?",          "Generó alerta",          row.get("Generó alerta?"))
+                    _set("Tipo de alerta",          "Tipo de alerta",          row.get("Tipo de alerta"))
+                    _set("Fecha de alerta",         "Fecha de alerta",         row.get("Fecha de alerta"))
+                    _set("Hora de alerta",          "Hora de alerta",          row.get("Hora de alerta"))
+                    _set("¿Se corrigió la alerta?", "Se corrigió la alerta",   row.get("¿Se corrigió la alerta?"))
+                    _set("Fecha de corrección",     "Fecha de corrección",     row.get("Fecha de corrección"))
+                    _set("Hora de corrección",      "Hora de corrección",      row.get("Hora de corrección"))
+                    _set("N° de alerta",            "N° de alerta",            row.get("N° de alerta"))
+
+                if cambios > 0:
+                    st.session_state["df_main"] = df_base.copy()
+                    _save_local(df_base[COLS].copy() if 'COLS' in globals() and set(COLS).issubset(df_base.columns) else df_base.copy())
+                    st.success(f"✔ Alertas guardadas: {cambios} cambio(s).")
                 else:
-                    st.warning(f"Actualizado localmente. {msg}")
+                    st.info("No se detectaron cambios para guardar.")
+            except Exception as e:
+                st.error(f"No pude guardar las alertas: {e}")
 
     st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
-
-
-# ====== CONTROL DE EDICIÓN (JEFATURA) ======
-ALLOWED_BOSS_EMAILS = {"stephanysg18@gmail.com.pe"}  # lo ajustarás luego
-# Mientras pruebas: permite editar a todos
-CAN_EDIT = True
-
-# ====== FALLBACKS para listados ======
-AREAS_OPC = st.session_state.get("AREAS_OPC", ["Jefatura","Gestión", "Metodología","Base de datos","Monitoreo","Capacitación","Consitencia"])
-
-# ====== UTILIDAD: filtro común para tablas ======
-def _filtra_dataset(df_base, area, responsable, desde, hasta):
-    """Filtra df_base por área, responsable y rango de fechas (Fecha inicio)."""
-    if df_base is None or df_base.empty:
-        return df_base
-
-    df = df_base.copy()
-
-    if area and area != "Todas" and "Área" in df.columns:
-        df = df[df["Área"] == area]
-
-    if responsable and responsable != "Todos" and "Responsable" in df.columns:
-        df = df[df["Responsable"].astype(str) == responsable]
-
-    # Rango de fechas sobre 'Fecha inicio' si existe
-    if "Fecha inicio" in df.columns:
-        fcol = pd.to_datetime(df["Fecha inicio"], errors="coerce")
-        if desde:
-            df = df[fcol >= pd.to_datetime(desde)]
-        if hasta:
-            df = df[fcol <= (pd.to_datetime(hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
-
-    return df
-
-# ===== Constantes usadas por PRIORIDAD / EVALUACIÓN (definir antes) =====
-PRIORITY_CHOICES = ["Urgente", "Alta", "Media", "Baja"]
-EVAL_CHOICES     = [5, 4, 3, 2, 1]   # 5=Excelente … 1=Deficiente
+    st.markdown('</div>', unsafe_allow_html=True)  # cierra #na-section
 
 
 # =========================== PRIORIDAD ===============================
