@@ -890,7 +890,7 @@ st.markdown("""
 #na-section .form-card,
 #pri-section .form-card,
 #eva-section .form-card{
-  margin-top: 6px !important;
+  margin-top: 8px !important;
 }
 
 /* ===== (ag-align-fix) integrado al bloque principal ===== */
@@ -2252,6 +2252,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
