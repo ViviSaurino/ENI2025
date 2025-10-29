@@ -1368,15 +1368,12 @@ if st.session_state["na_visible"]:
             [W_AREA, W_FASE, W_RESP, W_DESDE, W_HASTA, W_BTN], gap="medium"
         )
 
-        # Área
         AREAS_OPC = st.session_state.get("AREAS_OPC", ["Jefatura","Gestión","Metodología","Base de datos","Monitoreo","Capacitación","Consistencia"])
         na_area  = c_area.selectbox("Área", AREAS_OPC, index=0, key="na_area")
 
-        # Fase (catálogo desde df)
         fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
         na_fase = c_fase.selectbox("Fase", ["Todas"] + fases_all, index=0, key="na_fase")
 
-        # Responsable (filtra por área/fase si aplica)
         df_resp_src = df_all.copy()
         if na_area:
             df_resp_src = df_resp_src[df_resp_src["Área"] == na_area]
@@ -1390,12 +1387,11 @@ if st.session_state["na_visible"]:
 
         with c_buscar:
             st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
-            na_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
+            na_do_buscar = st.form_submit_button("🔍 Buscar", key="na_buscar_btn", use_container_width=True)
 
     # ===== Fila 2 — Tarea + Id (alineadas) =====
     c_tarea, c_id = st.columns([T_WIDTH, ID_WIDTH], gap="medium")
 
-    # Filtrado para las tareas luego de Buscar
     df_tasks = df_all.copy()
     if na_do_buscar:
         if na_area:
@@ -1404,12 +1400,11 @@ if st.session_state["na_visible"]:
             df_tasks = df_tasks[df_tasks["Fase"].astype(str) == na_fase]
         if na_resp != "Todos":
             df_tasks = df_tasks[df_tasks["Responsable"].astype(str) == na_resp]
-        # rango por Fecha inicio cuando exista
         if "Fecha inicio" in df_tasks.columns:
             fcol = pd.to_datetime(df_tasks["Fecha inicio"], errors="coerce")
             if na_desde: df_tasks = df_tasks[fcol >= pd.to_datetime(na_desde)]
             if na_hasta: df_tasks = df_tasks[fcol <= (pd.to_datetime(na_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
-    # opciones de tarea
+
     df_tasks = df_tasks.dropna(subset=["Id"]).copy()
     df_tasks["Tarea_str"] = df_tasks.get("Tarea", "").astype(str).replace({"nan": ""})
     df_tasks["Tarea_op"]  = df_tasks["Tarea_str"] + "  (Id: " + df_tasks["Id"].astype(str) + ")"
@@ -1424,29 +1419,27 @@ if st.session_state["na_visible"]:
     c_id.text_input("Id", value=na_id_auto, disabled=True, key="na_id_auto")
 
     # ===== Fila 3 — Campos de alerta =====
-    A, F = W_AREA, W_FASE  # reuso cortes
+    A, F = W_AREA, W_FASE
     r2_gen, r2_corr, r2_tipo, r2_fa, r2_fc, r2_no = st.columns([A, F, 3.20, 2.00, 2.00, 1.60], gap="medium")
 
     EMO_SI_NO = {"Sí": "Sí", "No": "No"}
-    genero_alerta = r2_gen.selectbox("¿Generó alerta?", list(EMO_SI_NO.keys()), index=1)
-    corr_alerta   = r2_corr.selectbox("¿Se corrigió la alerta?", list(EMO_SI_NO.keys()), index=1)
+    genero_alerta = r2_gen.selectbox("¿Generó alerta?", list(EMO_SI_NO.keys()), index=1, key="na_gen")
+    corr_alerta   = r2_corr.selectbox("¿Se corrigió la alerta?", list(EMO_SI_NO.keys()), index=1, key="na_corr")
 
-    tipo_alerta = r2_tipo.text_input("Tipo de alerta", placeholder="(opcional)")
+    tipo_alerta = r2_tipo.text_input("Tipo de alerta", placeholder="(opcional)", key="na_tipo_alerta")
 
-    fa_d = r2_fa.date_input("Fecha de alerta", value=None, key="alerta_fa_d")
-    fa_t = r2_fa.time_input("Hora de alerta", value=None, step=60, label_visibility="collapsed", key="alerta_fa_t") if fa_d else None
+    fa_d = r2_fa.date_input("Fecha de alerta", value=None, key="na_fa_d")
+    fa_t = r2_fa.time_input("Hora de alerta", value=None, step=60, label_visibility="collapsed", key="na_fa_t") if fa_d else None
 
-    fc_d = r2_fc.date_input("Fecha de corrección", value=None, key="alerta_fc_d")
-    fc_t = r2_fc.time_input("Hora de corrección", value=None, step=60, label_visibility="collapsed", key="alerta_fc_t") if fc_d else None
+    fc_d = r2_fc.date_input("Fecha de corrección", value=None, key="na_fc_d")
+    fc_t = r2_fc.time_input("Hora de corrección", value=None, step=60, label_visibility="collapsed", key="na_fc_t") if fc_d else None
 
-    # N° de alerta
     nro_opc = ["1","2","3","+4"]
-    nro_alerta = r2_no.selectbox("N° de alerta", nro_opc, index=0)
+    nro_alerta = r2_no.selectbox("N° de alerta", nro_opc, index=0, key="na_nro")
 
-    # ===== Tabla de resultados (siempre visible) =====
+    # ===== Tabla de resultados =====
     st.markdown("**Resultados**")
 
-    # Dataset de vista y columnas (al menos vacías)
     cols_out = ["Id","Tarea","¿Generó alerta?","Tipo de alerta","Fecha de alerta","Hora de alerta",
                 "¿Se corrigió la alerta?","Fecha de corrección","Hora de corrección","N° de alerta"]
     df_view = pd.DataFrame(columns=cols_out)
@@ -1462,19 +1455,16 @@ if st.session_state["na_visible"]:
                 "Hora de corrección": "",
                 "N° de alerta": ""
             }
-        )[["Id","Tarea","¿Generó alerta?","Tipo de alerta","Fecha de alerta","Hora de alerta",
-           "¿Se corrigió la alerta?","Fecha de corrección","Hora de corrección","N° de alerta"]].copy()
+        )[cols_out].copy()
 
     from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode
     gob = GridOptionsBuilder.from_dataframe(df_view)
     gob.configure_grid_options(suppressMovableColumns=True, domLayout="normal", ensureDomOrder=True,
                                rowHeight=38, headerHeight=42)
 
-    # Solo lectura
     for ro in ["Id","Tarea"]:
         gob.configure_column(ro, editable=False)
 
-    # Editables
     gob.configure_column("¿Generó alerta?", editable=True,
                          cellEditor="agSelectCellEditor", cellEditorParams={"values": ["","Sí","No"]}, width=160)
     gob.configure_column("Tipo de alerta", editable=True, width=220)
@@ -1501,7 +1491,7 @@ if st.session_state["na_visible"]:
     # ===== Guardar (aplica cambios sobre df_main por Id) =====
     _sp, _btn = st.columns([W_AREA+W_FASE+W_RESP+W_DESDE+W_HASTA, W_BTN], gap="medium")
     with _btn:
-        if st.button("💾 Guardar cambios", use_container_width=True):
+        if st.button("💾 Guardar cambios", key="na_guardar_btn", use_container_width=True):
             try:
                 df_edit = pd.DataFrame(grid["data"]).copy()
                 df_base = st.session_state["df_main"].copy()
@@ -1509,27 +1499,27 @@ if st.session_state["na_visible"]:
 
                 for _, row in df_edit.iterrows():
                     id_row = str(row.get("Id","")).strip()
-                    if not id_row: 
+                    if not id_row:
                         continue
                     m = df_base["Id"].astype(str).str.strip() == id_row
                     if not m.any():
                         continue
 
-                    def _set(col_vista, col_base, val):
+                    def _set(col_base, val):
                         v = "" if val is None else str(val).strip()
                         if v != "":
                             df_base.loc[m, col_base] = v
                             return 1
                         return 0
 
-                    _set("¿Generó alerta?",      row.get("¿Generó alerta?"))
-                    _set("Tipo de alerta",       row.get("Tipo de alerta"))
-                    _set("Fecha de alerta",      row.get("Fecha de alerta"))
-                    _set("Hora de alerta",       row.get("Hora de alerta"))
-                    _set("¿Se corrigió la alerta?", row.get("¿Se corrigió la alerta?"))
-                    _set("Fecha de corrección",  row.get("Fecha de corrección"))
-                    _set("Hora de corrección",   row.get("Hora de corrección"))
-                    _set("N° de alerta",         row.get("N° de alerta"))
+                    cambios += _set("¿Generó alerta?",        row.get("¿Generó alerta?"))
+                    cambios += _set("Tipo de alerta",         row.get("Tipo de alerta"))
+                    cambios += _set("Fecha de alerta",        row.get("Fecha de alerta"))
+                    cambios += _set("Hora de alerta",         row.get("Hora de alerta"))
+                    cambios += _set("¿Se corrigió la alerta?",row.get("¿Se corrigió la alerta?"))
+                    cambios += _set("Fecha de corrección",    row.get("Fecha de corrección"))
+                    cambios += _set("Hora de corrección",     row.get("Hora de corrección"))
+                    cambios += _set("N° de alerta",           row.get("N° de alerta"))
 
                 if cambios > 0:
                     st.session_state["df_main"] = df_base.copy()
@@ -2145,3 +2135,4 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
