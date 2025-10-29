@@ -540,11 +540,11 @@ st.markdown("""
   max-width: none !important;
 }
 
-/* Solo para la sección NUEVA TAREA */
-#nt-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1)
-  > [data-testid="column"]:first-child [data-baseweb="select"] > div{ min-width: 300px !important; }
-#nt-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(2)
-  > [data-testid="column"]:first-child [data-baseweb="select"] > div{ min-width: 300px !important; }
+#ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1)
+  > [data-testid="column"]:first-child [data-baseweb="select"] > div{ min-width: 0 !important; }
+
+#ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(2)
+  > [data-testid="column"]:first-child [data-baseweb="select"] > div{ min-width: 0 !important; }
 
 /* =================== Responsivo =================== */
 @media (max-width: 980px){
@@ -889,6 +889,7 @@ st.markdown("""
             
 /* === PATCH FINAL: alinear y igualar anchos en EDITAR ESTADO === */
 #ux-section .form-card [data-baseweb="input"] > div,
+#ux-section .form-card [data-baseweb="textarea"] > div,
 #ux-section .form-card [data-baseweb="select"] > div,
 #ux-section .form-card [data-baseweb="datepicker"] > div{
   width: 100% !important;
@@ -897,7 +898,16 @@ st.markdown("""
   box-sizing: border-box !important;
 }
 
-/* Neutraliza cualquier min-width heredado en las 3 primeras celdas de la fila */
+/* Asegura que el combobox (contenido interno del select) también use 100% */
+#ux-section .form-card [data-baseweb="select"] [role="combobox"]{
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* Neutraliza cualquier min-width heredado en las 3 primeras celdas de la fila 1
+   (Área, Fase, Responsable) para que respeten exactamente los anchos de columnas */
 #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1)
   > [data-testid="column"]:nth-of-type(-n+3) [data-baseweb="select"] > div{
   min-width: 0 !important;
@@ -1161,7 +1171,7 @@ if st.session_state["ux_visible"]:
 
     # ===== Proporciones EXACTAS usadas en "Nueva tarea" (fila de 6 controles) =====
     # Mantenlas aquí sincronizadas con la fila de "Nueva tarea":
-    W_AREA, W_FASE, W_RESP, W_DESDE, W_HASTA, W_BTN = 1.5, 2.25, 3.00, 2.00, 2.00, 1.60
+    W_AREA, W_FASE, W_RESP, W_DESDE, W_HASTA, W_BTN = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
     # Base
     df_all = st.session_state["df_main"].copy()
