@@ -886,6 +886,24 @@ st.markdown("""
 #eval-grid  .ag-header-cell, #eval-grid  .ag-cell{
   border-right:1px solid #E9EDF3 !important;
 }
+            
+/* === PATCH FINAL: alinear y igualar anchos en EDITAR ESTADO === */
+#ux-section .form-card [data-baseweb="input"] > div,
+#ux-section .form-card [data-baseweb="select"] > div,
+#ux-section .form-card [data-baseweb="datepicker"] > div{
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* Neutraliza cualquier min-width heredado en las 3 primeras celdas de la fila */
+#ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1)
+  > [data-testid="column"]:nth-of-type(-n+3) [data-baseweb="select"] > div{
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
