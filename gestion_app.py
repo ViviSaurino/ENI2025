@@ -523,7 +523,7 @@ st.markdown("""
   overflow: visible !important;
   white-space: nowrap !important;
   text-overflow: clip !important;
-  width: fit-content !important;   /* <- FIX del typo */
+  width: fit-content !important;
   min-width: 240px !important;
 }
 .form-card [data-baseweb="select"] [role="combobox"]{
@@ -540,7 +540,7 @@ st.markdown("""
   max-width: none !important;
 }
 
-/* Anchura mayor para Área y Estado – SOLO en “Nueva tarea” */
+/* Solo para la sección NUEVA TAREA */
 #nt-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1)
   > [data-testid="column"]:first-child [data-baseweb="select"] > div{ min-width: 300px !important; }
 #nt-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(2)
@@ -2074,4 +2074,3 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
