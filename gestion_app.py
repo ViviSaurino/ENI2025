@@ -1051,6 +1051,67 @@ FASES = [
     "Operación de campo",
 ]
 
+# ================== Utilidades de ID ==================
+import re
+from datetime import datetime
+
+def _area_initial(area: str) -> str:
+    if not area:
+        return ""
+    m = re.search(r"[A-Za-zÁÉÍÓÚÜÑ]", str(area))
+    return (m.group(0) if m else "").upper()
+
+def _person_initials(nombre: str) -> str:
+    """
+    Toma la primera letra del nombre y la primera del primer apellido.
+    Ej: 'Vivian Saurino' -> 'VS'; 'Elías A. Aguirre' -> 'EA'
+    """
+    if not nombre:
+        return ""
+    # Limpia y separa
+    parts = [p for p in re.split(r"\s+", nombre.strip()) if p]
+    if not parts:
+        return ""
+    ini1 = re.sub(r"[^A-Za-zÁÉÍÓÚÜÑ]", "", parts[0])[:1].upper() if parts else ""
+    # busca primer token que no sea inicial suelta tipo "A." ni con guión
+    ini2 = ""
+    for p in parts[1:]:
+        t = re.sub(r"[^A-Za-zÁÉÍÓÚÜÑ]", "", p)
+        if t and len(t) >= 1:
+            ini2 = t[0].upper()
+            break
+    return f"{ini1}{ini2}"
+
+def make_id_prefix(area: str, responsable: str) -> str:
+    """Ej: 'Jefatura' + 'Vivian Saurino' -> 'JVS'."""
+    a = _area_initial(area)
+    p = _person_initials(responsable)
+    return f"{a}{p}"
+
+def next_id_by_person(df: pd.DataFrame, area: str, responsable: str) -> str:
+    """
+    Cuenta cuántas tareas existen con el mismo prefijo y devuelve el siguiente:
+    Prefijo = [primera letra de área][inicial nombre][inicial apellido] + '_'
+    Ej: 'JVS_1', 'JVS_2', ...  'MEA_1', etc.
+    """
+    prefix = make_id_prefix(area, responsable)
+    if not prefix:
+        return ""
+    col = "Id" if "Id" in df.columns else None
+    if col is None or df.empty:
+        seq = 1
+    else:
+        serie = df[col].astype(str).fillna("")
+        seq = 1 + serie.str.startswith(prefix + "_").sum()
+    return f"{prefix}_{seq}"
+
+# ====== Callback: poner hora automática cuando se elige fecha ======
+def _auto_time_on_date():
+    # Si hay fecha y no hay hora, pone la hora actual (al minuto)
+    if st.session_state.get("fi_d") and not st.session_state.get("fi_t"):
+        now = datetime.now().replace(second=0, microsecond=0)
+        st.session_state["fi_t"] = now.time()
+
 # ================== Formulario ==================
 
 st.session_state.setdefault("nt_visible", True)
@@ -2215,6 +2276,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
