@@ -1127,61 +1127,25 @@ if st.session_state["ux_visible"]:
     </div>
     """, unsafe_allow_html=True)
 
-    # ====== CONTENEDOR LOCAL para asegurar 100% y neutralizar mínimos heredados ======
+    # ====== CONTENEDOR LOCAL (quita min-width y fuerza 100%) ======
     st.markdown('<div id="ux-section">', unsafe_allow_html=True)
     st.markdown("""
     <style>
-      /* Fuerza 100% de ancho de los controles únicamente en ESTA sección */
-      #ux-section .stTextInput > div,
-      #ux-section .stSelectbox > div,
-      #ux-section .stDateInput > div,
-      #ux-section .stTimeInput > div,
-      #ux-section [data-baseweb="input"] > div,
-      #ux-section [data-baseweb="select"] > div,
-      #ux-section [data-baseweb="datepicker"] > div{
-        width: 100% !important; max-width: none !important; box-sizing: border-box !important;
+      #ux-section .form-card [data-baseweb="input"] > div,
+      #ux-section .form-card [data-baseweb="textarea"] > div,
+      #ux-section .form-card [data-baseweb="select"] > div,
+      #ux-section .form-card [data-baseweb="datepicker"] > div{
+        width:100% !important; max-width:none !important; box-sizing:border-box !important; min-width:0 !important;
       }
-      #ux-section [data-baseweb="select"],
-      #ux-section [data-baseweb="select"] [role="combobox"]{ width: 100% !important; }
-
-      /* Neutraliza min-width heredados de otras cards SOLO aquí */
-      #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1)
-        > [data-testid="column"]:first-child [data-baseweb="select"] > div,
-      #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(2)
-        > [data-testid="column"]:first-child [data-baseweb="select"] > div{
-        min-width: 0 !important;
-      }
-
-      /* ===== Alineación EXACTA con "Nueva tarea" para la FILA de filtros =====
-         Proporciones del grid original:
-         A=1.5 | Fase=2.25 | Responsable=3.00 | Desde=2.00 | Hasta=2.00 | Buscar=1.60
-         Suma = 12.35  -> %: 12.146 | 18.218 | 24.291 | 16.194 | 16.194 | 12.963
-      */
-      #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1) > [data-testid="column"]:nth-child(1){
-        flex: 0 0 12.146% !important; max-width: 12.146% !important;
-      }
-      #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1) > [data-testid="column"]:nth-child(2){
-        flex: 0 0 18.218% !important; max-width: 18.218% !important;
-      }
-      #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1) > [data-testid="column"]:nth-child(3){
-        flex: 0 0 24.291% !important; max-width: 24.291% !important;
-      }
-      #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1) > [data-testid="column"]:nth-child(4){
-        flex: 0 0 16.194% !important; max-width: 16.194% !important;
-      }
-      #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1) > [data-testid="column"]:nth-child(5){
-        flex: 0 0 16.194% !important; max-width: 16.194% !important;
-      }
-      #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1) > [data-testid="column"]:nth-child(6){
-        flex: 0 0 12.963% !important; max-width: 12.963% !important;
-      }
+      #ux-section .form-card [data-baseweb="select"] [role="combobox"]{ width:100% !important; }
     </style>
     """, unsafe_allow_html=True)
 
-    # ===== Proporciones IDENTICAS a "Nueva tarea" =====
-    A, Fw, T_width, D, R, C = 1.5, 2.25, 3.00, 2.00, 2.00, 1.60
+    # ===== Proporciones EXACTAS usadas en "Nueva tarea" (fila de 6 controles) =====
+    # Mantenlas aquí sincronizadas con la fila de "Nueva tarea":
+    W_AREA, W_FASE, W_RESP, W_DESDE, W_HASTA, W_BTN = 1.5, 2.25, 3.00, 2.00, 2.00, 1.60
 
-    # Base y columnas mínimas
+    # Base
     df_all = st.session_state["df_main"].copy()
     for col_req in ["Estado", "Fecha estado", "Hora estado"]:
         if col_req not in df_all.columns:
@@ -1189,11 +1153,10 @@ if st.session_state["ux_visible"]:
 
     st.markdown('<div class="form-card">', unsafe_allow_html=True)
 
-    # ===== Filtros (alineación 1:1 con la fila de arriba) =====
+    # ===== Filtros (alineados 1:1 con "Nueva tarea") =====
     with st.form("ux_filtros", clear_on_submit=False):
-        # Orden y ANCHOS: Área(A) | Fase(Fw) | Responsable(T) | Desde(D) | Hasta(R) | Buscar(C)
         c_area, c_fase, c_resp, c_desde, c_hasta, c_btn = st.columns(
-            [A, Fw, T_width, D, R, C], gap="medium"
+            [W_AREA, W_FASE, W_RESP, W_DESDE, W_HASTA, W_BTN], gap="medium"
         )
 
         ux_area = c_area.selectbox("Área", ["Todas"] + AREAS_OPC, index=0, key="ux_area")
@@ -1209,7 +1172,6 @@ if st.session_state["ux_visible"]:
         ux_hasta = c_hasta.date_input("Hasta",  value=None, key="ux_hasta")
 
         with c_btn:
-            # separador para alinear el botón con la fila
             st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
             do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
@@ -1249,25 +1211,15 @@ if st.session_state["ux_visible"]:
 
     gob = GridOptionsBuilder.from_dataframe(df_view)
     gob.configure_grid_options(
-        suppressMovableColumns=True,
-        domLayout="normal",
-        ensureDomOrder=True,
-        rowHeight=38,
-        headerHeight=42
+        suppressMovableColumns=True, domLayout="normal", ensureDomOrder=True,
+        rowHeight=38, headerHeight=42
     )
-    # Solo lectura
     for c_ro in ["Id", "Tarea", "Estado actual", "Fecha estado actual", "Hora estado actual"]:
         gob.configure_column(c_ro, editable=False)
 
-    # Editables
     ESTADOS_OPC = ["", "En curso", "Terminado", "Pausado", "Cancelado", "Eliminado"]
-    gob.configure_column(
-        "Estado modificado",
-        editable=True,
-        cellEditor="agSelectCellEditor",
-        cellEditorParams={"values": ESTADOS_OPC},
-        width=180
-    )
+    gob.configure_column("Estado modificado", editable=True,
+                         cellEditor="agSelectCellEditor", cellEditorParams={"values": ESTADOS_OPC}, width=180)
     gob.configure_column("Fecha estado modificado", editable=True, width=180)
     gob.configure_column("Hora estado modificado",   editable=True, width=150)
 
@@ -1282,8 +1234,8 @@ if st.session_state["ux_visible"]:
         height=180
     )
 
-    # ===== Botón Guardar (alineado al último corte C) =====
-    _spacer, _btncol = st.columns([A+Fw+T_width+D+R, C], gap="medium")
+    # ===== Botón Guardar (alineado al último corte) =====
+    _spacer, _btncol = st.columns([W_AREA+W_FASE+W_RESP+W_DESDE+W_HASTA, W_BTN], gap="medium")
     with _btncol:
         if st.button("💾 Guardar cambios", use_container_width=True):
             try:
@@ -1296,37 +1248,25 @@ if st.session_state["ux_visible"]:
                 cambios = 0
                 for _, row in df_editado.iterrows():
                     id_row = str(row.get("Id", "")).strip()
-                    if not id_row:
+                    if not id_row: 
                         continue
-
                     est_mod = str(row.get("Estado modificado", "")).strip()
                     f_mod   = str(row.get("Fecha estado modificado", "")).strip()
                     h_mod   = str(row.get("Hora estado modificado", "")).strip()
-
                     if not est_mod and not f_mod and not h_mod:
                         continue
-
                     m = df_base["Id"].astype(str).str.strip() == id_row
                     if not m.any():
                         continue
-
-                    if est_mod:
-                        df_base.loc[m, "Estado"] = est_mod
+                    if est_mod: df_base.loc[m, "Estado"] = est_mod
                     if f_mod:
-                        try:
-                            _ = pd.to_datetime(f_mod)
-                            df_base.loc[m, "Fecha estado"] = f_mod
-                        except Exception:
-                            pass
+                        try: _ = pd.to_datetime(f_mod); df_base.loc[m, "Fecha estado"] = f_mod
+                        except Exception: pass
                     if h_mod:
                         ok = True
-                        try:
-                            hh, mm = h_mod.split(":"); int(hh); int(mm)
-                        except Exception:
-                            ok = False
-                        if ok:
-                            df_base.loc[m, "Hora estado"] = h_mod
-
+                        try: hh, mm = h_mod.split(":"); int(hh); int(mm)
+                        except Exception: ok = False
+                        if ok: df_base.loc[m, "Hora estado"] = h_mod
                     cambios += 1
 
                 if cambios > 0:
@@ -1338,9 +1278,8 @@ if st.session_state["ux_visible"]:
             except Exception as e:
                 st.error(f"No pude guardar los cambios: {e}")
 
-    st.markdown('</div>', unsafe_allow_html=True)   # cierra .form-card
-    st.markdown('</div>', unsafe_allow_html=True)   # cierra #ux-section
-
+    st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
+    st.markdown('</div>', unsafe_allow_html=True)  # cierra #ux-section
 
 
 # ================== Nueva alerta ==================
@@ -2135,3 +2074,4 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
