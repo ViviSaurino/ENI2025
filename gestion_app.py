@@ -1726,148 +1726,212 @@ if st.session_state["pri_visible"]:
     st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
 
 
-
 # =========================== EVALUACIÓN ===============================
 
 st.session_state.setdefault("eva_visible", True)
 chev_eva = "▾" if st.session_state["eva_visible"] else "▸"
 
+# ---------- Barra superior ----------
 st.markdown('<div class="topbar-eval">', unsafe_allow_html=True)
 c_toggle_e, c_pill_e = st.columns([0.028, 0.965], gap="medium")
 with c_toggle_e:
     st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
-    def _toggle_eva(): st.session_state["eva_visible"] = not st.session_state["eva_visible"]
-    st.button(chev_eva, key="eva_toggle", help="Mostrar/ocultar", on_click=_toggle_eva)
+    def _toggle_eva():
+        st.session_state["eva_visible"] = not st.session_state["eva_visible"]
+    st.button(chev_eva, key="eva_toggle_v2", help="Mostrar/ocultar", on_click=_toggle_eva)
     st.markdown('</div>', unsafe_allow_html=True)
 with c_pill_e:
     st.markdown('<div class="form-title-eval">📝&nbsp;&nbsp;Evaluación</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
+# ---------- fin barra superior ----------
 
 if st.session_state["eva_visible"]:
     st.markdown("""
     <div class="help-strip" id="eva-help">
-      📝 <strong>Registra una evaluación</strong> por varias tareas a la vez (solo jefatura).
+      📝 <strong>Registra/actualiza la evaluación</strong> de tareas filtradas.
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown('<div class="form-card">', unsafe_allow_html=True)
+
+    # Anchos calcados a las otras secciones
+    A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
+
     df_all = st.session_state["df_main"].copy()
 
-    # ===== Claves estables y lectura desde session_state =====
-    _k_area  = "eva_area_sel"
-    _k_resp  = "eva_resp_sel"
-    _k_d     = "eva_desde"
-    _k_h     = "eva_hasta"
-    _k_tasks = "eva_tareas_sel"
+    # Asegura columnas base
+    if "Evaluación" not in df_all.columns:
+        df_all["Evaluación"] = "Sin evaluar"
+    if "Calificación" not in df_all.columns:
+        df_all["Calificación"] = 0
 
-    with st.form("form_evaluacion", clear_on_submit=False):
-        # Pesos calcados a los anchos del grid
-        W_AREA, W_RESP, W_TAREA, W_EVA = COL_W_AREA, PILL_W_RESP, COL_W_TAREA, COL_W_EVALUACION
+    # ===== FILTROS (misma fila estándar) =====
+    with st.form("eva_filtros_v1", clear_on_submit=False):
+        c_area, c_fase, c_resp, c_desde, c_hasta, c_buscar = st.columns([A, Fw, T_width, D, R, C], gap="medium")
 
-        # Fila de filtros (alineada a columnas del grid)
-        c_area, c_resp, c_desde, c_hasta, c_tarea, c_id = st.columns(
-            [W_AREA, W_RESP, W_RESP, W_RESP, W_TAREA, W_EVA], gap="small"
+        AREAS_OPC = st.session_state.get(
+            "AREAS_OPC",
+            ["Jefatura","Gestión","Metodología","Base de datos","Monitoreo","Capacitación","Consistencia"]
         )
+        eva_area = c_area.selectbox("Área", ["Todas"] + AREAS_OPC, index=0, key="eva_area")
 
-        area_sel = c_area.selectbox("Área", options=["Todas"] + AREAS_OPC, index=0, key=_k_area, disabled=not CAN_EDIT)
-        df_resp = df_all if st.session_state[_k_area] == "Todas" else df_all[df_all["Área"] == st.session_state[_k_area]]
-        responsables_all = sorted([x for x in df_resp["Responsable"].astype(str).unique() if x and x != "nan"])
-        resp_sel = c_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0, key=_k_resp, disabled=not CAN_EDIT)
+        fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+        eva_fase = c_fase.selectbox("Fase", ["Todas"] + fases_all, index=0, key="eva_fase")
 
-        c_desde.date_input("Desde", value=None, key=_k_d, disabled=not CAN_EDIT)
-        c_hasta.date_input("Hasta", value=None, key=_k_h, disabled=not CAN_EDIT)
+        df_resp_src = df_all.copy()
+        if eva_area != "Todas":
+            df_resp_src = df_resp_src[df_resp_src["Área"] == eva_area]
+        if eva_fase != "Todas" and "Fase" in df_resp_src.columns:
+            df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str) == eva_fase]
+        responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+        eva_resp = c_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0, key="eva_resp")
 
-        # Multiselección de tareas para evaluar
-        def _filtra(df):
-            out = df.copy()
-            if st.session_state[_k_area] != "Todas":
-                out = out[out["Área"] == st.session_state[_k_area]]
-            if st.session_state[_k_resp] != "Todos":
-                out = out[out["Responsable"].astype(str) == st.session_state[_k_resp]]
-            if st.session_state[_k_d]:
-                fcol = pd.to_datetime(out["Fecha inicio"], errors="coerce")
-                out = out[fcol.dt.date >= st.session_state[_k_d]]
-            if st.session_state[_k_h]:
-                fcol = pd.to_datetime(out["Fecha inicio"], errors="coerce")
-                out = out[fcol.dt.date <= st.session_state[_k_h]]
-            return out
+        eva_desde = c_desde.date_input("Desde", value=None, key="eva_desde")
+        eva_hasta = c_hasta.date_input("Hasta",  value=None, key="eva_hasta")
 
-        df_f = _filtra(df_all).dropna(subset=["Id"]).copy()
-        df_f["Tarea_str"] = df_f["Tarea"].astype(str).replace({"nan": ""})
-        tareas_opts = df_f["Tarea_str"].tolist()
+        with c_buscar:
+            st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
+            eva_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
-        c_tarea.multiselect("Tarea (multi)", tareas_opts, default=st.session_state.get(_k_tasks, []),
-                            key=_k_tasks, disabled=not CAN_EDIT)
+    # ===== Filtrado para tabla =====
+    df_filtrado = df_all.copy()
+    if eva_do_buscar:
+        if eva_area != "Todas":
+            df_filtrado = df_filtrado[df_filtrado["Área"] == eva_area]
+        if eva_fase != "Todas" and "Fase" in df_filtrado.columns:
+            df_filtrado = df_filtrado[df_filtrado["Fase"].astype(str) == eva_fase]
+        if eva_resp != "Todos":
+            df_filtrado = df_filtrado[df_filtrado["Responsable"].astype(str) == eva_resp]
+        base_fecha_col = "Fecha inicio" if "Fecha inicio" in df_filtrado.columns else None
+        if base_fecha_col:
+            fcol = pd.to_datetime(df_filtrado[base_fecha_col], errors="coerce")
+            if eva_desde:
+                df_filtrado = df_filtrado[fcol >= pd.to_datetime(eva_desde)]
+            if eva_hasta:
+                df_filtrado = df_filtrado[fcol <= (pd.to_datetime(eva_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
 
-        if st.session_state[_k_tasks]:
-            ids_sel = df_f.loc[df_f["Tarea_str"].isin(st.session_state[_k_tasks]), "Id"].astype(str).tolist()
-        else:
-            ids_sel = []
-        c_id.text_input("Ids seleccionados", value=", ".join(ids_sel) if ids_sel else "—", disabled=True)
+    # ===== Tabla de Evaluación =====
+    st.markdown("**Resultados**")
 
-        st.write("")
+    cols_out = ["Id", "Tarea", "Evaluación actual", "Evaluación ajustada", "Calificación"]
 
-        # ===== Tabla editable de Evaluación (AgGrid) =====
-        if ids_sel:
-            df_tab_e = df_f.loc[df_f["Tarea_str"].isin(st.session_state[_k_tasks]),
-                                ["Id", "Área", "Responsable", "Tarea"]].copy()
-        else:
-            df_tab_e = pd.DataFrame(columns=["Id","Área","Responsable","Tarea"])
+    df_view = pd.DataFrame(columns=cols_out)
+    if not df_filtrado.empty:
+        df_tmp = df_filtrado.dropna(subset=["Id"]).copy()
+        if "Tarea" not in df_tmp.columns:
+            df_tmp["Tarea"] = ""
+        eva_actual = df_tmp.get("Evaluación", "Sin evaluar").fillna("Sin evaluar").replace({"": "Sin evaluar"})
+        calif = pd.to_numeric(df_tmp.get("Calificación", 0), errors="coerce").fillna(0).astype(int)
+        df_view = pd.DataFrame({
+            "Id": df_tmp["Id"].astype(str),
+            "Tarea": df_tmp["Tarea"].astype(str).replace({"nan": ""}),
+            "Evaluación actual": eva_actual,
+            "Evaluación ajustada": eva_actual,  # arranca con el valor actual
+            "Calificación": calif
+        })[cols_out].copy()
 
-        if not df_tab_e.empty:
-            df_tab_e["Evaluación"] = 5
-        else:
-            # ✅ fix: crear columna vacía con dtype int (evita error de longitud)
-            df_tab_e["Evaluación"] = pd.Series(dtype=int)
+    from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode, JsCode
 
-        df_tab_e["Id"] = df_tab_e["Id"].astype(str)
+    # Formateador de estrellas (solo display)
+    star_formatter = JsCode("""
+        function(params){
+            var v = parseInt(params.value || 0);
+            if (isNaN(v)) v = 0;
+            if (v < 0) v = 0; if (v > 5) v = 5;
+            return '★'.repeat(v) + '☆'.repeat(5 - v);
+        }
+    """)
 
-        st.caption("Lista seleccionada")
-        df_eval_tab = _clean_df_for_grid(df_tab_e)
-        grid_opt_eval = _grid_options_evaluacion(df_eval_tab)
+    gob = GridOptionsBuilder.from_dataframe(df_view)
+    gob.configure_grid_options(
+        suppressMovableColumns=True, domLayout="normal", ensureDomOrder=True,
+        rowHeight=38, headerHeight=42
+    )
 
-        # ⬇️ Paso 4: wrapper con ID para aplicar el CSS de alineación
-        st.markdown('<div id="eval-grid">', unsafe_allow_html=True)
-        grid_eval = AgGrid(
-            df_eval_tab,
-            gridOptions=grid_opt_eval,
-            fit_columns_on_grid_load=False,
-            data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
-            update_mode=GridUpdateMode.VALUE_CHANGED,
-            allow_unsafe_jscode=True,
-            theme="balham",
-            height=180,
-            custom_css={
-                ".ag-root-wrapper": {"height": "180px !important"},
-                ".ag-body-viewport": {"height": "140px !important"},
-            },
-            key="grid_eval"    # clave estable
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
+    # Lectura
+    for ro in ["Id", "Tarea", "Evaluación actual"]:
+        gob.configure_column(ro, editable=False)
 
-        edited_eval = pd.DataFrame(grid_eval["data"]) if isinstance(grid_eval, dict) and "data" in grid_eval else df_eval_tab.copy()
+    # Editable: Evaluación ajustada (combo)
+    EVA_OPC = ["Sin evaluar", "Aprobada", "Desaprobada", "Observada"]
+    gob.configure_column(
+        "Evaluación ajustada",
+        editable=True,
+        cellEditor="agSelectCellEditor",
+        cellEditorParams={"values": EVA_OPC},
+        width=190
+    )
 
-        # Botón con el MISMO ancho que la última columna (Evaluación)
-        bx1, bx2, bx3, bx4, bx5, bx6 = st.columns([W_AREA, W_RESP, W_RESP, W_RESP, W_TAREA, W_EVA], gap="small")
-        with bx6:
-            do_save_eval = st.form_submit_button("✅ Evaluar", use_container_width=True, disabled=not CAN_EDIT)
+    # Editable: Calificación (1..5) + estrellas como formato
+    gob.configure_column(
+        "Calificación",
+        editable=True,
+        cellEditor="agSelectCellEditor",
+        cellEditorParams={"values": ["1","2","3","4","5"]},
+        valueFormatter=star_formatter,
+        width=170
+    )
 
-    if CAN_EDIT and 'do_save_eval' in locals() and do_save_eval:
-        if edited_eval.empty:
-            st.warning("No hay filas seleccionadas para evaluar.")
-        else:
-            df = st.session_state["df_main"].copy()
-            for _, row in edited_eval.iterrows():
-                m = df["Id"].astype(str) == str(row["Id"])
-                if m.any():
-                    df.loc[m, "Evaluación"] = row.get("Evaluación", df.loc[m, "Evaluación"])
-            st.session_state["df_main"] = df.copy()
-            _save_local(df[COLS].copy())
-            ok, msg = _write_sheet_tab(df[COLS].copy())
-            st.success(f"✔ Evaluación registrada ({len(edited_eval)} filas). {msg}") if ok else st.warning(f"Actualizado localmente. {msg}")
-    elif not CAN_EDIT:
-        st.info("🔒 Solo jefatura puede registrar evaluaciones.")
-    st.markdown('</div>', unsafe_allow_html=True)  # form-card
+    grid_eval = AgGrid(
+        df_view,
+        gridOptions=gob.build(),
+        data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+        update_mode=GridUpdateMode.VALUE_CHANGED,
+        fit_columns_on_grid_load=False,
+        enable_enterprise_modules=False,
+        allow_unsafe_jscode=True,
+        reload_data=False,
+        height=220
+    )
+
+    # ===== Guardar cambios =====
+    _sp_e, _btn_e = st.columns([A+Fw+T_width+D+R, C], gap="medium")
+    with _btn_e:
+        do_save_eval = st.button("✅ Evaluar", use_container_width=True)
+
+    if do_save_eval:
+        try:
+            edited = pd.DataFrame(grid_eval["data"]).copy()
+            if edited.empty:
+                st.info("No hay filas para actualizar.")
+            else:
+                df_base = st.session_state["df_main"].copy()
+                cambios = 0
+                for _, row in edited.iterrows():
+                    id_row = str(row.get("Id", "")).strip()
+                    if not id_row:
+                        continue
+                    eva_new = str(row.get("Evaluación ajustada", "")).strip()
+                    cal_new = row.get("Calificación", "")
+                    # normaliza calificación a entero 1..5
+                    try:
+                        cal_new = int(cal_new)
+                    except Exception:
+                        cal_new = None
+                    if cal_new is not None:
+                        cal_new = max(1, min(5, cal_new))
+
+                    m = df_base["Id"].astype(str).str.strip() == id_row
+                    if not m.any():
+                        continue
+
+                    if eva_new:
+                        df_base.loc[m, "Evaluación"] = eva_new
+                        cambios += 1
+                    if cal_new is not None:
+                        df_base.loc[m, "Calificación"] = int(cal_new)
+                        cambios += 1
+
+                if cambios > 0:
+                    st.session_state["df_main"] = df_base.copy()
+                    _save_local(df_base.copy())
+                    st.success(f"✔ Evaluaciones actualizadas: {cambios} cambio(s).")
+                else:
+                    st.info("No se detectaron cambios para guardar.")
+        except Exception as e:
+            st.error(f"No pude guardar las evaluaciones: {e}")
+
+    st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
 
 
 # ================== Historial ================== 
@@ -2188,6 +2252,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
