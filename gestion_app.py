@@ -1372,8 +1372,7 @@ if st.session_state["na_visible"]:
         with c_buscar:
             st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
             # ❌ QUITAR el key=... (provoca TypeError y el aviso "Missing Submit Button")
-            na_do_buscar = st.form_submit_button("🔍 Buscar")
-
+            na_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
         AREAS_OPC = st.session_state.get("AREAS_OPC", ["Jefatura","Gestión","Metodología","Base de datos","Monitoreo","Capacitación","Consistencia"])
         na_area  = c_area.selectbox("Área", AREAS_OPC, index=0, key="na_area")
@@ -2143,6 +2142,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
