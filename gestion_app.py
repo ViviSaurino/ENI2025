@@ -1321,6 +1321,9 @@ if st.session_state["est_visible"]:
       #est-section .stButton > button { width: 100% !important; }
       /* Quitar negrita SOLO aquí */
       #est-section .ag-theme-alpine .ag-header-cell-label{ font-weight: 400 !important; }
+      /* Quitar scroll horizontal como respaldo visual */
+      #est-section .ag-body-horizontal-scroll,
+      #est-section .ag-center-cols-viewport { overflow-x: hidden !important; }
       /* Reducir espacio entre tira de ayuda y tarjeta */
       .section-est .help-strip + .form-card{ margin-top: 6px !important; }
     </style>
@@ -1426,11 +1429,15 @@ if st.session_state["est_visible"]:
             "Hora estado modificado":  _fmt_time(base["Hora estado modificado"]),
         })[cols_out].copy()
 
-    # --- AgGrid: sin negritas (ya forzado por CSS local) ---
+    # --- AgGrid: sin negritas y sin barra horizontal ---
     gob = GridOptionsBuilder.from_dataframe(df_view)
     gob.configure_grid_options(
-        suppressMovableColumns=True, domLayout="normal", ensureDomOrder=True,
-        rowHeight=38, headerHeight=42
+        suppressMovableColumns=True,
+        domLayout="normal",
+        ensureDomOrder=True,
+        rowHeight=38,
+        headerHeight=42,
+        suppressHorizontalScroll=True   # <- desactiva scroll horizontal
     )
     # selección por checkbox
     gob.configure_selection("single", use_checkbox=True)
@@ -1440,7 +1447,7 @@ if st.session_state["est_visible"]:
         gridOptions=gob.build(),
         data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
         update_mode=GridUpdateMode.SELECTION_CHANGED,
-        fit_columns_on_grid_load=False,
+        fit_columns_on_grid_load=True,   # <- ajusta columnas al ancho del contenedor
         enable_enterprise_modules=False,
         reload_data=False,
         height=260
@@ -1487,10 +1494,17 @@ if st.session_state["est_visible"]:
                 except Exception as e:
                     st.error(f"No pude actualizar: {e}")
 
+    # ===== Botón "Guardar cambios" (estético, consistente con Nueva alerta) =====
+    _sp, _btn = st.columns([A+Fw+T_width+D+R, C], gap="medium")
+    with _btn:
+        if st.button("💾 Guardar cambios", use_container_width=True, key="est_guardar_v3"):
+            # Esta sección actualiza con el botón "Actualizar estado".
+            # Mostramos un aviso suave para mantener consistencia visual con "Nueva alerta".
+            st.info("En esta sección los cambios se guardan con “✅ Actualizar estado” tras seleccionar una fila.")
+
     # Cerrar form-card + section + contenedor
     st.markdown('</div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
-# ================== /EDITAR ESTADO ==================
 
 
 # ================== Nueva alerta ==================
@@ -2439,6 +2453,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
