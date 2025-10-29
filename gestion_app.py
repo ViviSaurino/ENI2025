@@ -2056,47 +2056,65 @@ if st.session_state["eva_visible"]:
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
 
 
+# ================== Historial ==================
 
-# ================== Historial ================== 
- 
 st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
 st.subheader("📝 Tareas recientes")
 st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
-df_view = st.session_state["df_main"].copy()
 
-# Mismas proporciones que usas arriba
-A = 1.2   # Área
-F = 1.2   # Fase
-T = 3.2   # Tarea / Tipo de alerta
-D = 2.4   # Detalle / (Fecha alerta + Fecha corregida)
+# Base completa sin filtrar para poblar combos
+df_all = st.session_state["df_main"].copy()
+df_view = df_all.copy()
 
-# Responsables (antes de filtrar)
-responsables = sorted([x for x in df_view["Responsable"].astype(str).unique() if x and x != "nan"])
+# ===== Proporciones de filtros (alineadas al resto de secciones) =====
+A_f, Fw_f, T_width_f, D_f, R_f, C_f = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
-# ---- FILA DE 5 FILTROS ----
-cA, cR, cE, cD, cH = st.columns([A + F, T/2, T/2, D/2, D/2], gap="medium")
+# ===== FILA DE 5 FILTROS + Buscar =====
+with st.form("hist_filtros_v1", clear_on_submit=False):
+    cA, cF, cR, cD, cH, cB = st.columns([A_f, Fw_f, T_width_f, D_f, R_f, C_f], gap="medium")
 
-area_sel  = cA.selectbox("Área", options=["Todas"] + AREAS_OPC, index=0)
-resp_sel  = cR.selectbox("Responsable", options=["Todos"] + responsables, index=0)
-estado_sel = cE.selectbox("Estado", options=["Todos"] + ESTADO, index=0)
+    # Área
+    area_sel = cA.selectbox("Área", options=["Todas"] + st.session_state.get(
+        "AREAS_OPC",
+        ["Jefatura","Gestión","Metodología","Base de datos","Monitoreo","Capacitación","Consistencia"]
+    ), index=0, key="hist_area")
 
-# Calendarios (rango de fechas)
-f_desde = cD.date_input("Desde", value=None, key="f_desde")
-f_hasta = cH.date_input("Hasta",  value=None, key="f_hasta")
+    # Fase (de lo que exista en la base)
+    fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+    fase_sel = cF.selectbox("Fase", options=["Todas"] + fases_all, index=0, key="hist_fase")
 
-# ---- Filtros de datos ----
+    # Responsable (depende de Área/Fase si se eligieron)
+    df_resp_src = df_all.copy()
+    if area_sel != "Todas":
+        df_resp_src = df_resp_src[df_resp_src["Área"] == area_sel]
+    if fase_sel != "Todas" and "Fase" in df_resp_src.columns:
+        df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str) == fase_sel]
+    responsables = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+    resp_sel = cR.selectbox("Responsable", options=["Todos"] + responsables, index=0, key="hist_resp")
+
+    # Rango de fechas (Fecha inicio)
+    f_desde = cD.date_input("Desde", value=None, key="hist_desde")
+    f_hasta = cH.date_input("Hasta",  value=None, key="hist_hasta")
+
+    with cB:
+        st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
+        hist_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
+
+# ---- Aplicar filtros sobre df_view SOLO si se presiona Buscar ----
 df_view["Fecha inicio"] = pd.to_datetime(df_view.get("Fecha inicio"), errors="coerce")
 
-if area_sel != "Todas":
-    df_view = df_view[df_view["Área"] == area_sel]
-if resp_sel != "Todos":
-    df_view = df_view[df_view["Responsable"].astype(str) == resp_sel]
-if estado_sel != "Todos":
-    df_view = df_view[df_view["Estado"] == estado_sel]
-if f_desde:
-    df_view = df_view[df_view["Fecha inicio"].dt.date >= f_desde]
-if f_hasta:
-    df_view = df_view[df_view["Fecha inicio"].dt.date <= f_hasta]
+if hist_do_buscar:
+    if area_sel != "Todas":
+        df_view = df_view[df_view["Área"] == area_sel]
+    if fase_sel != "Todas" and "Fase" in df_view.columns:
+        df_view = df_view[df_view["Fase"].astype(str) == fase_sel]
+    if resp_sel != "Todos":
+        df_view = df_view[df_view["Responsable"].astype(str) == resp_sel]
+    if f_desde:
+        df_view = df_view[df_view["Fecha inicio"].dt.date >= f_desde]
+    if f_hasta:
+        df_view = df_view[df_view["Fecha inicio"].dt.date <= f_hasta]
+
 st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
 
 # === ORDEN DE COLUMNAS ===
@@ -2120,9 +2138,9 @@ gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True)
 
 gob.configure_grid_options(
     rowSelection="multiple",
-    rowMultiSelectWithClick=True,           # permite click + checkbox
+    rowMultiSelectWithClick=True,
     suppressRowClickSelection=False,
-    rememberSelection=True,                 # recuerda selección
+    rememberSelection=True,
     domLayout="normal",
     rowHeight=38,
     headerHeight=42,
@@ -2170,9 +2188,9 @@ function(p){
   else if(v==='Cancelado'){bg='#FF2D95'}
   else if(v==='Pausado'){bg='#7E57C2'}
   else if(v==='Entregado a tiempo'){bg='#00C4B3'}
-  else if(v==='Entregado con retraso'){bg:'#00ACC1'}
-  else if(v==='No entregado'){bg:'#006064'}
-  else if(v==='En riesgo de retraso'){bg:'#0277BD'}
+  else if(v==='Entregado con retraso'){bg='#00ACC1'}
+  else if(v==='No entregado'){bg='#006064'}
+  else if(v==='En riesgo de retraso'){bg='#0277BD'}
   else if(v==='Aprobada'){bg:'#8BC34A'; fg:'#0A2E00'}
   else if(v==='Desaprobada'){bg:'#FF8A80'}
   else if(v==='Pendiente de revisión'){bg:'#BDBDBD'; fg:'#2B2B2B'}
@@ -2220,7 +2238,7 @@ class DateTimeEditor{
   init(p){
     this.eInput = document.createElement('input');
     this.eInput.type = 'datetime-local';
-    this.eInput.classList.add('ag-input');   // <-- FIX AQUÍ
+    this.eInput.classList.add('ag-input');
     this.eInput.style.width = '100%';
     const v = p.value ? new Date(p.value) : null;
     if (v && !isNaN(v.getTime())){
@@ -2307,11 +2325,11 @@ if isinstance(grid, dict) and "data" in grid and grid["data"] is not None and le
         pass
 
 # ---- Botones ----
-total_btn_width = (A + F) + (T / 2)
+total_btn_width = (1.2 + 1.2) + (3.2 / 2)  # conserva tus proporciones originales
 btn_w = total_btn_width / 4
 
 b_del, b_xlsx, b_save_local, b_save_sheets, _spacer = st.columns(
-    [btn_w, btn_w, btn_w, btn_w, (T / 2) + D],
+    [btn_w, btn_w, btn_w, btn_w, (3.2 / 2) + 2.4],
     gap="medium"
 )
 
@@ -2331,23 +2349,16 @@ with b_del:
 # 2) Exportar Excel
 with b_xlsx:
     try:
-        # Copia segura y limpia columnas de control antes de exportar
         df_xlsx = st.session_state["df_main"].copy()
         drop_cols = [c for c in ("__DEL__", "DEL") if c in df_xlsx.columns]
         if drop_cols:
             df_xlsx.drop(columns=drop_cols, inplace=True)
-
-        # Si existe COLS_XLSX, respeta ese orden; si no, sigue el actual
         cols_order = globals().get("COLS_XLSX", [])
         if cols_order:
             cols_order = [c for c in cols_order if c in df_xlsx.columns]
             if cols_order:
                 df_xlsx = df_xlsx.reindex(columns=cols_order)
-
-        xlsx_b = export_excel(
-            df_xlsx,
-            sheet_name=TAB_NAME  # (Ajuste 2) usar sheet_name, no 'sheet'
-        )
+        xlsx_b = export_excel(df_xlsx, sheet_name=TAB_NAME)
         st.download_button(
             "⬇️ Exportar Excel",
             data=xlsx_b,
@@ -2359,7 +2370,6 @@ with b_xlsx:
         st.error("No pude generar Excel: falta instalar 'xlsxwriter' u 'openpyxl' en el entorno.")
     except Exception as e:
         st.error(f"No pude generar Excel: {e}")
-
 
 # 3) Guardar (tabla local)
 with b_save_local:
@@ -2375,9 +2385,3 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
-
-
-
