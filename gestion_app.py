@@ -1141,6 +1141,7 @@ if "_auto_time_on_date" not in globals():
             # Si no hay streamlit o no hay session_state, simplemente no hacemos nada.
             pass
 
+
 # ================== Formulario (misma malla + hora inmediata) ==================
 
 st.session_state.setdefault("nt_visible", True)
@@ -1162,15 +1163,19 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 if st.session_state.get("nt_visible", True):
 
-    # ===== CSS: el marco envuelve el CONTENEDOR de esta sección =====
+    # ===== CSS: marco (card) que ENVUELVE este bloque =====
     st.markdown("""
     <style>
-      /* Estila el bloque contenedor que tenga dentro el sentinel #nt-card-sentinel */
+      /* Card al bloque que contenga el sentinel */
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
-        background:#ffffff; border:1px solid #E6EEF8; border-radius:12px;
-        padding:16px 18px 12px 18px; box-shadow:0 1px 2px rgba(16,24,40,.04);
+        background:#ffffff;
+        border:1px solid #E6EEF8;
+        border-radius:12px;
+        padding:16px 18px 12px 18px;
+        box-shadow:0 1px 2px rgba(16,24,40,.04);
+        margin-top: 6px;               /* igual que otras tarjetas */
       }
-      /* Ancho completo de inputs SOLO dentro del contenedor de Nueva tarea */
+      /* Inputs a ancho completo SOLO dentro de este card */
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox,
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput,
@@ -1180,16 +1185,20 @@ if st.session_state.get("nt_visible", True):
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox > div,
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput > div,
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput > div,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea > div{ width:100% !important; max-width:none !important; }
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea > div{
+        width:100% !important; max-width:none !important;
+      }
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) [data-testid="stDateInput"] input,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) [data-testid^="stTimeInput"] input{ width:100% !important; }
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) [data-testid^="stTimeInput"] input{
+        width:100% !important;
+      }
     </style>
     """, unsafe_allow_html=True)
 
-    # ===== Contenedor de la sección (todo va DENTRO) =====
+    # ===== Contenedor de la sección (todo va DENTRO del card) =====
     submitted = False
     with st.container():
-        # Sentinel para que el CSS aplique el marco al bloque correcto
+        # Sentinel para que el CSS identifique el bloque a enmarcar
         st.markdown('<span id="nt-card-sentinel"></span>', unsafe_allow_html=True)
 
         # Proporciones originales
@@ -1199,10 +1208,10 @@ if st.session_state.get("nt_visible", True):
         r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
         area = r1c1.selectbox("Área", options=AREAS_OPC, index=0, key="nt_area")
         FASES = ["Capacitación","Post-capacitación","Pre-consistencia","Consistencia","Operación de campo"]
-        fase = r1c2.selectbox("Fase", options=FASES, index=None, placeholder="Selecciona una fase", key="nt_fase")
-        tarea   = r1c3.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
-        detalle = r1c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle")
-        resp    = r1c5.text_input("Responsable", placeholder="Nombre", key="nt_resp")
+        fase   = r1c2.selectbox("Fase", options=FASES, index=None, placeholder="Selecciona una fase", key="nt_fase")
+        tarea  = r1c3.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
+        detalle= r1c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle")
+        resp   = r1c5.text_input("Responsable", placeholder="Nombre", key="nt_resp")
         ciclo_mejora = r1c6.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
 
         # ---------- FILA 2 ----------
@@ -1233,7 +1242,7 @@ if st.session_state.get("nt_visible", True):
             id_preview = f"{prefix}_" if prefix else ""
         c2_5.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
 
-        # Botón (fuera de st.form → sin restricciones)
+        # Botón (sin form)
         with c2_6:
             st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
             submitted = st.button("➕ Agregar", use_container_width=True, key="btn_agregar")
@@ -1293,7 +1302,6 @@ if st.session_state.get("nt_visible", True):
 
     # Separación vertical
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
-
 
 
 # ================== EDITAR ESTADO (mismo layout que "Nueva alerta") ==================
@@ -2455,6 +2463,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
