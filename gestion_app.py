@@ -22,6 +22,27 @@ from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, JsCode, DataRe
 # ================== Constantes de layout / UI ==================
 SECTION_GAP = 65  # píxeles de separación vertical entre secciones
 
+# —— Ajuste global: acercar la línea de indicaciones (help-strip) a sus campos ——
+st.markdown("""
+<style>
+/* Reduce el espacio entre la franja de indicaciones y el formulario en TODAS las secciones */
+.help-strip,
+.help-strip-nt, .help-strip-ux, .help-strip-na, .help-strip-pri, .help-strip-eval{
+  margin-bottom: 6px !important;      /* ⇦ ajusta aquí (4–10px recomendado) */
+}
+
+/* Evita que la tarjeta agregue espacio extra por arriba */
+.form-card{
+  margin-top: 6px !important;         /* ⇦ ajusta si quieres aún más compacto */
+}
+
+/* Opcional: compactar espacio entre etiqueta y control */
+[data-testid="stForm"] label{
+  margin-bottom: 2px !important;      /* ⇦ 2–4px suele verse bien */
+}
+</style>
+""", unsafe_allow_html=True)
+
 
 # ======= Utilidades de tablas (Prioridad / Evaluación) ======= 
 # (estos imports duplicados no hacen daño; los mantengo tal cual)
@@ -2260,6 +2281,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
