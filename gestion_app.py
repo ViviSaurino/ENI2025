@@ -1,3 +1,4 @@
+# ============================
 # Gestión — ENI2025 (MÓDULO: una tabla con "Área" y formulario + historial)
 # ============================
 import os
@@ -21,6 +22,61 @@ from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, JsCode, DataRe
 
 # ================== Constantes de layout / UI ==================
 SECTION_GAP = 30  # píxeles de separación vertical entre secciones
+
+# ================== Utilidades de fecha/hora ==================
+from datetime import datetime, date, time
+
+def combine_dt(d, t):
+    """
+    Une una fecha (date o str) y una hora (time o str 'HH:mm') en un pd.Timestamp.
+    • Si falta la fecha, devuelve pd.NaT.
+    • Si falta la hora, asume 00:00.
+    • Maneja cadenas con formato 'YYYY-MM-DD' y 'HH:mm'.
+    """
+    # Si no hay fecha, no se puede construir un datetime
+    if d in (None, "", pd.NaT):
+        return pd.NaT
+
+    # Normaliza fecha
+    if isinstance(d, str):
+        d_parsed = pd.to_datetime(d, errors="coerce")
+        if pd.isna(d_parsed):
+            return pd.NaT
+        d = d_parsed.date()
+    elif isinstance(d, pd.Timestamp):
+        d = d.date()
+    elif isinstance(d, date):
+        pass
+    else:
+        return pd.NaT
+
+    # Si no hay hora, usar 00:00
+    if t in (None, "", "HH:mm", pd.NaT):
+        try:
+            return pd.Timestamp(datetime.combine(d, time(0, 0)))
+        except Exception:
+            return pd.NaT
+
+    # Normaliza hora
+    if isinstance(t, str):
+        try:
+            hh, mm = t.strip().split(":")
+            t = time(int(hh), int(mm))
+        except Exception:
+            return pd.NaT
+    elif isinstance(t, pd.Timestamp):
+        t = time(t.hour, t.minute, t.second)
+    elif isinstance(t, time):
+        pass
+    else:
+        return pd.NaT
+
+    # Construye timestamp final
+    try:
+        return pd.Timestamp(datetime.combine(d, t))
+    except Exception:
+        return pd.NaT
+
 
 # ======= Utilidades de tablas (Prioridad / Evaluación) ======= 
 # (estos imports duplicados no hacen daño; los mantengo tal cual)
@@ -1118,7 +1174,14 @@ if st.session_state.get("nt_visible", True):
                 "Detalle": detalle,
             })
 
-            # 3) Inserta + normaliza fecha
+            # —— Conversión SOLO si vas a enviar a Google Sheets / backend que requiera TEXTO ——
+            new_for_sheets = new.copy()
+            new_for_sheets["Fecha inicio"] = (
+                None if pd.isna(f_ini) else f_ini.strftime("%Y-%m-%d %H:%M:%S")
+            )
+            # write_to_sheet(new_for_sheets)  # ← tu llamada de escritura si aplica
+
+            # 3) Inserta + normaliza fecha (flujo local/CSV sigue usando Timestamp)
             df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
             if "Fecha inicio" in df.columns:
                 df["Fecha inicio"] = pd.to_datetime(df["Fecha inicio"], errors="coerce")
@@ -1991,6 +2054,7 @@ if st.session_state["eva_visible"]:
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
 
 
+
 # ================== Historial ==================
 
 st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
@@ -2320,4 +2384,3 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
