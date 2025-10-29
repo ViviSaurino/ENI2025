@@ -1387,7 +1387,8 @@ if st.session_state["na_visible"]:
 
         with c_buscar:
             st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
-            na_do_buscar = st.form_submit_button("🔍 Buscar", key="na_buscar_btn", use_container_width=True)
+            # ⬇️ sin use_container_width (evita TypeError/Missing Submit Button)
+            na_do_buscar = st.form_submit_button("🔍 Buscar", key="na_buscar_btn")
 
     # ===== Fila 2 — Tarea + Id (alineadas) =====
     c_tarea, c_id = st.columns([T_WIDTH, ID_WIDTH], gap="medium")
@@ -1491,7 +1492,8 @@ if st.session_state["na_visible"]:
     # ===== Guardar (aplica cambios sobre df_main por Id) =====
     _sp, _btn = st.columns([W_AREA+W_FASE+W_RESP+W_DESDE+W_HASTA, W_BTN], gap="medium")
     with _btn:
-        if st.button("💾 Guardar cambios", key="na_guardar_btn", use_container_width=True):
+        # clave única; sin use_container_width para máxima compatibilidad
+        if st.button("💾 Guardar cambios", key="na_guardar_btn"):
             try:
                 df_edit = pd.DataFrame(grid["data"]).copy()
                 df_base = st.session_state["df_main"].copy()
@@ -1512,14 +1514,14 @@ if st.session_state["na_visible"]:
                             return 1
                         return 0
 
-                    cambios += _set("¿Generó alerta?",        row.get("¿Generó alerta?"))
-                    cambios += _set("Tipo de alerta",         row.get("Tipo de alerta"))
-                    cambios += _set("Fecha de alerta",        row.get("Fecha de alerta"))
-                    cambios += _set("Hora de alerta",         row.get("Hora de alerta"))
-                    cambios += _set("¿Se corrigió la alerta?",row.get("¿Se corrigió la alerta?"))
-                    cambios += _set("Fecha de corrección",    row.get("Fecha de corrección"))
-                    cambios += _set("Hora de corrección",     row.get("Hora de corrección"))
-                    cambios += _set("N° de alerta",           row.get("N° de alerta"))
+                    cambios += _set("¿Generó alerta?",         row.get("¿Generó alerta?"))
+                    cambios += _set("Tipo de alerta",          row.get("Tipo de alerta"))
+                    cambios += _set("Fecha de alerta",         row.get("Fecha de alerta"))
+                    cambios += _set("Hora de alerta",          row.get("Hora de alerta"))
+                    cambios += _set("¿Se corrigió la alerta?", row.get("¿Se corrigió la alerta?"))
+                    cambios += _set("Fecha de corrección",     row.get("Fecha de corrección"))
+                    cambios += _set("Hora de corrección",      row.get("Hora de corrección"))
+                    cambios += _set("N° de alerta",            row.get("N° de alerta"))
 
                 if cambios > 0:
                     st.session_state["df_main"] = df_base.copy()
@@ -2135,4 +2137,5 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
