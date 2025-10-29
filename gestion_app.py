@@ -1225,10 +1225,20 @@ if st.session_state.get("nt_visible", True):
             if "Fecha inicio" in df.columns:
                 df["Fecha inicio"] = pd.to_datetime(df["Fecha inicio"], errors="coerce")
 
-            # 4) Estado y guardado CSV
+            # 4) Estado y guardado CSV ——— PARCHE: columnas únicas antes de reindex ———
+            #    (evita: "Reindexing only valid with uniquely valued Index objects")
+            df = df.loc[:, ~df.columns.duplicated()].copy()
+
+            if "COLS" in globals() and COLS:
+                COLS_UNIQ = list(dict.fromkeys(COLS))  # quita duplicados preservando orden
+                cols_target = [c for c in COLS_UNIQ if c in df.columns] + \
+                              [c for c in COLS_UNIQ if c not in df.columns]
+            else:
+                cols_target = df.columns.tolist()
+
             st.session_state["df_main"] = df.copy()
             os.makedirs("data", exist_ok=True)
-            df.reindex(columns=COLS, fill_value=None).to_csv(
+            df.reindex(columns=cols_target, fill_value=None).to_csv(
                 os.path.join("data", "tareas.csv"),
                 index=False, encoding="utf-8-sig", mode="w"
             )
@@ -2423,4 +2433,5 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
