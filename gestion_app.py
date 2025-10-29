@@ -1163,17 +1163,25 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 if st.session_state.get("nt_visible", True):
 
+    # ===== Indicaciones (debajo de la píldora y SOBRE el rectángulo) =====
+    st.markdown("""
+    <div class="help-strip">
+      ✳️ <strong>Completa los campos principales</strong>: Área, Fase, Tarea, Responsable y Fecha de inicio.
+      La <em>hora</em> se asigna automáticamente cuando eliges la fecha.
+    </div>
+    """, unsafe_allow_html=True)
+
     # ===== CSS: marco (card) que ENVUELVE este bloque =====
     st.markdown("""
     <style>
-      /* Card al bloque que contenga el sentinel */
+      /* Card al bloque que contenga el sentinel (solo esta sección) */
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
         background:#ffffff;
         border:1px solid #E6EEF8;
         border-radius:12px;
         padding:16px 18px 12px 18px;
         box-shadow:0 1px 2px rgba(16,24,40,.04);
-        margin-top: 6px;               /* igual que otras tarjetas */
+        margin-top:8px;
       }
       /* Inputs a ancho completo SOLO dentro de este card */
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
@@ -1302,6 +1310,7 @@ if st.session_state.get("nt_visible", True):
 
     # Separación vertical
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
+
 
 
 # ================== EDITAR ESTADO (mismo layout que "Nueva alerta") ==================
@@ -2463,6 +2472,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
