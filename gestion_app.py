@@ -1130,7 +1130,7 @@ if st.session_state.get("nt_visible", True):
 st.session_state.setdefault("ux_visible", True)
 chev2 = "▾" if st.session_state["ux_visible"] else "▸"
 
-# ---------- Barra superior ----------
+# ---------- Barra superior (triangulito + píldora) ----------
 st.markdown('<div class="topbar-ux">', unsafe_allow_html=True)
 c_toggle2, c_pill2 = st.columns([0.028, 0.965], gap="medium")
 with c_toggle2:
@@ -1152,10 +1152,11 @@ if st.session_state["ux_visible"]:
     </div>
     """, unsafe_allow_html=True)
 
-    # Contenedor propio para forzar 100% en inputs de esta sección
+    # ====== CONTENEDOR LOCAL para asegurar 100% y neutralizar mínimos heredados ======
     st.markdown('<div id="ux-section">', unsafe_allow_html=True)
     st.markdown("""
     <style>
+      /* Fuerza 100% de ancho de los controles únicamente en ESTA sección */
       #ux-section .stTextInput > div,
       #ux-section .stSelectbox > div,
       #ux-section .stDateInput > div,
@@ -1167,13 +1168,21 @@ if st.session_state["ux_visible"]:
       }
       #ux-section [data-baseweb="select"],
       #ux-section [data-baseweb="select"] [role="combobox"]{ width: 100% !important; }
+
+      /* Neutraliza en ESTA sección cualquier min-width especial que se haya definido para Área/Estado en otras cards */
+      #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1)
+        > [data-testid="column"]:first-child [data-baseweb="select"] > div,
+      #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(2)
+        > [data-testid="column"]:first-child [data-baseweb="select"] > div{
+        min-width: 0 !important;
+      }
     </style>
     """, unsafe_allow_html=True)
 
-    # === Mismos anchos que "Nueva tarea" ===
-    # (guardados antes en tu sección superior)
+    # ===== Proporciones IDENTICAS a "Nueva tarea" =====
     A, Fw, T_width, D, R, C = 1.5, 2.25, 3.00, 2.00, 2.00, 1.60
 
+    # Base y columnas mínimas
     df_all = st.session_state["df_main"].copy()
     for col_req in ["Estado", "Fecha estado", "Hora estado"]:
         if col_req not in df_all.columns:
@@ -1181,10 +1190,9 @@ if st.session_state["ux_visible"]:
 
     st.markdown('<div class="form-card">', unsafe_allow_html=True)
 
-    # ===== FILTROS (alineados 1:1 con "Nueva tarea") =====
-    # Orden y anchos: Área(A) | Fase(Fw) | Responsable(T) | Desde(D) | Hasta(R) | Buscar(C)
-    # (lo importante es que las "fronteras" de columna coincidan)
+    # ===== Filtros (alineación 1:1 con la fila de arriba) =====
     with st.form("ux_filtros", clear_on_submit=False):
+        # Orden y ANCHOS: Área(A) | Fase(Fw) | Responsable(T) | Desde(D) | Hasta(R) | Buscar(C)
         c_area, c_fase, c_resp, c_desde, c_hasta, c_btn = st.columns(
             [A, Fw, T_width, D, R, C], gap="medium"
         )
@@ -1222,7 +1230,7 @@ if st.session_state["ux_visible"]:
             if ux_hasta:
                 df_filtrado = df_filtrado[fcol <= (pd.to_datetime(ux_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
 
-    # ===== Tabla =====
+    # ===== Tabla (visible aún vacía) =====
     cols_view = ["Id", "Tarea", "Estado", "Fecha estado", "Hora estado"]
     for c in cols_view:
         if c not in df_filtrado.columns:
@@ -1262,6 +1270,7 @@ if st.session_state["ux_visible"]:
         height=180
     )
 
+    # ===== Botón Guardar (alineado al último corte C) =====
     _spacer, _btncol = st.columns([A+Fw+T_width+D+R, C], gap="medium")
     with _btncol:
         if st.button("💾 Guardar cambios", use_container_width=True):
@@ -1275,7 +1284,7 @@ if st.session_state["ux_visible"]:
                 cambios = 0
                 for _, row in df_editado.iterrows():
                     id_row = str(row.get("Id", "")).strip()
-                    if not id_row:
+                    if not id_row: 
                         continue
                     est_mod = str(row.get("Estado modificado", "")).strip()
                     f_mod   = str(row.get("Fecha estado modificado", "")).strip()
@@ -1305,8 +1314,8 @@ if st.session_state["ux_visible"]:
             except Exception as e:
                 st.error(f"No pude guardar los cambios: {e}")
 
-    st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
-    st.markdown('</div>', unsafe_allow_html=True)  # cierra #ux-section
+    st.markdown('</div>', unsafe_allow_html=True)   # cierra .form-card
+    st.markdown('</div>', unsafe_allow_html=True)   # cierra #ux-section
 
 
 
@@ -2102,6 +2111,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
