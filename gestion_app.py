@@ -912,6 +912,16 @@ st.markdown("""
 #eval-grid  .ag-header-cell, #eval-grid  .ag-cell{
   border-right:1px solid #E9EDF3 !important;
 }
+
+/* ↓ espacio uniforme entre la píldora (barra superior) y la tira de ayuda */
+.topbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval{
+  margin-bottom: 8px;   /* ajusta aquí (p.ej. 6–12px) */
+}
+/* ↓ por si algún estilo previo mete margen extra en la help-strip */
+.help-strip, #nt-help, #ux-help, #na-help, #pri-help, #eva-help{
+  margin-top: 0 !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -2252,6 +2262,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
