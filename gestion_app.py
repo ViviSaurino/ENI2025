@@ -1069,7 +1069,6 @@ FASES = [
     "Operación de campo",
 ]
 
-
 # ================== Utilidades de ID ==================
 import re
 import pandas as pd
@@ -1215,6 +1214,21 @@ if st.session_state.get("nt_visible", True):
       <div class="form-card" id="form-nt">
     """, unsafe_allow_html=True)
 
+    # ---------- Fila en vivo FECHA / HORA (fuera del form para activar on_change) ----------
+    # Claves base
+    st.session_state.setdefault("fi_d", None)
+    st.session_state.setdefault("fi_t", None)
+    # Misma malla de columnas para alinear visualmente con el form
+    A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
+    c0_1, c0_2, c0_3, c0_4, c0_5, c0_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
+    # Controles en vivo (NO usar 'value' cuando usamos 'key')
+    c0_3.date_input("Fecha de inicio", key="fi_d", on_change=_auto_time_on_date)
+    c0_4.time_input("Hora de inicio", key="fi_t", step=60)
+    # Si ya hay fecha pero no hora (primer render), fijar hora ahora
+    if st.session_state.get("fi_d") and not st.session_state.get("fi_t"):
+        _auto_time_on_date()
+    # ---------- Fin Fila en vivo FECHA / HORA ----------
+
     # Catálogo de fases
     FASES = ["Capacitación", "Post-capacitación", "Pre-consistencia", "Consistencia", "Operación de campo"]
 
@@ -1234,9 +1248,13 @@ if st.session_state.get("nt_visible", True):
         tipo   = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría")
         estado = _opt_map(c2_2, "Estado", EMO_ESTADO, "No iniciado")
 
-        # Fecha/hora (dentro del form no hay callbacks; la hora se fijará al enviar si quedó vacía)
-        fi_d = c2_3.date_input("Fecha de inicio", value=None, key="fi_d")
-        fi_t = c2_4.time_input("Hora de inicio", value=st.session_state.get("fi_t"), step=60, key="fi_t")
+        # ⛳ IMPORTANTE: dentro del form ya NO ponemos date_input/time_input.
+        # Leemos lo que eligió la usuaria en la fila en vivo:
+        fi_d = st.session_state.get("fi_d")
+        fi_t = st.session_state.get("fi_t")
+        # (Opcional) Puedes mostrar un texto guía en esas celdas:
+        # c2_3.caption("Usa la fecha de arriba")
+        # c2_4.caption("La hora se autollenará")
 
         # ===== ID Asignado (preview) =====
         try:
@@ -1332,237 +1350,8 @@ if st.session_state.get("nt_visible", True):
 
     # Cierre wrappers
     st.markdown("</div></div>", unsafe_allow_html=True)
-    st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='height:{SECTION_GAP}px"></div>", unsafe_allow_html=True)
 
-
-# ================== Actualizar estado ==================
-
-# Estado inicial del colapsable de esta sección
-st.session_state.setdefault("ux_visible", True)
-chev2 = "▾" if st.session_state["ux_visible"] else "▸"
-
-# ---------- Barra superior (triangulito + píldora) ALINEADA como "Nueva tarea" ----------
-st.markdown('<div class="topbar-ux">', unsafe_allow_html=True)
-c_toggle2, c_pill2 = st.columns([0.028, 0.965], gap="medium")
-
-with c_toggle2:
-    st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
-    def _toggle_ux():
-        st.session_state["ux_visible"] = not st.session_state["ux_visible"]
-    # key única para evitar colisiones con otros toggles
-    st.button(chev2, key="ux_toggle_icon_v2", help="Mostrar/ocultar", on_click=_toggle_ux)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-with c_pill2:
-    st.markdown('<div class="form-title-ux">&nbsp;&nbsp;🔁&nbsp;&nbsp;Editar estado</div>', unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True)
-# ---------- fin barra superior ----------
-
-if st.session_state["ux_visible"]:
-
-    # ====== CONTENEDOR LOCAL + PATCH de anchos/min-width ======
-    st.markdown('<div id="ux-section">', unsafe_allow_html=True)
-    st.markdown("""
-    <style>
-      /* fuerza 100% de inputs/select/datepicker en esta tarjeta */
-      #ux-section .form-card [data-baseweb="input"] > div,
-      #ux-section .form-card [data-baseweb="textarea"] > div,
-      #ux-section .form-card [data-baseweb="select"] > div,
-      #ux-section .form-card [data-baseweb="datepicker"] > div{
-        width:100% !important; max-width:none !important; box-sizing:border-box !important; min-width:0 !important;
-      }
-      #ux-section .form-card [data-baseweb="select"] [role="combobox"]{ width:100% !important; }
-
-      /* PATCH: quita min-width heredado en las 3 primeras celdas de la 1ª fila del form */
-      #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1)
-        > [data-testid="column"]:nth-of-type(-n+3) [data-baseweb="select"] > div,
-      #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1)
-        > [data-testid="column"]:nth-of-type(-n+3) [data-baseweb="input"] > div{
-        min-width:0 !important; width:100% !important; box-sizing:border-box !important;
-      }
-
-      /* Reduce micro-espacio entre help-strip y tarjeta */
-      .section-ux .help-strip-ux + .form-card{ margin-top: 6px !important; }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # ===== Wrapper UNIDO: help-strip + form-card (sin hueco de por medio) =====
-    st.markdown("""
-    <div class="section-ux">
-      <div class="help-strip help-strip-ux" id="ux-help">
-        🔄 <strong>Actualiza el estado</strong> de una tarea ya registrada usando los filtros
-      </div>
-      <div class="form-card">
-    """, unsafe_allow_html=True)
-
-    # ===== Proporciones (idénticas a la sección "Nueva tarea") =====
-    A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60   # ← mismas de Nueva tarea
-
-    # Base y columnas mínimas
-    df_all = st.session_state["df_main"].copy()
-    for col_req in ["Estado", "Fecha estado", "Hora estado"]:
-        if col_req not in df_all.columns:
-            df_all[col_req] = None
-
-    # ===== Filtros (1 línea): Área, Fase, Responsable, Desde, Hasta, Buscar =====
-    with st.form("ux_filtros_v2", clear_on_submit=False):  # key única para evitar colisiones
-        c_area, c_fase, c_resp, c_desde, c_hasta, c_btn = st.columns([A, Fw, T_width, D, R, C], gap="medium")
-
-        ux_area = c_area.selectbox("Área", ["Todas"] + AREAS_OPC, index=0, key="ux_area")
-
-        fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
-        ux_fase = c_fase.selectbox("Fase", ["Todas"] + fases_all, index=0, key="ux_fase")
-
-        # Responsable filtrado por área si aplica
-        df_resp_src = df_all if ux_area == "Todas" else df_all[df_all["Área"] == ux_area]
-        responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
-        ux_resp = c_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0, key="ux_resp")
-
-        ux_desde = c_desde.date_input("Desde", value=None, key="ux_desde")
-        ux_hasta = c_hasta.date_input("Hasta",  value=None, key="ux_hasta")
-
-        with c_btn:
-            # separador vertical para alinear el botón con los inputs de la fila
-            st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
-            do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
-
-    # ===== Filtra (si se presiona Buscar) =====
-    df_filtrado = df_all.copy()
-    if do_buscar:
-        if ux_area != "Todas":
-            df_filtrado = df_filtrado[df_filtrado["Área"] == ux_area]
-        if ux_fase != "Todas" and "Fase" in df_filtrado.columns:
-            df_filtrado = df_filtrado[df_filtrado["Fase"].astype(str) == ux_fase]
-        if ux_resp != "Todos":
-            df_filtrado = df_filtrado[df_filtrado["Responsable"].astype(str) == ux_resp]
-
-        # Filtra por fechas: sobre "Fecha inicio" si existe; si no, sobre "Fecha estado"
-        base_fecha_col = "Fecha inicio" if "Fecha inicio" in df_filtrado.columns else "Fecha estado"
-        if base_fecha_col in df_filtrado.columns:
-            fcol = pd.to_datetime(df_filtrado[base_fecha_col], errors="coerce")
-            if ux_desde:
-                df_filtrado = df_filtrado[fcol >= pd.to_datetime(ux_desde)]
-            if ux_hasta:
-                df_filtrado = df_filtrado[fcol <= (pd.to_datetime(ux_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
-
-    # ===== Tabla (siempre visible, incluso vacía) =====
-    cols_view = ["Id", "Tarea", "Estado", "Fecha estado", "Hora estado"]
-    for c in cols_view:
-        if c not in df_filtrado.columns:
-            df_filtrado[c] = None
-
-    df_view = df_filtrado[cols_view].copy()
-    df_view.rename(columns={
-        "Estado": "Estado actual",
-        "Fecha estado": "Fecha estado actual",
-        "Hora estado": "Hora estado actual"
-    }, inplace=True)
-
-    # columnas editables (para cambios)
-    df_view["Estado modificado"] = ""
-    df_view["Fecha estado modificado"] = ""
-    df_view["Hora estado modificado"]  = ""
-
-    st.markdown("**Resultados**")
-
-    gob = GridOptionsBuilder.from_dataframe(df_view)
-    gob.configure_grid_options(
-        suppressMovableColumns=True,
-        domLayout="normal",
-        ensureDomOrder=True,
-        rowHeight=38,
-        headerHeight=42,
-    )
-
-    # Solo lectura
-    for c_ro in ["Id", "Tarea", "Estado actual", "Fecha estado actual", "Hora estado actual"]:
-        gob.configure_column(c_ro, editable=False)
-
-    # Editables
-    ESTADOS_OPC = ["", "En curso", "Terminado", "Pausado", "Cancelado", "Eliminado"]
-    gob.configure_column(
-        "Estado modificado",
-        editable=True,
-        cellEditor="agSelectCellEditor",
-        cellEditorParams={"values": ESTADOS_OPC},
-        width=180,
-    )
-    gob.configure_column("Fecha estado modificado", editable=True, width=180)  # YYYY-MM-DD
-    gob.configure_column("Hora estado modificado",   editable=True, width=150)  # HH:mm
-
-    grid = AgGrid(
-        df_view,
-        gridOptions=gob.build(),
-        data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
-        update_mode=GridUpdateMode.VALUE_CHANGED,
-        fit_columns_on_grid_load=False,
-        enable_enterprise_modules=False,
-        reload_data=False,
-        height=220
-    )
-
-    # ===== Botón Guardar abajo a la derecha =====
-    _spacer, _btncol = st.columns([A+Fw+T_width+D+R, C], gap="medium")
-    with _btncol:
-        if st.button("💾 Guardar cambios", key="ux_guardar_btn_v2", use_container_width=True):
-            try:
-                df_editado = pd.DataFrame(grid["data"]).copy()
-                df_base = st.session_state["df_main"].copy()
-                for col_req in ["Estado", "Fecha estado", "Hora estado"]:
-                    if col_req not in df_base.columns:
-                        df_base[col_req] = None
-
-                cambios = 0
-                for _, row in df_editado.iterrows():
-                    id_row = str(row.get("Id", "")).strip()
-                    if not id_row:
-                        continue
-
-                    est_mod = str(row.get("Estado modificado", "")).strip()
-                    f_mod   = str(row.get("Fecha estado modificado", "")).strip()
-                    h_mod   = str(row.get("Hora estado modificado", "")).strip()
-
-                    if not est_mod and not f_mod and not h_mod:
-                        continue
-
-                    m = df_base["Id"].astype(str).str.strip() == id_row
-                    if not m.any():
-                        continue
-
-                    if est_mod:
-                        df_base.loc[m, "Estado"] = est_mod
-                    if f_mod:
-                        try:
-                            _ = pd.to_datetime(f_mod)
-                            df_base.loc[m, "Fecha estado"] = f_mod
-                        except Exception:
-                            pass
-                    if h_mod:
-                        hh_ok = True
-                        try:
-                            _hh, _mm = h_mod.split(":"); _ = int(_hh); _ = int(_mm)
-                        except Exception:
-                            hh_ok = False
-                        if hh_ok:
-                            df_base.loc[m, "Hora estado"] = h_mod
-
-                    cambios += 1
-
-                if cambios > 0:
-                    st.session_state["df_main"] = df_base.copy()
-                    _save_local(df_base[COLS].copy() if set(COLS).issubset(df_base.columns) else df_base.copy())
-                    st.success(f"✔ Cambios guardados: {cambios} fila(s) actualizada(s).")
-                else:
-                    st.info("No se detectaron cambios para guardar.")
-            except Exception as e:
-                st.error(f"No pude guardar los cambios: {e}")
-
-    # Cierra form-card + section-ux y el contenedor local
-    st.markdown('</div></div>', unsafe_allow_html=True)   # cierra .form-card y .section-ux
-    st.markdown('</div>', unsafe_allow_html=True)         # cierra #ux-section
-
-    # Separación vertical entre secciones
-    st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
 
 
 # ================== Nueva alerta ==================
@@ -2511,3 +2300,4 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
