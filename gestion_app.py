@@ -1322,7 +1322,8 @@ with c_toggle2:
     st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
     def _toggle_ux():
         st.session_state["ux_visible"] = not st.session_state["ux_visible"]
-    st.button(chev2, key="ux_toggle_icon", help="Mostrar/ocultar", on_click=_toggle_ux)
+    # 🔧 clave única para evitar DuplicateWidgetID
+    st.button(chev2, key="ux_toggle_icon__uniq", help="Mostrar/ocultar", on_click=_toggle_ux)
     st.markdown('</div>', unsafe_allow_html=True)
 with c_pill2:
     st.markdown('<div class="form-title-ux">&nbsp;&nbsp;🔁&nbsp;&nbsp;Editar estado</div>', unsafe_allow_html=True)
@@ -1359,7 +1360,6 @@ if st.session_state["ux_visible"]:
     """, unsafe_allow_html=True)
 
     # ===== Proporciones EXACTAS usadas en "Nueva tarea" (fila de 6 controles) =====
-    # Mantener sincronizadas con la fila de "Nueva tarea":
     W_AREA, W_FASE, W_RESP, W_DESDE, W_HASTA, W_BTN = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
     # Base
@@ -2100,6 +2100,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
