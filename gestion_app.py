@@ -1214,6 +1214,23 @@ if st.session_state.get("nt_visible", True):
       <div class="form-card" id="form-nt">
     """, unsafe_allow_html=True)
 
+    # ---------- Fila en vivo: FECHA (dispara hora automática) ----------
+    # Claves base
+    st.session_state.setdefault("fi_d", None)
+    st.session_state.setdefault("fi_t", None)
+
+    # Misma malla para que visualmente se alinee con el form
+    A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
+    c0_1, c0_2, c0_3, c0_4, c0_5, c0_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
+
+    # Solo FECHA editable aquí; la HORA será automática y ya no editable.
+    c0_3.date_input("Fecha de inicio", key="fi_d", on_change=_auto_time_on_date)
+
+    # Si ya hay fecha pero aún no hora (primer render), fijar hora ahora
+    if st.session_state.get("fi_d") and not st.session_state.get("fi_t"):
+        _auto_time_on_date()
+    # ---------- Fin fila en vivo ----------
+
     # Catálogo de fases
     FASES = ["Capacitación", "Post-capacitación", "Pre-consistencia", "Consistencia", "Operación de campo"]
 
@@ -1229,109 +1246,7 @@ if st.session_state.get("nt_visible", True):
         resp    = r1c5.text_input("Responsable", placeholder="Nombre", key="nt_resp")
         ciclo_mejora = r1c6.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
 
-        c2_1, c2_2, c2_3, c2_4, c2_5, c2_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
-        tipo   = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría")
-        estado = _opt_map(c2_2, "Estado", EMO_ESTADO, "No iniciado")
-
-        # Fecha / hora dentro del form (como estaba)
-        fi_d = c2_3.date_input("Fecha de inicio", value=None, key="fi_d")
-        fi_t = c2_4.time_input("Hora de inicio", value=st.session_state.get("fi_t"), step=60, key="fi_t")
-
-        # ===== ID Asignado (preview) =====
-        try:
-            _df_tmp = st.session_state.get("df_main", pd.DataFrame()).copy()
-        except Exception:
-            _df_tmp = pd.DataFrame()
-
-        area_ss = st.session_state.get("nt_area", area)
-        resp_ss = st.session_state.get("nt_resp", resp)
-
-        prefix = make_id_prefix(area_ss, resp_ss)          # ej. JVS
-        if st.session_state.get("fi_d"):
-            id_preview = next_id_by_person(_df_tmp, area_ss, resp_ss)   # ej. JVS_1
-        else:
-            id_preview = f"{prefix}_" if prefix else ""                 # ej. JVS_
-
-        c2_5.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
-
-        with c2_6:
-            st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
-            submitted = st.form_submit_button("➕ Agregar", use_container_width=True)
-
-    # ---------- Utilidad local para guardar sin reindex ----------
-    def sanitize_df_for_save(df_in: pd.DataFrame, target_cols=None) -> pd.DataFrame:
-        df_out = df_in.copy()
-        # Unificar 'DEL' -> '__DEL__'
-        if "DEL" in df_out.columns and "__DEL__" in df_out.columns:
-            df_out["__DEL__"] = df_out["__DEL__"].fillna(False) | df_out["DEL"].fillna(False)
-            df_out = df_out.drop(columns=["DEL"])
-        elif "DEL" in df_out.columns:
-            df_out = df_out.rename(columns={"DEL": "__DEL__"})
-        # Columnas únicas + índice único
-        df_out = df_out.loc[:, ~pd.Index(df_out.columns).duplicated()].copy()
-        if not df_out.index.is_unique:
-            df_out = df_out.reset_index(drop=True)
-        # Esquema objetivo sin reindex
-        if target_cols:
-            target = list(dict.fromkeys(list(target_cols)))
-            for c in target:
-                if c not in df_out.columns:
-                    df_out[c] = None
-            ordered = [c for c in target] + [c for c in df_out.columns if c not in target]
-            df_out = df_out.loc[:, ordered].copy()
-        return df_out
-
-    # ============== POST Submit ==============
-    if submitted:
-        try:
-            from datetime import datetime
-
-            df = st.session_state["df_main"].copy()
-            df = sanitize_df_for_save(df, COLS if "COLS" in globals() else None)
-
-            if "Ciclo de mejora" not in df.columns:
-                df["Ciclo de mejora"] = ""
-
-            # Si no se puso hora, la fijamos ahora (hora actual, sin segundos)
-            if not st.session_state.get("fi_t"):
-                st.session_state["fi_t"] = datetime.now().replace(second=0, microsecond=0).time()
-
-            f_ini = combine_dt(st.session_state.get("fi_d"), st.session_state.get("fi_t"))
-
-            new = blank_row()
-            new.update({
-                "Área": area,
-                "Id": next_id_by_person(df, area, st.session_state.get("nt_resp", "")),
-                "Tarea": tarea,
-                "Tipo": tipo,
-                "Responsable": st.session_state.get("nt_resp", ""),
-                "Fase": fase,
-                "Estado": estado,
-                "Fecha inicio": f_ini,
-                "Ciclo de mejora": ciclo_mejora,
-                "Detalle": detalle,
-            })
-
-            df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
-            if "Fecha inicio" in df.columns:
-                df["Fecha inicio"] = pd.to_datetime(df["Fecha inicio"], errors="coerce")
-
-            df = sanitize_df_for_save(df, COLS if "COLS" in globals() else None)
-
-            st.session_state["df_main"] = df.copy()
-            os.makedirs("data", exist_ok=True)
-            df.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig", mode="w")
-
-            st.success(f"✔ Tarea agregada (Id {new['Id']}).")
-            st.rerun()
-
-        except Exception as e:
-            st.error(f"No pude guardar la nueva tarea: {e}")
-
-    # Cierre wrappers
-    st.markdown("</div></div>", unsafe_allow_html=True)
-    st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
-
+        c2_1, c2_2, c2_3, c2_4, c2_5, c2_
 
 
 # ================== Nueva alerta ==================
@@ -2280,6 +2195,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
