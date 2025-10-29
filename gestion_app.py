@@ -78,6 +78,45 @@ def combine_dt(d, t):
         return pd.NaT
 
 
+# ================== Utilidad: fila en blanco ==================
+def blank_row():
+    """
+    Devuelve un diccionario 'fila en blanco' que respeta el orden de columnas.
+    - Si existe COLS (lista de columnas objetivo), la usa.
+    - Si hay df_main en session_state, usa sus columnas actuales.
+    - En último caso, usa un conjunto mínimo seguro de columnas.
+    """
+    try:
+        # Prioriza el esquema objetivo si está definido
+        if "COLS" in globals() and COLS:
+            cols = list(COLS)
+        # Si ya hay una base cargada, respeta esas columnas
+        elif "df_main" in st.session_state and not st.session_state["df_main"].empty:
+            cols = list(st.session_state["df_main"].columns)
+        else:
+            # Fallback mínimo seguro
+            cols = [
+                "Área", "Id", "Tarea", "Tipo", "Responsable", "Fase", "Estado",
+                "Fecha inicio", "Ciclo de mejora", "Detalle"
+            ]
+
+        row = {c: None for c in cols}
+
+        # Defaults útiles
+        if "__DEL__" in row:
+            row["__DEL__"] = False
+
+        return row
+
+    except Exception:
+        # Último recurso si algo falla al determinar columnas
+        return {
+            "Área": None, "Id": None, "Tarea": None, "Tipo": None, "Responsable": None,
+            "Fase": None, "Estado": None, "Fecha inicio": None, "Ciclo de mejora": None,
+            "Detalle": None
+        }
+
+
 # ======= Utilidades de tablas (Prioridad / Evaluación) ======= 
 # (estos imports duplicados no hacen daño; los mantengo tal cual)
 import streamlit as st
@@ -2384,3 +2423,4 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
