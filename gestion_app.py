@@ -1163,33 +1163,41 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 if st.session_state.get("nt_visible", True):
 
-    # ===== Indicaciones cortas (debajo de la píldora) =====
-    st.markdown("""
-    <div class="help-strip">
-      ✳️ Completa: <strong>Área, Fase, Tarea, Responsable y Fecha</strong>. La hora es automática.
-    </div>
-    """, unsafe_allow_html=True)
-
-    # ===== CSS del card que ENVUELVE las celdas =====
+    # ===== Estilos locales para esta sección =====
     st.markdown("""
     <style>
-      #nt-card{
-        background:#ffffff; border:1px solid #E6EEF8; border-radius:12px;
-        padding:16px 18px 12px 18px; box-shadow:0 1px 2px rgba(16,24,40,.04);
-        margin-top:8px;
-      }
-      #nt-card .stTextInput, #nt-card .stSelectbox, #nt-card .stDateInput,
-      #nt-card .stTimeInput, #nt-card .stTextArea { width:100% !important; }
-      #nt-card .stTextInput > div, #nt-card .stSelectbox > div, #nt-card .stDateInput > div,
-      #nt-card .stTimeInput > div, #nt-card .stTextArea > div { width:100% !important; max-width:none !important; }
-      #nt-card [data-testid="stDateInput"] input,
-      #nt-card [data-testid^="stTimeInput"] input { width:100% !important; }
+      /* Reduce el espacio entre la tira de ayuda y el card, como en Editar estado */
+      #nt-section .help-strip + .form-card { margin-top: 6px !important; }
+      /* Inputs a ancho completo SOLO dentro de este bloque */
+      #nt-section .stTextInput, 
+      #nt-section .stSelectbox, 
+      #nt-section .stDateInput, 
+      #nt-section .stTimeInput, 
+      #nt-section .stTextArea { width:100% !important; }
+      #nt-section .stTextInput > div,
+      #nt-section .stSelectbox > div,
+      #nt-section .stDateInput > div,
+      #nt-section .stTimeInput > div,
+      #nt-section .stTextArea > div { width:100% !important; max-width:none !important; }
+      #nt-section [data-testid="stDateInput"] input,
+      #nt-section [data-testid^="stTimeInput"] input { width:100% !important; }
     </style>
     """, unsafe_allow_html=True)
 
+    # ===== Bloque UNIDO (igual patrón que "Editar estado"): help-strip + form-card =====
+    st.markdown('<div id="nt-section">', unsafe_allow_html=True)
+
+    # Indicaciones cortas (debajo de la píldora)
+    st.markdown("""
+      <div class="help-strip">
+        ✳️ Completa: <strong>Área, Fase, Tarea, Responsable y Fecha</strong>. La hora es automática.
+      </div>
+    """, unsafe_allow_html=True)
+
+    # Rectángulo que ENVUELVE las celdas (usa la clase global .form-card)
+    st.markdown('<div class="form-card">', unsafe_allow_html=True)
+
     submitted = False
-    # ===== Card contenedor: todo el formulario VA DENTRO =====
-    st.markdown('<div id="nt-card" class="form-card">', unsafe_allow_html=True)
 
     # Proporciones originales
     A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
@@ -1209,7 +1217,7 @@ if st.session_state.get("nt_visible", True):
     tipo   = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría", key="nt_tipo")
     estado = _opt_map(c2_2, "Estado", EMO_ESTADO, "No iniciado")
 
-    # Fecha editable + callback inmediato
+    # Fecha editable + callback inmediato (fuera de st.form → permitido)
     st.session_state.setdefault("fi_d", None)
     st.session_state.setdefault("fi_t", None)
     c2_3.date_input("Fecha de inicio", key="fi_d", on_change=_auto_time_on_date)
@@ -1218,8 +1226,10 @@ if st.session_state.get("nt_visible", True):
     _t = st.session_state.get("fi_t")
     _t_txt = ""
     if _t is not None:
-        try: _t_txt = _t.strftime("%H:%M")
-        except Exception: _t_txt = str(_t)
+        try:
+            _t_txt = _t.strftime("%H:%M")
+        except Exception:
+            _t_txt = str(_t)
     c2_4.text_input("Hora de inicio (auto)", value=_t_txt, disabled=True,
                     help="Se asigna al elegir la fecha", key="fi_t_view")
 
@@ -1237,7 +1247,9 @@ if st.session_state.get("nt_visible", True):
         st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
         submitted = st.button("➕ Agregar", use_container_width=True, key="btn_agregar")
 
-    st.markdown('</div>', unsafe_allow_html=True)  # ===== cierra #nt-card =====
+    # Cierra el rectángulo y la sección
+    st.markdown('</div>', unsafe_allow_html=True)   # </div class="form-card">
+    st.markdown('</div>', unsafe_allow_html=True)   # </div id="nt-section">
 
     # ---------- Guardado ----------
     if submitted:
@@ -1294,8 +1306,6 @@ if st.session_state.get("nt_visible", True):
 
     # Separación vertical
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
-
-
 
 
 # ================== EDITAR ESTADO (mismo layout que "Nueva alerta") ==================
@@ -2457,6 +2467,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
