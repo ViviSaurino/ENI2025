@@ -1166,7 +1166,7 @@ if st.session_state.get("nt_visible", True):
     # ===== Indicaciones cortas (debajo de la píldora) =====
     st.markdown("""
     <div class="help-strip">
-      ✳️ Completa: <strong>las celdas</strong>. para agregar una nueva tarea.
+      ✳️ <strong>Completa las celdas</strong> para agregar una nueva tarea.
     </div>
     """, unsafe_allow_html=True)
 
@@ -2478,6 +2478,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
