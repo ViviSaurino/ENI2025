@@ -1295,7 +1295,7 @@ if st.session_state["ux_visible"]:
         fit_columns_on_grid_load=False,
         enable_enterprise_modules=False,
         reload_data=False,
-        height=260
+        height=200
     )
 
     # ===== Botón Guardar abajo a la derecha =====
@@ -1507,7 +1507,7 @@ if st.session_state["na_visible"]:
         fit_columns_on_grid_load=False,
         enable_enterprise_modules=False,
         reload_data=False,
-        height=220
+        height=200
     )
 
     # ===== Guardar (aplica cambios por Id en df_main) =====
@@ -2156,6 +2156,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
