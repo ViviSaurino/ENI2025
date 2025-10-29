@@ -1350,8 +1350,7 @@ if st.session_state.get("nt_visible", True):
 
     # Cierre wrappers
     st.markdown("</div></div>", unsafe_allow_html=True)
-    st.markdown(f"<div style='height:{SECTION_GAP}px"></div>", unsafe_allow_html=True)
-
+    st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
 
 
 # ================== Nueva alerta ==================
@@ -2300,4 +2299,5 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
