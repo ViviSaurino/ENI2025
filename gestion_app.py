@@ -1132,12 +1132,11 @@ if st.session_state.get("nt_visible", True):
 
     with st.form("form_nueva_tarea", clear_on_submit=True):
         # ===== Rejilla unificada (ambas filas) =====
-        # Ajustes solicitados: A más ancho; Fw un poco más angosto (pero cabe “Operación de campo”).
-        A  = 1.80  # Área / Tipo  (↑ para calzar con la píldora de 'Nueva tarea')
-        Fw = 2.10  # Fase / Estado (↓ leve, pero muestra “Operación de campo” completo)
+        A  = 1.80  # Área / Tipo
+        Fw = 2.10  # Fase / Estado
         T  = 3.00  # Tarea / Fecha de inicio
-        D  = 2.00  # Detalle de tarea / Hora de inicio
-        R  = 2.00  # Responsable / ID asignado
+        D  = 2.00  # Detalle / Hora de inicio
+        R  = 2.00  # Responsable / ID
         C  = 1.60  # Ciclo de mejora / Botón
 
         # ============== FILA 1 ==============
@@ -1146,11 +1145,7 @@ if st.session_state.get("nt_visible", True):
         area = r1c1.selectbox("Área", options=AREAS_OPC, index=0, key="nt_area")
 
         fase = r1c2.selectbox(
-            "Fase",
-            options=FASES,
-            index=None,
-            placeholder="Selecciona una fase",
-            key="nt_fase"
+            "Fase", options=FASES, index=None, placeholder="Selecciona una fase", key="nt_fase"
         )
 
         tarea   = r1c3.text_input("Tarea", placeholder="Describe la tarea")
@@ -1158,10 +1153,7 @@ if st.session_state.get("nt_visible", True):
         resp    = r1c5.text_input("Responsable", placeholder="Nombre")
 
         ciclo_mejora = r1c6.selectbox(
-            "Ciclo de mejora",
-            options=["1", "2", "3", "+4"],
-            index=0,
-            key="nt_ciclo_mejora"
+            "Ciclo de mejora", options=["1", "2", "3", "+4"], index=0, key="nt_ciclo_mejora"
         )
 
         # ============== FILA 2 (misma malla) ==============
@@ -1189,23 +1181,19 @@ if st.session_state.get("nt_visible", True):
     # ---------- Utilidad local para guardar sin reindex ----------
     def sanitize_df_for_save(df_in: pd.DataFrame, target_cols=None) -> pd.DataFrame:
         df_out = df_in.copy()
-
         # 1) Columnas únicas
         df_out = df_out.loc[:, ~pd.Index(df_out.columns).duplicated()].copy()
-
-        # 2) Índice único (por si se concatenó algo con índices repetidos)
+        # 2) Índice único
         if not df_out.index.is_unique:
             df_out = df_out.reset_index(drop=True)
-
-        # 3) Si hay esquema objetivo, crear faltantes y ordenar sin reindex
+        # 3) Esquema objetivo (si existe) sin duplicados y sin reindex
         if target_cols:
-            target = list(dict.fromkeys(list(target_cols)))  # sin duplicados, preserva orden
+            target = list(dict.fromkeys(list(target_cols)))  # preserva orden
             for c in target:
                 if c not in df_out.columns:
                     df_out[c] = None
             ordered = [c for c in target] + [c for c in df_out.columns if c not in target]
             df_out = df_out.loc[:, ordered].copy()
-
         return df_out
 
     # ============== POST Submit ==============
@@ -1235,6 +1223,15 @@ if st.session_state.get("nt_visible", True):
                 "Detalle": detalle,
             })
 
+            # Diagnóstico: detectar duplicados ANTES de seguir
+            dups_df_cols = df.columns[df.columns.duplicated()].tolist()
+            dups_cols_cfg = []
+            if "COLS" in globals():
+                _s = pd.Index(COLS)
+                dups_cols_cfg = _s[_s.duplicated()].tolist()
+            if dups_df_cols or dups_cols_cfg:
+                st.warning(f"Columnas duplicadas — df: {dups_df_cols} | COLS: {dups_cols_cfg}")
+
             # —— Conversión SOLO si vas a enviar a Google Sheets / backend que requiera TEXTO ——
             new_for_sheets = new.copy()
             new_for_sheets["Fecha inicio"] = (
@@ -1247,7 +1244,7 @@ if st.session_state.get("nt_visible", True):
             if "Fecha inicio" in df.columns:
                 df["Fecha inicio"] = pd.to_datetime(df["Fecha inicio"], errors="coerce")
 
-            # 4) Guardado SIN reindex (parche definitivo al error)
+            # 4) Guardado SIN reindex
             target_cols = COLS if "COLS" in globals() else None
             df = sanitize_df_for_save(df, target_cols)
 
@@ -1270,7 +1267,6 @@ if st.session_state.get("nt_visible", True):
 
     # Separación vertical entre secciones (usa tu constante existente)
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
-
 
 
 # ================== Nueva alerta ==================
@@ -2219,6 +2215,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
