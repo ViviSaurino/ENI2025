@@ -1143,25 +1143,16 @@ if st.session_state.get("nt_visible", True):
         r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
 
         area = r1c1.selectbox("Área", options=AREAS_OPC, index=0, key="nt_area")
-
-        fase = r1c2.selectbox(
-            "Fase", options=FASES, index=None, placeholder="Selecciona una fase", key="nt_fase"
-        )
-
+        fase = r1c2.selectbox("Fase", options=FASES, index=None, placeholder="Selecciona una fase", key="nt_fase")
         tarea   = r1c3.text_input("Tarea", placeholder="Describe la tarea")
         detalle = r1c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)")
         resp    = r1c5.text_input("Responsable", placeholder="Nombre")
-
-        ciclo_mejora = r1c6.selectbox(
-            "Ciclo de mejora", options=["1", "2", "3", "+4"], index=0, key="nt_ciclo_mejora"
-        )
+        ciclo_mejora = r1c6.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
 
         # ============== FILA 2 (misma malla) ==============
         c2_1, c2_2, c2_3, c2_4, c2_5, c2_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
-
         tipo   = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría")
         estado = _opt_map(c2_2, "Estado", EMO_ESTADO, "No iniciado")
-
         fi_d   = c2_3.date_input("Fecha de inicio", value=None, key="fi_d")
         fi_t   = c2_4.time_input("Hora de inicio", value=None, step=60, key="fi_t")
 
@@ -1181,11 +1172,21 @@ if st.session_state.get("nt_visible", True):
     # ---------- Utilidad local para guardar sin reindex ----------
     def sanitize_df_for_save(df_in: pd.DataFrame, target_cols=None) -> pd.DataFrame:
         df_out = df_in.copy()
+
+        # 0) Unificar nombre de bandera de borrado: 'DEL' -> '__DEL__'
+        if "DEL" in df_out.columns and "__DEL__" in df_out.columns:
+            df_out["__DEL__"] = df_out["__DEL__"].fillna(False) | df_out["DEL"].fillna(False)
+            df_out = df_out.drop(columns=["DEL"])
+        elif "DEL" in df_out.columns:
+            df_out = df_out.rename(columns={"DEL": "__DEL__"})
+
         # 1) Columnas únicas
         df_out = df_out.loc[:, ~pd.Index(df_out.columns).duplicated()].copy()
+
         # 2) Índice único
         if not df_out.index.is_unique:
             df_out = df_out.reset_index(drop=True)
+
         # 3) Esquema objetivo (si existe) sin duplicados y sin reindex
         if target_cols:
             target = list(dict.fromkeys(list(target_cols)))  # preserva orden
@@ -1194,6 +1195,7 @@ if st.session_state.get("nt_visible", True):
                     df_out[c] = None
             ordered = [c for c in target] + [c for c in df_out.columns if c not in target]
             df_out = df_out.loc[:, ordered].copy()
+
         return df_out
 
     # ============== POST Submit ==============
@@ -1201,6 +1203,9 @@ if st.session_state.get("nt_visible", True):
         try:
             # 1) Base actual
             df = st.session_state["df_main"].copy()
+
+            # —— SANEAMOS de entrada para evitar fallos posteriores ——
+            df = sanitize_df_for_save(df, COLS if "COLS" in globals() else None)
 
             # Garantiza "Ciclo de mejora"
             if "Ciclo de mejora" not in df.columns:
@@ -1223,7 +1228,7 @@ if st.session_state.get("nt_visible", True):
                 "Detalle": detalle,
             })
 
-            # Diagnóstico: detectar duplicados ANTES de seguir
+            # Diagnóstico de duplicados (visibilidad)
             dups_df_cols = df.columns[df.columns.duplicated()].tolist()
             dups_cols_cfg = []
             if "COLS" in globals():
@@ -1232,28 +1237,22 @@ if st.session_state.get("nt_visible", True):
             if dups_df_cols or dups_cols_cfg:
                 st.warning(f"Columnas duplicadas — df: {dups_df_cols} | COLS: {dups_cols_cfg}")
 
-            # —— Conversión SOLO si vas a enviar a Google Sheets / backend que requiera TEXTO ——
-            new_for_sheets = new.copy()
-            new_for_sheets["Fecha inicio"] = (
-                None if pd.isna(f_ini) else f_ini.strftime("%Y-%m-%d %H:%M:%S")
-            )
-            # write_to_sheet(new_for_sheets)  # ← tu llamada de escritura si aplica
+            # —— Si envías a Sheets, serializa la fecha:
+            # new_for_sheets = new.copy()
+            # new_for_sheets["Fecha inicio"] = None if pd.isna(f_ini) else f_ini.strftime("%Y-%m-%d %H:%M:%S")
+            # write_to_sheet(new_for_sheets)
 
-            # 3) Inserta + normaliza fecha (flujo local/CSV sigue usando Timestamp)
+            # 3) Inserta + normaliza fecha (CSV/local usa Timestamp)
             df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
             if "Fecha inicio" in df.columns:
                 df["Fecha inicio"] = pd.to_datetime(df["Fecha inicio"], errors="coerce")
 
-            # 4) Guardado SIN reindex
-            target_cols = COLS if "COLS" in globals() else None
-            df = sanitize_df_for_save(df, target_cols)
+            # 4) Guardado SIN reindex (parche definitivo)
+            df = sanitize_df_for_save(df, COLS if "COLS" in globals() else None)
 
             st.session_state["df_main"] = df.copy()
             os.makedirs("data", exist_ok=True)
-            df.to_csv(
-                os.path.join("data", "tareas.csv"),
-                index=False, encoding="utf-8-sig", mode="w"
-            )
+            df.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig", mode="w")
 
             # 5) Mensaje y refresco
             st.success(f"✔ Tarea agregada (Id {new['Id']}).")
@@ -1267,6 +1266,7 @@ if st.session_state.get("nt_visible", True):
 
     # Separación vertical entre secciones (usa tu constante existente)
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
+
 
 
 # ================== Nueva alerta ==================
@@ -2215,6 +2215,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
