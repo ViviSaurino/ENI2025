@@ -1165,6 +1165,16 @@ if st.session_state.get("nt_visible", True):
     # ===== CSS breve (mismos anchos/estilos) =====
     st.markdown("""
     <style>
+    /* --- Rectángulo (card) restaurado para el formulario --- */
+    #form-nt{
+      background:#ffffff !important;
+      border:1px solid #E6EEF8 !important;
+      border-radius:12px !important;
+      padding:16px 18px 12px 18px !important;
+      box-shadow:0 1px 2px rgba(16,24,40,.04) !important;
+      display:block;
+    }
+
     #form-nt .stTextInput, 
     #form-nt .stSelectbox, 
     #form-nt .stDateInput, 
@@ -2453,6 +2463,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
