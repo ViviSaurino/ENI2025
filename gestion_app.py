@@ -1293,65 +1293,84 @@ if st.session_state.get("nt_visible", True):
     # Separación vertical
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
 
-# ================== EDITAR ESTADO (alineado a la izquierda, sin negritas, sin aviso) ==================
+# ================== EDITAR ESTADO (UI gemela a "Nueva alerta") ==================
 st.session_state.setdefault("est_visible", True)
 
-# ---------- CSS: quitar negrita en headers de la tabla ----------
+# ---------- Estilos locales (píldora, card de filtros y headers sin negrita) ----------
 st.markdown("""
 <style>
-/* Quita la negrita del header en ag-Grid */
-#editar-estado-card .ag-theme-alpine .ag-header-cell-label{
-  font-weight: 400 !important;
+/* Píldora celeste idéntica a la de 'Nueva tarea' */
+.pill-azul {
+  display:inline-flex; align-items:center; gap:.55rem;
+  background:#EAF2FF; border:1px solid #BFDBFE; color:#0B3B76;
+  padding:.55rem 1rem; border-radius:999px; font-weight:600;
 }
-/* Reduce bordes/márgenes extra del contenedor bajo la tabla (si los hubiera) */
-#nota-est-seleccion { display:none; }
+
+/* Topbar alineada a la izquierda, misma altura que 'Nueva tarea' */
+.topbar-row{display:flex; align-items:center; gap:.75rem; margin:.25rem 0 .75rem 0}
+
+/* Card contenedor de filtros (rectángulo) */
+.filters-card {
+  margin-top:.25rem;
+  background:#fff;
+  border:1px solid #E5E7EB;           /* gris suave */
+  border-radius:12px;
+  padding:16px 18px;
+}
+
+/* Quita NEGRITA de los nombres de columnas solo en esta sección */
+#editar-estado-card .ag-header-cell-label{
+  font-weight:400 !important;          /* normal */
+}
+
+/* Ajuste menor del contenedor de la tabla */
+#editar-estado-card{ margin-top:.6rem; }
 </style>
 """, unsafe_allow_html=True)
 
-# ---------- Barra superior (igual estilo a "Nueva tarea", alineada a la izquierda) ----------
-st.markdown('<div id="estbar" class="topbar">', unsafe_allow_html=True)
-c_est_toggle, c_est_pill = st.columns([0.028, 0.965], gap="medium")
-with c_est_toggle:
-    st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
-    def _toggle_est():
-        st.session_state["est_visible"] = not st.session_state.get("est_visible", True)
-    st.button("▾" if st.session_state.get("est_visible", True) else "▸",
-              key="est_toggle_icon", help="Mostrar/ocultar", on_click=_toggle_est)
-    st.markdown('</div>', unsafe_allow_html=True)
+# ---------- Barra superior (píldora + chevron) ----------
+st.markdown('<div class="topbar-row">', unsafe_allow_html=True)
+c_est_chev, c_est_pill = st.columns([0.06, 0.30])
+with c_est_chev:
+    def _toggle_est(): st.session_state["est_visible"] = not st.session_state["est_visible"]
+    st.button("▾" if st.session_state["est_visible"] else "▸",
+              key="est_toggle", help="Mostrar/ocultar", on_click=_toggle_est)
 with c_est_pill:
-    st.markdown('<div class="form-title">&nbsp;&nbsp;✏️&nbsp;&nbsp;Editar estado</div>', unsafe_allow_html=True)
+    st.markdown('<div class="pill-azul"><span>✏️</span> Editar estado</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 # ---------- fin barra superior ----------
 
-if st.session_state.get("est_visible", True):
-    # Tira de ayuda
+if st.session_state["est_visible"]:
+
+    # Help-strip
     st.markdown(
-        '<div class="help-strip">🔷 <strong>Actualiza el estado</strong> de una tarea ya registrada usando los filtros</div>',
+        '🔷 <strong>Actualiza el estado</strong> de una tarea ya registrada usando los filtros',
         unsafe_allow_html=True
     )
 
-    st.markdown('<div class="form-card" id="editar-estado-card">', unsafe_allow_html=True)
+    # =================== CARD DE FILTROS (rectángulo) ===================
+    st.markdown('<div class="filters-card">', unsafe_allow_html=True)
 
-    # ===== Base =====
-    if "df_main" not in st.session_state or st.session_state["df_main"] is None or len(st.session_state["df_main"]) == 0:
+    if "df_main" not in st.session_state or st.session_state["df_main"].empty:
         st.info("Aún no hay tareas para editar.")
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)  # cierra filters-card
     else:
         df_all = st.session_state["df_main"].copy()
-        need_cols = [
-            "Id","Área","Fase","Responsable","Tarea","Estado",
-            "Fecha inicio","Fecha estado actual","Hora estado actual",
-            "Estado modificado","Fecha estado modificado","Hora estado modificado"
-        ]
+
+        # Garantiza columnas requeridas
+        need_cols = ["Id","Área","Fase","Responsable","Tarea","Estado",
+                     "Fecha inicio","Fecha estado actual","Hora estado actual",
+                     "Estado modificado","Fecha estado modificado","Hora estado modificado"]
         for c in need_cols:
             if c not in df_all.columns:
                 df_all[c] = None
 
-        # ===== Filtros (disposición estándar) =====
+        # Fuentes de filtros
         areas = ["Todas"] + sorted([x for x in df_all["Área"].dropna().unique()])
         fases = ["Todas"] + sorted([x for x in df_all["Fase"].dropna().unique()])
         resps = ["Todos"] + sorted([x for x in df_all["Responsable"].dropna().unique()])
 
+        # Fila de filtros (dentro del rectángulo)
         f1, f2, f3, f4, f5, f6 = st.columns([1.0, 1.0, 1.05, 1.0, 1.0, .9], gap="large")
         f_area  = f1.selectbox("Área", options=areas, index=0, key="est_f_area")
         f_fase  = f2.selectbox("Fase", options=fases, index=0, key="est_f_fase")
@@ -1360,21 +1379,24 @@ if st.session_state.get("est_visible", True):
         f_to    = f5.date_input("Hasta", value=None, key="est_f_to")
         buscar  = f6.button("🔍 Buscar", use_container_width=True, key="est_buscar")
 
+        # Aplica filtros
         if buscar or "df_edit_cache" not in st.session_state:
             df_f = df_all.copy()
             if "Fecha inicio" in df_f.columns:
                 df_f["Fecha inicio"] = pd.to_datetime(df_f["Fecha inicio"], errors="coerce")
-            mask = pd.Series([True] * len(df_f))
-            if f_area != "Todas": mask &= (df_f["Área"] == f_area)
-            if f_fase != "Todas": mask &= (df_f["Fase"] == f_fase)
-            if f_resp != "Todos": mask &= (df_f["Responsable"] == f_resp)
-            if f_from: mask &= (df_f["Fecha inicio"].dt.date >= f_from)
-            if f_to:   mask &= (df_f["Fecha inicio"].dt.date <= f_to)
-            st.session_state["df_edit_cache"] = df_f[mask].copy()
+            m = pd.Series([True]*len(df_f))
+            if f_area != "Todas": m &= (df_f["Área"] == f_area)
+            if f_fase != "Todas": m &= (df_f["Fase"] == f_fase)
+            if f_resp != "Todos": m &= (df_f["Responsable"] == f_resp)
+            if f_from is not None: m &= (df_f["Fecha inicio"].dt.date >= f_from)
+            if f_to   is not None: m &= (df_f["Fecha inicio"].dt.date <= f_to)
+            st.session_state["df_edit_cache"] = df_f[m].copy()
 
-        df_res = st.session_state["df_edit_cache"].copy()
+        st.markdown("</div>", unsafe_allow_html=True)  # cierra filters-card
 
-        # ===== Tabla =====
+        # ============== TABLA (headers sin negrita) ==============
+        st.markdown('<div id="editar-estado-card">', unsafe_allow_html=True)
+
         def _fmt_d(x):
             try: return pd.to_datetime(x).date().strftime("%Y-%m-%d")
             except: return ""
@@ -1382,18 +1404,17 @@ if st.session_state.get("est_visible", True):
             try: return pd.to_datetime(x).strftime("%H:%M")
             except: return ""
 
+        df_res = st.session_state["df_edit_cache"].copy()
         view = pd.DataFrame({
             "Id": df_res["Id"],
             "Tarea": df_res["Tarea"].fillna(""),
             "Estado actual": df_res["Estado"].fillna(""),
             "Fecha estado actual": df_res["Fecha estado actual"].where(
-                pd.notna(df_res["Fecha estado actual"]),
-                df_res["Fecha inicio"].apply(_fmt_d)
-            ).fillna(""),
+                df_res["Fecha estado actual"].notna(), df_res["Fecha inicio"].apply(_fmt_d)
+            ),
             "Hora estado actual": df_res["Hora estado actual"].where(
-                pd.notna(df_res["Hora estado actual"]),
-                df_res["Fecha inicio"].apply(_fmt_t)
-            ).fillna(""),
+                df_res["Hora estado actual"].notna(), df_res["Fecha inicio"].apply(_fmt_t)
+            ),
             "Estado modificado": df_res["Estado modificado"].fillna(""),
             "Fecha estado modificado": df_res["Fecha estado modificado"].fillna(""),
             "Hora estado modificado": df_res["Hora estado modificado"].fillna(""),
@@ -1402,7 +1423,8 @@ if st.session_state.get("est_visible", True):
         gob = GridOptionsBuilder.from_dataframe(view)
         gob.configure_selection("single", use_checkbox=True)
         gob.configure_pagination(paginationAutoPageSize=True)
-        gob.configure_grid_options(domLayout="normal")  # sin headerClass → sin negrita
+        # NOTA: no aplicamos headerClass en negrita; CSS arriba ya asegura font-weight: 400
+        gob.configure_grid_options(domLayout="normal")
         grid = AgGrid(
             view,
             gridOptions=gob.build(),
@@ -1412,9 +1434,9 @@ if st.session_state.get("est_visible", True):
             theme="alpine",
             height=360,
         )
-        sel = grid.get("selected_rows", [])
+        sel = grid["selected_rows"]
 
-        # ===== Acción de actualización =====
+        # Si hay selección, muestra controles para actualizar
         if sel:
             sel_id = sel[0]["Id"]
             estados_lst = list(EMO_ESTADO.keys()) if "EMO_ESTADO" in globals() else \
@@ -1427,18 +1449,19 @@ if st.session_state.get("est_visible", True):
                 try:
                     df2 = st.session_state["df_main"].copy()
                     idx = df2.index[df2["Id"] == sel_id]
-                    if len(idx)==0:
+                    if len(idx) == 0:
                         st.error("No se encontró la fila en la base.")
                     else:
                         i0 = idx[0]
                         df2.at[i0,"Estado"] = nuevo_estado
                         ts = now_lima_trimmed() if "now_lima_trimmed" in globals() else datetime.now()
-                        df2.at[i0,"Fecha estado actual"]     = ts.strftime("%Y-%m-%d")
-                        df2.at[i0,"Hora estado actual"]      = ts.strftime("%H:%M")
-                        df2.at[i0,"Estado modificado"]       = nuevo_estado
+                        df2.at[i0,"Fecha estado actual"]    = ts.strftime("%Y-%m-%d")
+                        df2.at[i0,"Hora estado actual"]     = ts.strftime("%H:%M")
+                        df2.at[i0,"Estado modificado"]      = nuevo_estado
                         df2.at[i0,"Fecha estado modificado"] = ts.strftime("%Y-%m-%d")
                         df2.at[i0,"Hora estado modificado"]  = ts.strftime("%H:%M")
 
+                        # Saneos mínimos
                         df2 = df2.loc[:, ~pd.Index(df2.columns).duplicated()].copy()
                         if not df2.index.is_unique:
                             df2 = df2.reset_index(drop=True)
@@ -1451,7 +1474,7 @@ if st.session_state.get("est_visible", True):
                 except Exception as e:
                     st.error(f"No pude actualizar: {e}")
 
-    st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)  # cierra editar-estado-card
 
 
 # ================== Nueva alerta ==================
@@ -2400,6 +2423,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
