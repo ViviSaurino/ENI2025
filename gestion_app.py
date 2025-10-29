@@ -1264,10 +1264,8 @@ if st.session_state["ux_visible"]:
         fit_columns_on_grid_load=False,
         enable_enterprise_modules=False,
         reload_data=False,
-        height=200  # altura de la tabla
+        height=180  # altura de la tabla
     )
-
-    st.caption("👉 Completa *Estado/Fecha/Hora modificado*. Formatos sugeridos: **Fecha** `YYYY-MM-DD`, **Hora** `HH:mm`.")
 
     # ===== Botón Guardar abajo a la derecha =====
     _spacer, _btncol = st.columns([A+Fw+T_width+D+R, C], gap="medium")
@@ -2120,6 +2118,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
