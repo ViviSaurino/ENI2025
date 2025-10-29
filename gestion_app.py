@@ -1135,7 +1135,7 @@ submitted = False
 
 if st.session_state.get("nt_visible", True):
 
-    # ===== CSS: fuerzas 100% de controles + patch de min-width =====
+    # ===== CSS =====
     st.markdown("""
     <style>
     #form-nt .stTextInput, 
@@ -1159,21 +1159,11 @@ if st.session_state.get("nt_visible", True):
     #form-nt [data-testid^="baseButton"] button {
       width: 100% !important; display:block !important;
     }
-    /* === PATCH: alinear e igualar anchos en las 3 primeras celdas de la 1ª fila === */
-    #form-nt [data-testid="stHorizontalBlock"]:nth-of-type(1)
-      > [data-testid="column"]:nth-of-type(-n+3) [data-baseweb="select"] > div,
-    #form-nt [data-testid="stHorizontalBlock"]:nth-of-type(1)
-      > [data-testid="column"]:nth-of-type(-n+3) [data-baseweb="input"] > div {
-      min-width: 0 !important;
-      width: 100% !important;
-      box-sizing: border-box !important;
-    }
-    /* Reduce micro-espacio entre help-strip y tarjeta */
     .section-nt .help-strip-nt + .form-card{ margin-top: 6px !important; }
     </style>
     """, unsafe_allow_html=True)
 
-    # ===== Wrapper UNIDO: help-strip + form-card (sin hueco de por medio) =====
+    # ===== Wrapper UNIDO =====
     st.markdown("""
     <div class="section-nt">
       <div class="help-strip help-strip-nt" id="nt-help">
@@ -1183,49 +1173,46 @@ if st.session_state.get("nt_visible", True):
     """, unsafe_allow_html=True)
 
     # Catálogo de fases
-    FASES = [
-        "Capacitación",
-        "Post-capacitación",
-        "Pre-consistencia",
-        "Consistencia",
-        "Operación de campo",
-    ]
+    FASES = ["Capacitación", "Post-capacitación", "Pre-consistencia", "Consistencia", "Operación de campo"]
 
     with st.form("form_nueva_tarea", clear_on_submit=True):
-        # ===== Rejilla unificada (ambas filas) =====
-        A  = 1.80  # Área / Tipo
-        Fw = 2.10  # Fase / Estado
-        T  = 3.00  # Tarea / Fecha de inicio
-        D  = 2.00  # Detalle / Hora de inicio
-        R  = 2.00  # Responsable / ID
-        C  = 1.60  # Ciclo de mejora / Botón
-
-        # ============== FILA 1 ==============
+        # Rejilla
+        A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
         r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
 
         area = r1c1.selectbox("Área", options=AREAS_OPC, index=0, key="nt_area")
         fase = r1c2.selectbox("Fase", options=FASES, index=None, placeholder="Selecciona una fase", key="nt_fase")
         tarea   = r1c3.text_input("Tarea", placeholder="Describe la tarea")
         detalle = r1c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)")
-        resp    = r1c5.text_input("Responsable", placeholder="Nombre")
+        resp    = r1c5.text_input("Responsable", placeholder="Nombre", key="nt_resp")
         ciclo_mejora = r1c6.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
 
-        # ============== FILA 2 (misma malla) ==============
         c2_1, c2_2, c2_3, c2_4, c2_5, c2_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
         tipo   = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría")
         estado = _opt_map(c2_2, "Estado", EMO_ESTADO, "No iniciado")
-        fi_d   = c2_3.date_input("Fecha de inicio", value=None, key="fi_d")
-        fi_t   = c2_4.time_input("Hora de inicio", value=None, step=60, key="fi_t")
 
-        # ID asignado (debajo de Responsable)
+        # Fecha/hora (dentro del form no hay callbacks; la hora se fijará al enviar si quedó vacía)
+        fi_d = c2_3.date_input("Fecha de inicio", value=None, key="fi_d")
+        fi_t = c2_4.time_input("Hora de inicio", value=st.session_state.get("fi_t"), step=60, key="fi_t")
+
+        # ===== ID Asignado (preview) =====
         try:
-            _df_tmp = st.session_state["df_main"]
-            id_preview = next_id_area(_df_tmp, area)
+            _df_tmp = st.session_state.get("df_main", pd.DataFrame()).copy()
         except Exception:
-            id_preview = ""
-        c2_5.text_input("ID asignado", value=id_preview, disabled=True)
+            _df_tmp = pd.DataFrame()
 
-        # Botón (debajo de Ciclo de mejora) con spacer para alinear altura
+        # Usamos lo que haya en session_state (si aún no se envía el form, puede estar vacío)
+        area_ss = st.session_state.get("nt_area", area)
+        resp_ss = st.session_state.get("nt_resp", resp)
+
+        prefix = make_id_prefix(area_ss, resp_ss)          # ej. JVS
+        if st.session_state.get("fi_d"):
+            id_preview = next_id_by_person(_df_tmp, area_ss, resp_ss)   # ej. JVS_1
+        else:
+            id_preview = f"{prefix}_" if prefix else ""                 # ej. JVS_
+
+        c2_5.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
+
         with c2_6:
             st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
             submitted = st.form_submit_button("➕ Agregar", use_container_width=True)
@@ -1233,55 +1220,50 @@ if st.session_state.get("nt_visible", True):
     # ---------- Utilidad local para guardar sin reindex ----------
     def sanitize_df_for_save(df_in: pd.DataFrame, target_cols=None) -> pd.DataFrame:
         df_out = df_in.copy()
-
-        # 0) Unificar nombre de bandera de borrado: 'DEL' -> '__DEL__'
+        # Unificar 'DEL' -> '__DEL__'
         if "DEL" in df_out.columns and "__DEL__" in df_out.columns:
             df_out["__DEL__"] = df_out["__DEL__"].fillna(False) | df_out["DEL"].fillna(False)
             df_out = df_out.drop(columns=["DEL"])
         elif "DEL" in df_out.columns:
             df_out = df_out.rename(columns={"DEL": "__DEL__"})
-
-        # 1) Columnas únicas
+        # Columnas únicas + índice único
         df_out = df_out.loc[:, ~pd.Index(df_out.columns).duplicated()].copy()
-
-        # 2) Índice único
         if not df_out.index.is_unique:
             df_out = df_out.reset_index(drop=True)
-
-        # 3) Esquema objetivo (si existe) sin duplicados y sin reindex
+        # Esquema objetivo sin reindex
         if target_cols:
-            target = list(dict.fromkeys(list(target_cols)))  # preserva orden
+            target = list(dict.fromkeys(list(target_cols)))
             for c in target:
                 if c not in df_out.columns:
                     df_out[c] = None
             ordered = [c for c in target] + [c for c in df_out.columns if c not in target]
             df_out = df_out.loc[:, ordered].copy()
-
         return df_out
 
     # ============== POST Submit ==============
     if submitted:
         try:
-            # 1) Base actual
-            df = st.session_state["df_main"].copy()
+            from datetime import datetime
 
-            # —— SANEAMOS de entrada para evitar fallos posteriores ——
+            df = st.session_state["df_main"].copy()
             df = sanitize_df_for_save(df, COLS if "COLS" in globals() else None)
 
-            # Garantiza "Ciclo de mejora"
             if "Ciclo de mejora" not in df.columns:
                 df["Ciclo de mejora"] = ""
 
-            # 2) Nueva fila
-            f_ini = combine_dt(fi_d, fi_t)
+            # Si no se puso hora, la fijamos ahora (hora actual, sin segundos)
+            if not st.session_state.get("fi_t"):
+                st.session_state["fi_t"] = datetime.now().replace(second=0, microsecond=0).time()
+
+            f_ini = combine_dt(st.session_state.get("fi_d"), st.session_state.get("fi_t"))
 
             new = blank_row()
             new.update({
                 "Área": area,
-                "Id": next_id_area(df, area),   # ID real guardado
+                "Id": next_id_by_person(df, area, st.session_state.get("nt_resp", "")),
                 "Tarea": tarea,
                 "Tipo": tipo,
-                "Responsable": resp,
+                "Responsable": st.session_state.get("nt_resp", ""),
                 "Fase": fase,
                 "Estado": estado,
                 "Fecha inicio": f_ini,
@@ -1289,45 +1271,25 @@ if st.session_state.get("nt_visible", True):
                 "Detalle": detalle,
             })
 
-            # Diagnóstico de duplicados (visibilidad)
-            dups_df_cols = df.columns[df.columns.duplicated()].tolist()
-            dups_cols_cfg = []
-            if "COLS" in globals():
-                _s = pd.Index(COLS)
-                dups_cols_cfg = _s[_s.duplicated()].tolist()
-            if dups_df_cols or dups_cols_cfg:
-                st.warning(f"Columnas duplicadas — df: {dups_df_cols} | COLS: {dups_cols_cfg}")
-
-            # —— Si envías a Sheets, serializa la fecha:
-            # new_for_sheets = new.copy()
-            # new_for_sheets["Fecha inicio"] = None if pd.isna(f_ini) else f_ini.strftime("%Y-%m-%d %H:%M:%S")
-            # write_to_sheet(new_for_sheets)
-
-            # 3) Inserta + normaliza fecha (CSV/local usa Timestamp)
             df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
             if "Fecha inicio" in df.columns:
                 df["Fecha inicio"] = pd.to_datetime(df["Fecha inicio"], errors="coerce")
 
-            # 4) Guardado SIN reindex (parche definitivo)
             df = sanitize_df_for_save(df, COLS if "COLS" in globals() else None)
 
             st.session_state["df_main"] = df.copy()
             os.makedirs("data", exist_ok=True)
             df.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig", mode="w")
 
-            # 5) Mensaje y refresco
             st.success(f"✔ Tarea agregada (Id {new['Id']}).")
             st.rerun()
 
         except Exception as e:
             st.error(f"No pude guardar la nueva tarea: {e}")
 
-    # Cierra form-card + section-nt
+    # Cierre wrappers
     st.markdown("</div></div>", unsafe_allow_html=True)
-
-    # Separación vertical entre secciones (usa tu constante existente)
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
-
 
 
 # ================== Nueva alerta ==================
@@ -2276,6 +2238,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
