@@ -20,7 +20,7 @@ if not hasattr(_stc, "components"):
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, JsCode, DataReturnMode
 
 # ================== Constantes de layout / UI ==================
-SECTION_GAP = 30  # píxeles de separación vertical entre secciones
+SECTION_GAP = 50  # píxeles de separación vertical entre secciones
 
 st.markdown("""
 <style>
@@ -2375,6 +2375,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
