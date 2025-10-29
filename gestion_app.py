@@ -1214,12 +1214,45 @@ if st.session_state.get("nt_visible", True):
       <div class="form-card" id="form-nt">
     """, unsafe_allow_html=True)
 
+    # ---------- Fila "en vivo" SOLO para FECHA/HORA, en el MISMO LUGAR (2ª fila) ----------
+    # Claves base
+    st.session_state.setdefault("fi_d", None)
+    st.session_state.setdefault("fi_t", None)
+
+    A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
+    # Esta fila usa el MISMO grid que tu segunda fila
+    _r2_1, _r2_2, r2_date, r2_time, _r2_5, _r2_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
+
+    # Fecha editable con callback inmediato
+    r2_date.date_input("Fecha de inicio", key="fi_d", on_change=_auto_time_on_date)
+
+    # Hora NO editable: se muestra lo que haya en session_state (se llena en el callback)
+    _fi_t_show = st.session_state.get("fi_t")
+    _fi_t_text = ""
+    if _fi_t_show is not None:
+        try:
+            _fi_t_text = _fi_t_show.strftime("%H:%M")
+        except Exception:
+            _fi_t_text = str(_fi_t_show)
+    r2_time.text_input("Hora de inicio (auto)", value=_fi_t_text, disabled=True,
+                       help="Se establece automáticamente al elegir la fecha")
+
+    # Si ya hay fecha pero aún no hora (primer render), forzar ahora mismo
+    if st.session_state.get("fi_d") and not st.session_state.get("fi_t"):
+        _auto_time_on_date()
+        # actualizar el texto mostrado
+        _fi_t_show = st.session_state.get("fi_t")
+        if _fi_t_show:
+            try:
+                _fi_t_text = _fi_t_show.strftime("%H:%M")
+            except Exception:
+                _fi_t_text = str(_fi_t_show)
+
     # Catálogo de fases
     FASES = ["Capacitación", "Post-capacitación", "Pre-consistencia", "Consistencia", "Operación de campo"]
 
     with st.form("form_nueva_tarea", clear_on_submit=True):
-        # Rejilla
-        A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
+        # Rejilla FILA 1 (igual que siempre)
         r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
 
         area = r1c1.selectbox("Área", options=AREAS_OPC, index=0, key="nt_area")
@@ -1229,22 +1262,13 @@ if st.session_state.get("nt_visible", True):
         resp    = r1c5.text_input("Responsable", placeholder="Nombre", key="nt_resp")
         ciclo_mejora = r1c6.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
 
-        c2_1, c2_2, c2_3, c2_4, c2_5, c2_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
+        # Rejilla FILA 2: dejamos huecos en c2_3 y c2_4 (los ocupó la fila en vivo)
+        c2_1, c2_2, _c2_3_gap, _c2_4_gap, c2_5, c2_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
         tipo   = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría")
         estado = _opt_map(c2_2, "Estado", EMO_ESTADO, "No iniciado")
-
-        # Fecha de inicio (editable)
-        fi_d = c2_3.date_input("Fecha de inicio", value=None, key="fi_d")
-
-        # Hora no editable (se auto-asigna al guardar). Mostramos previa si existe.
-        _fi_t_preview = ""
-        _fi_t_obj = st.session_state.get("fi_t")
-        if _fi_t_obj is not None:
-            try:
-                _fi_t_preview = _fi_t_obj.strftime("%H:%M")
-            except Exception:
-                _fi_t_preview = str(_fi_t_obj)
-        c2_4.text_input("Hora de inicio (auto)", value=_fi_t_preview, disabled=True, help="Se asigna automáticamente al guardar")
+        # huecos para mantener alineación
+        _c2_3_gap.markdown("<div style='height:36px'></div>", unsafe_allow_html=True)
+        _c2_4_gap.markdown("<div style='height:36px'></div>", unsafe_allow_html=True)
 
         # ===== ID Asignado (preview) =====
         try:
@@ -1270,17 +1294,14 @@ if st.session_state.get("nt_visible", True):
     # ---------- Utilidad local para guardar sin reindex ----------
     def sanitize_df_for_save(df_in: pd.DataFrame, target_cols=None) -> pd.DataFrame:
         df_out = df_in.copy()
-        # Unificar 'DEL' -> '__DEL__'
         if "DEL" in df_out.columns and "__DEL__" in df_out.columns:
             df_out["__DEL__"] = df_out["__DEL__"].fillna(False) | df_out["DEL"].fillna(False)
             df_out = df_out.drop(columns=["DEL"])
         elif "DEL" in df_out.columns:
             df_out = df_out.rename(columns={"DEL": "__DEL__"})
-        # Columnas únicas + índice único
         df_out = df_out.loc[:, ~pd.Index(df_out.columns).duplicated()].copy()
         if not df_out.index.is_unique:
             df_out = df_out.reset_index(drop=True)
-        # Esquema objetivo sin reindex
         if target_cols:
             target = list(dict.fromkeys(list(target_cols)))
             for c in target:
@@ -1301,10 +1322,7 @@ if st.session_state.get("nt_visible", True):
             if "Ciclo de mejora" not in df.columns:
                 df["Ciclo de mejora"] = ""
 
-            # Si hay fecha y no hay hora previa, asigna hora actual (sin segundos)
-            if st.session_state.get("fi_d") and not st.session_state.get("fi_t"):
-                st.session_state["fi_t"] = datetime.now().replace(second=0, microsecond=0).time()
-
+            # f_ini se arma con lo que ya quedó en session_state por el callback en vivo
             f_ini = combine_dt(st.session_state.get("fi_d"), st.session_state.get("fi_t"))
 
             new = blank_row()
@@ -1340,6 +1358,7 @@ if st.session_state.get("nt_visible", True):
     # Cierre wrappers
     st.markdown("</div></div>", unsafe_allow_html=True)
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
+
 
 
 # ================== Nueva alerta ==================
@@ -2288,6 +2307,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
