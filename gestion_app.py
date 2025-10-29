@@ -49,7 +49,7 @@ st.markdown("""
 .help-strip-na + .form-card,
 .help-strip-pri + .form-card,
 .help-strip-eval + .form-card{
-  margin-top: 10px !important;
+  margin-top: 6px !important;
 }
 
 /* 3) Si Streamlit mete wrappers entre medio, aplica con hermano general (~) */
@@ -1043,12 +1043,6 @@ st.markdown('</div>', unsafe_allow_html=True)
 submitted = False
 
 if st.session_state.get("nt_visible", True):
-    # Tira de ayuda
-    st.markdown("""
-    <div class="help-strip help-strip-nt" id="nt-help">
-      ✳️ <strong>Completa los campos principales</strong> para registrar una nueva tarea
-    </div>
-    """, unsafe_allow_html=True)
 
     # ===== CSS: fuerzas 100% de controles + patch de min-width =====
     st.markdown("""
@@ -1074,7 +1068,6 @@ if st.session_state.get("nt_visible", True):
     #form-nt [data-testid^="baseButton"] button {
       width: 100% !important; display:block !important;
     }
-
     /* === PATCH: alinear e igualar anchos en las 3 primeras celdas de la 1ª fila === */
     #form-nt [data-testid="stHorizontalBlock"]:nth-of-type(1)
       > [data-testid="column"]:nth-of-type(-n+3) [data-baseweb="select"] > div,
@@ -1084,10 +1077,19 @@ if st.session_state.get("nt_visible", True):
       width: 100% !important;
       box-sizing: border-box !important;
     }
+    /* Reduce micro-espacio entre help-strip y tarjeta */
+    .section-nt .help-strip-nt + .form-card{ margin-top: 6px !important; }
     </style>
     """, unsafe_allow_html=True)
 
-    st.markdown('<div class="form-card" id="form-nt">', unsafe_allow_html=True)
+    # ===== Wrapper UNIDO: help-strip + form-card (sin hueco de por medio) =====
+    st.markdown("""
+    <div class="section-nt">
+      <div class="help-strip help-strip-nt" id="nt-help">
+        ✳️ <strong>Completa los campos principales</strong> para registrar una nueva tarea
+      </div>
+      <div class="form-card" id="form-nt">
+    """, unsafe_allow_html=True)
 
     # Catálogo de fases
     FASES = [
@@ -1201,7 +1203,10 @@ if st.session_state.get("nt_visible", True):
         except Exception as e:
             st.error(f"No pude guardar la nueva tarea: {e}")
 
-    st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
+    # Cierra form-card + section-nt
+    st.markdown("</div></div>", unsafe_allow_html=True)
+
+    # Separación vertical entre secciones (usa tu constante existente)
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
 
 
@@ -1230,12 +1235,6 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 if st.session_state["ux_visible"]:
 
-    st.markdown("""
-    <div class="help-strip help-strip-ux" id="ux-help">
-      🔄 <strong>Actualiza el estado</strong> de una tarea ya registrada usando los filtros
-    </div>
-    """, unsafe_allow_html=True)
-
     # ====== CONTENEDOR LOCAL + PATCH de anchos/min-width ======
     st.markdown('<div id="ux-section">', unsafe_allow_html=True)
     st.markdown("""
@@ -1256,11 +1255,20 @@ if st.session_state["ux_visible"]:
         > [data-testid="column"]:nth-of-type(-n+3) [data-baseweb="input"] > div{
         min-width:0 !important; width:100% !important; box-sizing:border-box !important;
       }
+
+      /* Reduce micro-espacio entre help-strip y tarjeta */
+      .section-ux .help-strip-ux + .form-card{ margin-top: 6px !important; }
     </style>
     """, unsafe_allow_html=True)
 
-    # Tarjeta con borde
-    st.markdown('<div class="form-card">', unsafe_allow_html=True)
+    # ===== Wrapper UNIDO: help-strip + form-card (sin hueco de por medio) =====
+    st.markdown("""
+    <div class="section-ux">
+      <div class="help-strip help-strip-ux" id="ux-help">
+        🔄 <strong>Actualiza el estado</strong> de una tarea ya registrada usando los filtros
+      </div>
+      <div class="form-card">
+    """, unsafe_allow_html=True)
 
     # ===== Proporciones (idénticas a la sección "Nueva tarea") =====
     A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60   # ← mismas de Nueva tarea
@@ -1424,8 +1432,12 @@ if st.session_state["ux_visible"]:
             except Exception as e:
                 st.error(f"No pude guardar los cambios: {e}")
 
-    st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
-    st.markdown('</div>', unsafe_allow_html=True)  # cierra #ux-section
+    # Cierra form-card + section-ux y el contenedor local
+    st.markdown('</div></div>', unsafe_allow_html=True)   # cierra .form-card y .section-ux
+    st.markdown('</div>', unsafe_allow_html=True)         # cierra #ux-section
+
+    # Separación vertical entre secciones
+    st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
 
 
 # ================== Nueva alerta ==================
@@ -1449,21 +1461,26 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 if st.session_state["na_visible"]:
 
-    # --- contenedor local + css: botones al 100% del ancho de su columna ---
+    # --- contenedor local + css ---
     st.markdown('<div id="na-section">', unsafe_allow_html=True)
     st.markdown("""
     <style>
+      /* Botones a todo el ancho de su columna */
       #na-section .stButton > button { width: 100% !important; }
+
+      /* Reduce micro-espacio entre help-strip y tarjeta en esta sección */
+      .section-na .help-strip-na + .form-card{ margin-top: 6px !important; }
     </style>
     """, unsafe_allow_html=True)
 
+    # ===== Wrapper UNIDO: help-strip + form-card (sin hueco de por medio) =====
     st.markdown("""
-    <div class="help-strip help-strip-na" id="na-help">
-      ⚠️ <strong>Vincula una alerta</strong> a una tarea ya registrada
-    </div>
+    <div class="section-na">
+      <div class="help-strip help-strip-na" id="na-help">
+        ⚠️ <strong>Vincula una alerta</strong> a una tarea ya registrada
+      </div>
+      <div class="form-card">
     """, unsafe_allow_html=True)
-
-    st.markdown('<div class="form-card">', unsafe_allow_html=True)
 
     # Proporciones idénticas a "Editar estado"
     A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
@@ -1621,9 +1638,12 @@ if st.session_state["na_visible"]:
             except Exception as e:
                 st.error(f"No pude guardar los cambios: {e}")
 
-    st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
-    st.markdown('</div>', unsafe_allow_html=True)  # cierra #na-section
+    # Cierra form-card + section-na y el contenedor local
+    st.markdown('</div></div>', unsafe_allow_html=True)  # cierra .form-card y .section-na
+    st.markdown('</div>', unsafe_allow_html=True)        # cierra #na-section
 
+    # Separación vertical entre secciones
+    st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
 
 
 # =========================== PRIORIDAD ===============================
@@ -1646,13 +1666,24 @@ st.markdown('</div>', unsafe_allow_html=True)
 # ---------- fin barra superior ----------
 
 if st.session_state["pri_visible"]:
+
+    # --- contenedor local + css (ancho de botones y micro-gap del help-strip) ---
+    st.markdown('<div id="pri-section">', unsafe_allow_html=True)
     st.markdown("""
-    <div class="help-strip" id="pri-help">
-      🧭 <strong>Asigna o edita prioridades</strong> para varias tareas a la vez (solo jefatura)
-    </div>
+    <style>
+      #pri-section .stButton > button { width: 100% !important; }
+      .section-pri .help-strip-pri + .form-card{ margin-top: 6px !important; }
+    </style>
     """, unsafe_allow_html=True)
 
-    st.markdown('<div class="form-card">', unsafe_allow_html=True)
+    # ===== Wrapper UNIDO: help-strip + form-card (sin hueco de por medio) =====
+    st.markdown("""
+    <div class="section-pri">
+      <div class="help-strip help-strip-pri" id="pri-help">
+        🧭 <strong>Asigna o edita prioridades</strong> para varias tareas a la vez (solo jefatura)
+      </div>
+      <div class="form-card">
+    """, unsafe_allow_html=True)
 
     # Proporciones alineadas con las otras secciones
     A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
@@ -1794,8 +1825,12 @@ if st.session_state["pri_visible"]:
         except Exception as e:
             st.error(f"No pude guardar los cambios de prioridad: {e}")
 
-    st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
+    # Cierra form-card + section-pri y el contenedor local
+    st.markdown('</div></div>', unsafe_allow_html=True)  # cierra .form-card y .section-pri
+    st.markdown('</div>', unsafe_allow_html=True)        # cierra #pri-section
 
+    # Separación vertical entre secciones
+    st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
 
 # =========================== EVALUACIÓN ===============================
 
@@ -1817,13 +1852,24 @@ st.markdown('</div>', unsafe_allow_html=True)
 # ---------- fin barra superior ----------
 
 if st.session_state["eva_visible"]:
+
+    # --- contenedor local + css (ancho de botón y micro-gap del help-strip) ---
+    st.markdown('<div id="eva-section">', unsafe_allow_html=True)
     st.markdown("""
-    <div class="help-strip" id="eva-help">
-      📝 <strong>Registra/actualiza la evaluación</strong> de tareas filtradas.
-    </div>
+    <style>
+      #eva-section .stButton > button { width: 100% !important; }
+      .section-eva .help-strip-eval + .form-card{ margin-top: 6px !important; }
+    </style>
     """, unsafe_allow_html=True)
 
-    st.markdown('<div class="form-card">', unsafe_allow_html=True)
+    # ===== Wrapper UNIDO: help-strip + form-card (sin hueco de por medio) =====
+    st.markdown("""
+    <div class="section-eva">
+      <div class="help-strip help-strip-eval" id="eva-help">
+        📝 <strong>Registra/actualiza la evaluación</strong> de tareas filtradas.
+      </div>
+      <div class="form-card">
+    """, unsafe_allow_html=True)
 
     # Anchos calcados a las otras secciones
     A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
@@ -2002,7 +2048,12 @@ if st.session_state["eva_visible"]:
         except Exception as e:
             st.error(f"No pude guardar las evaluaciones: {e}")
 
-    st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
+    # Cierra form-card + section-eva y el contenedor local
+    st.markdown('</div></div>', unsafe_allow_html=True)  # cierra .form-card y .section-eva
+    st.markdown('</div>', unsafe_allow_html=True)        # cierra #eva-section
+
+    # Separación vertical entre secciones
+    st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
 
 
 
@@ -2324,20 +2375,3 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
