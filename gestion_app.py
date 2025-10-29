@@ -1560,16 +1560,19 @@ if st.session_state["na_visible"]:
 st.session_state.setdefault("pri_visible", True)
 chev_pri = "▾" if st.session_state["pri_visible"] else "▸"
 
+# ---------- Barra superior ----------
 st.markdown('<div class="topbar-pri">', unsafe_allow_html=True)
 c_toggle_p, c_pill_p = st.columns([0.028, 0.965], gap="medium")
 with c_toggle_p:
     st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
-    def _toggle_pri(): st.session_state["pri_visible"] = not st.session_state["pri_visible"]
-    st.button(chev_pri, key="pri_toggle", help="Mostrar/ocultar", on_click=_toggle_pri)
+    def _toggle_pri():
+        st.session_state["pri_visible"] = not st.session_state["pri_visible"]
+    st.button(chev_pri, key="pri_toggle_v2", help="Mostrar/ocultar", on_click=_toggle_pri)
     st.markdown('</div>', unsafe_allow_html=True)
 with c_pill_p:
     st.markdown('<div class="form-title-pri">🧭&nbsp;&nbsp;Prioridad</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
+# ---------- fin barra superior ----------
 
 if st.session_state["pri_visible"]:
     st.markdown("""
@@ -1579,120 +1582,149 @@ if st.session_state["pri_visible"]:
     """, unsafe_allow_html=True)
 
     st.markdown('<div class="form-card">', unsafe_allow_html=True)
+
+    # Proporciones alineadas con las otras secciones
+    A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
+
     df_all = st.session_state["df_main"].copy()
+    # Asegura columna Prioridad
+    if "Prioridad" not in df_all.columns:
+        df_all["Prioridad"] = "Media"
 
-    # ===== Claves estables y lectura desde session_state =====
-    # (asegura persistencia al hacer clic fuera del form)
-    _k_area  = "pri_area_sel"
-    _k_resp  = "pri_resp_sel"
-    _k_d     = "pri_desde"
-    _k_h     = "pri_hasta"
-    _k_tasks = "pri_tareas_sel"
+    # ===== FILTROS (misma fila: Área, Fase, Responsable, Desde, Hasta, Buscar) =====
+    with st.form("pri_filtros_v1", clear_on_submit=False):
+        c_area, c_fase, c_resp, c_desde, c_hasta, c_buscar = st.columns([A, Fw, T_width, D, R, C], gap="medium")
 
-    with st.form("form_prioridad", clear_on_submit=False):
-        # === Fila de filtros con pesos que calzan con el grid ===
-        W_AREA, W_RESP, W_TAREA, W_PRI = COL_W_AREA, PILL_W_RESP, COL_W_TAREA, COL_W_PRIORIDAD
-        r1_area, r1_resp, r1_desde, r1_hasta, r1_tarea, r1_ids = st.columns(
-            [W_AREA, W_RESP, W_RESP, W_RESP, W_TAREA, W_PRI], gap="small"
+        AREAS_OPC = st.session_state.get(
+            "AREAS_OPC",
+            ["Jefatura","Gestión","Metodología","Base de datos","Monitoreo","Capacitación","Consistencia"]
         )
+        pri_area = c_area.selectbox("Área", ["Todas"] + AREAS_OPC, index=0, key="pri_area")
 
-        areas_opts = ["Todas"] + AREAS_OPC
-        area_sel = r1_area.selectbox("Área", options=areas_opts, index=0, key=_k_area, disabled=not CAN_EDIT)
+        fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+        pri_fase = c_fase.selectbox("Fase", ["Todas"] + fases_all, index=0, key="pri_fase")
 
-        df_resp = df_all if st.session_state[_k_area] == "Todas" else df_all[df_all["Área"] == st.session_state[_k_area]]
-        responsables_all = sorted([x for x in df_resp["Responsable"].astype(str).unique() if x and x != "nan"])
-        resp_sel = r1_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0, key=_k_resp, disabled=not CAN_EDIT)
+        df_resp_src = df_all.copy()
+        if pri_area != "Todas":
+            df_resp_src = df_resp_src[df_resp_src["Área"] == pri_area]
+        if pri_fase != "Todas" and "Fase" in df_resp_src.columns:
+            df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str) == pri_fase]
+        responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+        pri_resp = c_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0, key="pri_resp")
 
-        r1_desde.date_input("Desde", value=None, key=_k_d, disabled=not CAN_EDIT)
-        r1_hasta.date_input("Hasta", value=None, key=_k_h, disabled=not CAN_EDIT)
+        pri_desde = c_desde.date_input("Desde", value=None, key="pri_desde")
+        pri_hasta = c_hasta.date_input("Hasta",  value=None, key="pri_hasta")
 
-        # Dataset filtrado + lista multiselección de tareas
-        def _filtra(df):
-            out = df.copy()
-            if st.session_state[_k_area] != "Todas":
-                out = out[out["Área"] == st.session_state[_k_area]]
-            if st.session_state[_k_resp] != "Todos":
-                out = out[out["Responsable"].astype(str) == st.session_state[_k_resp]]
-            if st.session_state[_k_d]:
-                fcol = pd.to_datetime(out["Fecha inicio"], errors="coerce")
-                out = out[fcol.dt.date >= st.session_state[_k_d]]
-            if st.session_state[_k_h]:
-                fcol = pd.to_datetime(out["Fecha inicio"], errors="coerce")
-                out = out[fcol.dt.date <= st.session_state[_k_h]]
-            return out
+        with c_buscar:
+            st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
+            pri_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
-        df_f = _filtra(df_all).dropna(subset=["Id"]).copy()
-        df_f["Tarea_str"] = df_f["Tarea"].astype(str).replace({"nan": ""})
-        opciones_tarea = df_f["Tarea_str"].tolist()
+    # ===== Filtrado para la tabla =====
+    df_filtrado = df_all.copy()
+    if pri_do_buscar:
+        if pri_area != "Todas":
+            df_filtrado = df_filtrado[df_filtrado["Área"] == pri_area]
+        if pri_fase != "Todas" and "Fase" in df_filtrado.columns:
+            df_filtrado = df_filtrado[df_filtrado["Fase"].astype(str) == pri_fase]
+        if pri_resp != "Todos":
+            df_filtrado = df_filtrado[df_filtrado["Responsable"].astype(str) == pri_resp]
 
-        r1_tarea.multiselect("Tarea (multi)", opciones_tarea, default=st.session_state.get(_k_tasks, []),
-                             key=_k_tasks, disabled=not CAN_EDIT)
+        base_fecha_col = "Fecha inicio" if "Fecha inicio" in df_filtrado.columns else None
+        if base_fecha_col:
+            fcol = pd.to_datetime(df_filtrado[base_fecha_col], errors="coerce")
+            if pri_desde:
+                df_filtrado = df_filtrado[fcol >= pd.to_datetime(pri_desde)]
+            if pri_hasta:
+                df_filtrado = df_filtrado[fcol <= (pd.to_datetime(pri_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
 
-        # Ids seleccionados (solo lectura) — calculado SIEMPRE desde session_state
-        if st.session_state[_k_tasks]:
-            ids_sel = df_f.loc[df_f["Tarea_str"].isin(st.session_state[_k_tasks]), "Id"].astype(str).tolist()
-        else:
-            ids_sel = []
-        r1_ids.text_input("Ids seleccionados", value=", ".join(ids_sel) if ids_sel else "—", disabled=True)
+    # ===== Tabla PRIORIDAD =====
+    st.markdown("**Resultados**")
 
-        # ===== Tabla editable PRIORIDAD (AgGrid) =====
-        st.write("")
-        if ids_sel:
-            df_tab = df_f.loc[df_f["Tarea_str"].isin(st.session_state[_k_tasks]),
-                              ["Id", "Área", "Responsable", "Tarea", "Prioridad"]].copy()
-        else:
-            df_tab = pd.DataFrame(columns=["Id","Área","Responsable","Tarea","Prioridad"])
+    cols_out = ["Id", "Tarea", "Prioridad actual", "Prioridad a ajustar"]
 
-        if "Prioridad" not in df_tab.columns:
-            df_tab["Prioridad"] = "Media"
-        df_tab["Id"] = df_tab["Id"].astype(str)
+    df_view = pd.DataFrame(columns=cols_out)
+    if not df_filtrado.empty:
+        df_tmp = df_filtrado.dropna(subset=["Id"]).copy()
+        if "Tarea" not in df_tmp.columns:
+            df_tmp["Tarea"] = ""
+        # prior actual = Prioridad (default Media)
+        prior_actual = df_tmp.get("Prioridad", "Media").fillna("Media").replace({"": "Media"})
+        df_view = pd.DataFrame({
+            "Id": df_tmp["Id"].astype(str),
+            "Tarea": df_tmp["Tarea"].astype(str).replace({"nan": ""}),
+            "Prioridad actual": prior_actual,
+            # Por defecto proponemos la misma prioridad actual (puedes cambiarla en el combo)
+            "Prioridad a ajustar": prior_actual
+        })[cols_out].copy()
 
-        st.caption("Lista seleccionada")
-        df_pri = _clean_df_for_grid(df_tab)
-        grid_opt_pri = _grid_options_prioridad(df_pri)
+    from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode
+    gob = GridOptionsBuilder.from_dataframe(df_view)
+    gob.configure_grid_options(
+        suppressMovableColumns=True, domLayout="normal", ensureDomOrder=True,
+        rowHeight=38, headerHeight=42
+    )
+    # Solo lectura
+    for ro in ["Id", "Tarea", "Prioridad actual"]:
+        gob.configure_column(ro, editable=False)
 
-        # ⬇️ Paso 4: wrapper con ID para aplicar el CSS de alineación
-        st.markdown('<div id="prior-grid">', unsafe_allow_html=True)
-        grid_pri = AgGrid(
-            df_pri,
-            gridOptions=grid_opt_pri,
-            fit_columns_on_grid_load=False,
-            data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
-            update_mode=GridUpdateMode.VALUE_CHANGED,
-            allow_unsafe_jscode=True,
-            theme="balham",
-            height=180,
-            custom_css={
-                ".ag-root-wrapper": {"height": "180px !important"},
-                ".ag-body-viewport": {"height": "140px !important"},
-            },
-            key="grid_prior"   # clave estable
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
+    # Editable: lista Baja/Media/Alta
+    gob.configure_column(
+        "Prioridad a ajustar",
+        editable=True,
+        cellEditor="agSelectCellEditor",
+        cellEditorParams={"values": ["Baja", "Media", "Alta"]},
+        width=170
+    )
 
-        edited = pd.DataFrame(grid_pri["data"]) if isinstance(grid_pri, dict) and "data" in grid_pri else df_pri.copy()
+    grid_pri = AgGrid(
+        df_view,
+        gridOptions=gob.build(),
+        data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+        update_mode=GridUpdateMode.VALUE_CHANGED,
+        fit_columns_on_grid_load=False,
+        enable_enterprise_modules=False,
+        reload_data=False,
+        height=220
+    )
 
-        # === Botón con ancho de la última columna ===
-        b1, b2, b3, b4, b5, b6 = st.columns([W_AREA, W_RESP, W_RESP, W_RESP, W_TAREA, W_PRI], gap="small")
-        with b6:
-            do_save_pri = st.form_submit_button("🧭 Dar prioridad", use_container_width=True, disabled=not CAN_EDIT)
+    # ===== Guardar (actualiza Prioridad en df_main) =====
+    _sp_pri, _btn_pri = st.columns([A+Fw+T_width+D+R, C], gap="medium")
+    with _btn_pri:
+        do_save_pri = st.button("🧭 Dar prioridad", use_container_width=True)
 
-    if CAN_EDIT and 'do_save_pri' in locals() and do_save_pri:
-        if edited.empty:
-            st.warning("No hay filas seleccionadas para actualizar.")
-        else:
-            df = st.session_state["df_main"].copy()
-            for _, row in edited.iterrows():
-                m = df["Id"].astype(str) == str(row["Id"])
-                if m.any():
-                    df.loc[m, "Prioridad"] = row.get("Prioridad", df.loc[m, "Prioridad"])
-            st.session_state["df_main"] = df.copy()
-            _save_local(df[COLS].copy())
-            ok, msg = _write_sheet_tab(df[COLS].copy())
-            st.success(f"✔ Prioridades actualizadas ({len(edited)} filas). {msg}") if ok else st.warning(f"Actualizado localmente. {msg}")
-    elif not CAN_EDIT:
-        st.info("🔒 Solo jefatura puede editar prioridades.")
-    st.markdown('</div>', unsafe_allow_html=True)  # form-card
+    if do_save_pri:
+        try:
+            edited = pd.DataFrame(grid_pri["data"]).copy()
+            if edited.empty:
+                st.info("No hay filas para actualizar.")
+            else:
+                df_base = st.session_state["df_main"].copy()
+                cambios = 0
+                for _, row in edited.iterrows():
+                    id_row = str(row.get("Id", "")).strip()
+                    if not id_row:
+                        continue
+                    nuevo = str(row.get("Prioridad a ajustar", "")).strip()
+                    if not nuevo:
+                        continue
+                    m = df_base["Id"].astype(str).str.strip() == id_row
+                    if not m.any():
+                        continue
+                    # Escribe la prioridad final (persistencia del último estado)
+                    df_base.loc[m, "Prioridad"] = nuevo
+                    cambios += 1
+
+                if cambios > 0:
+                    st.session_state["df_main"] = df_base.copy()
+                    _save_local(df_base.copy())
+                    st.success(f"✔ Prioridades actualizadas: {cambios} fila(s).")
+                else:
+                    st.info("No se detectaron cambios para guardar.")
+        except Exception as e:
+            st.error(f"No pude guardar los cambios de prioridad: {e}")
+
+    st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
+
 
 
 # =========================== EVALUACIÓN ===============================
@@ -2156,6 +2188,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
