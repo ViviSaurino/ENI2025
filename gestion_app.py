@@ -1225,20 +1225,29 @@ if st.session_state.get("nt_visible", True):
             if "Fecha inicio" in df.columns:
                 df["Fecha inicio"] = pd.to_datetime(df["Fecha inicio"], errors="coerce")
 
-            # 4) Estado y guardado CSV ——— PARCHE: columnas únicas antes de reindex ———
-            #    (evita: "Reindexing only valid with uniquely valued Index objects")
-            df = df.loc[:, ~df.columns.duplicated()].copy()
+            # 4) Estado y guardado CSV ——— PARCHE SIN reindex (evita error de índices no únicos) ———
+            #    1) Columnas únicas en df
+            df = df.loc[:, ~pd.Index(df.columns).duplicated()].copy()
 
+            #    2) Esquema objetivo (si existe) sin duplicados
             if "COLS" in globals() and COLS:
-                COLS_UNIQ = list(dict.fromkeys(COLS))  # quita duplicados preservando orden
-                cols_target = [c for c in COLS_UNIQ if c in df.columns] + \
-                              [c for c in COLS_UNIQ if c not in df.columns]
+                target = list(dict.fromkeys(list(COLS)))  # preserva orden y quita repetidos
             else:
-                cols_target = df.columns.tolist()
+                target = df.columns.tolist()
 
+            #    3) Crear columnas faltantes del target
+            for c in target:
+                if c not in df.columns:
+                    df[c] = None
+
+            #    4) Ordenar: primero target, luego extras (si hubiera)
+            ordered = [c for c in target] + [c for c in df.columns if c not in target]
+            df = df.loc[:, ordered].copy()
+
+            #    5) Persistencia
             st.session_state["df_main"] = df.copy()
             os.makedirs("data", exist_ok=True)
-            df.reindex(columns=cols_target, fill_value=None).to_csv(
+            df.to_csv(
                 os.path.join("data", "tareas.csv"),
                 index=False, encoding="utf-8-sig", mode="w"
             )
@@ -2433,5 +2442,6 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
