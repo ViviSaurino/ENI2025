@@ -24,45 +24,61 @@ SECTION_GAP = 65  # píxeles de separación vertical entre secciones
 
 st.markdown("""
 <style>
-/* ===== Acercar la franja de indicaciones a su formulario en TODAS las secciones ===== */
+/* ================================================================
+   ACERCAR LA FRANJA DE INDICACIONES (help-strip) A SU FORMULARIO
+   Aplica a todas las secciones: Nueva tarea / Editar estado /
+   Nueva alerta / Prioridad / Evaluación, con o sin wrappers.
+   ================================================================ */
 
-/* 1) Quita margen inferior de la franja */
+/* 0) Botones de acción al 100% del ancho de su columna por coherencia */
+#nt-section  .stButton > button,
+#ux-section  .stButton > button,
+#na-section  .stButton > button,
+#pri-section .stButton > button,
+#eva-section .stButton > button { width: 100% !important; }
+
+/* 1) Quita margen inferior de la franja (todas las variantes) */
 .help-strip,
 .help-strip-nt, .help-strip-ux, .help-strip-na, .help-strip-pri, .help-strip-eval{
   margin-bottom: 0 !important;
 }
 
-/* 2) Si la .form-card viene inmediatamente después → margen mínimo */
+/* 2) Si la .form-card viene inmediatamente después → margen mínimo (6–10px) */
 .help-strip-nt + .form-card,
 .help-strip-ux + .form-card,
 .help-strip-na + .form-card,
 .help-strip-pri + .form-card,
 .help-strip-eval + .form-card{
-  margin-top: 400px !important;   /* ← ajusta aquí (4–12px) */
+  margin-top: 6px !important;
 }
 
-/* 3) Si Streamlit inserta wrappers entre medio, usa hermano general (~) */
+/* 3) Si Streamlit mete wrappers entre medio, aplica con hermano general (~) */
 .help-strip-nt ~ .form-card,
 .help-strip-ux ~ .form-card,
 .help-strip-na ~ .form-card,
 .help-strip-pri ~ .form-card,
 .help-strip-eval ~ .form-card{
-  margin-top: 6px !important;   /* ← mismo valor que arriba */
+  margin-top: 6px !important;
 }
 
-/* 4) Compactar el padding superior del form embebido dentro de la tarjeta */
+/* 4) Refuerzo por ID de sección (si ya envuelves con #*-section) */
+#nt-section  .help-strip, #ux-section  .help-strip,
+#na-section  .help-strip, #pri-section .help-strip, #eva-section .help-strip{ margin-bottom: 0 !important; }
+#nt-section  .form-card,  #ux-section  .form-card,
+#na-section  .form-card,  #pri-section .form-card,  #eva-section .form-card { margin-top: 6px !important; }
+
+/* 5) Compactar padding superior del form embebido para quitar “aire” */
 .form-card [data-testid="stForm"]{
-  padding-top: 4px !important;  /* reduce aire interno arriba */
+  padding-top: 4px !important;
   margin-top: 0 !important;
 }
 
-/* 5) Etiquetas más pegadas a los controles */
+/* 6) Etiquetas más pegadas a sus controles */
 .form-card label{
   margin-bottom: 2px !important;
 }
 
-/* 6) (Opcional) Reducir el gap vertical que añade Streamlit entre bloques
-      que contienen la franja (ayuda si aún ves huecos raros) */
+/* 7) (Defensivo) Evita huecos de vertical blocks que contienen help-strip */
 .block-container [data-testid="stVerticalBlock"] > div:has(.help-strip,
   .help-strip-nt, .help-strip-ux, .help-strip-na, .help-strip-pri, .help-strip-eval){
   margin-bottom: 0 !important;
@@ -2308,6 +2324,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
