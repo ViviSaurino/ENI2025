@@ -19,6 +19,10 @@ if not hasattr(_stc, "components"):
 
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, JsCode, DataReturnMode
 
+# ================== Constantes de layout / UI ==================
+SECTION_GAP = 24  # píxeles de separación vertical entre secciones
+
+
 # ======= Utilidades de tablas (Prioridad / Evaluación) ======= 
 # (estos imports duplicados no hacen daño; los mantengo tal cual)
 import streamlit as st
@@ -912,7 +916,7 @@ st.markdown("""
 #eval-grid  .ag-header-cell, #eval-grid  .ag-cell{
   border-right:1px solid #E9EDF3 !important;
 }
-
+           
 </style>
 """, unsafe_allow_html=True)
 
@@ -1134,6 +1138,7 @@ if st.session_state.get("nt_visible", True):
             st.error(f"No pude guardar la nueva tarea: {e}")
 
     st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
+    st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
 
 
 # ================== Actualizar estado ==================
@@ -1556,6 +1561,7 @@ if st.session_state["na_visible"]:
     st.markdown('</div>', unsafe_allow_html=True)  # cierra #na-section
 
 
+
 # =========================== PRIORIDAD ===============================
 
 st.session_state.setdefault("pri_visible", True)
@@ -1935,6 +1941,7 @@ if st.session_state["eva_visible"]:
     st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
 
 
+
 # ================== Historial ================== 
  
 st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
@@ -2253,20 +2260,3 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
