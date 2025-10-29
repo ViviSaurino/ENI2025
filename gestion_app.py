@@ -396,7 +396,6 @@ st.markdown("""
 }
 
 /* ======= ESPACIADO GLOBAL AÑADIDO ======= */
-/* Más aire debajo del título principal */
 .block-container h1{
   margin-bottom: 18px !important;
 }
@@ -407,8 +406,8 @@ st.markdown("""
 }
 /* Separación general entre tarjetas/secciones */
 .form-card{
-  margin-top: 10px !important;      /* respiro arriba */
-  margin-bottom: 28px !important;   /* respiro abajo entre secciones */
+  margin-top: 10px !important;
+  margin-bottom: 28px !important;
 }
 /* ======================================= */
 
@@ -446,13 +445,11 @@ st.markdown("""
   border-right: 1px solid #ECE6FF !important;
   transition: width .2s ease, min-width .2s ease;
 }
-/* Sidebar ABIERTA -> 200px */
 [data-testid="stSidebar"][aria-expanded="true"]{
   width: 200px !important;
   min-width: 200px !important;
 }
 [data-testid="stSidebar"][aria-expanded="true"] > div{ width: 200px !important; }
-/* Sidebar CERRADA -> 0px (contenido se expande) */
 [data-testid="stSidebar"][aria-expanded="false"]{
   width: 0 !important;
   min-width: 0 !important;
@@ -503,7 +500,6 @@ st.markdown("""
   display:flex !important;
   align-items:center !important;
 }
-/* (Se mantiene para compatibilidad, pero lo anulamos abajo con el override) */
 .toggle-icon .stButton>button{
   padding: 0px !important;
   min-width: 32px !important;
@@ -527,7 +523,7 @@ st.markdown("""
   overflow: visible !important;
   white-space: nowrap !important;
   text-overflow: clip !important;
-  width: fit-content !重要;
+  width: fit-content !important;   /* <- FIX del typo */
   min-width: 240px !important;
 }
 .form-card [data-baseweb="select"] [role="combobox"]{
@@ -544,10 +540,10 @@ st.markdown("""
   max-width: none !important;
 }
 
-/* Anchura mayor para Área y Estado (fila 1 col 1 y fila 2 col 1) */
-.form-card [data-testid="stHorizontalBlock"]:nth-of-type(1)
+/* Anchura mayor para Área y Estado – SOLO en “Nueva tarea” */
+#nt-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1)
   > [data-testid="column"]:first-child [data-baseweb="select"] > div{ min-width: 300px !important; }
-.form-card [data-testid="stHorizontalBlock"]:nth-of-type(2)
+#nt-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(2)
   > [data-testid="column"]:first-child [data-baseweb="select"] > div{ min-width: 300px !important; }
 
 /* =================== Responsivo =================== */
@@ -638,8 +634,6 @@ st.markdown("""
 /* ================================================================== */
 /* =================== PRIORIDAD / EVALUACIÓN ======================= */
 /* ================================================================== */
-
-/* Barras superiores (mismo layout) */
 .topbar-pri, .topbar-eval{
   display:flex !important;
   align-items:center !important;
@@ -712,7 +706,7 @@ st.markdown("""
   margin-bottom: 6px !important;
 }
 
-/* ===== Alineación robusta botón + píldora en TODAS las barras ===== */
+/* ===== Alineación robusta botón + píldora ===== */
 .topbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval{
   align-items: center !important;
 }
@@ -724,12 +718,8 @@ st.markdown("""
   margin: 0 !important;
 }
 
-/* === Override para bajar indicaciones (todas y por sección) === */
-#nt-help,
-#ux-help,
-#na-help,
-#pri-help,
-#eva-help{
+/* === Overwrite de help-strips === */
+#nt-help, #ux-help, #na-help, #pri-help, #eva-help{
   transform: none !important;
   margin-top: 10px !important;
   margin-bottom: 14px !important;
@@ -739,9 +729,7 @@ st.markdown("""
   margin-top: 10px !important;
 }
 
-/* ===== ULTRA PATCH: eliminar “cuadradito” del toggle SOLO en #ntbar ===== */
-
-/* 0) El contenedor de la columna NO debe aportar padding ni sombra */
+/* ===== ULTRA PATCH: toggle SOLO en #ntbar ===== */
 #ntbar .toggle-icon,
 #ntbar .toggle-icon .element-container,
 #ntbar .toggle-icon [data-testid="stVerticalBlock"],
@@ -753,8 +741,6 @@ st.markdown("""
   padding: 0 !important;
   margin: 0 !important;
 }
-
-/* 1) Mata fondo/borde/sombra de TODOS los wrappers del botón en este bloque */
 #ntbar .toggle-icon .stButton,
 #ntbar .toggle-icon .stButton > div,
 #ntbar .toggle-icon [data-testid^="stButton"],
@@ -769,8 +755,6 @@ st.markdown("""
   margin: 0 !important;
   min-height: 0 !important;
 }
-
-/* 2) El <button> real */
 #ntbar .toggle-icon .stButton button,
 #ntbar .toggle-icon [data-testid^="stButton"] button,
 #ntbar .toggle-icon [data-testid^="baseButton"] button,
@@ -792,7 +776,6 @@ st.markdown("""
   height: auto !important;
   min-height: 0 !important;
   border-radius: 0 !important;
-
   font-weight: 800 !important;
   font-size: 20px !important;
   line-height: 1 !important;
@@ -800,8 +783,6 @@ st.markdown("""
   color: inherit !important;
   cursor: pointer !important;
 }
-
-/* 3) Evita que :hover/:focus/:active reintroduzcan estilos del tema */
 #ntbar .toggle-icon .stButton button:hover,
 #ntbar .toggle-icon .stButton button:focus,
 #ntbar .toggle-icon .stButton button:active,
@@ -819,8 +800,6 @@ st.markdown("""
   box-shadow: none !important;
   outline: 0 !important;
 }
-
-/* 4) Por si el tema agrega pseudo-elementos decorativos */
 #ntbar .toggle-icon .stButton button::before,
 #ntbar .toggle-icon .stButton button::after,
 #ntbar .toggle-icon [data-testid^="stButton"] button::before,
@@ -832,8 +811,6 @@ st.markdown("""
   content: none !important;
   display: none !important;
 }
-
-/* ========== NUCLEAR RESET PARA EL TOGGLE EN #ntbar ========== */
 #ntbar .toggle-icon *,
 #ntbar .toggle-icon *::before,
 #ntbar .toggle-icon *::after{
@@ -894,7 +871,6 @@ st.markdown("""
 }
 
 /* ===== (ag-align-fix) integrado al bloque principal ===== */
-/* quita padding lateral que desalineaba 1–2px */
 #prior-grid .ag-header-viewport,
 #prior-grid .ag-center-cols-viewport,
 #eval-grid  .ag-header-viewport,
@@ -902,18 +878,17 @@ st.markdown("""
   padding-left:0 !important;
   padding-right:0 !important;
 }
-/* evita corrimientos distintos entre header y body */
 #prior-grid .ag-header, #prior-grid .ag-center-cols-container,
 #eval-grid  .ag-header, #eval-grid  .ag-center-cols-container{
   transform: translateX(0) !important;
 }
-/* bordes de columnas uniformes (las “líneas plomitas”) */
 #prior-grid .ag-header-cell, #prior-grid .ag-cell,
 #eval-grid  .ag-header-cell, #eval-grid  .ag-cell{
   border-right:1px solid #E9EDF3 !important;
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 # ---------- Título ----------
 st.title("📂 Gestión - ENI 2025")
@@ -1169,12 +1144,36 @@ if st.session_state["ux_visible"]:
       #ux-section [data-baseweb="select"],
       #ux-section [data-baseweb="select"] [role="combobox"]{ width: 100% !important; }
 
-      /* Neutraliza en ESTA sección cualquier min-width especial que se haya definido para Área/Estado en otras cards */
+      /* Neutraliza min-width heredados de otras cards SOLO aquí */
       #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1)
         > [data-testid="column"]:first-child [data-baseweb="select"] > div,
       #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(2)
         > [data-testid="column"]:first-child [data-baseweb="select"] > div{
         min-width: 0 !important;
+      }
+
+      /* ===== Alineación EXACTA con "Nueva tarea" para la FILA de filtros =====
+         Proporciones del grid original:
+         A=1.5 | Fase=2.25 | Responsable=3.00 | Desde=2.00 | Hasta=2.00 | Buscar=1.60
+         Suma = 12.35  -> %: 12.146 | 18.218 | 24.291 | 16.194 | 16.194 | 12.963
+      */
+      #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1) > [data-testid="column"]:nth-child(1){
+        flex: 0 0 12.146% !important; max-width: 12.146% !important;
+      }
+      #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1) > [data-testid="column"]:nth-child(2){
+        flex: 0 0 18.218% !important; max-width: 18.218% !important;
+      }
+      #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1) > [data-testid="column"]:nth-child(3){
+        flex: 0 0 24.291% !important; max-width: 24.291% !important;
+      }
+      #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1) > [data-testid="column"]:nth-child(4){
+        flex: 0 0 16.194% !important; max-width: 16.194% !important;
+      }
+      #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1) > [data-testid="column"]:nth-child(5){
+        flex: 0 0 16.194% !important; max-width: 16.194% !important;
+      }
+      #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1) > [data-testid="column"]:nth-child(6){
+        flex: 0 0 12.963% !important; max-width: 12.963% !important;
       }
     </style>
     """, unsafe_allow_html=True)
@@ -1210,6 +1209,7 @@ if st.session_state["ux_visible"]:
         ux_hasta = c_hasta.date_input("Hasta",  value=None, key="ux_hasta")
 
         with c_btn:
+            # separador para alinear el botón con la fila
             st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
             do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
@@ -1248,14 +1248,26 @@ if st.session_state["ux_visible"]:
     st.markdown("**Resultados**")
 
     gob = GridOptionsBuilder.from_dataframe(df_view)
-    gob.configure_grid_options(suppressMovableColumns=True, domLayout="normal", ensureDomOrder=True,
-                               rowHeight=38, headerHeight=42)
+    gob.configure_grid_options(
+        suppressMovableColumns=True,
+        domLayout="normal",
+        ensureDomOrder=True,
+        rowHeight=38,
+        headerHeight=42
+    )
+    # Solo lectura
     for c_ro in ["Id", "Tarea", "Estado actual", "Fecha estado actual", "Hora estado actual"]:
         gob.configure_column(c_ro, editable=False)
 
+    # Editables
     ESTADOS_OPC = ["", "En curso", "Terminado", "Pausado", "Cancelado", "Eliminado"]
-    gob.configure_column("Estado modificado", editable=True,
-                         cellEditor="agSelectCellEditor", cellEditorParams={"values": ESTADOS_OPC}, width=180)
+    gob.configure_column(
+        "Estado modificado",
+        editable=True,
+        cellEditor="agSelectCellEditor",
+        cellEditorParams={"values": ESTADOS_OPC},
+        width=180
+    )
     gob.configure_column("Fecha estado modificado", editable=True, width=180)
     gob.configure_column("Hora estado modificado",   editable=True, width=150)
 
@@ -1284,25 +1296,37 @@ if st.session_state["ux_visible"]:
                 cambios = 0
                 for _, row in df_editado.iterrows():
                     id_row = str(row.get("Id", "")).strip()
-                    if not id_row: 
+                    if not id_row:
                         continue
+
                     est_mod = str(row.get("Estado modificado", "")).strip()
                     f_mod   = str(row.get("Fecha estado modificado", "")).strip()
                     h_mod   = str(row.get("Hora estado modificado", "")).strip()
+
                     if not est_mod and not f_mod and not h_mod:
                         continue
+
                     m = df_base["Id"].astype(str).str.strip() == id_row
                     if not m.any():
                         continue
-                    if est_mod: df_base.loc[m, "Estado"] = est_mod
+
+                    if est_mod:
+                        df_base.loc[m, "Estado"] = est_mod
                     if f_mod:
-                        try: _ = pd.to_datetime(f_mod); df_base.loc[m, "Fecha estado"] = f_mod
-                        except Exception: pass
+                        try:
+                            _ = pd.to_datetime(f_mod)
+                            df_base.loc[m, "Fecha estado"] = f_mod
+                        except Exception:
+                            pass
                     if h_mod:
                         ok = True
-                        try: hh, mm = h_mod.split(":"); int(hh); int(mm)
-                        except Exception: ok = False
-                        if ok: df_base.loc[m, "Hora estado"] = h_mod
+                        try:
+                            hh, mm = h_mod.split(":"); int(hh); int(mm)
+                        except Exception:
+                            ok = False
+                        if ok:
+                            df_base.loc[m, "Hora estado"] = h_mod
+
                     cambios += 1
 
                 if cambios > 0:
@@ -2111,31 +2135,3 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
