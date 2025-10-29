@@ -1127,7 +1127,6 @@ if st.session_state.get("nt_visible", True):
 
 # ================== Actualizar estado ==================
 
-# Estado inicial del colapsable de esta sección
 st.session_state.setdefault("ux_visible", True)
 chev2 = "▾" if st.session_state["ux_visible"] else "▸"
 
@@ -1153,10 +1152,9 @@ if st.session_state["ux_visible"]:
     </div>
     """, unsafe_allow_html=True)
 
-    # --- Wrapper local para CSS de esta sección ---
     st.markdown('<div id="ux-section">', unsafe_allow_html=True)
 
-    # === CSS: inputs 100% y misma “sensación” que en Nueva tarea ===
+    # Forzar 100% de ancho en inputs de ESTA sección
     st.markdown("""
     <style>
       #ux-section .stTextInput > div,
@@ -1170,47 +1168,41 @@ if st.session_state["ux_visible"]:
       }
       #ux-section [data-baseweb="select"],
       #ux-section [data-baseweb="select"] [role="combobox"]{ width: 100% !important; }
-
-      /* Ancho mínimo agradable para la 1ª celda (Área), igual que arriba */
-      #ux-section .form-card [data-testid="stHorizontalBlock"]:nth-of-type(1)
-        > [data-testid="column"]:first-child [data-baseweb="select"] > div{ min-width: 300px !important; }
     </style>
     """, unsafe_allow_html=True)
 
-    # Tarjeta con borde
-    st.markdown('<div class="form-card">', unsafe_allow_html=True)
-
-    # ===== Usar EXACTAMENTE la misma grilla que “Nueva tarea” =====
-    # Si arriba ya definiste estas fracciones, las guardamos/recuperamos.
+    # === Mismos anchos que "Nueva tarea" ===
     if "NT_GRID" not in st.session_state:
-        # Valores de tu “Nueva tarea”: A, Fw, T, D, R, C
         st.session_state["NT_GRID"] = [1.5, 2.25, 3.00, 2.00, 2.00, 1.60]
     A, Fw, T_width, D, R, C = st.session_state["NT_GRID"]
 
-    # Base y columnas mínimas
     df_all = st.session_state["df_main"].copy()
     for col_req in ["Estado", "Fecha estado", "Hora estado"]:
         if col_req not in df_all.columns:
             df_all[col_req] = None
 
-    # ===== Filtros (misma grilla que arriba) =====
+    st.markdown('<div class="form-card">', unsafe_allow_html=True)
+
+    # ===== FILTROS (alineación 1:1 con la fila de arriba) =====
+    # Orden y anchos: Área(A) | Fase(Fw) | Responsable(R) | Desde(T) | Hasta(D) | Buscar(C)
     with st.form("ux_filtros", clear_on_submit=False):
-        c_area, c_fase, c_resp, c_desde, c_hasta, c_btn = st.columns([A, Fw, T_width, D, R, C], gap="medium")
+        c_area, c_fase, c_resp, c_desde, c_hasta, c_btn = st.columns(
+            [A, Fw, R, T_width, D, C], gap="medium"
+        )
 
         ux_area = c_area.selectbox("Área", ["Todas"] + AREAS_OPC, index=0, key="ux_area")
 
         fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
         ux_fase = c_fase.selectbox("Fase", ["Todas"] + fases_all, index=0, key="ux_fase")
 
-        df_resp_src = df_all if ux_area == "Todas" else df_all[df_all["Área"] == ux_area]
-        responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+        src_resp = df_all if ux_area == "Todas" else df_all[df_all["Área"] == ux_area]
+        responsables_all = sorted([x for x in src_resp.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
         ux_resp = c_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0, key="ux_resp")
 
         ux_desde = c_desde.date_input("Desde", value=None, key="ux_desde")
         ux_hasta = c_hasta.date_input("Hasta",  value=None, key="ux_hasta")
 
         with c_btn:
-            # separador para alinear el botón a la fila
             st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
             do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
@@ -1231,7 +1223,7 @@ if st.session_state["ux_visible"]:
             if ux_hasta:
                 df_filtrado = df_filtrado[fcol <= (pd.to_datetime(ux_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
 
-    # ===== Tabla (siempre visible) =====
+    # ===== Tabla =====
     cols_view = ["Id", "Tarea", "Estado", "Fecha estado", "Hora estado"]
     for c in cols_view:
         if c not in df_filtrado.columns:
@@ -1268,8 +1260,10 @@ if st.session_state["ux_visible"]:
         fit_columns_on_grid_load=False,
         enable_enterprise_modules=False,
         reload_data=False,
-        height=180
+        height=200
     )
+
+    st.caption("👉 Completa *Estado/Fecha/Hora modificado*. Formatos: **Fecha** `YYYY-MM-DD`, **Hora** `HH:mm`.")
 
     _spacer, _btncol = st.columns([A+Fw+T_width+D+R, C], gap="medium")
     with _btncol:
@@ -1296,16 +1290,12 @@ if st.session_state["ux_visible"]:
                         continue
                     if est_mod: df_base.loc[m, "Estado"] = est_mod
                     if f_mod:
-                        try:
-                            _ = pd.to_datetime(f_mod); df_base.loc[m, "Fecha estado"] = f_mod
-                        except Exception:
-                            pass
+                        try: _ = pd.to_datetime(f_mod); df_base.loc[m, "Fecha estado"] = f_mod
+                        except Exception: pass
                     if h_mod:
                         ok = True
-                        try:
-                            hh, mm = h_mod.split(":"); int(hh); int(mm)
-                        except Exception:
-                            ok = False
+                        try: hh, mm = h_mod.split(":"); int(hh); int(mm)
+                        except Exception: ok = False
                         if ok: df_base.loc[m, "Hora estado"] = h_mod
                     cambios += 1
 
@@ -1318,9 +1308,8 @@ if st.session_state["ux_visible"]:
             except Exception as e:
                 st.error(f"No pude guardar los cambios: {e}")
 
-    st.markdown('</div>', unsafe_allow_html=True)   # cierra .form-card
-    st.markdown('</div>', unsafe_allow_html=True)   # cierra #ux-section
-
+    st.markdown('</div>', unsafe_allow_html=True)  # cierra .form-card
+    st.markdown('</div>', unsafe_allow_html=True)  # cierra #ux-section
 
 
 # ================== Nueva alerta ==================
@@ -2115,6 +2104,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
