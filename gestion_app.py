@@ -1733,20 +1733,30 @@ if st.session_state["na_visible"]:
       return M[v] || v;
     }""")
 
-    # Estilos compactos (mantienen la fila delgada)
+    # ✅ estilo centrado vertical/horizontal y “pill” compacto
     si_no_style_genero = JsCode("""
     function(p){
+      const base = {
+        display:'flex', alignItems:'center', justifyContent:'center',
+        height:'100%', padding:'0 10px', borderRadius:'12px',
+        fontWeight:'600', textAlign:'center'
+      };
       const v = String(p.value || '');
-      if (v === 'Sí') return {backgroundColor:'#FFF3E0', color:'#E65100', fontWeight:'600', textAlign:'center', borderRadius:'10px', lineHeight:'18px', padding:'2px 6px'};
-      if (v === 'No') return {backgroundColor:'#ECEFF1', color:'#37474F', fontWeight:'600', textAlign:'center', borderRadius:'10px', lineHeight:'18px', padding:'2px 6px'};
+      if (v === 'Sí') return Object.assign({}, base, {backgroundColor:'#FFF3E0', color:'#E65100'});
+      if (v === 'No') return Object.assign({}, base, {backgroundColor:'#ECEFF1', color:'#37474F'});
       return {};
     }""")
 
     si_no_style_corrigio = JsCode("""
     function(p){
+      const base = {
+        display:'flex', alignItems:'center', justifyContent:'center',
+        height:'100%', padding:'0 10px', borderRadius:'12px',
+        fontWeight:'600', textAlign:'center'
+      };
       const v = String(p.value || '');
-      if (v === 'Sí') return {backgroundColor:'#E8F5E9', color:'#1B5E20', fontWeight:'600', textAlign:'center', borderRadius:'10px', lineHeight:'18px', padding:'2px 6px'};
-      if (v === 'No') return {backgroundColor:'#FFE0E0', color:'#B71C1C', fontWeight:'600', textAlign:'center', borderRadius:'10px', lineHeight:'18px', padding:'2px 6px'};
+      if (v === 'Sí') return Object.assign({}, base, {backgroundColor:'#E8F5E9', color:'#1B5E20'});
+      if (v === 'No') return Object.assign({}, base, {backgroundColor:'#FFE0E0', color:'#B71C1C'});
       return {};
     }""")
 
@@ -1820,7 +1830,7 @@ if st.session_state["na_visible"]:
         "suppressMovableColumns": True,
         "domLayout": "normal",
         "ensureDomOrder": True,
-        "rowHeight": 38,           # ⬅️ altura de celdas ligeramente mayor
+        "rowHeight": 34,           # ⬅️ altura de celdas ligeramente mayor
         "headerHeight": 36,        # encabezado compacto (sin cambios en títulos)
         "suppressHorizontalScroll": True,
         "onCellValueChanged": on_cell_changed,
@@ -2644,6 +2654,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
