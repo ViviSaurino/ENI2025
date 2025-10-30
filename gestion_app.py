@@ -1173,11 +1173,13 @@ if st.session_state.get("nt_visible", True):
     </div>
     """, unsafe_allow_html=True)
 
-    # --- SOLO este ajuste: separar indicaciones del card ---
+    # === SOLO este ajuste: separar indicaciones del card de la sección ===
     st.markdown("""
     <style>
-      /* Espacio bajo las indicaciones del formulario */
-      #nt-section .help-strip{ margin-bottom: 30px !important; }
+      /* Aplica al contenedor del card (el que contiene el sentinel) */
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
+        margin-top: 10px !important; /* Ajusta a 6–14px según prefieras */
+      }
     </style>
     """, unsafe_allow_html=True)
 
@@ -2476,6 +2478,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
