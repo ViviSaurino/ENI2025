@@ -1680,6 +1680,7 @@ if st.session_state["na_visible"]:
         "¿Se corrigió?", "Fecha de corrección", "Hora de corrección",
     ]
 
+    # Data para la grilla (puede ser vacía)
     df_view = pd.DataFrame(columns=cols_out)
     if not df_tasks.empty:
         df_tmp = df_tasks.dropna(subset=["Id"]).copy()
@@ -1688,11 +1689,11 @@ if st.session_state["na_visible"]:
                 df_tmp[needed] = ""
         df_view = df_tmp.assign(
             **{
-                "¿Generó alerta?": "No",               # default
-                "N° alerta": "1",                       # default
+                "¿Generó alerta?": "No",  # default
+                "N° alerta": "1",         # default
                 "Fecha de detección": "",
                 "Hora de detección": "",
-                "¿Se corrigió?": "No",                  # default
+                "¿Se corrigió?": "No",    # default
                 "Fecha de corrección": "",
                 "Hora de corrección": "",
             }
@@ -1724,7 +1725,7 @@ if st.session_state["na_visible"]:
       getValue(){ return this.eInput.value }
     }""")
 
-    # formateo Sí/No con emoji (string seguro) + color por cellStyle
+    # Sí/No con emoji (seguro) + color por cellStyle
     si_no_formatter = JsCode("""
     function(p){
       const v = String(p.value || '');
@@ -1748,7 +1749,7 @@ if st.session_state["na_visible"]:
       return {};
     }""")
 
-    # cuando cambia una fecha, colocar hora actual correspondiente
+    # al cambiar fecha, poner hora actual correspondiente
     on_cell_changed = JsCode("""
     function(params){
       const pad = n => String(n).padStart(2,'0');
@@ -1761,15 +1762,51 @@ if st.session_state["na_visible"]:
       }
     }""")
 
-    # autosize a todo el ancho (headers llenan la tabla)
+    # autosize para ocupar todo el ancho
     on_ready_size = JsCode("function(p){ p.api.sizeColumnsToFit(); }")
     on_first_size = JsCode("function(p){ p.api.sizeColumnsToFit(); }")
 
-    # 🔧 CLAVE: construir columnDefs SIEMPRE (aunque no haya filas)
-    df_cols_base = pd.DataFrame({c: pd.Series(dtype="object") for c in cols_out})
-    gob = GridOptionsBuilder.from_dataframe(df_cols_base)
+    # 🔧 ColumnDefs SIEMPRE visibles (aunque no haya filas)
+    col_defs = [
+        {"field":"Id", "headerName":"Id", "editable": False, "pinned":"left", "flex":1.2, "minWidth":110},
+        {"field":"Tarea", "headerName":"Tarea", "editable": False, "flex":3, "minWidth":200},
 
-    gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, minWidth=110, flex=1)
+        {"field":"¿Generó alerta?", "headerName":"¿Generó alerta?",
+         "editable": True,
+         "cellEditor": "agSelectCellEditor",
+         "cellEditorParams": {"values": ["No","Sí"]},
+         "valueFormatter": si_no_formatter,
+         "cellStyle": si_no_style_genero,
+         "flex":1.2, "minWidth":140},
+
+        {"field":"N° alerta", "headerName":"N° alerta",
+         "editable": True,
+         "cellEditor": "agSelectCellEditor",
+         "cellEditorParams": {"values": ["1","2","3","+4"]},
+         "flex":0.8, "minWidth":120},
+
+        {"field":"Fecha de detección", "headerName":"Fecha de detección",
+         "editable": True, "cellEditor": date_editor, "flex":1.2, "minWidth":150},
+
+        {"field":"Hora de detección", "headerName":"Hora de detección",
+         "editable": False, "flex":1.0, "minWidth":140},
+
+        {"field":"¿Se corrigió?", "headerName":"¿Se corrigió?",
+         "editable": True,
+         "cellEditor": "agSelectCellEditor",
+         "cellEditorParams": {"values": ["No","Sí"]},
+         "valueFormatter": si_no_formatter,
+         "cellStyle": si_no_style_corrigio,
+         "flex":1.2, "minWidth":140},
+
+        {"field":"Fecha de corrección", "headerName":"Fecha de corrección",
+         "editable": True, "cellEditor": date_editor, "flex":1.2, "minWidth":150},
+
+        {"field":"Hora de corrección", "headerName":"Hora de corrección",
+         "editable": False, "flex":1.0, "minWidth":140},
+    ]
+
+    gob = GridOptionsBuilder.from_dataframe(pd.DataFrame(columns=[c["field"] for c in col_defs]))
     gob.configure_grid_options(
         suppressMovableColumns=True,
         domLayout="normal",
@@ -1777,40 +1814,8 @@ if st.session_state["na_visible"]:
         rowHeight=38,
         headerHeight=42,
         suppressHorizontalScroll=True,
+        columnDefs=col_defs,   # << forzamos headers
     )
-
-    # Id y Tarea
-    gob.configure_column("Id", editable=False, pinned="left", flex=1.2)
-    gob.configure_column("Tarea", editable=False, flex=3)
-
-    # Selectores con Sí/No
-    gob.configure_column("¿Generó alerta?",
-                         editable=True,
-                         cellEditor="agSelectCellEditor",
-                         cellEditorParams={"values": ["No","Sí"]},
-                         valueFormatter=si_no_formatter,
-                         cellStyle=si_no_style_genero,
-                         flex=1.2)
-
-    gob.configure_column("N° alerta",
-                         editable=True,
-                         cellEditor="agSelectCellEditor",
-                         cellEditorParams={"values": ["1","2","3","+4"]},
-                         flex=0.8, minWidth=120)
-
-    gob.configure_column("¿Se corrigió?",
-                         editable=True,
-                         cellEditor="agSelectCellEditor",
-                         cellEditorParams={"values": ["No","Sí"]},
-                         valueFormatter=si_no_formatter,
-                         cellStyle=si_no_style_corrigio,
-                         flex=1.2)
-
-    # Fechas (calendario) + horas (solo lectura/auto)
-    gob.configure_column("Fecha de detección", editable=True, cellEditor=date_editor, flex=1.2, minWidth=150)
-    gob.configure_column("Hora de detección",  editable=False, flex=1.0, minWidth=140)
-    gob.configure_column("Fecha de corrección", editable=True, cellEditor=date_editor, flex=1.2, minWidth=150)
-    gob.configure_column("Hora de corrección",  editable=False, flex=1.0, minWidth=140)
 
     grid_opts = gob.build()
     grid_opts["onCellValueChanged"] = on_cell_changed.js_code
@@ -1818,8 +1823,8 @@ if st.session_state["na_visible"]:
     grid_opts["onFirstDataRendered"] = on_first_size.js_code
 
     grid = AgGrid(
-        df_view,                                   # datos (puede estar vacío)
-        gridOptions=grid_opts,                     # defs SIEMPRE con columnas
+        df_view,
+        gridOptions=grid_opts,
         data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
         update_mode=GridUpdateMode.VALUE_CHANGED,
         fit_columns_on_grid_load=True,
@@ -2632,6 +2637,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
