@@ -2585,27 +2585,41 @@ df_view["Fecha Registro"] = df_view["Fecha Registro"].apply(_to_date)
 df_view["Hora Registro"]  = df_view["Hora Registro"].apply(_to_hhmm)
 
 mask_no_ini = (df_view["Estado"].astype(str) == "No iniciado") if "Estado" in df_view.columns else pd.Series(False, index=df_view.index)
+
+# Fallback explícito desde columnas del formulario "Nueva tarea" si existen
+_fr_fb = pd.to_datetime(df_view["Fecha"], errors="coerce").dt.normalize() if "Fecha" in df_view.columns else pd.Series(pd.NaT, index=df_view.index)
+_hr_fb = df_view["Hora"].apply(_to_hhmm) if "Hora" in df_view.columns else pd.Series([""]*len(df_view), index=df_view.index)
+
+mask_fr_missing = mask_no_ini & df_view["Fecha Registro"].isna()
+mask_hr_missing = mask_no_ini & (df_view["Hora Registro"].eq("") | df_view["Hora Registro"].eq("00:00"))
+
+df_view.loc[mask_fr_missing, "Fecha Registro"] = _fr_fb[mask_fr_missing]
+df_view.loc[mask_hr_missing, "Hora Registro"]  = _hr_fb[mask_hr_missing]
+
 # Mostrar solo cuando es No iniciado; en otros estados vaciar
 df_view.loc[~mask_no_ini, ["Fecha Registro","Hora Registro"]] = [pd.NaT, ""]
 
-# 3) INICIO y FIN por cambio de estado (desde Fecha estado modificado)
+# 3) INICIO y FIN por cambio de estado (desde Fecha/Hora estado modificado)
 if "Hora de inicio" not in df_view.columns: df_view["Hora de inicio"] = ""
 if "Fecha fin" not in df_view.columns: df_view["Fecha fin"] = pd.NaT
 if "Hora Terminado" not in df_view.columns: df_view["Hora Terminado"] = ""
 
 _mod = pd.to_datetime(df_view.get("Fecha estado modificado"), errors="coerce")
+_hmod = df_view["Hora estado modificado"].apply(_to_hhmm) if "Hora estado modificado" in df_view.columns else pd.Series([""]*len(df_view), index=df_view.index)
+
 if "Estado" in df_view.columns:
     _en_curso   = df_view["Estado"].astype(str) == "En curso"
     _terminado  = df_view["Estado"].astype(str) == "Terminado"
 
-    # En curso → inicio
-    df_view.loc[_en_curso, "Fecha inicio"]   = _mod
-    df_view.loc[_en_curso, "Hora de inicio"] = _mod.dt.strftime("%H:%M")
+    # En curso → inicio (fecha solo día; hora desde "Hora estado modificado" si existe)
+    df_view.loc[_en_curso, "Fecha inicio"]   = _mod.dt.normalize()
+    _h_ini = _hmod.where(_hmod != "", _mod.dt.strftime("%H:%M"))
+    df_view.loc[_en_curso, "Hora de inicio"] = _h_ini[_en_curso]
     df_view.loc[~_en_curso, ["Fecha inicio","Hora de inicio"]] = [pd.NaT, ""]
 
     # Terminado → fin
     df_view.loc[_terminado, "Fecha fin"]      = _mod
-    df_view.loc[_terminado, "Hora Terminado"] = _mod.dt.strftime("%H:%M")
+    df_view.loc[_terminado, "Hora Terminado"] = _hmod.where(_hmod != "", _mod.dt.strftime("%H:%M"))[_terminado]
     df_view.loc[~_terminado, ["Fecha fin","Hora Terminado"]] = [pd.NaT, ""]
 
 # === ORDEN Y PRESENCIA DE COLUMNAS (tu orden oficial) ===
@@ -2724,7 +2738,7 @@ function(p){
   else if(v==='Entregado a tiempo'){bg='#00C4B3'}
   else if(v==='Entregado con retraso'){bg='#00ACC1'}
   else if(v==='No entregado'){bg='#006064'}
-  else if(v==='En riesgo de retraso'){bg:'#0277BD'}
+  else if(v==='En riesgo de retraso'){bg='#0277BD'}
   else if(v==='Aprobada'){bg:'#8BC34A'; fg:'#0A2E00'}
   else if(v==='Desaprobada'){bg:'#FF8A80'}
   else if(v==='Pendiente de revisión'){bg:'#BDBDBD'; fg:'#2B2B2B'}
@@ -2799,10 +2813,10 @@ for c, fx in [("Tarea",3), ("Detalle",2), ("Ciclo de mejora",1), ("Complejidad",
             minWidth=colw.get(c,120),
             flex=fx,
             valueFormatter=(
-                date_only_fmt if c=="Fecha Registro" else
+                date_only_fmt if c in ["Fecha Registro","Fecha inicio"] else
                 time_only_fmt if c in ["Hora Registro","Hora de inicio","Hora Pausado","Hora Cancelado","Hora Eliminado",
                                        "Hora Terminado","Hora de detección","Hora de corrección"] else
-                date_time_fmt if c in ["Fecha inicio","Vencimiento","Fecha fin","Fecha de detección","Fecha de corrección"] else
+                date_time_fmt if c in ["Vencimiento","Fecha fin","Fecha de detección","Fecha de corrección"] else
                 (None if c in ["Calificación","Prioridad"] else fmt_dash)
             ),
             suppressMenu=True if c in ["Fecha Registro","Hora Registro","Fecha inicio","Hora de inicio","Vencimiento","Fecha fin",
@@ -2953,4 +2967,3 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
