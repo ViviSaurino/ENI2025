@@ -1176,7 +1176,7 @@ if st.session_state.get("nt_visible", True):
     # === SOLO este ajuste: separa indicaciones del card de la sección ===
     st.markdown("""
     <style>
-      #nt-section .help-strip{ margin-bottom: 100px !important; } /* ajusta 6–14px a gusto */
+      #nt-section .help-strip{ margin-bottom: 10px !important; } /* ajusta 6–14px a gusto */
     </style>
     """, unsafe_allow_html=True)
 
@@ -2475,6 +2475,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
