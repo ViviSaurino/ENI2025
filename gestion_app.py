@@ -1332,17 +1332,14 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 if st.session_state["est_visible"]:
 
-    # --- Contenedor + CSS local (sin negritas en headers y botón full-width) ---
+    # --- Contenedor + CSS local ---
     st.markdown('<div id="est-section">', unsafe_allow_html=True)
     st.markdown("""
     <style>
       #est-section .stButton > button { width: 100% !important; }
-      /* Quitar negrita SOLO aquí */
       #est-section .ag-theme-alpine .ag-header-cell-label{ font-weight: 400 !important; }
-      /* Quitar scroll horizontal como respaldo visual */
       #est-section .ag-body-horizontal-scroll,
       #est-section .ag-center-cols-viewport { overflow-x: hidden !important; }
-      /* Reducir espacio entre tira de ayuda y tarjeta */
       .section-est .help-strip + .form-card{ margin-top: 6px !important; }
     </style>
     """, unsafe_allow_html=True)
@@ -1356,13 +1353,13 @@ if st.session_state["est_visible"]:
       <div class="form-card">
     """, unsafe_allow_html=True)
 
-    # Proporciones idénticas a "Nueva alerta"
+    # Proporciones
     A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
-    # Base segura
+    # Base
     df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
 
-    # ===== FILTROS (en un form con submit → botón en la MISMA FILA) =====
+    # ===== FILTROS =====
     with st.form("est_filtros_v3", clear_on_submit=False):
         c_area, c_fase, c_resp, c_desde, c_hasta, c_buscar = st.columns([A, Fw, T_width, D, R, C], gap="medium")
 
@@ -1390,7 +1387,7 @@ if st.session_state["est_visible"]:
             st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
             est_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
-    # ===== Filtrado de tareas para la tabla =====
+    # ===== Filtrado de tareas =====
     df_tasks = df_all.copy()
     if est_do_buscar:
         if est_area != "Todas":
@@ -1406,7 +1403,7 @@ if st.session_state["est_visible"]:
             if est_hasta:
                 df_tasks = df_tasks[fcol <= (pd.to_datetime(est_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
 
-    # ===== Tabla "Resultados" (aparece aun vacía, sin negritas) =====
+    # ===== Tabla "Resultados" =====
     st.markdown("**Resultados**")
 
     def _fmt_date(s):
@@ -1431,7 +1428,6 @@ if st.session_state["est_visible"]:
             if need not in base.columns:
                 base[need] = ""
 
-        # Backfill de fecha/hora estado con la fecha/hora de inicio si están vacías
         fecha_estado = base["Fecha estado actual"].replace("", pd.NA)
         hora_estado  = base["Hora estado actual"].replace("", pd.NA)
         fi = base["Fecha inicio"]
@@ -1447,7 +1443,7 @@ if st.session_state["est_visible"]:
             "Hora estado modificado":  _fmt_time(base["Hora estado modificado"]),
         })[cols_out].copy()
 
-    # ========= editores de celdas =========
+    # ========= editores y renderer =========
     estados_editables = ["En curso","Terminado","Pausado","Cancelado","Eliminado"]
 
     date_editor = JsCode("""
@@ -1472,6 +1468,23 @@ if st.session_state["est_visible"]:
       getValue(){ return this.eInput.value }
     }""")
 
+    # chip renderer con emoji/colores (visual)
+    estado_mod_renderer = JsCode("""
+    function(p){
+      const v = (p.value || '').toString();
+      const M = {
+        "En curso":   {txt:"🟣 En curso",     bg:"#EDE7F6", fg:"#4A148C"},
+        "Terminado":  {txt:"✅ Terminado",    bg:"#E8F5E9", fg:"#1B5E20"},
+        "Pausado":    {txt:"⏸️ Pausado",      bg:"#FFF8E1", fg:"#E65100"},
+        "Cancelado":  {txt:"⛔ Cancelado",    bg:"#FFEBEE", fg:"#B71C1C"},
+        "Eliminado":  {txt:"🗑️ Eliminado",    bg:"#ECEFF1", fg:"#263238"}
+      };
+      const m = M[v]; if(!m) return v;
+      const sty = "display:inline-block;padding:4px 10px;border-radius:12px;font-weight:600;"
+                + "background:"+m.bg+";color:"+m.fg+";text-align:center;";
+      return `<span style="${sty}">${m.txt}</span>`;
+    }""")
+
     on_cell_changed = JsCode("""
     function(params){
       if (params.colDef.field === 'Fecha estado modificado'){
@@ -1482,7 +1495,7 @@ if st.session_state["est_visible"]:
       }
     }""")
 
-    # --- AgGrid: sin negritas y sin barra horizontal ---
+    # --- AgGrid ---
     gob = GridOptionsBuilder.from_dataframe(df_view)
     gob.configure_grid_options(
         suppressMovableColumns=True,
@@ -1492,24 +1505,27 @@ if st.session_state["est_visible"]:
         headerHeight=42,
         suppressHorizontalScroll=True
     )
-    # selección por checkbox
-    gob.configure_selection("single", use_checkbox=True)
+    # SIN checkbox (se remueve la columna de check de la izquierda)
+    gob.configure_selection("single", use_checkbox=False)
 
     # columnas editables solicitadas
-    gob.configure_column("Estado modificado",
-                         editable=True,
-                         cellEditor="agSelectCellEditor",
-                         cellEditorParams={"values": estados_editables},
-                         minWidth=160)
+    gob.configure_column(
+        "Estado modificado",
+        editable=True,
+        cellEditor="agSelectCellEditor",
+        cellEditorParams={"values": estados_editables},
+        cellRenderer=estado_mod_renderer,
+        minWidth=180
+    )
 
-    gob.configure_column("Fecha estado modificado",
-                         editable=True,
-                         cellEditor=date_editor,
-                         minWidth=160)
+    gob.configure_column(
+        "Fecha estado modificado",
+        editable=True,
+        cellEditor=date_editor,
+        minWidth=160
+    )
 
-    gob.configure_column("Hora estado modificado",
-                         editable=False,
-                         minWidth=140)
+    gob.configure_column("Hora estado modificado", editable=False, minWidth=140)
 
     grid_opts = gob.build()
     grid_opts["onCellValueChanged"] = on_cell_changed.js_code
@@ -1523,7 +1539,7 @@ if st.session_state["est_visible"]:
         enable_enterprise_modules=False,
         reload_data=False,
         height=260,
-        allow_unsafe_jscode=True,  # necesario para los editores JS
+        allow_unsafe_jscode=True,
         theme="balham"
     )
 
@@ -1549,7 +1565,6 @@ if st.session_state["est_visible"]:
                         for c in cols_to_merge:
                             if c not in base.columns:
                                 base[c] = ""
-
                         upd = grid_data[["Id"] + cols_to_merge].copy()
                         base = base.merge(upd, on="Id", how="left", suffixes=("", "_NEW"))
                         for c in cols_to_merge:
@@ -1569,7 +1584,6 @@ if st.session_state["est_visible"]:
     # Cerrar form-card + section + contenedor
     st.markdown('</div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
-
 
 
 # ================== Nueva alerta ==================
@@ -2531,6 +2545,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
