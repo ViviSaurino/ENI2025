@@ -2544,20 +2544,28 @@ if dups.any():
     df_view = df_view.loc[:, ~dups]
 
 # ===== Semántica de tiempos pedida =====
-# Fecha/Hora Registro = estado "No iniciado" (si faltan, rellenar con Fecha estado actual)
+# A) Si Estado = "No iniciado": garantizar Fecha/Hora Registro
 if "Fecha Registro" not in df_view.columns: df_view["Fecha Registro"] = pd.NaT
-if "Hora Registro" not in df_view.columns:   df_view["Hora Registro"]   = ""
+if "Hora Registro"   not in df_view.columns: df_view["Hora Registro"]   = ""
 
-if "Estado" in df_view.columns and "Fecha estado actual" in df_view.columns:
-    _act = pd.to_datetime(df_view["Fecha estado actual"], errors="coerce")
-    _no_ini = df_view["Estado"].astype(str) == "No iniciado"
-    df_view.loc[_no_ini & df_view["Fecha Registro"].isna(), "Fecha Registro"] = _act
-    df_view.loc[_no_ini & (df_view["Hora Registro"].astype(str).eq("") | df_view["Hora Registro"].isna()),
-                "Hora Registro"] = _act.dt.strftime("%H:%M")
+has_estado = "Estado" in df_view.columns
+act_dt = pd.to_datetime(df_view.get("Fecha estado actual"), errors="coerce") if "Fecha estado actual" in df_view.columns else pd.NaT
+mod_dt = pd.to_datetime(df_view.get("Fecha estado modificado"), errors="coerce") if "Fecha estado modificado" in df_view.columns else pd.NaT
+reg_dt = pd.to_datetime(df_view.get("Fecha Registro"), errors="coerce")
 
-# Fecha/Hora de inicio = cuando pasa a "En curso" (Fecha estado modificado)
+if has_estado:
+    mask_no_ini = df_view["Estado"].astype(str) == "No iniciado"
+    # Preferimos Fecha Registro existente; si falta, usamos 'Fecha estado actual' y como backup 'Fecha estado modificado'
+    fallback_dt = act_dt.where(~act_dt.isna(), mod_dt)
+    df_view.loc[mask_no_ini & reg_dt.isna(), "Fecha Registro"] = fallback_dt
+    # Hora Registro si falta
+    hora_reg = df_view["Hora Registro"].astype(str)
+    mask_hr_miss = mask_no_ini & ((hora_reg.eq("")) | (df_view["Hora Registro"].isna()))
+    df_view.loc[mask_hr_miss, "Hora Registro"] = fallback_dt.dt.strftime("%H:%M")
+
+# B) Si Estado = "En curso": Fecha/Hora de inicio desde 'Fecha estado modificado'
 if "Hora de inicio" not in df_view.columns: df_view["Hora de inicio"] = ""
-if "Fecha estado modificado" in df_view.columns and "Estado" in df_view.columns:
+if has_estado and "Fecha estado modificado" in df_view.columns:
     _mod = pd.to_datetime(df_view["Fecha estado modificado"], errors="coerce")
     _en_curso = df_view["Estado"].astype(str) == "En curso"
     df_view.loc[_en_curso, "Fecha inicio"]   = _mod
@@ -2581,6 +2589,12 @@ target_cols = [
     "Cumplimiento","Evaluación","Calificación"
 ]
 
+# Columnas internas que NO deben mostrarse en el grid
+HIDDEN_COLS = [
+    "Fecha estado modificado","Hora estado modificado",
+    "Fecha estado actual","Hora estado actual"
+]
+
 # Asegura presencia de columnas (si faltan, se crean vacías)
 for c in target_cols:
     if c not in df_view.columns:
@@ -2589,9 +2603,9 @@ for c in target_cols:
 # Duración: mantener vacía
 df_view["Duración"] = df_view["Duración"].astype(str).fillna("")
 
-# Reindex seguro (listas sin duplicados)
+# Reindex seguro (listas sin duplicados) y EXCLUYENDO las ocultas del grid
 target_cols_u = list(dict.fromkeys(target_cols))
-rest = [c for c in df_view.columns if c not in target_cols_u + ["__DEL__","__ts__"]]
+rest = [c for c in df_view.columns if c not in target_cols_u + ["__DEL__","__ts__"] + HIDDEN_COLS]
 df_grid = df_view.reindex(columns=target_cols_u + rest).copy()
 df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()
 
@@ -2618,7 +2632,7 @@ gob.configure_grid_options(
     stopEditingWhenCellsLoseFocus=True,
     undoRedoCellEditing=True,
     enterMovesDown=True,
-    suppressMovableColumns=False,   # ← permitir mover columnas (excepto fijas)
+    suppressMovableColumns=False,   # ← permitir mover columnas
     getRowId=JsCode("function(p){ return (p.data && (p.data.Id || p.data['Id'])) + ''; }"),
 )
 
@@ -2641,10 +2655,10 @@ gob.configure_column("Vencimiento",   headerName="Fecha límite")
 gob.configure_column("Fecha inicio",  headerName="Fecha de inicio")
 gob.configure_column("Fecha fin",     headerName="Fecha Terminado")
 
-# ----- Ocultas en GRID (visibles en export/Sheets) -----
-for ocultar in ["Fecha Pausado","Hora Pausado","Fecha Cancelado","Hora Cancelado","Fecha Eliminado","Hora Eliminado"]:
-    if ocultar in df_grid.columns:
-        gob.configure_column(ocultar, hide=True, suppressMenu=True, filter=False)
+# ----- Ocultas en GRID (visibles en export/Sheets si las agregas al orden) -----
+for ocultar in HIDDEN_COLS + ["Fecha Pausado","Hora Pausado","Fecha Cancelado","Hora Cancelado","Fecha Eliminado","Hora Eliminado"]:
+    if ocultar in df_view.columns:
+        gob.configure_column(ocultar, hide=True, suppressMenu=True)
 
 # ----- Formatters -----
 flag_formatter = JsCode("""
@@ -2657,7 +2671,7 @@ function(p){
   let bg='#E0E0E0', fg='#FFFFFF';
   if (v==='No iniciado'){bg='#90A4AE'}
   else if(v==='En curso'){bg='#B388FF'}
-  else if(v==='Terminado'){bg:'#00C4B3'}
+  else if(v==='Terminado'){bg='#00C4B3'}
   else if(v==='Cancelado'){bg:'#FF2D95'}
   else if(v==='Pausado'){bg:'#7E57C2'}
   else if(v==='Entregado a tiempo'){bg:'#00C4B3'}
@@ -2733,7 +2747,7 @@ if "Calificación" in df_grid.columns:
     gob.configure_column("Calificación", editable=True, valueFormatter=stars_fmt,
                          minWidth=colw["Calificación"], maxWidth=140, flex=0)
 
-# Editor de fecha/hora y quitar menú + filtro en todas las fechas/horas
+# Editor de fecha/hora y quitar menú en todas las fechas/horas visibles
 date_time_editor = JsCode("""
 class DateTimeEditor{
   init(p){
@@ -2761,13 +2775,12 @@ function(p){ if(p.value===null||p.value===undefined) return '—';
 for c in ["Fecha Registro","Fecha inicio","Fecha Pausado","Fecha Cancelado","Fecha Eliminado","Vencimiento","Fecha fin",
           "Fecha de detección","Fecha de corrección"]:
     if c in df_grid.columns:
-        gob.configure_column(c, editable=True, cellEditor=date_time_editor, valueFormatter=date_time_fmt,
-                             suppressMenu=True, filter=False)
+        gob.configure_column(c, editable=True, cellEditor=date_time_editor, valueFormatter=date_time_fmt, suppressMenu=True)
 
 for c in ["Hora Registro","Hora de inicio","Hora Pausado","Hora Cancelado","Hora Eliminado",
           "Hora Terminado","Hora de detección","Hora de corrección"]:
     if c in df_grid.columns:
-        gob.configure_column(c, editable=True, valueFormatter=fmt_dash, suppressMenu=True, filter=False)
+        gob.configure_column(c, editable=True, valueFormatter=fmt_dash, suppressMenu=True)
 
 # Tooltips en headers
 for col in df_grid.columns:
@@ -2832,7 +2845,7 @@ b_del, b_xlsx, b_save_local, b_save_sheets, _spacer = st.columns(
     gap="medium"
 )
 
-# 1) Borrar seleccionados (lee selección directamente del grid en el mismo run)
+# 1) Borrar seleccionados
 with b_del:
     if st.button("🗑️ Borrar", use_container_width=True):
         sel_rows_now = grid.get("selected_rows", []) if isinstance(grid, dict) else []
