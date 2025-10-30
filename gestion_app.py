@@ -1928,12 +1928,34 @@ if st.session_state["pri_visible"]:
       #pri-section .stButton > button { width: 100% !important; }
       .section-pri .help-strip-pri + .form-card{ margin-top: 6px !important; }
 
-      /* Header visible y en negrita */
+      /* Header visible (altura fija) */
       #pri-section .ag-theme-alpine .ag-header,
       #pri-section .ag-theme-streamlit .ag-header{
         height: 44px !important; min-height: 44px !important;
       }
-      #pri-section .ag-header-cell-text{
+
+      /* ====== Encabezados menos "negrita" (aplica a todo el header) ====== */
+      /* Alpine */
+      #pri-section .ag-theme-alpine .ag-header,
+      #pri-section .ag-theme-alpine .ag-header-row,
+      #pri-section .ag-theme-alpine .ag-header-cell,
+      #pri-section .ag-theme-alpine .ag-header-group-cell,
+      #pri-section .ag-theme-alpine .ag-header-cell-label,
+      #pri-section .ag-theme-alpine .ag-header-cell-text,
+      #pri-section .ag-theme-alpine .ag-header-cell-text *{
+        font-weight: 500 !important;          /* cambia a 400 si la quieres normal */
+        color: #1f2937 !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+      }
+      /* Streamlit (por si cambias de tema) */
+      #pri-section .ag-theme-streamlit .ag-header,
+      #pri-section .ag-theme-streamlit .ag-header-row,
+      #pri-section .ag-theme-streamlit .ag-header-cell,
+      #pri-section .ag-theme-streamlit .ag-header-group-cell,
+      #pri-section .ag-theme-streamlit .ag-header-cell-label,
+      #pri-section .ag-theme-streamlit .ag-header-cell-text,
+      #pri-section .ag-theme-streamlit .ag-header-cell-text *{
         font-weight: 500 !important;
         color: #1f2937 !important;
         opacity: 1 !important;
@@ -2699,6 +2721,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
