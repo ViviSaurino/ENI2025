@@ -2653,29 +2653,25 @@ if "Estado modificado" in df_view.columns:
         df_view["Estado"] = ""
     df_view.loc[mask_em, "Estado"] = _em[mask_em]
 
-# 2) REGISTRO (solo se muestra para NO INICIADO) — valores vienen de “Nueva tarea”
+# 2) REGISTRO — HUELLAS que NO se borran (relleno si faltan)
 if "Fecha Registro" not in df_view.columns: df_view["Fecha Registro"] = pd.NaT
 if "Hora Registro"   not in df_view.columns: df_view["Hora Registro"]   = ""
 
 df_view["Fecha Registro"] = df_view["Fecha Registro"].apply(_to_date)
 df_view["Hora Registro"]  = df_view["Hora Registro"].apply(_to_hhmm)
 
-mask_no_ini = (df_view["Estado"].astype(str) == "No iniciado") if "Estado" in df_view.columns else pd.Series(False, index=df_view.index)
-
 # Fallback explícito desde columnas del formulario "Nueva tarea" si existen
 _fr_fb = pd.to_datetime(df_view["Fecha"], errors="coerce").dt.normalize() if "Fecha" in df_view.columns else pd.Series(pd.NaT, index=df_view.index)
 _hr_fb = df_view["Hora"].apply(_to_hhmm) if "Hora" in df_view.columns else pd.Series([""]*len(df_view), index=df_view.index)
 
-mask_fr_missing = mask_no_ini & df_view["Fecha Registro"].isna()
-mask_hr_missing = mask_no_ini & (df_view["Hora Registro"].eq("") | df_view["Hora Registro"].eq("00:00"))
+mask_fr_missing = df_view["Fecha Registro"].isna()
+mask_hr_missing = (df_view["Hora Registro"].eq("")) | (df_view["Hora Registro"].eq("00:00"))
 
 df_view.loc[mask_fr_missing, "Fecha Registro"] = _fr_fb[mask_fr_missing]
 df_view.loc[mask_hr_missing, "Hora Registro"]  = _hr_fb[mask_hr_missing]
+# (IMPORTANTE) Ya NO se limpian las huellas de registro.
 
-# Mostrar solo cuando es No iniciado; en otros estados vaciar
-df_view.loc[~mask_no_ini, ["Fecha Registro","Hora Registro"]] = [pd.NaT, ""]
-
-# 3) INICIO y FIN por cambio de estado (desde Fecha/Hora estado modificado)
+# 3) INICIO y FIN — HUELLAS que NO se borran (solo se completan si están vacías)
 if "Hora de inicio" not in df_view.columns: df_view["Hora de inicio"] = ""
 if "Fecha fin" not in df_view.columns: df_view["Fecha fin"] = pd.NaT
 if "Hora Terminado" not in df_view.columns: df_view["Hora Terminado"] = ""
@@ -2687,16 +2683,18 @@ if "Estado" in df_view.columns:
     _en_curso   = df_view["Estado"].astype(str) == "En curso"
     _terminado  = df_view["Estado"].astype(str) == "Terminado"
 
-    # En curso → inicio (fecha solo día; hora desde "Hora estado modificado" si existe)
-    df_view.loc[_en_curso, "Fecha inicio"]   = _mod.dt.normalize()
+    # En curso → inicio (solo si faltan)
     _h_ini = _hmod.where(_hmod != "", _mod.dt.strftime("%H:%M"))
-    df_view.loc[_en_curso, "Hora de inicio"] = _h_ini[_en_curso]
-    df_view.loc[~_en_curso, ["Fecha inicio","Hora de inicio"]] = [pd.NaT, ""]
+    need_ini_dt = _en_curso & df_view["Fecha inicio"].isna()
+    need_ini_tm = _en_curso & (df_view["Hora de inicio"].astype(str).str.strip() == "")
+    df_view.loc[need_ini_dt, "Fecha inicio"]   = _mod.dt.normalize()[need_ini_dt]
+    df_view.loc[need_ini_tm, "Hora de inicio"] = _h_ini[need_ini_tm]
 
-    # Terminado → fin
-    df_view.loc[_terminado, "Fecha fin"]      = _mod
-    df_view.loc[_terminado, "Hora Terminado"] = _hmod.where(_hmod != "", _mod.dt.strftime("%H:%M"))[_terminado]
-    df_view.loc[~_terminado, ["Fecha fin","Hora Terminado"]] = [pd.NaT, ""]
+    # Terminado → fin (solo si faltan)
+    need_fin_dt = _terminado & df_view["Fecha fin"].isna()
+    need_fin_tm = _terminado & (df_view["Hora Terminado"].astype(str).str.strip() == "")
+    df_view.loc[need_fin_dt, "Fecha fin"]      = _mod[need_fin_dt]
+    df_view.loc[need_fin_tm, "Hora Terminado"] = _hmod.where(_hmod != "", _mod.dt.strftime("%H:%M"))[need_fin_tm]
 
 # === ORDEN Y PRESENCIA DE COLUMNAS (AJUSTE: mover 'Tipo' al lado de 'Tarea' y ocultar 'Fecha'/'Hora') ===
 target_cols = [
@@ -2724,7 +2722,7 @@ HIDDEN_COLS = [
     "Fecha estado modificado","Hora estado modificado",
     "Fecha estado actual","Hora estado actual",
     "N° de alerta","Tipo de alerta",   # ← ocultas siempre
-    "Fecha","Hora",                    # ← OCULTAR las columnas del formulario
+    "Fecha","Hora",                    # ← columnas del formulario
     "__ts__","__DEL__"
 ]
 
@@ -2757,7 +2755,7 @@ gob.configure_grid_options(
     suppressRowClickSelection=False,
     rememberSelection=True,
     domLayout="normal",
-    rowHeight=30,            # ← más delgado
+    rowHeight=30,
     headerHeight=42,
     enableRangeSelection=True,
     enableCellTextSelection=True,
@@ -2810,12 +2808,12 @@ function(p){
   if (v==='No iniciado'){bg='#90A4AE'}
   else if(v==='En curso'){bg='#B388FF'}
   else if(v==='Terminado'){bg='#00C4B3'}
-  else if(v==='Cancelado'){bg:'#FF2D95'}
-  else if(v==='Pausado'){bg:'#7E57C2'}
-  else if(v==='Entregado a tiempo'){bg:'#00C4B3'}
-  else if(v==='Entregado con retraso'){bg:'#00ACC1'}
-  else if(v==='No entregado'){bg:'#006064'}
-  else if(v==='En riesgo de retraso'){bg:'#0277BD'}
+  else if(v==='Cancelado'){bg='#FF2D95'}
+  else if(v==='Pausado'){bg='#7E57C2'}
+  else if(v==='Entregado a tiempo'){bg='#00C4B3'}
+  else if(v==='Entregado con retraso'){bg='#00ACC1'}
+  else if(v==='No entregado'){bg='#006064'}
+  else if(v==='En riesgo de retraso'){bg='#0277BD'}
   else if(v==='Aprobada'){bg:'#8BC34A'; fg:'#0A2E00'}
   else if(v==='Desaprobada'){bg:'#FF8A80'}
   else if(v==='Pendiente de revisión'){bg:'#BDBDBD'; fg:'#2B2B2B'}
@@ -3044,6 +3042,3 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
