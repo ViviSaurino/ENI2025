@@ -2543,8 +2543,8 @@ dups = df_view.columns.duplicated()
 if dups.any():
     df_view = df_view.loc[:, ~dups]
 
-# ===== Semántica de tiempos pedida =====
-# A) Si Estado = "No iniciado": garantizar Fecha/Hora Registro
+# ===== Semántica de tiempos =====
+# A) Si Estado = "No iniciado": garantizar Fecha/Hora Registro (sin pisar lo que viene del formulario)
 if "Fecha Registro" not in df_view.columns: df_view["Fecha Registro"] = pd.NaT
 if "Hora Registro"   not in df_view.columns: df_view["Hora Registro"]   = ""
 
@@ -2555,10 +2555,9 @@ reg_dt = pd.to_datetime(df_view.get("Fecha Registro"), errors="coerce")
 
 if has_estado:
     mask_no_ini = df_view["Estado"].astype(str) == "No iniciado"
-    # Preferimos Fecha Registro existente; si falta, usamos 'Fecha estado actual' y como backup 'Fecha estado modificado'
+    # preferimos lo ya guardado; si falta, usar estado actual y como backup estado modificado
     fallback_dt = act_dt.where(~act_dt.isna(), mod_dt)
     df_view.loc[mask_no_ini & reg_dt.isna(), "Fecha Registro"] = fallback_dt
-    # Hora Registro si falta
     hora_reg = df_view["Hora Registro"].astype(str)
     mask_hr_miss = mask_no_ini & ((hora_reg.eq("")) | (df_view["Hora Registro"].isna()))
     df_view.loc[mask_hr_miss, "Hora Registro"] = fallback_dt.dt.strftime("%H:%M")
@@ -2571,19 +2570,19 @@ if has_estado and "Fecha estado modificado" in df_view.columns:
     df_view.loc[_en_curso, "Fecha inicio"]   = _mod
     df_view.loc[_en_curso, "Hora de inicio"] = _mod.dt.strftime("%H:%M")
 
-# === ORDEN Y PRESENCIA DE COLUMNAS SEGÚN TU LISTA ===
+# === ORDEN Y PRESENCIA DE COLUMNAS (lo visible) ===
 target_cols = [
     "Id","Área","Fase","Responsable",
     "Tarea","Detalle","Ciclo de mejora","Complejidad","Prioridad",
-    "Estado",                      # → header: "Estado actual"
-    "Duración",                    # vacío por ahora
+    "Estado",
+    "Duración",
     "Fecha Registro","Hora Registro",
-    "Fecha inicio","Hora de inicio",   # → header: "Fecha de inicio"
+    "Fecha inicio","Hora de inicio",
     "Fecha Pausado","Hora Pausado",
     "Fecha Cancelado","Hora Cancelado",
     "Fecha Eliminado","Hora Eliminado",
-    "Vencimiento",                    # → header: "Fecha límite"
-    "Fecha fin","Hora Terminado",     # → header: "Fecha Terminado"
+    "Vencimiento",
+    "Fecha fin","Hora Terminado",
     "¿Generó alerta?","N° de alerta","Fecha de detección","Hora de detección",
     "¿Se corrigió?","Fecha de corrección","Hora de corrección",
     "Cumplimiento","Evaluación","Calificación"
@@ -2592,7 +2591,8 @@ target_cols = [
 # Columnas internas que NO deben mostrarse en el grid
 HIDDEN_COLS = [
     "Fecha estado modificado","Hora estado modificado",
-    "Fecha estado actual","Hora estado actual"
+    "Fecha estado actual","Hora estado actual",
+    "Estado modificado"  # ← nuevo: ocultar esta columna también
 ]
 
 # Asegura presencia de columnas (si faltan, se crean vacías)
@@ -2609,6 +2609,30 @@ rest = [c for c in df_view.columns if c not in target_cols_u + ["__DEL__","__ts_
 df_grid = df_view.reindex(columns=target_cols_u + rest).copy()
 df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()
 
+# ---- Normalizar visualmente horas a HH:MM (sin tocar el df_base) ----
+from datetime import datetime as _dt, time as _time
+HORA_COLS = ["Hora Registro","Hora de inicio","Hora Pausado","Hora Cancelado","Hora Eliminado",
+             "Hora Terminado","Hora de detección","Hora de corrección"]
+
+def _to_hhmm(v):
+    try:
+        if v is None or (isinstance(v, float) and pd.isna(v)): return ""
+        if isinstance(v, _time): return v.strftime("%H:%M")
+        if isinstance(v, (pd.Timestamp, _dt)): return pd.to_datetime(v).strftime("%H:%M")
+        s = str(v).strip()
+        if s == "" or s.lower() in ("nan","nat","none","null"): return ""
+        # intentos comunes
+        for fmt in ("%H:%M","%H:%M:%S"):
+            try: return _dt.strptime(s, fmt).strftime("%H:%M")
+            except: pass
+        return pd.to_datetime(s, errors="coerce").strftime("%H:%M")
+    except Exception:
+        return str(v)
+
+for c in HORA_COLS:
+    if c in df_grid.columns:
+        df_grid[c] = df_grid[c].map(_to_hhmm)
+
 # **CLAVE**: forzar Id a string antes de renderizar el grid
 df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
 
@@ -2618,49 +2642,7 @@ from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode
 gob = GridOptionsBuilder.from_dataframe(df_grid)
 gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True)
 
-gob.configure_grid_options(
-    rowSelection="multiple",
-    rowMultiSelectWithClick=True,
-    suppressRowClickSelection=False,
-    rememberSelection=True,
-    domLayout="normal",
-    rowHeight=38,
-    headerHeight=42,
-    enableRangeSelection=True,
-    enableCellTextSelection=True,
-    singleClickEdit=True,
-    stopEditingWhenCellsLoseFocus=True,
-    undoRedoCellEditing=True,
-    enterMovesDown=True,
-    suppressMovableColumns=False,   # ← permitir mover columnas
-    getRowId=JsCode("function(p){ return (p.data && (p.data.Id || p.data['Id'])) + ''; }"),
-)
-
-# ----- Fijas a la izquierda (inmovibles) -----
-gob.configure_column("Id",
-    headerName="ID",
-    editable=False, width=110, pinned="left",
-    checkboxSelection=True,
-    headerCheckboxSelection=True,
-    headerCheckboxSelectionFilteredOnly=True,
-    suppressMovable=True
-)
-gob.configure_column("Área",        editable=True,  width=160, pinned="left", suppressMovable=True)
-gob.configure_column("Fase",        editable=True,  width=140, pinned="left", suppressMovable=True)
-gob.configure_column("Responsable", editable=True,  minWidth=180, pinned="left", suppressMovable=True)
-
-# ----- Alias de encabezados -----
-gob.configure_column("Estado",        headerName="Estado actual")
-gob.configure_column("Vencimiento",   headerName="Fecha límite")
-gob.configure_column("Fecha inicio",  headerName="Fecha de inicio")
-gob.configure_column("Fecha fin",     headerName="Fecha Terminado")
-
-# ----- Ocultas en GRID (visibles en export/Sheets si las agregas al orden) -----
-for ocultar in HIDDEN_COLS + ["Fecha Pausado","Hora Pausado","Fecha Cancelado","Hora Cancelado","Fecha Eliminado","Hora Eliminado"]:
-    if ocultar in df_view.columns:
-        gob.configure_column(ocultar, hide=True, suppressMenu=True)
-
-# ----- Formatters -----
+# Formatters JS
 flag_formatter = JsCode("""
 function(p){ const v=String(p.value||'');
   if(v==='Alta') return '🔴 Alta'; if(v==='Media') return '🟡 Media'; if(v==='Baja') return '🟢 Baja'; return v||'—'; }""")
@@ -2692,20 +2674,88 @@ function(p){ if(p.value===null||p.value===undefined) return '—';
   if(s===''||s==='nan'||s==='nat'||s==='none'||s==='null') return '—';
   return String(p.value); }""")
 
-stars_fmt = JsCode("""
-function(p){
-  let n = parseInt(p.value||0); if(isNaN(n)||n<0) n=0; if(n>5) n=5;
-  return '★'.repeat(n) + '☆'.repeat(5-n);
+date_time_editor = JsCode("""
+class DateTimeEditor{
+  init(p){
+    this.eInput = document.createElement('input');
+    this.eInput.type = 'datetime-local';
+    this.eInput.classList.add('ag-input');
+    this.eInput.style.width = '100%';
+    const v = p.value ? new Date(p.value) : null;
+    if (v && !isNaN(v.getTime())){
+      const pad = n => String(n).padStart(2,'0');
+      this.eInput.value = v.getFullYear() + '-' + pad(v.getMonth()+1) + '-' + pad(v.getDate())
+                        + 'T' + pad(v.getHours()) + ':' + pad(v.getMinutes());
+    }
+  }
+  getGui(){ return this.eInput }
+  afterGuiAttached(){ this.eInput.focus() }
+  getValue(){ return this.eInput.value }
 }""")
 
-# ----- Anchos/flex -----
+date_time_fmt = JsCode("""
+function(p){ if(p.value===null||p.value===undefined) return '—';
+  const d=new Date(String(p.value).trim()); if(isNaN(d.getTime())) return '—';
+  const pad=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes()); }""")
+
+# NUEVO: formateador de SOLO FECHA (para "Fecha Registro")
+date_only_fmt = JsCode("""
+function(p){ if(p.value===null||p.value===undefined) return '—';
+  const d=new Date(String(p.value).trim()); if(isNaN(d.getTime())) return '—';
+  const pad=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }""")
+
+gob.configure_grid_options(
+    rowSelection="multiple",
+    rowMultiSelectWithClick=True,
+    suppressRowClickSelection=False,
+    rememberSelection=True,
+    domLayout="normal",
+    rowHeight=32,              # ← un poco más delgado
+    headerHeight=40,
+    enableRangeSelection=True,
+    enableCellTextSelection=True,
+    singleClickEdit=True,
+    stopEditingWhenCellsLoseFocus=True,
+    undoRedoCellEditing=True,
+    enterMovesDown=True,
+    suppressMovableColumns=False,
+    getRowId=JsCode("function(p){ return (p.data && (p.data.Id || p.data['Id'])) + ''; }"),
+)
+
+# ----- Fijas a la izquierda (inmovibles) -----
+gob.configure_column("Id",
+    headerName="ID",
+    editable=False, width=110, pinned="left",
+    checkboxSelection=True,
+    headerCheckboxSelection=True,
+    headerCheckboxSelectionFilteredOnly=True,
+    suppressMovable=True
+)
+gob.configure_column("Área",        editable=True,  width=160, pinned="left", suppressMovable=True)
+gob.configure_column("Fase",        editable=True,  width=140, pinned="left", suppressMovable=True)
+gob.configure_column("Responsable", editable=True,  minWidth=180, pinned="left", suppressMovable=True)
+
+# ----- Alias de encabezados -----
+gob.configure_column("Estado",        headerName="Estado actual")
+gob.configure_column("Vencimiento",   headerName="Fecha límite")
+gob.configure_column("Fecha inicio",  headerName="Fecha de inicio")
+gob.configure_column("Fecha fin",     headerName="Fecha Terminado")
+
+# ----- Ocultas en GRID -----
+for ocultar in HIDDEN_COLS + ["Fecha Pausado","Hora Pausado","Fecha Cancelado","Hora Cancelado","Fecha Eliminado","Hora Eliminado"]:
+    if ocultar in df_view.columns:
+        gob.configure_column(ocultar, hide=True, suppressMenu=True)
+
+# ----- Config de columnas visibles (anchos/flex) -----
 colw = {
     "Tarea":260, "Detalle":240, "Ciclo de mejora":140, "Complejidad":130, "Prioridad":130,
-    "Estado":130, "Duración":110, "Fecha Registro":160, "Hora Registro":140,
-    "Fecha inicio":160, "Hora de inicio":140, "Vencimiento":160,
-    "Fecha fin":160, "Hora Terminado":140, "¿Generó alerta?":150, "N° de alerta":140,
-    "Fecha de detección":160, "Hora de detección":140, "¿Se corrigió?":140,
-    "Fecha de corrección":160, "Hora de corrección":140, "Cumplimiento":180, "Evaluación":170, "Calificación":120
+    "Estado":130, "Duración":110, "Fecha Registro":150, "Hora Registro":110,
+    "Fecha inicio":160, "Hora de inicio":120, "Vencimiento":160,
+    "Fecha fin":160, "Hora Terminado":120, "¿Generó alerta?":150, "N° de alerta":140,
+    "Fecha de detección":160, "Hora de detección":120, "¿Se corrigió?":140,
+    "Fecha de corrección":160, "Hora de corrección":120, "Cumplimiento":180, "Evaluación":170, "Calificación":120
 }
 for c, fx in [("Tarea",3), ("Detalle",2), ("Ciclo de mejora",1), ("Complejidad",1), ("Prioridad",1), ("Estado",1),
               ("Duración",1), ("Fecha Registro",1), ("Hora Registro",1),
@@ -2731,7 +2781,7 @@ if "Prioridad" in df_grid.columns:
         valueFormatter=flag_formatter, minWidth=colw["Prioridad"], maxWidth=220, flex=1
     )
 
-# Chips para Cumplimiento / Evaluación / ¿Se corrigió? / ¿Generó alerta?
+# Chips para select
 for c, vals in [("Cumplimiento", CUMPLIMIENTO),
                 ("¿Se corrigió?", SI_NO),
                 ("¿Generó alerta?", SI_NO),
@@ -2742,41 +2792,24 @@ for c, vals in [("Cumplimiento", CUMPLIMIENTO),
                              cellStyle=chip_style, valueFormatter=fmt_dash,
                              minWidth=colw.get(c,120), maxWidth=260, flex=1)
 
-# Calificación con estrellas (solo formato aquí)
+# Calificación con estrellas
 if "Calificación" in df_grid.columns:
-    gob.configure_column("Calificación", editable=True, valueFormatter=stars_fmt,
-                         minWidth=colw["Calificación"], maxWidth=140, flex=0)
+    gob.configure_column("Calificación", editable=True, valueFormatter=JsCode("""
+        function(p){ let n = parseInt(p.value||0); if(isNaN(n)||n<0) n=0; if(n>5) n=5;
+        return '★'.repeat(n) + '☆'.repeat(5-n); }"""),
+        minWidth=colw["Calificación"], maxWidth=140, flex=0)
 
-# Editor de fecha/hora y quitar menú en todas las fechas/horas visibles
-date_time_editor = JsCode("""
-class DateTimeEditor{
-  init(p){
-    this.eInput = document.createElement('input');
-    this.eInput.type = 'datetime-local';
-    this.eInput.classList.add('ag-input');
-    this.eInput.style.width = '100%';
-    const v = p.value ? new Date(p.value) : null;
-    if (v && !isNaN(v.getTime())){
-      const pad = n => String(n).padStart(2,'0');
-      this.eInput.value = v.getFullYear() + '-' + pad(v.getMonth()+1) + '-' + pad(v.getDate())
-                        + 'T' + pad(v.getHours()) + ':' + pad(v.getMinutes());
-    }
-  }
-  getGui(){ return this.eInput }
-  afterGuiAttached(){ this.eInput.focus() }
-  getValue(){ return this.eInput.value }
-}""")
-date_time_fmt = JsCode("""
-function(p){ if(p.value===null||p.value===undefined) return '—';
-  const d=new Date(String(p.value).trim()); if(isNaN(d.getTime())) return '—';
-  const pad=n=>String(n).padStart(2,'0');
-  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes()); }""")
-
-for c in ["Fecha Registro","Fecha inicio","Fecha Pausado","Fecha Cancelado","Fecha Eliminado","Vencimiento","Fecha fin",
-          "Fecha de detección","Fecha de corrección"]:
+# ====== Editores/formatters específicos de fechas/horas visibles ======
+# Fechas con editor + sin menú
+for c in ["Fecha inicio","Vencimiento","Fecha fin","Fecha de detección","Fecha de corrección"]:
     if c in df_grid.columns:
         gob.configure_column(c, editable=True, cellEditor=date_time_editor, valueFormatter=date_time_fmt, suppressMenu=True)
 
+# "Fecha Registro" SOLO fecha visual (sin 00:00)
+if "Fecha Registro" in df_grid.columns:
+    gob.configure_column("Fecha Registro", editable=True, cellEditor=date_time_editor, valueFormatter=date_only_fmt, suppressMenu=True)
+
+# Horas visibles sin menú
 for c in ["Hora Registro","Hora de inicio","Hora Pausado","Hora Cancelado","Hora Eliminado",
           "Hora Terminado","Hora de detección","Hora de corrección"]:
     if c in df_grid.columns:
