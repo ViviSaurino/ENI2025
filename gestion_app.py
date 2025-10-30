@@ -1699,8 +1699,8 @@ if st.session_state["na_visible"]:
             }
         )[cols_out].copy()
 
-    # ====== AG-GRID ======
-    from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode, JsCode
+    # ====== AG-GRID (config directa sin GridOptionsBuilder) ======
+    from st_aggrid import AgGrid, GridUpdateMode, DataReturnMode, JsCode
 
     # editores de fecha
     date_editor = JsCode("""
@@ -1766,7 +1766,7 @@ if st.session_state["na_visible"]:
     on_ready_size = JsCode("function(p){ p.api.sizeColumnsToFit(); }")
     on_first_size = JsCode("function(p){ p.api.sizeColumnsToFit(); }")
 
-    # 🔧 ColumnDefs SIEMPRE visibles (aunque no haya filas)
+    # ColumnDefs SIEMPRE visibles
     col_defs = [
         {"field":"Id", "headerName":"Id", "editable": False, "pinned":"left", "flex":1.2, "minWidth":110},
         {"field":"Tarea", "headerName":"Tarea", "editable": False, "flex":3, "minWidth":200},
@@ -1806,28 +1806,26 @@ if st.session_state["na_visible"]:
          "editable": False, "flex":1.0, "minWidth":140},
     ]
 
-    gob = GridOptionsBuilder.from_dataframe(pd.DataFrame(columns=[c["field"] for c in col_defs]))
-    gob.configure_grid_options(
-        suppressMovableColumns=True,
-        domLayout="normal",
-        ensureDomOrder=True,
-        rowHeight=38,
-        headerHeight=42,
-        suppressHorizontalScroll=True,
-        columnDefs=col_defs,   # << forzamos headers
-    )
-
-    grid_opts = gob.build()
-    grid_opts["onCellValueChanged"] = on_cell_changed.js_code
-    grid_opts["onGridReady"] = on_ready_size.js_code
-    grid_opts["onFirstDataRendered"] = on_first_size.js_code
+    grid_opts = {
+        "columnDefs": col_defs,
+        "defaultColDef": {"resizable": True, "wrapText": True, "autoHeight": True, "minWidth": 110, "flex": 1},
+        "suppressMovableColumns": True,
+        "domLayout": "normal",
+        "ensureDomOrder": True,
+        "rowHeight": 38,
+        "headerHeight": 42,
+        "suppressHorizontalScroll": True,
+        "onCellValueChanged": on_cell_changed,
+        "onGridReady": on_ready_size,
+        "onFirstDataRendered": on_first_size,
+    }
 
     grid = AgGrid(
         df_view,
         gridOptions=grid_opts,
         data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
         update_mode=GridUpdateMode.VALUE_CHANGED,
-        fit_columns_on_grid_load=True,
+        fit_columns_on_grid_load=False,   # autosize se hace en los callbacks
         enable_enterprise_modules=False,
         reload_data=False,
         height=220,
@@ -1882,6 +1880,7 @@ if st.session_state["na_visible"]:
 
     # Separación vertical entre secciones
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
+
 
 
 # =========================== PRIORIDAD ===============================
@@ -2637,6 +2636,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
