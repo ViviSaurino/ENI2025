@@ -2469,6 +2469,9 @@ st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
 st.subheader("📝 Tareas recientes")
 st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
+import re
+from datetime import datetime, time
+
 # Base completa sin filtrar para poblar combos
 df_all = st.session_state["df_main"].copy()
 df_view = df_all.copy()
@@ -2543,6 +2546,28 @@ dups = df_view.columns.duplicated()
 if dups.any():
     df_view = df_view.loc[:, ~dups]
 
+# ===== Helpers de normalización =====
+def _to_date(v):
+    if pd.isna(v): return pd.NaT
+    if isinstance(v, (pd.Timestamp, datetime)): return pd.Timestamp(v).normalize()
+    d = pd.to_datetime(str(v), errors="coerce")
+    return d.normalize() if not pd.isna(d) else pd.NaT
+
+def _to_hhmm(v):
+    if v is None or (isinstance(v, float) and pd.isna(v)): return ""
+    try:
+        if isinstance(v, time):      return f"{v.hour:02d}:{v.minute:02d}"
+        if isinstance(v, (pd.Timestamp, datetime)): return f"{v.hour:02d}:{v.minute:02d}"
+        s = str(v).strip()
+        if not s or s.lower() in {"nan","nat","none","null"}: return ""
+        m = re.match(r"^(\d{1,2}):(\d{2})", s)
+        if m: return f"{int(m.group(1)):02d}:{int(m.group(2)):02d}"
+        d = pd.to_datetime(s, errors="coerce")
+        if not pd.isna(d): return f"{int(d.hour):02d}:{int(d.minute):02d}"
+    except Exception:
+        pass
+    return ""
+
 # ===== Semántica de tiempos / estado =====
 # 1) Estado actual: si existe "Estado modificado" (texto) úsalo para sobrescribir "Estado"
 if "Estado modificado" in df_view.columns:
@@ -2552,36 +2577,16 @@ if "Estado modificado" in df_view.columns:
         df_view["Estado"] = ""
     df_view.loc[mask_em, "Estado"] = _em[mask_em]
 
-# 2) REGISTRO (solo para NO INICIADO): usar lo que viene de Nueva tarea y normalizar hora
+# 2) REGISTRO (solo se muestra para NO INICIADO) — valores vienen de “Nueva tarea”
 if "Fecha Registro" not in df_view.columns: df_view["Fecha Registro"] = pd.NaT
 if "Hora Registro"   not in df_view.columns: df_view["Hora Registro"]   = ""
 
+df_view["Fecha Registro"] = df_view["Fecha Registro"].apply(_to_date)
+df_view["Hora Registro"]  = df_view["Hora Registro"].apply(_to_hhmm)
+
 mask_no_ini = (df_view["Estado"].astype(str) == "No iniciado") if "Estado" in df_view.columns else pd.Series(False, index=df_view.index)
-
-# Normalización robusta de la hora (HH:MM)
-_hr_str = df_view["Hora Registro"].astype(str).str.strip().fillna("")
-_hr_ex = _hr_str.str.extract(r'(\d{1,2}):(\d{2})')
-def _mk_hhmm(row):
-    h, m = row[0], row[1]
-    if pd.isna(h) or pd.isna(m): return ""
-    return str(h).zfill(2)+":"+str(m)
-df_view["Hora Registro"] = _hr_ex.apply(_mk_hhmm, axis=1)
-
-# Si sigue faltando/00:00, intentar fallback con "Hora estado actual" o con la parte hora de "Fecha Registro" si viniera con hora
-if "Hora estado actual" in df_view.columns:
-    _hea = df_view["Hora estado actual"].astype(str).str.strip().fillna("")
-    _hea_ex = _hea.str.extract(r'(\d{1,2}):(\d{2})')
-    _hea_hhmm = _hea_ex.apply(_mk_hhmm, axis=1)
-else:
-    _hea_hhmm = pd.Series([""]*len(df_view), index=df_view.index)
-
-_fr_ts = pd.to_datetime(df_view["Fecha Registro"], errors="coerce")
-_fr_hhmm = _fr_ts.dt.strftime("%H:%M").fillna("")
-
-mask_hr_missing = mask_no_ini & ( (df_view["Hora Registro"].eq("")) | (df_view["Hora Registro"].isin(["00:00"])) )
-df_view.loc[mask_hr_missing, "Hora Registro"] = _hea_hhmm[mask_hr_missing]
-mask_hr_missing = mask_no_ini & (df_view["Hora Registro"].eq(""))
-df_view.loc[mask_hr_missing, "Hora Registro"] = _fr_hhmm[mask_hr_missing]
+# Mostrar solo cuando es No iniciado; en otros estados vaciar
+df_view.loc[~mask_no_ini, ["Fecha Registro","Hora Registro"]] = [pd.NaT, ""]
 
 # 3) INICIO y FIN por cambio de estado (desde Fecha estado modificado)
 if "Hora de inicio" not in df_view.columns: df_view["Hora de inicio"] = ""
@@ -2599,11 +2604,11 @@ if "Estado" in df_view.columns:
     df_view.loc[~_en_curso, ["Fecha inicio","Hora de inicio"]] = [pd.NaT, ""]
 
     # Terminado → fin
-    df_view.loc[_terminado, "Fecha fin"]       = _mod
-    df_view.loc[_terminado, "Hora Terminado"]  = _mod.dt.strftime("%H:%M")
+    df_view.loc[_terminado, "Fecha fin"]      = _mod
+    df_view.loc[_terminado, "Hora Terminado"] = _mod.dt.strftime("%H:%M")
     df_view.loc[~_terminado, ["Fecha fin","Hora Terminado"]] = [pd.NaT, ""]
 
-# === ORDEN Y PRESENCIA DE COLUMNAS SEGÚN TU LISTA ===
+# === ORDEN Y PRESENCIA DE COLUMNAS (tu orden oficial) ===
 target_cols = [
     "Id","Área","Fase","Responsable",
     "Tarea","Detalle","Ciclo de mejora","Complejidad","Prioridad",
@@ -2616,16 +2621,19 @@ target_cols = [
     "Fecha Eliminado","Hora Eliminado",
     "Vencimiento",
     "Fecha fin","Hora Terminado",
-    "¿Generó alerta?","N° de alerta","Tipo de alerta","Fecha de detección","Hora de detección",
+    "¿Generó alerta?",
+    # (Ocultamos “N° de alerta” y “Tipo de alerta” para que no salgan al final)
+    "Fecha de detección","Hora de detección",
     "¿Se corrigió?","Fecha de corrección","Hora de corrección",
     "Cumplimiento","Evaluación","Calificación"
 ]
 
-# Columnas internas NO visibles en el grid
+# Columnas NO visibles en el grid
 HIDDEN_COLS = [
     "Estado modificado",
     "Fecha estado modificado","Hora estado modificado",
     "Fecha estado actual","Hora estado actual",
+    "N° de alerta","Tipo de alerta",   # ← ocultas siempre
     "__ts__","__DEL__"
 ]
 
@@ -2634,7 +2642,7 @@ for c in target_cols:
     if c not in df_view.columns:
         df_view[c] = ""
 
-# Duración: mantener vacía
+# Duración vacía
 df_view["Duración"] = df_view["Duración"].astype(str).fillna("")
 
 # Reindex (sin duplicados y excluyendo ocultas)
@@ -2658,7 +2666,7 @@ gob.configure_grid_options(
     suppressRowClickSelection=False,
     rememberSelection=True,
     domLayout="normal",
-    rowHeight=32,      # ← más delgado
+    rowHeight=30,            # ← más delgado
     headerHeight=42,
     enableRangeSelection=True,
     enableCellTextSelection=True,
@@ -2670,7 +2678,7 @@ gob.configure_grid_options(
     getRowId=JsCode("function(p){ return (p.data && (p.data.Id || p.data['Id'])) + ''; }"),
 )
 
-# ----- Fijas a la izquierda (inmovibles) -----
+# ----- Fijas a la izquierda -----
 gob.configure_column("Id",
     headerName="ID",
     editable=False, width=110, pinned="left",
@@ -2694,7 +2702,7 @@ for ocultar in HIDDEN_COLS + ["Fecha Pausado","Hora Pausado","Fecha Cancelado","
     if ocultar in df_view.columns:
         gob.configure_column(ocultar, hide=True, suppressMenu=True, filter=False)
 
-# ----- Formatters útiles -----
+# ----- Formatters -----
 flag_formatter = JsCode("""
 function(p){
   const v=String(p.value||'');
@@ -2716,7 +2724,7 @@ function(p){
   else if(v==='Entregado a tiempo'){bg='#00C4B3'}
   else if(v==='Entregado con retraso'){bg='#00ACC1'}
   else if(v==='No entregado'){bg='#006064'}
-  else if(v==='En riesgo de retraso'){bg='#0277BD'}
+  else if(v==='En riesgo de retraso'){bg:'#0277BD'}
   else if(v==='Aprobada'){bg:'#8BC34A'; fg:'#0A2E00'}
   else if(v==='Desaprobada'){bg:'#FF8A80'}
   else if(v==='Pendiente de revisión'){bg:'#BDBDBD'; fg:'#2B2B2B'}
@@ -2752,11 +2760,11 @@ function(p){
   return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 }""")
 
-time_only_fmt = JsCode("""
+time_only_fmt = JsCode(r"""
 function(p){
   const v = String(p.value||'').trim();
   if(!v) return '—';
-  const m = v.match(/^(\\d{1,2}):(\\d{2})/);
+  const m = v.match(/^(\d{1,2}):(\d{2})/);
   if(m) return (m[1].padStart(2,'0')) + ':' + m[2];
   const d = new Date(v);
   if(!isNaN(d.getTime())){
@@ -2771,17 +2779,17 @@ colw = {
     "Tarea":260, "Detalle":240, "Ciclo de mejora":140, "Complejidad":130, "Prioridad":130,
     "Estado":130, "Duración":110, "Fecha Registro":160, "Hora Registro":140,
     "Fecha inicio":160, "Hora de inicio":140, "Vencimiento":160,
-    "Fecha fin":160, "Hora Terminado":140, "¿Generó alerta?":150, "N° de alerta":140, "Tipo de alerta":150,
-    "Fecha de detección":160, "Hora de detección":140, "¿Se corrigió?":140,
-    "Fecha de corrección":160, "Hora de corrección":140, "Cumplimiento":180, "Evaluación":170, "Calificación":120
+    "Fecha fin":160, "Hora Terminado":140,
+    "¿Generó alerta?":150, "Fecha de detección":160, "Hora de detección":140,
+    "¿Se corrigió?":140, "Fecha de corrección":160, "Hora de corrección":140,
+    "Cumplimiento":180, "Evaluación":170, "Calificación":120
 }
 
 for c, fx in [("Tarea",3), ("Detalle",2), ("Ciclo de mejora",1), ("Complejidad",1), ("Prioridad",1), ("Estado",1),
               ("Duración",1), ("Fecha Registro",1), ("Hora Registro",1),
               ("Fecha inicio",1), ("Hora de inicio",1),
               ("Vencimiento",1), ("Fecha fin",1), ("Hora Terminado",1),
-              ("¿Generó alerta?",1), ("N° de alerta",1), ("Tipo de alerta",1),
-              ("Fecha de detección",1), ("Hora de detección",1),
+              ("¿Generó alerta?",1), ("Fecha de detección",1), ("Hora de detección",1),
               ("¿Se corrigió?",1), ("Fecha de corrección",1), ("Hora de corrección",1),
               ("Cumplimiento",1), ("Evaluación",1), ("Calificación",0)]:
     if c in df_grid.columns:
@@ -2822,7 +2830,7 @@ for c, vals in [("Cumplimiento", CUMPLIMIENTO),
                              cellStyle=chip_style, valueFormatter=fmt_dash,
                              minWidth=colw.get(c,120), maxWidth=260, flex=1)
 
-# Calificación con estrellas (formato)
+# Calificación con estrellas
 if "Calificación" in df_grid.columns:
     gob.configure_column("Calificación", editable=True, valueFormatter=JsCode("""
       function(p){ let n=parseInt(p.value||0); if(isNaN(n)||n<0) n=0; if(n>5) n=5; return '★'.repeat(n)+'☆'.repeat(5-n); }
@@ -2945,3 +2953,4 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
