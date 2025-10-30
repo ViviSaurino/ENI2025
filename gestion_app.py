@@ -1468,7 +1468,7 @@ if st.session_state["est_visible"]:
       getValue(){ return this.eInput.value }
     }""")
 
-    # chip renderer con emoji/colores (visual)
+    # chip renderer con emoji/colores (visual) → devuelve un elemento DOM (no string)
     estado_mod_renderer = JsCode("""
     function(p){
       const v = (p.value || '').toString();
@@ -1480,9 +1480,11 @@ if st.session_state["est_visible"]:
         "Eliminado":  {txt:"🗑️ Eliminado",    bg:"#ECEFF1", fg:"#263238"}
       };
       const m = M[v]; if(!m) return v;
-      const sty = "display:inline-block;padding:4px 10px;border-radius:12px;font-weight:600;"
-                + "background:"+m.bg+";color:"+m.fg+";text-align:center;";
-      return `<span style="${sty}">${m.txt}</span>`;
+      const e = document.createElement('span');
+      e.textContent = m.txt;
+      e.style.cssText = "display:inline-block;padding:4px 10px;border-radius:12px;font-weight:600;text-align:center;"
+                        + "background:"+m.bg+";color:"+m.fg+";";
+      return e;
     }""")
 
     on_cell_changed = JsCode("""
@@ -1505,10 +1507,9 @@ if st.session_state["est_visible"]:
         headerHeight=42,
         suppressHorizontalScroll=True
     )
-    # SIN checkbox (se remueve la columna de check de la izquierda)
+    # SIN checkbox
     gob.configure_selection("single", use_checkbox=False)
 
-    # columnas editables solicitadas
     gob.configure_column(
         "Estado modificado",
         editable=True,
@@ -1517,15 +1518,8 @@ if st.session_state["est_visible"]:
         cellRenderer=estado_mod_renderer,
         minWidth=180
     )
-
-    gob.configure_column(
-        "Fecha estado modificado",
-        editable=True,
-        cellEditor=date_editor,
-        minWidth=160
-    )
-
-    gob.configure_column("Hora estado modificado", editable=False, minWidth=140)
+    gob.configure_column("Fecha estado modificado", editable=True, cellEditor=date_editor, minWidth=160)
+    gob.configure_column("Hora estado modificado",  editable=False, minWidth=140)
 
     grid_opts = gob.build()
     grid_opts["onCellValueChanged"] = on_cell_changed.js_code
@@ -1544,9 +1538,7 @@ if st.session_state["est_visible"]:
     )
 
     # ===== Guardar cambios (actualiza la MISMA fila por Id) =====
-    sel_rows = grid.get("selected_rows", [])
-    sel_id = str(sel_rows[0].get("Id","")).strip() if sel_rows else None
-
+    # NOTA: quitamos el uso de 'selected_rows' para evitar ValueError por truth-value ambiguo.
     u1, u2 = st.columns([A+Fw+T_width+D+R, C], gap="medium")
     with u2:
         if st.button("💾 Guardar cambios", use_container_width=True, key="est_guardar_inline_v3"):
@@ -1584,6 +1576,7 @@ if st.session_state["est_visible"]:
     # Cerrar form-card + section + contenedor
     st.markdown('</div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
+
 
 
 # ================== Nueva alerta ==================
@@ -2545,6 +2538,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
