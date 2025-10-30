@@ -2542,6 +2542,26 @@ dups = df_view.columns.duplicated()
 if dups.any():
     df_view = df_view.loc[:, ~dups]
 
+# ===== Semántica de tiempos pedida =====
+# Fecha/Hora Registro = estado "No iniciado" (si faltan, rellenar con Fecha estado actual)
+if "Fecha Registro" not in df_view.columns: df_view["Fecha Registro"] = pd.NaT
+if "Hora Registro" not in df_view.columns:   df_view["Hora Registro"]   = ""
+
+if "Estado" in df_view.columns and "Fecha estado actual" in df_view.columns:
+    _act = pd.to_datetime(df_view["Fecha estado actual"], errors="coerce")
+    _no_ini = df_view["Estado"].astype(str) == "No iniciado"
+    df_view.loc[_no_ini & df_view["Fecha Registro"].isna(), "Fecha Registro"] = _act
+    df_view.loc[_no_ini & (df_view["Hora Registro"].astype(str).eq("") | df_view["Hora Registro"].isna()),
+                "Hora Registro"] = _act.dt.strftime("%H:%M")
+
+# Fecha/Hora de inicio = cuando pasa a "En curso" (Fecha estado modificado)
+if "Hora de inicio" not in df_view.columns: df_view["Hora de inicio"] = ""
+if "Fecha estado modificado" in df_view.columns and "Estado" in df_view.columns:
+    _mod = pd.to_datetime(df_view["Fecha estado modificado"], errors="coerce")
+    _en_curso = df_view["Estado"].astype(str) == "En curso"
+    df_view.loc[_en_curso, "Fecha inicio"]   = _mod
+    df_view.loc[_en_curso, "Hora de inicio"] = _mod.dt.strftime("%H:%M")
+
 # === ORDEN Y PRESENCIA DE COLUMNAS SEGÚN TU LISTA ===
 target_cols = [
     "Id","Área","Fase","Responsable",
@@ -2597,20 +2617,22 @@ gob.configure_grid_options(
     stopEditingWhenCellsLoseFocus=True,
     undoRedoCellEditing=True,
     enterMovesDown=True,
+    suppressMovableColumns=False,   # ← permitir mover columnas
     getRowId=JsCode("function(p){ return (p.data && (p.data.Id || p.data['Id'])) + ''; }"),
 )
 
-# ----- Fijas a la izquierda -----
+# ----- Fijas a la izquierda (inmovibles) -----
 gob.configure_column("Id",
     headerName="ID",
     editable=False, width=110, pinned="left",
     checkboxSelection=True,
     headerCheckboxSelection=True,
-    headerCheckboxSelectionFilteredOnly=True
+    headerCheckboxSelectionFilteredOnly=True,
+    suppressMovable=True
 )
-gob.configure_column("Área",        editable=True,  width=160, pinned="left")
-gob.configure_column("Fase",        editable=True,  width=140, pinned="left")
-gob.configure_column("Responsable", editable=True,  minWidth=180, pinned="left")
+gob.configure_column("Área",        editable=True,  width=160, pinned="left", suppressMovable=True)
+gob.configure_column("Fase",        editable=True,  width=140, pinned="left", suppressMovable=True)
+gob.configure_column("Responsable", editable=True,  minWidth=180, pinned="left", suppressMovable=True)
 
 # ----- Alias de encabezados -----
 gob.configure_column("Estado",        headerName="Estado actual")
@@ -2621,7 +2643,7 @@ gob.configure_column("Fecha fin",     headerName="Fecha Terminado")
 # ----- Ocultas en GRID (visibles en export/Sheets) -----
 for ocultar in ["Fecha Pausado","Hora Pausado","Fecha Cancelado","Hora Cancelado","Fecha Eliminado","Hora Eliminado"]:
     if ocultar in df_grid.columns:
-        gob.configure_column(ocultar, hide=True)
+        gob.configure_column(ocultar, hide=True, suppressMenu=True)
 
 # ----- Formatters -----
 flag_formatter = JsCode("""
@@ -2633,15 +2655,15 @@ function(p){
   const v = String(p.value || '');
   let bg='#E0E0E0', fg='#FFFFFF';
   if (v==='No iniciado'){bg='#90A4AE'}
-  else if(v==='En curso'){bg='#B388FF'}
-  else if(v==='Terminado'){bg='#00C4B3'}
-  else if(v==='Cancelado'){bg='#FF2D95'}
-  else if(v==='Pausado'){bg='#7E57C2'}
-  else if(v==='Entregado a tiempo'){bg='#00C4B3'}
-  else if(v==='Entregado con retraso'){bg='#00ACC1'}
-  else if(v==='No entregado'){bg='#006064'}
-  else if(v==='En riesgo de retraso'){bg='#0277BD'}
-  else if(v==='Aprobada'){bg='#8BC34A'; fg:'#0A2E00'}
+  else if(v==='En curso'){bg:'#B388FF'}
+  else if(v==='Terminado'){bg:'#00C4B3'}
+  else if(v==='Cancelado'){bg:'#FF2D95'}
+  else if(v==='Pausado'){bg:'#7E57C2'}
+  else if(v==='Entregado a tiempo'){bg:'#00C4B3'}
+  else if(v==='Entregado con retraso'){bg:'#00ACC1'}
+  else if(v==='No entregado'){bg:'#006064'}
+  else if(v==='En riesgo de retraso'){bg:'#0277BD'}
+  else if(v==='Aprobada'){bg:'#8BC34A'; fg:'#0A2E00'}
   else if(v==='Desaprobada'){bg:'#FF8A80'}
   else if(v==='Pendiente de revisión'){bg:'#BDBDBD'; fg:'#2B2B2B'}
   else if(v==='Observada'){bg:'#D7A56C'}
@@ -2710,7 +2732,7 @@ if "Calificación" in df_grid.columns:
     gob.configure_column("Calificación", editable=True, valueFormatter=stars_fmt,
                          minWidth=colw["Calificación"], maxWidth=140, flex=0)
 
-# Editor de fecha/hora
+# Editor de fecha/hora y quitar menú en todas las fechas/horas
 date_time_editor = JsCode("""
 class DateTimeEditor{
   init(p){
@@ -2738,7 +2760,12 @@ function(p){ if(p.value===null||p.value===undefined) return '—';
 for c in ["Fecha Registro","Fecha inicio","Fecha Pausado","Fecha Cancelado","Fecha Eliminado","Vencimiento","Fecha fin",
           "Fecha de detección","Fecha de corrección"]:
     if c in df_grid.columns:
-        gob.configure_column(c, editable=True, cellEditor=date_time_editor, valueFormatter=date_time_fmt)
+        gob.configure_column(c, editable=True, cellEditor=date_time_editor, valueFormatter=date_time_fmt, suppressMenu=True)
+
+for c in ["Hora Registro","Hora de inicio","Hora Pausado","Hora Cancelado","Hora Eliminado",
+          "Hora Terminado","Hora de detección","Hora de corrección"]:
+    if c in df_grid.columns:
+        gob.configure_column(c, editable=True, valueFormatter=fmt_dash, suppressMenu=True)
 
 # Tooltips en headers
 for col in df_grid.columns:
@@ -2818,18 +2845,17 @@ with b_del:
         else:
             st.warning("No hay filas seleccionadas.")
 
-# 2) Exportar Excel
+# 2) Exportar Excel (respeta orden oficial)
 with b_xlsx:
     try:
         df_xlsx = st.session_state["df_main"].copy()
         drop_cols = [c for c in ("__DEL__", "DEL") if c in df_xlsx.columns]
         if drop_cols:
             df_xlsx.drop(columns=drop_cols, inplace=True)
-        cols_order = globals().get("COLS_XLSX", [])
+        cols_order = globals().get("COLS_XLSX", []) or target_cols[:]   # fallback al orden oficial
+        cols_order = [c for c in cols_order if c in df_xlsx.columns]
         if cols_order:
-            cols_order = [c for c in cols_order if c in df_xlsx.columns]
-            if cols_order:
-                df_xlsx = df_xlsx.reindex(columns=cols_order)
+            df_xlsx = df_xlsx.reindex(columns=cols_order)
         xlsx_b = export_excel(df_xlsx, sheet_name=TAB_NAME)
         st.download_button(
             "⬇️ Exportar Excel",
@@ -2850,10 +2876,14 @@ with b_save_local:
         _save_local(df.copy())
         st.success("Datos guardados en la tabla local (CSV).")
 
-# 4) Subir a Sheets
+# 4) Subir a Sheets (respeta orden oficial)
 with b_save_sheets:
     if st.button("📤 Subir a Sheets", use_container_width=True):
-        df = st.session_state["df_main"][COLS].copy()
+        df = st.session_state["df_main"].copy()
+        cols_order = globals().get("COLS_XLSX", []) or target_cols[:]
+        cols_order = [c for c in cols_order if c in df.columns]
+        if cols_order:
+            df = df.reindex(columns=cols_order)
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
