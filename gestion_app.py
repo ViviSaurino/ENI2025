@@ -2543,39 +2543,33 @@ dups = df_view.columns.duplicated()
 if dups.any():
     df_view = df_view.loc[:, ~dups]
 
-# ===== Semántica de tiempos =====
-# A) Si Estado = "No iniciado": usar SIEMPRE lo guardado en el formulario (Fecha/Hora Registro)
-#    y NO tocarlo (solo rellenar si faltan).
+# ===== Semántica de tiempos / estado =====
+# 1) Estado actual: si existe "Estado modificado" (texto) úsalo para sobrescribir "Estado"
+if "Estado modificado" in df_view.columns:
+    _em = df_view["Estado modificado"].astype(str).str.strip()
+    mask_em = _em.notna() & _em.ne("") & _em.ne("nan")
+    if "Estado" not in df_view.columns:
+        df_view["Estado"] = ""
+    df_view.loc[mask_em, "Estado"] = _em[mask_em]
+
+# 2) Registro (solo para NO INICIADO). NO inventar horas 00:00 ni rellenar con fechas de otros campos.
 if "Fecha Registro" not in df_view.columns: df_view["Fecha Registro"] = pd.NaT
 if "Hora Registro"   not in df_view.columns: df_view["Hora Registro"]   = ""
 
-has_estado = "Estado" in df_view.columns
-act_dt = pd.to_datetime(df_view.get("Fecha estado actual"), errors="coerce") if "Fecha estado actual" in df_view.columns else pd.NaT
-mod_dt = pd.to_datetime(df_view.get("Fecha estado modificado"), errors="coerce") if "Fecha estado modificado" in df_view.columns else pd.NaT
-
-if has_estado:
+if "Estado" in df_view.columns:
     mask_no_ini = df_view["Estado"].astype(str) == "No iniciado"
-
-    # Si faltan, rellenar desde 'Fecha estado actual' o 'modificado'
-    reg_dt = pd.to_datetime(df_view["Fecha Registro"], errors="coerce")
-    fallback_dt = act_dt.where(~act_dt.isna(), mod_dt)
-    df_view.loc[mask_no_ini & reg_dt.isna(), "Fecha Registro"] = fallback_dt
-
-    # Hora: mantener la hora guardada; si falta o viene "00:00"/"00:00:00", usar hora de fallback_dt
+    # Si alguien quedó con "00:00" o "00:00:00", muéstralo como vacío (—)
     hora_raw = df_view["Hora Registro"].astype(str).str.strip().fillna("")
-    mask_hora_vacia = hora_raw.eq("") | hora_raw.eq("00:00") | hora_raw.eq("00:00:00")
-    df_view.loc[mask_no_ini & mask_hora_vacia, "Hora Registro"] = fallback_dt.dt.strftime("%H:%M")
+    mask_hora_cero = hora_raw.eq("00:00") | hora_raw.eq("00:00:00")
+    df_view.loc[mask_no_ini & mask_hora_cero, "Hora Registro"] = ""
 
-# B) Si Estado = "En curso": Fecha/Hora de inicio desde 'Fecha estado modificado'
-#    En cualquier otro estado, se vacían.
+# 3) Inicio: solo cuando Estado = En curso (desde Fecha estado modificado); caso contrario, vaciar
 if "Hora de inicio" not in df_view.columns: df_view["Hora de inicio"] = ""
-if has_estado:
+if "Estado" in df_view.columns:
     _mod = pd.to_datetime(df_view.get("Fecha estado modificado"), errors="coerce")
     _en_curso = df_view["Estado"].astype(str) == "En curso"
-    # Set para En curso
     df_view.loc[_en_curso, "Fecha inicio"]   = _mod
     df_view.loc[_en_curso, "Hora de inicio"] = _mod.dt.strftime("%H:%M")
-    # Limpiar para el resto
     df_view.loc[~_en_curso, "Fecha inicio"] = pd.NaT
     df_view.loc[~_en_curso, "Hora de inicio"] = ""
 
@@ -2598,8 +2592,12 @@ target_cols = [
 ]
 
 # Columnas internas NO visibles en el grid
-HIDDEN_COLS = ["Fecha estado modificado","Hora estado modificado",
-               "Fecha estado actual","Hora estado actual","__ts__","__DEL__"]
+HIDDEN_COLS = [
+    "Estado modificado",            # ← ocultar columna textual
+    "Fecha estado modificado","Hora estado modificado",
+    "Fecha estado actual","Hora estado actual",
+    "__ts__","__DEL__"
+]
 
 # Asegura presencia de columnas (si faltan, se crean vacías)
 for c in target_cols:
@@ -2716,8 +2714,7 @@ function(p){
 date_only_fmt = JsCode("""
 function(p){
   if(p.value===null||p.value===undefined) return '—';
-  const d=new Date(String(p.value).trim()); if(isNaN(d.getTime())){ 
-     // Si viene como 'YYYY-MM-DD' lo devolvemos tal cual
+  const d=new Date(String(p.value).trim()); if(isNaN(d.getTime())){
      const s=String(p.value).trim(); if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
      return '—';
   }
@@ -2875,7 +2872,7 @@ with b_del:
         else:
             st.warning("No hay filas seleccionadas.")
 
-# 2) Exportar Excel
+# 2) Exportar Excel (respeta orden oficial)
 with b_xlsx:
     try:
         df_xlsx = st.session_state["df_main"].copy()
@@ -2887,9 +2884,13 @@ with b_xlsx:
         if cols_order:
             df_xlsx = df_xlsx.reindex(columns=cols_order)
         xlsx_b = export_excel(df_xlsx, sheet_name=TAB_NAME)
-        st.download_button("⬇️ Exportar Excel", data=xlsx_b, file_name="tareas.xlsx",
-                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                           use_container_width=True)
+        st.download_button(
+            "⬇️ Exportar Excel",
+            data=xlsx_b,
+            file_name="tareas.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
     except ImportError:
         st.error("No pude generar Excel: falta instalar 'xlsxwriter' u 'openpyxl' en el entorno.")
     except Exception as e:
@@ -2902,7 +2903,7 @@ with b_save_local:
         _save_local(df.copy())
         st.success("Datos guardados en la tabla local (CSV).")
 
-# 4) Subir a Sheets
+# 4) Subir a Sheets (respeta orden oficial)
 with b_save_sheets:
     if st.button("📤 Subir a Sheets", use_container_width=True):
         df = st.session_state["df_main"].copy()
