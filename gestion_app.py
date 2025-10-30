@@ -1733,19 +1733,20 @@ if st.session_state["na_visible"]:
       return M[v] || v;
     }""")
 
+    // Estilos compactos (mantienen la fila delgada)
     si_no_style_genero = JsCode("""
     function(p){
       const v = String(p.value || '');
-      if (v === 'Sí') return {backgroundColor:'#FFF3E0', color:'#E65100', fontWeight:'600', textAlign:'center', borderRadius:'12px'};
-      if (v === 'No') return {backgroundColor:'#ECEFF1', color:'#37474F', fontWeight:'600', textAlign:'center', borderRadius:'12px'};
+      if (v === 'Sí') return {backgroundColor:'#FFF3E0', color:'#E65100', fontWeight:'600', textAlign:'center', borderRadius:'10px', lineHeight:'18px', padding:'2px 6px'};
+      if (v === 'No') return {backgroundColor:'#ECEFF1', color:'#37474F', fontWeight:'600', textAlign:'center', borderRadius:'10px', lineHeight:'18px', padding:'2px 6px'};
       return {};
     }""")
 
     si_no_style_corrigio = JsCode("""
     function(p){
       const v = String(p.value || '');
-      if (v === 'Sí') return {backgroundColor:'#E8F5E9', color:'#1B5E20', fontWeight:'600', textAlign:'center', borderRadius:'12px'};
-      if (v === 'No') return {backgroundColor:'#FFE0E0', color:'#B71C1C', fontWeight:'600', textAlign:'center', borderRadius:'12px'};
+      if (v === 'Sí') return {backgroundColor:'#E8F5E9', color:'#1B5E20', fontWeight:'600', textAlign:'center', borderRadius:'10px', lineHeight:'18px', padding:'2px 6px'};
+      if (v === 'No') return {backgroundColor:'#FFE0E0', color:'#B71C1C', fontWeight:'600', textAlign:'center', borderRadius:'10px', lineHeight:'18px', padding:'2px 6px'};
       return {};
     }""")
 
@@ -1769,7 +1770,8 @@ if st.session_state["na_visible"]:
     # ColumnDefs SIEMPRE visibles
     col_defs = [
         {"field":"Id", "headerName":"Id", "editable": False, "pinned":"left", "flex":1.2, "minWidth":110},
-        {"field":"Tarea", "headerName":"Tarea", "editable": False, "flex":3, "minWidth":200},
+        {"field":"Tarea", "headerName":"Tarea", "editable": False, "flex":3, "minWidth":200,
+         "cellStyle": {"whiteSpace":"nowrap", "overflow":"hidden", "textOverflow":"ellipsis"}},
 
         {"field":"¿Generó alerta?", "headerName":"¿Generó alerta?",
          "editable": True,
@@ -1808,12 +1810,18 @@ if st.session_state["na_visible"]:
 
     grid_opts = {
         "columnDefs": col_defs,
-        "defaultColDef": {"resizable": True, "wrapText": True, "autoHeight": True, "minWidth": 110, "flex": 1},
+        "defaultColDef": {
+            "resizable": True,
+            "wrapText": False,      # << una sola línea
+            "autoHeight": False,    # << evita crecer por contenido
+            "minWidth": 110,
+            "flex": 1
+        },
         "suppressMovableColumns": True,
         "domLayout": "normal",
         "ensureDomOrder": True,
-        "rowHeight": 38,
-        "headerHeight": 42,
+        "rowHeight": 30,           # << filas más delgadas
+        "headerHeight": 36,        # << encabezado compacto
         "suppressHorizontalScroll": True,
         "onCellValueChanged": on_cell_changed,
         "onGridReady": on_ready_size,
@@ -1825,7 +1833,7 @@ if st.session_state["na_visible"]:
         gridOptions=grid_opts,
         data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
         update_mode=GridUpdateMode.VALUE_CHANGED,
-        fit_columns_on_grid_load=False,   # autosize se hace en los callbacks
+        fit_columns_on_grid_load=False,   # autosize en callbacks
         enable_enterprise_modules=False,
         reload_data=False,
         height=220,
@@ -1880,7 +1888,6 @@ if st.session_state["na_visible"]:
 
     # Separación vertical entre secciones
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
-
 
 
 # =========================== PRIORIDAD ===============================
@@ -2636,6 +2643,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
