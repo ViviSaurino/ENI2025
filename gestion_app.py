@@ -1251,6 +1251,7 @@ if st.session_state.get("nt_visible", True):
 
     # Cierra scope local
     st.markdown("</div>", unsafe_allow_html=True)  # cierra #nt-section
+    #nt-section .help-strip{ margin-bottom: 10px; }  /* 10–14px según tu gusto */
 
     # ---------- Guardado ----------
     if submitted:
@@ -2469,6 +2470,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
