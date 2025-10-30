@@ -2462,7 +2462,6 @@ if st.session_state["eva_visible"]:
 
 
 
-
 # ================== Historial ==================
 
 st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
@@ -2537,12 +2536,14 @@ df_view = df_view.sort_values("__ts__", ascending=False, na_position="last")
 
 st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
 
-# === ORDEN DE COLUMNAS ===
-cols_first = ["Id", "Área", "Responsable", "Tarea", "Tipo", "Ciclo de mejora"]
-if "Ciclo de mejora" not in df_view.columns:
-    df_view["Ciclo de mejora"] = ""
+# === ORDEN DE COLUMNAS (fijas a la izquierda) ===
+# Fijas: Id, Área, Fase, Responsable
+for c in ["Fase", "Ciclo de mejora"]:
+    if c not in df_view.columns:
+        df_view[c] = ""
 
-# Oculta __ts__ del grid
+cols_first = ["Id", "Área", "Fase", "Responsable"]
+# Oculta __ts__ del grid; conserva el resto detrás de las fijas
 cols_order = cols_first + [c for c in df_view.columns if c not in cols_first + ["__DEL__","__ts__"]]
 extra = ["__DEL__"] if "__DEL__" in df_view.columns else []
 
@@ -2578,6 +2579,7 @@ gob.configure_grid_options(
 if "Id" in df_grid.columns:
     gob.configure_column(
         "Id",
+        headerName="ID",                 # muestra "ID" pero el campo sigue siendo "Id"
         editable=False, width=110, pinned="left",
         checkboxSelection=True,
         headerCheckboxSelection=True,
@@ -2585,8 +2587,10 @@ if "Id" in df_grid.columns:
     )
 if "Área" in df_grid.columns:
     gob.configure_column("Área", editable=True,  width=160, pinned="left")
+if "Fase" in df_grid.columns:
+    gob.configure_column("Fase", editable=True,  width=140, pinned="left")
 if "Responsable" in df_grid.columns:
-    gob.configure_column("Responsable", pinned="left")
+    gob.configure_column("Responsable", pinned="left", minWidth=180)
 
 if "__DEL__" in df_grid.columns:
     gob.configure_column("__DEL__", hide=True)
@@ -2606,12 +2610,12 @@ function(p){
   if (v==='No iniciado'){bg='#90A4AE'}
   else if(v==='En curso'){bg='#B388FF'}
   else if(v==='Terminado'){bg='#00C4B3'}
-  else if(v==='Cancelado'){bg='#FF2D95'}
-  else if(v==='Pausado'){bg='#7E57C2'}
-  else if(v==='Entregado a tiempo'){bg='#00C4B3'}
-  else if(v==='Entregado con retraso'){bg='#00ACC1'}
-  else if(v==='No entregado'){bg='#006064'}
-  else if(v==='En riesgo de retraso'){bg='#0277BD'}
+  else if(v==='Cancelado'){bg:'#FF2D95'}
+  else if(v==='Pausado'){bg:'#7E57C2'}
+  else if(v==='Entregado a tiempo'){bg:'#00C4B3'}
+  else if(v==='Entregado con retraso'){bg:'#00ACC1'}
+  else if(v==='No entregado'){bg:'#006064'}
+  else if(v==='En riesgo de retraso'){bg:'#0277BD'}
   else if(v==='Aprobada'){bg:'#8BC34A'; fg:'#0A2E00'}
   else if(v==='Desaprobada'){bg:'#FF8A80'}
   else if(v==='Pendiente de revisión'){bg:'#BDBDBD'; fg:'#2B2B2B'}
@@ -2734,7 +2738,8 @@ grid = AgGrid(
 
 # Guarda la selección actual (Ids) en session_state
 sel_rows_now = grid.get("selected_rows", []) if isinstance(grid, dict) else []
-st.session_state["hist_sel_ids"] = [str(r.get("Id", "")).strip() for r in sel_rows_now if str(r.get("Id", "")).strip()]
+st.session_state["hist_sel_ids"] = [str((r.get("Id") or r.get("ID") or "")).strip()
+                                    for r in sel_rows_now if str((r.get("Id") or r.get("ID") or "")).strip()]
 
 # Sincroniza ediciones por Id (solo si hay data)
 if isinstance(grid, dict) and "data" in grid and grid["data"] is not None and len(grid["data"]) > 0:
@@ -2754,10 +2759,12 @@ b_del, b_xlsx, b_save_local, b_save_sheets, _spacer = st.columns(
     gap="medium"
 )
 
-# 1) Borrar seleccionados
+# 1) Borrar seleccionados (lee selección directamente del grid en el mismo run)
 with b_del:
     if st.button("🗑️ Borrar", use_container_width=True):
-        ids = st.session_state.get("hist_sel_ids", [])
+        sel_rows_now = grid.get("selected_rows", []) if isinstance(grid, dict) else []
+        ids = [str((r.get("Id") or r.get("ID") or "")).strip() for r in sel_rows_now
+               if str((r.get("Id") or r.get("ID") or "")).strip()]
         if ids:
             df0 = st.session_state["df_main"].copy()
             st.session_state["df_main"] = df0[~df0["Id"].astype(str).isin(ids)].copy()
@@ -2806,48 +2813,3 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
