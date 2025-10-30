@@ -1940,10 +1940,10 @@ if st.session_state["pri_visible"]:
         visibility: visible !important;
       }
 
-      /* Colores para prioridad */
-      #pri-section .pri-low   { color:#2563eb !important; }
-      #pri-section .pri-med   { color:#ca8a04 !important; }
-      #pri-section .pri-high  { color:#dc2626 !important; }
+      /* Colores para prioridad (reglas de clase) */
+      #pri-section .pri-low   { color:#2563eb !important; }  /* 🔵 */
+      #pri-section .pri-med   { color:#ca8a04 !important; }  /* 🟡 */
+      #pri-section .pri-high  { color:#dc2626 !important; }  /* 🔴 */
     </style>
     """, unsafe_allow_html=True)
 
@@ -2036,7 +2036,7 @@ if st.session_state["pri_visible"]:
             "Prioridad a ajustar": prior_actual.astype(str)
         })[cols_out].copy()
 
-    # ---- Configuración AgGrid (sin columnDefs manuales) ----
+    # ---- Configuración AgGrid ----
     from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode
 
     PRI_OPC_SHOW = ["🔵 Baja","🟡 Media","🔴 Alta"]
@@ -2061,6 +2061,7 @@ if st.session_state["pri_visible"]:
         headerHeight=44,
         suppressHorizontalScroll=True
     )
+
     # Columnas (orden ya viene de df_safe)
     gob.configure_column("Id", headerName="Id", editable=False, flex=1, minWidth=110)
     gob.configure_column("Responsable", editable=False, flex=2, minWidth=160)
@@ -2695,6 +2696,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
