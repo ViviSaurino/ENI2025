@@ -1936,8 +1936,8 @@ if st.session_state["pri_visible"]:
 
       /* ===== Encabezados más livianos ===== */
       /* Reducimos el peso tipográfico en ambos temas y evitamos "fake bold" */
-      #pri-section .ag-theme-alpine{ --ag-font-weight: 200; }
-      #pri-section .ag-theme-streamlit{ --ag-font-weight: 200; }
+      #pri-section .ag-theme-alpine{ --ag-font-weight: 400; }
+      #pri-section .ag-theme-streamlit{ --ag-font-weight: 400; }
 
       #pri-section .ag-theme-alpine .ag-header-cell-label,
       #pri-section .ag-theme-alpine .ag-header-cell-text,
@@ -2093,6 +2093,14 @@ if st.session_state["pri_visible"]:
         "suppressHorizontalScroll": True
     }
 
+    # --- Encabezado más liviano DENTRO del iframe (clave) ---
+    custom_css_pri = {
+        ".ag-header-cell-text": {"font-weight": "400 !important"},
+        ".ag-header-group-cell-label": {"font-weight": "400 !important"},
+        ".ag-header-cell-label": {"font-weight": "400 !important"},
+        ".ag-header": {"font-weight": "400 !important"},
+    }
+
     grid_pri = AgGrid(
         df_view,
         gridOptions=grid_opts,
@@ -2102,7 +2110,8 @@ if st.session_state["pri_visible"]:
         enable_enterprise_modules=False,
         reload_data=False,
         height=300,
-        theme="alpine"
+        theme="alpine",
+        custom_css=custom_css_pri,        # <<--- ajuste que reduce la “negrita”
     )
 
     # ===== Guardar (actualiza Prioridad en df_main) =====
@@ -2143,7 +2152,6 @@ if st.session_state["pri_visible"]:
 
     # Separación vertical
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
-
 
 
 
@@ -2714,6 +2722,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
