@@ -1934,7 +1934,7 @@ if st.session_state["pri_visible"]:
         height: 44px !important; min-height: 44px !important;
       }
       #pri-section .ag-header-cell-text{
-        font-weight: 700 !important;
+        font-weight: 600 !important;
         color: #1f2937 !important;
         opacity: 1 !important;
         visibility: visible !important;
@@ -2699,6 +2699,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
