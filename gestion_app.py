@@ -1438,21 +1438,85 @@ if st.session_state["est_visible"]:
     df_view = pd.DataFrame(columns=cols_out)
     if not df_tasks.empty:
         base = df_tasks.copy()
-        for need in ["Id","Tarea","Estado","Fecha estado actual","Hora estado actual",
-                     "Estado modificado","Fecha estado modificado","Hora estado modificado","Fecha inicio"]:
+        # Asegurar presencia de columnas usadas
+        for need in [
+            "Id","Tarea","Estado",
+            "Fecha Registro","Hora Registro","Fecha","Hora",
+            "Fecha inicio","Hora de inicio",
+            "Fecha fin","Hora Terminado",
+            "Fecha Pausado","Hora Pausado",
+            "Fecha Cancelado","Hora Cancelado",
+            "Fecha Eliminado","Hora Eliminado",
+            "Fecha estado actual","Hora estado actual",
+            "Estado modificado","Fecha estado modificado","Hora estado modificado"
+        ]:
             if need not in base.columns:
                 base[need] = ""
 
-        fecha_estado = base["Fecha estado actual"].replace("", pd.NA)
-        hora_estado  = base["Hora estado actual"].replace("", pd.NA)
-        fi = base["Fecha inicio"]
+        # Normalizaciones por estado
+        def _date_norm(col_main, col_fb=None):
+            s = pd.to_datetime(base[col_main], errors="coerce").dt.normalize()
+            if col_fb:
+                s = s.fillna(pd.to_datetime(base[col_fb], errors="coerce").dt.normalize())
+            return s
+
+        def _time_norm(col_main, col_fb=None):
+            s = _fmt_time(base[col_main])
+            if col_fb:
+                s_fb = _fmt_time(base[col_fb])
+                s = s.where(s.str.strip() != "", s_fb)
+            return s
+
+        # No iniciado: tomar Registro (fallback a Fecha/Hora del formulario si existieran)
+        fr_noini = _date_norm("Fecha Registro", "Fecha")
+        hr_noini = _time_norm("Hora Registro", "Hora")
+
+        # En curso
+        fr_enc   = _date_norm("Fecha inicio")
+        hr_enc   = _time_norm("Hora de inicio")
+
+        # Terminado
+        fr_fin   = _date_norm("Fecha fin")
+        hr_fin   = _time_norm("Hora Terminado")
+
+        # Pausado / Cancelado / Eliminado
+        fr_pau, hr_pau = _date_norm("Fecha Pausado"),  _time_norm("Hora Pausado")
+        fr_can, hr_can = _date_norm("Fecha Cancelado"), _time_norm("Hora Cancelado")
+        fr_eli, hr_eli = _date_norm("Fecha Eliminado"), _time_norm("Hora Eliminado")
+
+        estado_now = base["Estado"].astype(str)
+
+        # Inicializar finales
+        fecha_from_estado = pd.Series(pd.NaT, index=base.index, dtype="datetime64[ns]")
+        hora_from_estado  = pd.Series("", index=base.index, dtype="object")
+
+        m0 = (estado_now == "No iniciado")
+        m1 = (estado_now == "En curso")
+        m2 = (estado_now == "Terminado")
+        m3 = (estado_now == "Pausado")
+        m4 = (estado_now == "Cancelado")
+        m5 = (estado_now == "Eliminado")
+
+        fecha_from_estado[m0] = fr_noini[m0]; hora_from_estado[m0] = hr_noini[m0]
+        fecha_from_estado[m1] = fr_enc[m1];   hora_from_estado[m1]  = hr_enc[m1]
+        fecha_from_estado[m2] = fr_fin[m2];   hora_from_estado[m2]  = hr_fin[m2]
+        fecha_from_estado[m3] = fr_pau[m3];   hora_from_estado[m3]  = hr_pau[m3]
+        fecha_from_estado[m4] = fr_can[m4];   hora_from_estado[m4]  = hr_can[m4]
+        fecha_from_estado[m5] = fr_eli[m5];   hora_from_estado[m5]  = hr_eli[m5]
+
+        # Respetar valores existentes en "Fecha/Hora estado actual" si no están vacíos
+        fecha_estado_exist = pd.to_datetime(base["Fecha estado actual"], errors="coerce").dt.normalize()
+        hora_estado_exist  = base["Hora estado actual"].astype(str)
+
+        fecha_estado_final = fecha_estado_exist.where(fecha_estado_exist.notna(), fecha_from_estado)
+        hora_estado_final  = hora_estado_exist.where(hora_estado_exist.str.strip() != "", hora_from_estado)
 
         df_view = pd.DataFrame({
             "Id":   base["Id"].astype(str),
             "Tarea": base["Tarea"].astype(str),
-            "Estado actual": base["Estado"].astype(str),
-            "Fecha estado actual": fecha_estado.fillna(_fmt_date(fi)),
-            "Hora estado actual":  hora_estado.fillna(_fmt_time(fi)),
+            "Estado actual": estado_now,
+            "Fecha estado actual": _fmt_date(fecha_estado_final),
+            "Hora estado actual":  _fmt_time(hora_estado_final),
             "Estado modificado":       base["Estado modificado"].astype(str),
             "Fecha estado modificado": _fmt_date(base["Fecha estado modificado"]),
             "Hora estado modificado":  _fmt_time(base["Hora estado modificado"]),
@@ -1483,7 +1547,6 @@ if st.session_state["est_visible"]:
       getValue(){ return this.eInput.value }
     }""")
 
-    # Mapea el texto a emoji (se devuelve STRING, no HTML)
     estado_emoji_fmt = JsCode("""
     function(p){
       const v = String(p.value || '');
@@ -1491,7 +1554,6 @@ if st.session_state["est_visible"]:
       return M[v] || v;
     }""")
 
-    # Aplica colores con cellStyle (objeto JS), compatible con React
     estado_cell_style = JsCode("""
     function(p){
       const v = String(p.value || '');
@@ -1526,7 +1588,6 @@ if st.session_state["est_visible"]:
         headerHeight=42,
         suppressHorizontalScroll=True
     )
-    # SIN checkbox
     gob.configure_selection("single", use_checkbox=False)
 
     gob.configure_column(
@@ -1595,6 +1656,7 @@ if st.session_state["est_visible"]:
     # Cerrar form-card + section + contenedor
     st.markdown('</div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
+
 
 
 # ================== Nueva alerta ==================
@@ -2982,5 +3044,6 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
