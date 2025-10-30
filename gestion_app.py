@@ -2618,7 +2618,7 @@ gob.configure_grid_options(
     stopEditingWhenCellsLoseFocus=True,
     undoRedoCellEditing=True,
     enterMovesDown=True,
-    suppressMovableColumns=False,   # ← permitir mover columnas
+    suppressMovableColumns=False,   # ← permitir mover columnas (excepto fijas)
     getRowId=JsCode("function(p){ return (p.data && (p.data.Id || p.data['Id'])) + ''; }"),
 )
 
@@ -2644,7 +2644,7 @@ gob.configure_column("Fecha fin",     headerName="Fecha Terminado")
 # ----- Ocultas en GRID (visibles en export/Sheets) -----
 for ocultar in ["Fecha Pausado","Hora Pausado","Fecha Cancelado","Hora Cancelado","Fecha Eliminado","Hora Eliminado"]:
     if ocultar in df_grid.columns:
-        gob.configure_column(ocultar, hide=True, suppressMenu=True)
+        gob.configure_column(ocultar, hide=True, suppressMenu=True, filter=False)
 
 # ----- Formatters -----
 flag_formatter = JsCode("""
@@ -2656,7 +2656,7 @@ function(p){
   const v = String(p.value || '');
   let bg='#E0E0E0', fg='#FFFFFF';
   if (v==='No iniciado'){bg='#90A4AE'}
-  else if(v==='En curso'){bg:'#B388FF'}
+  else if(v==='En curso'){bg='#B388FF'}
   else if(v==='Terminado'){bg:'#00C4B3'}
   else if(v==='Cancelado'){bg:'#FF2D95'}
   else if(v==='Pausado'){bg:'#7E57C2'}
@@ -2733,7 +2733,7 @@ if "Calificación" in df_grid.columns:
     gob.configure_column("Calificación", editable=True, valueFormatter=stars_fmt,
                          minWidth=colw["Calificación"], maxWidth=140, flex=0)
 
-# Editor de fecha/hora y quitar menú en todas las fechas/horas
+# Editor de fecha/hora y quitar menú + filtro en todas las fechas/horas
 date_time_editor = JsCode("""
 class DateTimeEditor{
   init(p){
@@ -2761,12 +2761,13 @@ function(p){ if(p.value===null||p.value===undefined) return '—';
 for c in ["Fecha Registro","Fecha inicio","Fecha Pausado","Fecha Cancelado","Fecha Eliminado","Vencimiento","Fecha fin",
           "Fecha de detección","Fecha de corrección"]:
     if c in df_grid.columns:
-        gob.configure_column(c, editable=True, cellEditor=date_time_editor, valueFormatter=date_time_fmt, suppressMenu=True)
+        gob.configure_column(c, editable=True, cellEditor=date_time_editor, valueFormatter=date_time_fmt,
+                             suppressMenu=True, filter=False)
 
 for c in ["Hora Registro","Hora de inicio","Hora Pausado","Hora Cancelado","Hora Eliminado",
           "Hora Terminado","Hora de detección","Hora de corrección"]:
     if c in df_grid.columns:
-        gob.configure_column(c, editable=True, valueFormatter=fmt_dash, suppressMenu=True)
+        gob.configure_column(c, editable=True, valueFormatter=fmt_dash, suppressMenu=True, filter=False)
 
 # Tooltips en headers
 for col in df_grid.columns:
@@ -2888,5 +2889,3 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
