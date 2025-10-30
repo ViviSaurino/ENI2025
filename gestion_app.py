@@ -1928,9 +1928,23 @@ if st.session_state["pri_visible"]:
       #pri-section .stButton > button { width: 100% !important; }
       .section-pri .help-strip-pri + .form-card{ margin-top: 6px !important; }
 
-      /* Encabezados en negrita SOLO aquí */
-      #pri-section .ag-theme-alpine .ag-header-cell-label{ font-weight: 600 !important; }
-      #pri-section .ag-theme-alpine .ag-header-cell-text{ font-weight: 700 !important; }
+      /* ---- Forzar que el HEADER de AgGrid se vea y en negrita (solo aquí) ---- */
+      #pri-section .ag-theme-alpine .ag-header { 
+        height: 44px !important; min-height: 44px !important; 
+      }
+      #pri-section .ag-theme-alpine .ag-header-viewport,
+      #pri-section .ag-theme-alpine .ag-header-container,
+      #pri-section .ag-theme-alpine .ag-header-row{
+        height: 44px !important; min-height: 44px !important;
+      }
+      #pri-section .ag-theme-alpine .ag-header-cell,
+      #pri-section .ag-theme-alpine .ag-header-cell-text{
+        display:flex !important; align-items:center !important;
+      }
+      #pri-section .ag-theme-alpine .ag-header-cell-label,
+      #pri-section .ag-theme-alpine .ag-header-cell-text{
+        font-weight: 700 !important;
+      }
 
       /* Colores para prioridad (se aplican por reglas de clase) */
       #pri-section .pri-low   { color:#2563eb !important; }   /* azul */
@@ -1997,7 +2011,7 @@ if st.session_state["pri_visible"]:
             df_filtrado = df_filtrado[df_filtrado.get("Área","").astype(str) == pri_area]
         if pri_fase != "Todas" and "Fase" in df_filtrado.columns:
             df_filtrado = df_filtrado[df_filtrado["Fase"].astype(str) == pri_fase]
-        if pri_resp:  # lista no vacía
+        if pri_resp:
             df_filtrado = df_filtrado[df_filtrado.get("Responsable","").astype(str).isin(pri_resp)]
 
         base_fecha_col = "Fecha inicio" if "Fecha inicio" in df_filtrado.columns else None
@@ -2010,17 +2024,17 @@ if st.session_state["pri_visible"]:
 
     st.markdown("**Resultados**")
 
-    # ===== Vista para AgGrid (orden y tipos seguros) =====
+    # ===== Vista para AgGrid =====
     cols_out = ["Id", "Responsable", "Tarea", "Prioridad actual", "Prioridad a ajustar"]
 
-    df_view = pd.DataFrame(columns=cols_out)
-    if not df_filtrado.empty:
+    if df_filtrado.empty:
+        df_view = pd.DataFrame({c: pd.Series(dtype="str") for c in cols_out})
+    else:
         tmp = df_filtrado.copy()
         for need in ["Id","Responsable","Tarea","Prioridad"]:
             if need not in tmp.columns:
                 tmp[need] = ""
         prior_actual = tmp["Prioridad"].fillna("Media").replace({"": "Media"})
-
         df_view = pd.DataFrame({
             "Id": tmp["Id"].astype(str),
             "Responsable": tmp["Responsable"].astype(str).replace({"nan": ""}),
@@ -2029,38 +2043,35 @@ if st.session_state["pri_visible"]:
             "Prioridad a ajustar": prior_actual.astype(str)
         })[cols_out].copy()
 
-    # ---- Opciones de AgGrid (sin JS, todo serializable) ----
+    # ---- Opciones de AgGrid ----
     from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode
 
-    # Mapeo emoji <-> texto (guardaremos texto)
     PRI_OPC_SHOW = ["🔵 Baja","🟡 Media","🔴 Alta"]
-    PRI_MAP_TO_TEXT = {
-        "🔵 Baja":"Baja", "🟡 Media":"Media", "🔴 Alta":"Alta",
-        "Baja":"Baja", "Media":"Media", "Alta":"Alta"
-    }
+    PRI_MAP_TO_TEXT = {"🔵 Baja":"Baja","🟡 Media":"Media","🔴 Alta":"Alta",
+                       "Baja":"Baja","Media":"Media","Alta":"Alta"}
 
-    # Convertimos visibles a string (evita MarshallComponentException)
-    df_safe = df_view.copy()
-    for c in df_safe.columns:
-        df_safe[c] = df_safe[c].astype(str)
+    df_safe = df_view.copy().astype(str)
 
     gob = GridOptionsBuilder.from_dataframe(df_safe)
+    # ocupar todo el ancho
     gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, flex=1, minWidth=120)
     gob.configure_grid_options(
         suppressMovableColumns=True,
         domLayout="normal",
         ensureDomOrder=True,
         rowHeight=38,
-        headerHeight=42,
+        headerHeight=44,
         suppressHorizontalScroll=True
     )
-    fit_cols = True  # ocupar ancho disponible
+    # Asegurar header names explícitos (por si acaso)
+    for col in cols_out:
+        gob.configure_column(col, headerName=col)
 
-    # Solo lectura
+    # no editables
     for ro in ["Id", "Responsable", "Tarea", "Prioridad actual"]:
         gob.configure_column(ro, editable=False)
 
-    # Editable con lista (emojis) + clases de color por reglas
+    # Editable con lista + color
     cell_class_rules = {
         "pri-low":  "value == '🔵 Baja' || value == 'Baja'",
         "pri-med":  "value == '🟡 Media' || value == 'Media'",
@@ -2079,7 +2090,7 @@ if st.session_state["pri_visible"]:
         gridOptions=gob.build(),
         data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
         update_mode=GridUpdateMode.VALUE_CHANGED,
-        fit_columns_on_grid_load=fit_cols,
+        fit_columns_on_grid_load=True,
         enable_enterprise_modules=False,
         reload_data=False,
         height=260
@@ -2103,7 +2114,7 @@ if st.session_state["pri_visible"]:
                     if not id_row:
                         continue
                     valor_ui = str(row.get("Prioridad a ajustar", "Media")).strip()
-                    nuevo = PRI_MAP_TO_TEXT.get(valor_ui, "Media")  # guardamos sin emoji
+                    nuevo = PRI_MAP_TO_TEXT.get(valor_ui, "Media")
                     m = df_base["Id"].astype(str).str.strip() == id_row
                     if m.any():
                         df_base.loc[m, "Prioridad"] = nuevo
@@ -2117,7 +2128,7 @@ if st.session_state["pri_visible"]:
         except Exception as e:
             st.error(f"No pude guardar los cambios de prioridad: {e}")
 
-    # Cierra form-card + section-pri y el contenedor local
+    # Cerrar wrappers
     st.markdown('</div></div>', unsafe_allow_html=True)  # cierra .form-card y .section-pri
     st.markdown('</div>', unsafe_allow_html=True)        # cierra #pri-section
 
@@ -2693,6 +2704,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
