@@ -1765,7 +1765,10 @@ if st.session_state["na_visible"]:
     on_ready_size = JsCode("function(p){ p.api.sizeColumnsToFit(); }")
     on_first_size = JsCode("function(p){ p.api.sizeColumnsToFit(); }")
 
-    gob = GridOptionsBuilder.from_dataframe(df_view)
+    # 🔧 CLAVE: construir columnDefs SIEMPRE (aunque no haya filas)
+    df_cols_base = pd.DataFrame({c: pd.Series(dtype="object") for c in cols_out})
+    gob = GridOptionsBuilder.from_dataframe(df_cols_base)
+
     gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, minWidth=110, flex=1)
     gob.configure_grid_options(
         suppressMovableColumns=True,
@@ -1815,15 +1818,15 @@ if st.session_state["na_visible"]:
     grid_opts["onFirstDataRendered"] = on_first_size.js_code
 
     grid = AgGrid(
-        df_view,
-        gridOptions=grid_opts,
+        df_view,                                   # datos (puede estar vacío)
+        gridOptions=grid_opts,                     # defs SIEMPRE con columnas
         data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
         update_mode=GridUpdateMode.VALUE_CHANGED,
-        fit_columns_on_grid_load=True,          # << llena el ancho
+        fit_columns_on_grid_load=True,
         enable_enterprise_modules=False,
         reload_data=False,
         height=220,
-        allow_unsafe_jscode=True,               # necesario para JsCode
+        allow_unsafe_jscode=True,
         theme="balham",
     )
 
@@ -1874,7 +1877,6 @@ if st.session_state["na_visible"]:
 
     # Separación vertical entre secciones
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
-
 
 
 # =========================== PRIORIDAD ===============================
@@ -2630,6 +2632,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
