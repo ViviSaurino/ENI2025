@@ -1312,8 +1312,6 @@ if st.session_state.get("nt_visible", True):
 st.markdown(f"<div style='height:{SECTION_GAP}px;'></div>", unsafe_allow_html=True)
 
 
-
-
 # ================== EDITAR ESTADO (mismo layout que "Nueva alerta") ==================
 st.session_state.setdefault("est_visible", True)
 chev_est = "▾" if st.session_state["est_visible"] else "▸"
@@ -1449,6 +1447,41 @@ if st.session_state["est_visible"]:
             "Hora estado modificado":  _fmt_time(base["Hora estado modificado"]),
         })[cols_out].copy()
 
+    # ========= editores de celdas =========
+    estados_editables = ["En curso","Terminado","Pausado","Cancelado","Eliminado"]
+
+    date_editor = JsCode("""
+    class DateEditor{
+      init(p){
+        this.eInput = document.createElement('input');
+        this.eInput.type = 'date';
+        this.eInput.classList.add('ag-input');
+        this.eInput.style.width = '100%';
+        const v = (p.value || '').toString().trim();
+        if (/^\\d{4}-\\d{2}-\\d{2}$/.test(v)) { this.eInput.value = v; }
+        else {
+          const d = new Date(v);
+          if (!isNaN(d.getTime())){
+            const pad=n=>String(n).padStart(2,'0');
+            this.eInput.value = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+          }
+        }
+      }
+      getGui(){ return this.eInput }
+      afterGuiAttached(){ this.eInput.focus() }
+      getValue(){ return this.eInput.value }
+    }""")
+
+    on_cell_changed = JsCode("""
+    function(params){
+      if (params.colDef.field === 'Fecha estado modificado'){
+        const pad = n => String(n).padStart(2,'0');
+        const d = new Date();
+        const hhmm = pad(d.getHours()) + ':' + pad(d.getMinutes());
+        params.node.setDataValue('Hora estado modificado', hhmm);
+      }
+    }""")
+
     # --- AgGrid: sin negritas y sin barra horizontal ---
     gob = GridOptionsBuilder.from_dataframe(df_view)
     gob.configure_grid_options(
@@ -1457,74 +1490,86 @@ if st.session_state["est_visible"]:
         ensureDomOrder=True,
         rowHeight=38,
         headerHeight=42,
-        suppressHorizontalScroll=True   # <- desactiva scroll horizontal
+        suppressHorizontalScroll=True
     )
     # selección por checkbox
     gob.configure_selection("single", use_checkbox=True)
 
+    # columnas editables solicitadas
+    gob.configure_column("Estado modificado",
+                         editable=True,
+                         cellEditor="agSelectCellEditor",
+                         cellEditorParams={"values": estados_editables},
+                         minWidth=160)
+
+    gob.configure_column("Fecha estado modificado",
+                         editable=True,
+                         cellEditor=date_editor,
+                         minWidth=160)
+
+    gob.configure_column("Hora estado modificado",
+                         editable=False,
+                         minWidth=140)
+
+    grid_opts = gob.build()
+    grid_opts["onCellValueChanged"] = on_cell_changed.js_code
+
     grid = AgGrid(
         df_view,
-        gridOptions=gob.build(),
+        gridOptions=grid_opts,
         data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
-        update_mode=GridUpdateMode.SELECTION_CHANGED,
-        fit_columns_on_grid_load=True,   # <- ajusta columnas al ancho del contenedor
+        update_mode=(GridUpdateMode.VALUE_CHANGED | GridUpdateMode.SELECTION_CHANGED),
+        fit_columns_on_grid_load=True,
         enable_enterprise_modules=False,
         reload_data=False,
-        height=260
+        height=260,
+        allow_unsafe_jscode=True,  # necesario para los editores JS
+        theme="balham"
     )
 
-    # ===== Actualizar estado (si hay selección) =====
+    # ===== Guardar cambios (actualiza la MISMA fila por Id) =====
     sel_rows = grid.get("selected_rows", [])
-    if sel_rows:
-        sel_id = str(sel_rows[0].get("Id","")).strip()
-        estados_lst = list(EMO_ESTADO.keys()) if "EMO_ESTADO" in globals() else \
-                      ["No iniciado","En progreso","Pausado","Bloqueado","Terminada"]
+    sel_id = str(sel_rows[0].get("Id","")).strip() if sel_rows else None
 
-        u1, u2 = st.columns([A+Fw+T_width+D+R, C], gap="medium")
-        with u1:
-            nuevo_estado = st.selectbox("Nuevo estado", options=estados_lst, key="est_nuevo_estado_v3")
-        with u2:
-            if st.button("✅ Actualizar estado", use_container_width=True, key="est_aplicar_v3"):
-                try:
-                    df2 = st.session_state.get("df_main", pd.DataFrame()).copy()
-                    if df2.empty:
+    u1, u2 = st.columns([A+Fw+T_width+D+R, C], gap="medium")
+    with u2:
+        if st.button("💾 Guardar cambios", use_container_width=True, key="est_guardar_inline_v3"):
+            try:
+                grid_data = pd.DataFrame(grid.get("data", []))
+                if grid_data.empty or "Id" not in grid_data.columns:
+                    st.info("No hay cambios para guardar.")
+                else:
+                    grid_data["Id"] = grid_data["Id"].astype(str)
+                    base = st.session_state.get("df_main", pd.DataFrame()).copy()
+                    if base.empty:
                         st.warning("No hay base para actualizar.")
                     else:
-                        idx = df2.index[df2["Id"].astype(str).str.strip() == sel_id]
-                        if len(idx)==0:
-                            st.error("No se encontró la fila en la base.")
-                        else:
-                            ts = datetime.now()
-                            i0 = idx[0]
-                            df2.at[i0,"Estado"] = nuevo_estado
-                            df2.at[i0,"Fecha estado actual"]     = ts.strftime("%Y-%m-%d")
-                            df2.at[i0,"Hora estado actual"]      = ts.strftime("%H:%M")
-                            df2.at[i0,"Estado modificado"]       = nuevo_estado
-                            df2.at[i0,"Fecha estado modificado"] = ts.strftime("%Y-%m-%d")
-                            df2.at[i0,"Hora estado modificado"]  = ts.strftime("%H:%M")
+                        base["Id"] = base["Id"].astype(str)
+                        cols_to_merge = ["Estado modificado","Fecha estado modificado","Hora estado modificado"]
+                        for c in cols_to_merge:
+                            if c not in base.columns:
+                                base[c] = ""
 
-                            # Limpieza y guardado local
-                            df2 = df2.loc[:, ~pd.Index(df2.columns).duplicated()].copy()
-                            if not df2.index.is_unique: df2 = df2.reset_index(drop=True)
-                            st.session_state["df_main"] = df2.copy()
-                            os.makedirs("data", exist_ok=True)
-                            df2.to_csv(os.path.join("data","tareas.csv"), index=False, encoding="utf-8-sig")
-                            st.success(f"Estado del Id {sel_id} actualizado.")
-                            st.rerun()
-                except Exception as e:
-                    st.error(f"No pude actualizar: {e}")
+                        upd = grid_data[["Id"] + cols_to_merge].copy()
+                        base = base.merge(upd, on="Id", how="left", suffixes=("", "_NEW"))
+                        for c in cols_to_merge:
+                            n = f"{c}_NEW"
+                            if n in base.columns:
+                                base[c] = base[n].where(base[n].notna() & (base[n] != ""), base[c])
+                                base.drop(columns=[n], inplace=True)
 
-    # ===== Botón "Guardar cambios" (estético, consistente con Nueva alerta) =====
-    _sp, _btn = st.columns([A+Fw+T_width+D+R, C], gap="medium")
-    with _btn:
-        if st.button("💾 Guardar cambios", use_container_width=True, key="est_guardar_v3"):
-            # Esta sección actualiza con el botón "Actualizar estado".
-            # Mostramos un aviso suave para mantener consistencia visual con "Nueva alerta".
-            st.info("En esta sección los cambios se guardan con “✅ Actualizar estado” tras seleccionar una fila.")
+                        st.session_state["df_main"] = base.copy()
+                        os.makedirs("data", exist_ok=True)
+                        base.to_csv(os.path.join("data","tareas.csv"), index=False, encoding="utf-8-sig")
+                        st.success("Cambios guardados. *Tareas recientes* se actualizará automáticamente.")
+                        st.rerun()
+            except Exception as e:
+                st.error(f"No pude guardar: {e}")
 
     # Cerrar form-card + section + contenedor
     st.markdown('</div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
+
 
 
 # ================== Nueva alerta ==================
@@ -2486,5 +2531,6 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
