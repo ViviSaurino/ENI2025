@@ -2535,42 +2535,51 @@ df_view = df_view.sort_values("__ts__", ascending=False, na_position="last")
 
 st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
 
+# --- FIX: eliminar columnas duplicadas antes de ordenar/reindex ---
+df_view = df_view.copy()
+df_view.columns = df_view.columns.astype(str)
+dups = df_view.columns.duplicated()
+if dups.any():
+    df_view = df_view.loc[:, ~dups]
+
 # === ORDEN Y PRESENCIA DE COLUMNAS SEGÚN TU LISTA ===
-# Fijas: Id, Área, Fase, Responsable
-# Resto (en el orden que pediste):
 target_cols = [
     "Id","Área","Fase","Responsable",
     "Tarea","Detalle","Ciclo de mejora","Complejidad","Prioridad",
-    "Estado",                      # se mostrará como "Estado actual" (header)
-    "Duración",                    # ← dejar en blanco por ahora
+    "Estado",                      # → header: "Estado actual"
+    "Duración",                    # vacío por ahora
     "Fecha Registro","Hora Registro",
-    "Fecha inicio","Hora de inicio",  # "Fecha inicio" se mostrará como "Fecha de inicio" (header)
+    "Fecha inicio","Hora de inicio",   # → header: "Fecha de inicio"
     "Fecha Pausado","Hora Pausado",
     "Fecha Cancelado","Hora Cancelado",
     "Fecha Eliminado","Hora Eliminado",
-    "Vencimiento",                 # se mostrará como "Fecha límite" (header)
-    "Fecha fin","Hora Terminado",  # "Fecha fin" se mostrará como "Fecha Terminado" (header)
+    "Vencimiento",                    # → header: "Fecha límite"
+    "Fecha fin","Hora Terminado",     # → header: "Fecha Terminado"
     "¿Generó alerta?","N° de alerta","Fecha de detección","Hora de detección",
     "¿Se corrigió?","Fecha de corrección","Hora de corrección",
     "Cumplimiento","Evaluación","Calificación"
 ]
 
-# Asegura que todas existan (si falta alguna, la agrega vacía)
+# Asegura presencia de columnas (si faltan, se crean vacías)
 for c in target_cols:
     if c not in df_view.columns:
         df_view[c] = ""
 
-# Duración: mantener vacía (sin cálculo)
+# Duración: mantener vacía
 df_view["Duración"] = df_view["Duración"].astype(str).fillna("")
 
-# Construye el dataframe en el orden deseado
-df_grid = df_view.reindex(columns=target_cols + [c for c in df_view.columns
-                                                 if c not in target_cols + ["__DEL__","__ts__"]]).copy()
+# Reindex seguro (listas sin duplicados)
+target_cols_u = list(dict.fromkeys(target_cols))
+rest = [c for c in df_view.columns if c not in target_cols_u + ["__DEL__","__ts__"]]
+df_grid = df_view.reindex(columns=target_cols_u + rest).copy()
+df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()
 
 # **CLAVE**: forzar Id a string antes de renderizar el grid
 df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
 
 # ================= GRID OPTIONS =================
+from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode, JsCode
+
 gob = GridOptionsBuilder.from_dataframe(df_grid)
 gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True)
 
@@ -2603,17 +2612,18 @@ gob.configure_column("Área",        editable=True,  width=160, pinned="left")
 gob.configure_column("Fase",        editable=True,  width=140, pinned="left")
 gob.configure_column("Responsable", editable=True,  minWidth=180, pinned="left")
 
-# ----- Encabezados con alias sin cambiar el campo -----
-gob.configure_column("Estado",      headerName="Estado actual")
-gob.configure_column("Vencimiento", headerName="Fecha límite")
-gob.configure_column("Fecha inicio", headerName="Fecha de inicio")
-gob.configure_column("Fecha fin",   headerName="Fecha Terminado")
+# ----- Alias de encabezados -----
+gob.configure_column("Estado",        headerName="Estado actual")
+gob.configure_column("Vencimiento",   headerName="Fecha límite")
+gob.configure_column("Fecha inicio",  headerName="Fecha de inicio")
+gob.configure_column("Fecha fin",     headerName="Fecha Terminado")
 
-# ----- Ocultas en el GRID (pero presentes para export/Sheets) -----
+# ----- Ocultas en GRID (visibles en export/Sheets) -----
 for ocultar in ["Fecha Pausado","Hora Pausado","Fecha Cancelado","Hora Cancelado","Fecha Eliminado","Hora Eliminado"]:
-    gob.configure_column(ocultar, hide=True)
+    if ocultar in df_grid.columns:
+        gob.configure_column(ocultar, hide=True)
 
-# ----- Formatters útiles -----
+# ----- Formatters -----
 flag_formatter = JsCode("""
 function(p){ const v=String(p.value||'');
   if(v==='Alta') return '🔴 Alta'; if(v==='Media') return '🟡 Media'; if(v==='Baja') return '🟢 Baja'; return v||'—'; }""")
@@ -2625,13 +2635,13 @@ function(p){
   if (v==='No iniciado'){bg='#90A4AE'}
   else if(v==='En curso'){bg='#B388FF'}
   else if(v==='Terminado'){bg='#00C4B3'}
-  else if(v==='Cancelado'){bg:'#FF2D95'}
-  else if(v==='Pausado'){bg:'#7E57C2'}
-  else if(v==='Entregado a tiempo'){bg:'#00C4B3'}
-  else if(v==='Entregado con retraso'){bg:'#00ACC1'}
-  else if(v==='No entregado'){bg:'#006064'}
-  else if(v==='En riesgo de retraso'){bg:'#0277BD'}
-  else if(v==='Aprobada'){bg:'#8BC34A'; fg:'#0A2E00'}
+  else if(v==='Cancelado'){bg='#FF2D95'}
+  else if(v==='Pausado'){bg='#7E57C2'}
+  else if(v==='Entregado a tiempo'){bg='#00C4B3'}
+  else if(v==='Entregado con retraso'){bg='#00ACC1'}
+  else if(v==='No entregado'){bg='#006064'}
+  else if(v==='En riesgo de retraso'){bg='#0277BD'}
+  else if(v==='Aprobada'){bg='#8BC34A'; fg:'#0A2E00'}
   else if(v==='Desaprobada'){bg:'#FF8A80'}
   else if(v==='Pendiente de revisión'){bg:'#BDBDBD'; fg:'#2B2B2B'}
   else if(v==='Observada'){bg:'#D7A56C'}
@@ -2651,7 +2661,7 @@ function(p){
   return '★'.repeat(n) + '☆'.repeat(5-n);
 }""")
 
-# ----- Anchos/flex (ligeros) -----
+# ----- Anchos/flex -----
 colw = {
     "Tarea":260, "Detalle":240, "Ciclo de mejora":140, "Complejidad":130, "Prioridad":130,
     "Estado":130, "Duración":110, "Fecha Registro":160, "Hora Registro":140,
@@ -2668,14 +2678,15 @@ for c, fx in [("Tarea",3), ("Detalle",2), ("Ciclo de mejora",1), ("Complejidad",
               ("¿Se corrigió?",1), ("Fecha de corrección",1), ("Hora de corrección",1),
               ("Cumplimiento",1), ("Evaluación",1), ("Calificación",0)]:
     if c in df_grid.columns:
-        gob.configure_column(c,
-            editable=True if c not in ["Duración"] else False,   # Duración en blanco (no editable)
+        gob.configure_column(
+            c,
+            editable=True if c not in ["Duración"] else False,
             minWidth=colw.get(c,120),
             flex=fx,
             valueFormatter=fmt_dash if c not in ["Calificación","Prioridad"] else None,
         )
 
-# Priori con banderitas
+# Prioridad con banderitas
 if "Prioridad" in df_grid.columns:
     gob.configure_column("Prioridad",
         editable=True, cellEditor="agSelectCellEditor",
@@ -2699,7 +2710,7 @@ if "Calificación" in df_grid.columns:
     gob.configure_column("Calificación", editable=True, valueFormatter=stars_fmt,
                          minWidth=colw["Calificación"], maxWidth=140, flex=0)
 
-# Editor de fecha/hora para campos de fecha (sin tocar tu lógica general)
+# Editor de fecha/hora
 date_time_editor = JsCode("""
 class DateTimeEditor{
   init(p){
@@ -2784,7 +2795,7 @@ if isinstance(grid, dict) and "data" in grid and grid["data"] is not None and le
         pass
 
 # ---- Botones ----
-total_btn_width = (1.2 + 1.2) + (3.2 / 2)  # conserva tus proporciones originales
+total_btn_width = (1.2 + 1.2) + (3.2 / 2)
 btn_w = total_btn_width / 4
 
 b_del, b_xlsx, b_save_local, b_save_sheets, _spacer = st.columns(
