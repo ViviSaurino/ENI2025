@@ -2636,10 +2636,10 @@ if "Estado" in df_view.columns:
     df_view.loc[_terminado, "Hora Terminado"] = _hmod.where(_hmod != "", _mod.dt.strftime("%H:%M"))[_terminado]
     df_view.loc[~_terminado, ["Fecha fin","Hora Terminado"]] = [pd.NaT, ""]
 
-# === ORDEN Y PRESENCIA DE COLUMNAS (tu orden oficial) ===
+# === ORDEN Y PRESENCIA DE COLUMNAS (AJUSTE: mover 'Tipo' al lado de 'Tarea' y ocultar 'Fecha'/'Hora') ===
 target_cols = [
     "Id","Área","Fase","Responsable",
-    "Tarea","Detalle","Ciclo de mejora","Complejidad","Prioridad",
+    "Tarea","Tipo","Detalle","Ciclo de mejora","Complejidad","Prioridad",
     "Estado",
     "Duración",
     "Fecha Registro","Hora Registro",
@@ -2650,7 +2650,7 @@ target_cols = [
     "Vencimiento",
     "Fecha fin","Hora Terminado",
     "¿Generó alerta?",
-    # (Ocultamos “N° de alerta” y “Tipo de alerta” para que no salgan al final)
+    # “N° de alerta” y “Tipo de alerta” se mantienen fuera del grid
     "Fecha de detección","Hora de detección",
     "¿Se corrigió?","Fecha de corrección","Hora de corrección",
     "Cumplimiento","Evaluación","Calificación"
@@ -2662,6 +2662,7 @@ HIDDEN_COLS = [
     "Fecha estado modificado","Hora estado modificado",
     "Fecha estado actual","Hora estado actual",
     "N° de alerta","Tipo de alerta",   # ← ocultas siempre
+    "Fecha","Hora",                    # ← OCULTAR las columnas del formulario
     "__ts__","__DEL__"
 ]
 
@@ -2747,12 +2748,12 @@ function(p){
   if (v==='No iniciado'){bg='#90A4AE'}
   else if(v==='En curso'){bg='#B388FF'}
   else if(v==='Terminado'){bg='#00C4B3'}
-  else if(v==='Cancelado'){bg='#FF2D95'}
-  else if(v==='Pausado'){bg='#7E57C2'}
-  else if(v==='Entregado a tiempo'){bg='#00C4B3'}
-  else if(v==='Entregado con retraso'){bg='#00ACC1'}
-  else if(v==='No entregado'){bg='#006064'}
-  else if(v==='En riesgo de retraso'){bg='#0277BD'}
+  else if(v==='Cancelado'){bg:'#FF2D95'}
+  else if(v==='Pausado'){bg:'#7E57C2'}
+  else if(v==='Entregado a tiempo'){bg:'#00C4B3'}
+  else if(v==='Entregado con retraso'){bg:'#00ACC1'}
+  else if(v==='No entregado'){bg:'#006064'}
+  else if(v==='En riesgo de retraso'){bg:'#0277BD'}
   else if(v==='Aprobada'){bg:'#8BC34A'; fg:'#0A2E00'}
   else if(v==='Desaprobada'){bg:'#FF8A80'}
   else if(v==='Pendiente de revisión'){bg:'#BDBDBD'; fg:'#2B2B2B'}
@@ -2781,7 +2782,7 @@ date_only_fmt = JsCode("""
 function(p){
   if(p.value===null||p.value===undefined) return '—';
   const d=new Date(String(p.value).trim()); if(isNaN(d.getTime())){
-     const s=String(p.value).trim(); if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+     const s=String(p.value).trim(); if(/^\\d{4}-\\d{2}-\\d{2}$/.test(s)) return s;
      return '—';
   }
   const pad=n=>String(n).padStart(2,'0');
@@ -2804,7 +2805,7 @@ function(p){
 
 # ----- Config de columnas (ancho/flex y formatos) -----
 colw = {
-    "Tarea":260, "Detalle":240, "Ciclo de mejora":140, "Complejidad":130, "Prioridad":130,
+    "Tarea":260, "Tipo":160, "Detalle":240, "Ciclo de mejora":140, "Complejidad":130, "Prioridad":130,
     "Estado":130, "Duración":110, "Fecha Registro":160, "Hora Registro":140,
     "Fecha inicio":160, "Hora de inicio":140, "Vencimiento":160,
     "Fecha fin":160, "Hora Terminado":140,
@@ -2813,7 +2814,7 @@ colw = {
     "Cumplimiento":180, "Evaluación":170, "Calificación":120
 }
 
-for c, fx in [("Tarea",3), ("Detalle",2), ("Ciclo de mejora",1), ("Complejidad",1), ("Prioridad",1), ("Estado",1),
+for c, fx in [("Tarea",3), ("Tipo",1), ("Detalle",2), ("Ciclo de mejora",1), ("Complejidad",1), ("Prioridad",1), ("Estado",1),
               ("Duración",1), ("Fecha Registro",1), ("Hora Registro",1),
               ("Fecha inicio",1), ("Hora de inicio",1),
               ("Vencimiento",1), ("Fecha fin",1), ("Hora Terminado",1),
@@ -2981,4 +2982,3 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
