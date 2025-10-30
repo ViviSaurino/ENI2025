@@ -1936,8 +1936,8 @@ if st.session_state["pri_visible"]:
 
       /* ===== Encabezados más livianos ===== */
       /* Reducimos el peso tipográfico en ambos temas y evitamos "fake bold" */
-      #pri-section .ag-theme-alpine{ --ag-font-weight: 400; }
-      #pri-section .ag-theme-streamlit{ --ag-font-weight: 400; }
+      #pri-section .ag-theme-alpine{ --ag-font-weight: 200; }
+      #pri-section .ag-theme-streamlit{ --ag-font-weight: 200; }
 
       #pri-section .ag-theme-alpine .ag-header-cell-label,
       #pri-section .ag-theme-alpine .ag-header-cell-text,
@@ -2714,6 +2714,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
