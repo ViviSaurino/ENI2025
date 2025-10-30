@@ -1930,6 +1930,7 @@ if st.session_state["pri_visible"]:
 
       /* Encabezados en negrita SOLO aquí */
       #pri-section .ag-theme-alpine .ag-header-cell-label{ font-weight: 600 !important; }
+      #pri-section .ag-theme-alpine .ag-header-cell-text{ font-weight: 700 !important; }
 
       /* Colores para prioridad (se aplican por reglas de clase) */
       #pri-section .pri-low   { color:#2563eb !important; }   /* azul */
@@ -2033,8 +2034,10 @@ if st.session_state["pri_visible"]:
 
     # Mapeo emoji <-> texto (guardaremos texto)
     PRI_OPC_SHOW = ["🔵 Baja","🟡 Media","🔴 Alta"]
-    PRI_MAP_TO_TEXT = {"🔵 Baja":"Baja", "🟡 Media":"Media", "🔴 Alta":"Alta",
-                       "Baja":"Baja", "Media":"Media", "Alta":"Alta"}
+    PRI_MAP_TO_TEXT = {
+        "🔵 Baja":"Baja", "🟡 Media":"Media", "🔴 Alta":"Alta",
+        "Baja":"Baja", "Media":"Media", "Alta":"Alta"
+    }
 
     # Convertimos visibles a string (evita MarshallComponentException)
     df_safe = df_view.copy()
@@ -2042,36 +2045,33 @@ if st.session_state["pri_visible"]:
         df_safe[c] = df_safe[c].astype(str)
 
     gob = GridOptionsBuilder.from_dataframe(df_safe)
+    gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, flex=1, minWidth=120)
     gob.configure_grid_options(
         suppressMovableColumns=True,
         domLayout="normal",
         ensureDomOrder=True,
         rowHeight=38,
         headerHeight=42,
-        suppressHorizontalScroll=True  # intentará ocupar ancho
+        suppressHorizontalScroll=True
     )
-    # Expandir columnas al cargar
-    fit_cols = True
+    fit_cols = True  # ocupar ancho disponible
 
     # Solo lectura
     for ro in ["Id", "Responsable", "Tarea", "Prioridad actual"]:
         gob.configure_column(ro, editable=False)
 
-    # Editable con lista (emojis). Añadimos clases por reglas de celda (sin JS funciones).
-    # Las reglas se expresan como strings y son serializables.
+    # Editable con lista (emojis) + clases de color por reglas
     cell_class_rules = {
         "pri-low":  "value == '🔵 Baja' || value == 'Baja'",
         "pri-med":  "value == '🟡 Media' || value == 'Media'",
-        "pri-high": "value == '🔴 Alta' || value == 'Alta'",
+        "pri-high": "value == '🔴 Alta' || value == 'Alta'"
     }
     gob.configure_column(
         "Prioridad a ajustar",
         editable=True,
         cellEditor="agSelectCellEditor",
         cellEditorParams={"values": PRI_OPC_SHOW},
-        cellClassRules=cell_class_rules,
-        wrapText=True,
-        autoHeight=True
+        cellClassRules=cell_class_rules
     )
 
     grid_pri = AgGrid(
@@ -2693,6 +2693,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
