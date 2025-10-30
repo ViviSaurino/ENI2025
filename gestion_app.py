@@ -1178,7 +1178,7 @@ if st.session_state.get("nt_visible", True):
     st.markdown("""
     <style>
       /* Altura del separador: ajusta solo este valor si quieres más/menos espacio */
-      #nt-section .nt-gap-entre-ayuda-y-card{ height: 12px; }
+      #nt-section .nt-gap-entre-ayuda-y-card{ height: 20px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -2477,6 +2477,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
