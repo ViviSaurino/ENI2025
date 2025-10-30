@@ -2696,6 +2696,25 @@ if "Estado" in df_view.columns:
     df_view.loc[need_fin_dt, "Fecha fin"]      = _mod[need_fin_dt]
     df_view.loc[need_fin_tm, "Hora Terminado"] = _hmod.where(_hmod != "", _mod.dt.strftime("%H:%M"))[need_fin_tm]
 
+# 3.b) VENCIMIENTO — separar FECHA y HORA (default hora 17:00)
+if "Fecha Vencimiento" not in df_view.columns: df_view["Fecha Vencimiento"] = pd.NaT
+if "Hora Vencimiento" not in df_view.columns:  df_view["Hora Vencimiento"]  = ""
+
+# Si existe la vieja columna "Vencimiento", úsala para poblar por defecto
+if "Vencimiento" in df_view.columns:
+    _vdt = pd.to_datetime(df_view["Vencimiento"], errors="coerce")
+    mask_fv = df_view["Fecha Vencimiento"].isna()
+    df_view.loc[mask_fv, "Fecha Vencimiento"] = _vdt.dt.normalize()[mask_fv]
+    hv_from = _vdt.dt.strftime("%H:%M")
+    hv_now = df_view["Hora Vencimiento"].astype(str).str.strip()
+    mask_hv = hv_now.eq("") | hv_now.eq("00:00")
+    df_view.loc[mask_hv, "Hora Vencimiento"] = hv_from[mask_hv]
+
+# Normalizar tipos y aplicar 17:00 por defecto si vacío
+df_view["Fecha Vencimiento"] = df_view["Fecha Vencimiento"].apply(_to_date)
+df_view["Hora Vencimiento"]  = df_view["Hora Vencimiento"].apply(_to_hhmm)
+df_view.loc[df_view["Hora Vencimiento"] == "", "Hora Vencimiento"] = "17:00"
+
 # === ORDEN Y PRESENCIA DE COLUMNAS (AJUSTE: mover 'Tipo' al lado de 'Tarea' y ocultar 'Fecha'/'Hora') ===
 target_cols = [
     "Id","Área","Fase","Responsable",
@@ -2707,7 +2726,7 @@ target_cols = [
     "Fecha Pausado","Hora Pausado",
     "Fecha Cancelado","Hora Cancelado",
     "Fecha Eliminado","Hora Eliminado",
-    "Vencimiento",
+    "Fecha Vencimiento","Hora Vencimiento",
     "Fecha fin","Hora Terminado",
     "¿Generó alerta?",
     # “N° de alerta” y “Tipo de alerta” se mantienen fuera del grid
@@ -2723,6 +2742,7 @@ HIDDEN_COLS = [
     "Fecha estado actual","Hora estado actual",
     "N° de alerta","Tipo de alerta",   # ← ocultas siempre
     "Fecha","Hora",                    # ← columnas del formulario
+    "Vencimiento",                     # ← ocultamos la antigua columna combinada
     "__ts__","__DEL__"
 ]
 
@@ -2781,10 +2801,10 @@ gob.configure_column("Fase",        editable=True,  width=140, pinned="left", su
 gob.configure_column("Responsable", editable=True,  minWidth=180, pinned="left", suppressMovable=True)
 
 # ----- Alias de encabezados -----
-gob.configure_column("Estado",        headerName="Estado actual")
-gob.configure_column("Vencimiento",   headerName="Fecha límite")
-gob.configure_column("Fecha inicio",  headerName="Fecha de inicio")
-gob.configure_column("Fecha fin",     headerName="Fecha Terminado")
+gob.configure_column("Estado",              headerName="Estado actual")
+gob.configure_column("Fecha Vencimiento",   headerName="Fecha límite")
+gob.configure_column("Fecha inicio",        headerName="Fecha de inicio")
+gob.configure_column("Fecha fin",           headerName="Fecha Terminado")
 
 # ----- Ocultas en GRID -----
 for ocultar in HIDDEN_COLS + ["Fecha Pausado","Hora Pausado","Fecha Cancelado","Hora Cancelado","Fecha Eliminado","Hora Eliminado"]:
@@ -2807,13 +2827,13 @@ function(p){
   let bg='#E0E0E0', fg='#FFFFFF';
   if (v==='No iniciado'){bg='#90A4AE'}
   else if(v==='En curso'){bg='#B388FF'}
-  else if(v==='Terminado'){bg='#00C4B3'}
-  else if(v==='Cancelado'){bg='#FF2D95'}
-  else if(v==='Pausado'){bg='#7E57C2'}
-  else if(v==='Entregado a tiempo'){bg='#00C4B3'}
-  else if(v==='Entregado con retraso'){bg='#00ACC1'}
-  else if(v==='No entregado'){bg='#006064'}
-  else if(v==='En riesgo de retraso'){bg='#0277BD'}
+  else if(v==='Terminado'){bg:'#00C4B3'}
+  else if(v==='Cancelado'){bg:'#FF2D95'}
+  else if(v==='Pausado'){bg:'#7E57C2'}
+  else if(v==='Entregado a tiempo'){bg:'#00C4B3'}
+  else if(v==='Entregado con retraso'){bg:'#00ACC1'}
+  else if(v==='No entregado'){bg:'#006064'}
+  else if(v==='En riesgo de retraso'){bg:'#0277BD'}
   else if(v==='Aprobada'){bg:'#8BC34A'; fg:'#0A2E00'}
   else if(v==='Desaprobada'){bg:'#FF8A80'}
   else if(v==='Pendiente de revisión'){bg:'#BDBDBD'; fg:'#2B2B2B'}
@@ -2867,7 +2887,8 @@ function(p){
 colw = {
     "Tarea":260, "Tipo":160, "Detalle":240, "Ciclo de mejora":140, "Complejidad":130, "Prioridad":130,
     "Estado":130, "Duración":110, "Fecha Registro":160, "Hora Registro":140,
-    "Fecha inicio":160, "Hora de inicio":140, "Vencimiento":160,
+    "Fecha inicio":160, "Hora de inicio":140,
+    "Fecha Vencimiento":160, "Hora Vencimiento":140,
     "Fecha fin":160, "Hora Terminado":140,
     "¿Generó alerta?":150, "Fecha de detección":160, "Hora de detección":140,
     "¿Se corrigió?":140, "Fecha de corrección":160, "Hora de corrección":140,
@@ -2877,7 +2898,8 @@ colw = {
 for c, fx in [("Tarea",3), ("Tipo",1), ("Detalle",2), ("Ciclo de mejora",1), ("Complejidad",1), ("Prioridad",1), ("Estado",1),
               ("Duración",1), ("Fecha Registro",1), ("Hora Registro",1),
               ("Fecha inicio",1), ("Hora de inicio",1),
-              ("Vencimiento",1), ("Fecha fin",1), ("Hora Terminado",1),
+              ("Fecha Vencimiento",1), ("Hora Vencimiento",1),
+              ("Fecha fin",1), ("Hora Terminado",1),
               ("¿Generó alerta?",1), ("Fecha de detección",1), ("Hora de detección",1),
               ("¿Se corrigió?",1), ("Fecha de corrección",1), ("Hora de corrección",1),
               ("Cumplimiento",1), ("Evaluación",1), ("Calificación",0)]:
@@ -2888,16 +2910,20 @@ for c, fx in [("Tarea",3), ("Tipo",1), ("Detalle",2), ("Ciclo de mejora",1), ("C
             minWidth=colw.get(c,120),
             flex=fx,
             valueFormatter=(
-                date_only_fmt if c in ["Fecha Registro","Fecha inicio"] else
+                date_only_fmt if c in ["Fecha Registro","Fecha inicio","Fecha Vencimiento"] else
                 time_only_fmt if c in ["Hora Registro","Hora de inicio","Hora Pausado","Hora Cancelado","Hora Eliminado",
-                                       "Hora Terminado","Hora de detección","Hora de corrección"] else
-                date_time_fmt if c in ["Vencimiento","Fecha fin","Fecha de detección","Fecha de corrección"] else
+                                       "Hora Terminado","Hora de detección","Hora de corrección","Hora Vencimiento"] else
+                date_time_fmt if c in ["Fecha fin","Fecha de detección","Fecha de corrección"] else
                 (None if c in ["Calificación","Prioridad"] else fmt_dash)
             ),
-            suppressMenu=True if c in ["Fecha Registro","Hora Registro","Fecha inicio","Hora de inicio","Vencimiento","Fecha fin",
-                                       "Fecha de detección","Hora de detección","Fecha de corrección","Hora de corrección"] else False,
-            filter=False if c in ["Fecha Registro","Hora Registro","Fecha inicio","Hora de inicio","Vencimiento","Fecha fin",
-                                  "Fecha de detección","Hora de detección","Fecha de corrección","Hora de corrección"] else None
+            suppressMenu=True if c in ["Fecha Registro","Hora Registro","Fecha inicio","Hora de inicio",
+                                       "Fecha Vencimiento","Hora Vencimiento",
+                                       "Fecha fin","Fecha de detección","Hora de detección",
+                                       "Fecha de corrección","Hora de corrección"] else False,
+            filter=False if c in ["Fecha Registro","Hora Registro","Fecha inicio","Hora de inicio",
+                                  "Fecha Vencimiento","Hora Vencimiento",
+                                  "Fecha fin","Fecha de detección","Hora de detección",
+                                  "Fecha de corrección","Hora de corrección"] else None
         )
 
 # Prioridad con banderitas
