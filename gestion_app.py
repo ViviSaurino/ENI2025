@@ -1173,13 +1173,24 @@ if st.session_state.get("nt_visible", True):
     </div>
     """, unsafe_allow_html=True)
 
-    # === ÚNICO AJUSTE: separador fijo entre la ayuda y el card ===
-    st.markdown('<div class="nt-gap-entre-ayuda-y-card"></div>', unsafe_allow_html=True)
+    # === SOLO este ajuste: separar indicaciones del card de la sección ===
     st.markdown("""
     <style>
-      /* Altura del separador: ajusta solo este valor si quieres más/menos espacio */
-      #nt-section .nt-gap-entre-ayuda-y-card{ height: 40px; }
+      /* Espaciador explícito entre ayuda y el card */
+      #nt-section .nt-gap-entre-ayuda-y-card{ height: 20px; }
+
+      /* Fallback por si el alto no aplica: empuja el contenedor con el sentinel */
+      #nt-section .help-strip + div[data-testid="stVerticalBlock"]{
+        margin-top: 12px !important;
+      }
+      @media (max-width: 992px){
+        #nt-section .nt-gap-entre-ayuda-y-card{ height: 8px; }
+        #nt-section .help-strip + div[data-testid="stVerticalBlock"]{
+          margin-top: 8px !important;
+        }
+      }
     </style>
+    <div class="nt-gap-entre-ayuda-y-card"></div>
     """, unsafe_allow_html=True)
 
     submitted = False
@@ -1307,7 +1318,7 @@ if st.session_state.get("nt_visible", True):
             df = _sanitize(df, COLS if "COLS" in globals() else None)
             st.session_state["df_main"] = df.copy()
             os.makedirs("data", exist_ok=True)
-            df.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig")
+            df.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig", mode="w")
 
             st.success(f"✔ Tarea agregada (Id {new['Id']}).")
             st.rerun()
@@ -1316,6 +1327,7 @@ if st.session_state.get("nt_visible", True):
 
 # Separación vertical
 st.markdown(f"<div style='height:{SECTION_GAP}px;'></div>", unsafe_allow_html=True)
+
 
 
 # ================== EDITAR ESTADO (mismo layout que "Nueva alerta") ==================
@@ -2477,6 +2489,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
