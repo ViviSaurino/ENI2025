@@ -1177,7 +1177,7 @@ if st.session_state.get("nt_visible", True):
     st.markdown("""
     <style>
       /* Espacio bajo las indicaciones del formulario */
-      #nt-section .help-strip{ margin-bottom: 10px !important; }
+      #nt-section .help-strip{ margin-bottom: 30px !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -2476,6 +2476,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
