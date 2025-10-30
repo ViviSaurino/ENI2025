@@ -2182,23 +2182,23 @@ if st.session_state["eva_visible"]:
       #eva-section .stButton > button { width: 100% !important; }
       .section-eva .help-strip-eval + .form-card{ margin-top: 6px !important; }
 
-      /* Headers más marcados */
+      /* Esta regla NO afecta al iframe, se deja como respaldo visual fuera del grid */
       #eva-section .ag-header .ag-header-cell-text{
         font-weight: 400 !important;
       }
 
-      /* Colorear celdas por estado */
-      #eva-section .eva-ok  { color:#16a34a !important; }  /* verde  */
-      #eva-section .eva-bad { color:#dc2626 !important; }  /* rojo   */
-      #eva-section .eva-obs { color:#d97706 !important; }  /* naranja*/
+      /* Colorear celdas por estado (fuera del iframe; dentro lo hacemos con custom_css_eval) */
+      #eva-section .eva-ok  { color:#16a34a !important; }
+      #eva-section .eva-bad { color:#dc2626 !important; }
+      #eva-section .eva-obs { color:#d97706 !important; }
 
-      /* Estrellas (gris por defecto, amarillo al seleccionar) */
+      /* Estrellas (fuera del iframe; dentro lo hacemos con custom_css_eval) */
       #eva-section .ag-star{
         cursor: pointer; user-select: none;
         font-size: 16px; line-height: 1; margin: 0 1px;
       }
-      #eva-section .ag-star.on  { color: #fbbf24; }  /* amarillo */
-      #eva-section .ag-star.off { color: #9ca3af; }  /* gris     */
+      #eva-section .ag-star.on  { color: #fbbf24; }
+      #eva-section .ag-star.off { color: #9ca3af; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -2372,6 +2372,25 @@ if st.session_state["eva_visible"]:
     gob.configure_column("Tarea",         flex=2.4, minWidth=260)
     gob.configure_column("Evaluación actual", flex=1.3, minWidth=160)
 
+    # === CSS dentro del iframe de AgGrid (clave para header, colores y estrellas) ===
+    custom_css_eval = {
+        ".ag-header-cell-text": {"font-weight": "400 !important"},
+        ".ag-header-cell-label": {"font-weight": "400 !important"},
+        ".ag-header-group-cell-label": {"font-weight": "400 !important"},
+        ".ag-theme-alpine": {"--ag-font-weight": "400"},
+        ".ag-header": {"font-synthesis-weight": "none !important"},
+
+        # Colores de estado dentro del iframe
+        ".eva-ok":  {"color": "#16a34a !important"},
+        ".eva-bad": {"color": "#dc2626 !important"},
+        ".eva-obs": {"color": "#d97706 !important"},
+
+        # Estrellas dentro del iframe
+        ".ag-star":     {"cursor":"pointer", "user-select":"none", "font-size":"16px", "line-height":"1", "margin":"0 1px"},
+        ".ag-star.on":  {"color":"#fbbf24"},
+        ".ag-star.off": {"color":"#9ca3af"},
+    }
+
     grid_eval = AgGrid(
         df_view,
         gridOptions=gob.build(),
@@ -2382,7 +2401,8 @@ if st.session_state["eva_visible"]:
         allow_unsafe_jscode=True,
         reload_data=False,
         theme="alpine",
-        height=300
+        height=300,
+        custom_css=custom_css_eval  # <<--- AQUI aplicamos estilos dentro del iframe
     )
 
     # ===== Guardar cambios =====
@@ -2439,6 +2459,7 @@ if st.session_state["eva_visible"]:
 
     # Separación vertical entre secciones
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
+
 
 
 
@@ -2785,6 +2806,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
