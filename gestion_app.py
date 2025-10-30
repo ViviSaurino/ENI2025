@@ -1173,25 +1173,8 @@ if st.session_state.get("nt_visible", True):
     </div>
     """, unsafe_allow_html=True)
 
-    # === SOLO este ajuste: separar indicaciones del card de la sección ===
-    st.markdown("""
-    <style>
-      /* Espaciador explícito entre ayuda y el card */
-      #nt-section .nt-gap-entre-ayuda-y-card{ height: 12px; }
-
-      /* Fallback por si el alto no aplica: empuja el contenedor con el sentinel */
-      #nt-section .help-strip + div[data-testid="stVerticalBlock"]{
-        margin-top: 12px !important;
-      }
-      @media (max-width: 992px){
-        #nt-section .nt-gap-entre-ayuda-y-card{ height: 8px; }
-        #nt-section .help-strip + div[data-testid="stVerticalBlock"]{
-          margin-top: 8px !important;
-        }
-      }
-    </style>
-    <div class="nt-gap-entre-ayuda-y-card"></div>
-    """, unsafe_allow_html=True)
+    # ===== ESPACIADOR entre indicaciones y el card (único ajuste pedido) =====
+    st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
 
     submitted = False
 
@@ -1327,6 +1310,7 @@ if st.session_state.get("nt_visible", True):
 
 # Separación vertical
 st.markdown(f"<div style='height:{SECTION_GAP}px;'></div>", unsafe_allow_html=True)
+
 
 
 
@@ -2489,6 +2473,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
