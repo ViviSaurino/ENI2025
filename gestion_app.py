@@ -1223,7 +1223,11 @@ if st.session_state.get("nt_visible", True):
         # ---------- FILA 2 ----------
         c2_1, c2_2, c2_3, c2_4, c2_5, c2_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
         tipo   = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría", key="nt_tipo")
-        estado = _opt_map(c2_2, "Estado", EMO_ESTADO, "No iniciado")
+
+        # Estado fijo (sin lista): siempre "No iniciado"
+        with c2_2:
+            st.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
+        estado = "No iniciado"
 
         # Fecha editable + callback inmediato
         st.session_state.setdefault("fi_d", None)
@@ -1278,7 +1282,14 @@ if st.session_state.get("nt_visible", True):
                 return df_out
 
             df = _sanitize(df, COLS if "COLS" in globals() else None)
-            f_ini = combine_dt(st.session_state.get("fi_d"), st.session_state.get("fi_t"))
+
+            # Armamos HH:MM seguro para registro
+            reg_fecha = st.session_state.get("fi_d")
+            reg_hora_obj = st.session_state.get("fi_t")
+            try:
+                reg_hora_txt = reg_hora_obj.strftime("%H:%M") if reg_hora_obj is not None else ""
+            except Exception:
+                reg_hora_txt = str(reg_hora_obj) if reg_hora_obj is not None else ""
 
             new = blank_row()
             new.update({
@@ -1288,15 +1299,18 @@ if st.session_state.get("nt_visible", True):
                 "Tipo": st.session_state.get("nt_tipo", ""),
                 "Responsable": st.session_state.get("nt_resp", ""),
                 "Fase": fase,
-                "Estado": estado,
-                "Fecha inicio": f_ini,
+                "Estado": estado,                   # ← fijo: No iniciado
+                # Marcas de REGISTRO que pide el historial
+                "Fecha": reg_fecha,                 # respaldo simple (fallback)
+                "Hora": reg_hora_txt,               # respaldo simple (fallback)
+                "Fecha Registro": reg_fecha,        # registro explícito
+                "Hora Registro": reg_hora_txt,      # registro explícito
+                # NO asignamos 'Fecha inicio' aquí (solo cuando pase a "En curso")
                 "Ciclo de mejora": ciclo_mejora,
                 "Detalle": st.session_state.get("nt_detalle", ""),
             })
 
             df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
-            if "Fecha inicio" in df.columns:
-                df["Fecha inicio"] = pd.to_datetime(df["Fecha inicio"], errors="coerce")
 
             df = _sanitize(df, COLS if "COLS" in globals() else None)
             st.session_state["df_main"] = df.copy()
@@ -2967,3 +2981,4 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
