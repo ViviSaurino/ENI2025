@@ -2095,10 +2095,10 @@ if st.session_state["pri_visible"]:
 
     # --- Encabezado más liviano DENTRO del iframe (clave) ---
     custom_css_pri = {
-        ".ag-header-cell-text": {"font-weight": "400 !important"},
-        ".ag-header-group-cell-label": {"font-weight": "400 !important"},
-        ".ag-header-cell-label": {"font-weight": "400 !important"},
-        ".ag-header": {"font-weight": "400 !important"},
+        ".ag-header-cell-text": {"font-weight": "600 !important"},
+        ".ag-header-group-cell-label": {"font-weight": "600 !important"},
+        ".ag-header-cell-label": {"font-weight": "600 !important"},
+        ".ag-header": {"font-weight": "600 !important"},
     }
 
     grid_pri = AgGrid(
@@ -2722,6 +2722,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
