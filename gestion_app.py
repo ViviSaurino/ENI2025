@@ -1181,7 +1181,7 @@ if st.session_state.get("nt_visible", True):
 
       /* Fallback por si el alto no aplica: empuja el contenedor con el sentinel */
       #nt-section .help-strip + div[data-testid="stVerticalBlock"]{
-        margin-top: 12px !important;
+        margin-top: 20px !important;
       }
       @media (max-width: 992px){
         #nt-section .nt-gap-entre-ayuda-y-card{ height: 8px; }
@@ -2489,6 +2489,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
