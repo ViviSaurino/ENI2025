@@ -2184,7 +2184,7 @@ if st.session_state["eva_visible"]:
 
       /* Esta regla NO afecta al iframe, se deja como respaldo visual fuera del grid */
       #eva-section .ag-header .ag-header-cell-text{
-        font-weight: 400 !important;
+        font-weight: 600 !important;
       }
 
       /* Colorear celdas por estado (fuera del iframe; dentro lo hacemos con custom_css_eval) */
@@ -2806,6 +2806,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
