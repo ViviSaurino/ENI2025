@@ -1174,7 +1174,7 @@ if st.session_state.get("nt_visible", True):
     """, unsafe_allow_html=True)
 
     # ===== ESPACIADOR entre indicaciones y el card (único ajuste pedido) =====
-    st.markdown("<div style='height: 50px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
 
     submitted = False
 
@@ -2473,6 +2473,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
