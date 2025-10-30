@@ -1946,7 +1946,7 @@ if st.session_state["pri_visible"]:
       #pri-section .ag-theme-streamlit .ag-header-cell-text,
       #pri-section .ag-theme-streamlit .ag-header *:not(.ag-icon){
         font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif !important;
-        font-weight: 400 !important;              /* Regular */
+        font-weight: 200 !important;              /* Regular */
         font-synthesis-weight: none !important;   /* sin negrita sintética */
         color: #1f2937 !important;
         opacity: 1 !important;
@@ -2714,6 +2714,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
