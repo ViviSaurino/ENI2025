@@ -2374,10 +2374,10 @@ if st.session_state["eva_visible"]:
 
     # === CSS dentro del iframe de AgGrid (clave para header, colores y estrellas) ===
     custom_css_eval = {
-        ".ag-header-cell-text": {"font-weight": "400 !important"},
-        ".ag-header-cell-label": {"font-weight": "400 !important"},
-        ".ag-header-group-cell-label": {"font-weight": "400 !important"},
-        ".ag-theme-alpine": {"--ag-font-weight": "400"},
+        ".ag-header-cell-text": {"font-weight": "600 !important"},
+        ".ag-header-cell-label": {"font-weight": "600 !important"},
+        ".ag-header-group-cell-label": {"font-weight": "600 !important"},
+        ".ag-theme-alpine": {"--ag-font-weight": "600"},
         ".ag-header": {"font-synthesis-weight": "none !important"},
 
         # Colores de estado dentro del iframe
@@ -2806,6 +2806,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
