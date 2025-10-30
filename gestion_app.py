@@ -1173,10 +1173,10 @@ if st.session_state.get("nt_visible", True):
     </div>
     """, unsafe_allow_html=True)
 
-    # === SOLO este ajuste: separar indicaciones del card de la sección ===
+    # === SOLO este ajuste: separa indicaciones del card de la sección ===
     st.markdown("""
     <style>
-      #nt-section .help-strip{ margin-bottom: 10px !important; } /* ajusta 6–14px a gusto */
+      #nt-section .help-strip{ margin-bottom: 12px !important; } /* ajusta 6–14px a gusto */
     </style>
     """, unsafe_allow_html=True)
 
@@ -1271,7 +1271,7 @@ if st.session_state.get("nt_visible", True):
                     df_out = df_out.drop(columns=["DEL"])
                 elif "DEL" in df_out.columns:
                     df_out = df_out.rename(columns={"DEL": "__DEL__"})
-                df_out = df_out.loc[:, ~pd.Index(df_out.columns).duplicated()].copy()
+                df_out = df_out.loc[:, ~pd.Index[df_out.columns].duplicated()].copy()
                 if not df_out.index.is_unique: df_out = df_out.reset_index(drop=True)
                 if target_cols:
                     target = list(dict.fromkeys(list(target_cols)))
@@ -1314,7 +1314,6 @@ if st.session_state.get("nt_visible", True):
 
 # Separación vertical
 st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
-
 
 
 # ================== EDITAR ESTADO (mismo layout que "Nueva alerta") ==================
@@ -2476,6 +2475,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
