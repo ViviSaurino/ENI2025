@@ -2522,7 +2522,6 @@ if hist_do_buscar:
         df_view = df_view[df_view["Fecha inicio"].dt.date <= f_hasta]
 
 # ===== ORDENAR POR RECIENTES (fallback a Fecha inicio) =====
-# Asegura columnas y construye timestamp: modificado > actual > inicio
 for c in ["Fecha estado modificado", "Fecha estado actual", "Fecha inicio"]:
     if c not in df_view.columns:
         df_view[c] = pd.NaT
@@ -2536,23 +2535,40 @@ df_view = df_view.sort_values("__ts__", ascending=False, na_position="last")
 
 st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
 
-# === ORDEN DE COLUMNAS (fijas a la izquierda) ===
+# === ORDEN Y PRESENCIA DE COLUMNAS SEGÚN TU LISTA ===
 # Fijas: Id, Área, Fase, Responsable
-for c in ["Fase", "Ciclo de mejora"]:
+# Resto (en el orden que pediste):
+target_cols = [
+    "Id","Área","Fase","Responsable",
+    "Tarea","Detalle","Ciclo de mejora","Complejidad","Prioridad",
+    "Estado",                      # se mostrará como "Estado actual" (header)
+    "Duración",                    # ← dejar en blanco por ahora
+    "Fecha Registro","Hora Registro",
+    "Fecha inicio","Hora de inicio",  # "Fecha inicio" se mostrará como "Fecha de inicio" (header)
+    "Fecha Pausado","Hora Pausado",
+    "Fecha Cancelado","Hora Cancelado",
+    "Fecha Eliminado","Hora Eliminado",
+    "Vencimiento",                 # se mostrará como "Fecha límite" (header)
+    "Fecha fin","Hora Terminado",  # "Fecha fin" se mostrará como "Fecha Terminado" (header)
+    "¿Generó alerta?","N° de alerta","Fecha de detección","Hora de detección",
+    "¿Se corrigió?","Fecha de corrección","Hora de corrección",
+    "Cumplimiento","Evaluación","Calificación"
+]
+
+# Asegura que todas existan (si falta alguna, la agrega vacía)
+for c in target_cols:
     if c not in df_view.columns:
         df_view[c] = ""
 
-cols_first = ["Id", "Área", "Fase", "Responsable"]
-# Oculta __ts__ del grid; conserva el resto detrás de las fijas
-cols_order = cols_first + [c for c in df_view.columns if c not in cols_first + ["__DEL__","__ts__"]]
-extra = ["__DEL__"] if "__DEL__" in df_view.columns else []
+# Duración: mantener vacía (sin cálculo)
+df_view["Duración"] = df_view["Duración"].astype(str).fillna("")
 
-df_grid = (pd.DataFrame(columns=cols_order + extra) if df_view.empty
-           else df_view.reindex(columns=cols_order + extra).copy())
+# Construye el dataframe en el orden deseado
+df_grid = df_view.reindex(columns=target_cols + [c for c in df_view.columns
+                                                 if c not in target_cols + ["__DEL__","__ts__"]]).copy()
 
 # **CLAVE**: forzar Id a string antes de renderizar el grid
-if "Id" in df_grid.columns:
-    df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
+df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
 
 # ================= GRID OPTIONS =================
 gob = GridOptionsBuilder.from_dataframe(df_grid)
@@ -2575,30 +2591,29 @@ gob.configure_grid_options(
     getRowId=JsCode("function(p){ return (p.data && (p.data.Id || p.data['Id'])) + ''; }"),
 )
 
-# Selección múltiple con checkbox en Id + select-all
-if "Id" in df_grid.columns:
-    gob.configure_column(
-        "Id",
-        headerName="ID",                 # muestra "ID" pero el campo sigue siendo "Id"
-        editable=False, width=110, pinned="left",
-        checkboxSelection=True,
-        headerCheckboxSelection=True,
-        headerCheckboxSelectionFilteredOnly=True
-    )
-if "Área" in df_grid.columns:
-    gob.configure_column("Área", editable=True,  width=160, pinned="left")
-if "Fase" in df_grid.columns:
-    gob.configure_column("Fase", editable=True,  width=140, pinned="left")
-if "Responsable" in df_grid.columns:
-    gob.configure_column("Responsable", pinned="left", minWidth=180)
+# ----- Fijas a la izquierda -----
+gob.configure_column("Id",
+    headerName="ID",
+    editable=False, width=110, pinned="left",
+    checkboxSelection=True,
+    headerCheckboxSelection=True,
+    headerCheckboxSelectionFilteredOnly=True
+)
+gob.configure_column("Área",        editable=True,  width=160, pinned="left")
+gob.configure_column("Fase",        editable=True,  width=140, pinned="left")
+gob.configure_column("Responsable", editable=True,  minWidth=180, pinned="left")
 
-if "__DEL__" in df_grid.columns:
-    gob.configure_column("__DEL__", hide=True)
+# ----- Encabezados con alias sin cambiar el campo -----
+gob.configure_column("Estado",      headerName="Estado actual")
+gob.configure_column("Vencimiento", headerName="Fecha límite")
+gob.configure_column("Fecha inicio", headerName="Fecha de inicio")
+gob.configure_column("Fecha fin",   headerName="Fecha Terminado")
 
-colw = {"Tarea":220,"Tipo":160,"Responsable":200,"Fase":140,"Complejidad":130,"Prioridad":130,"Estado":130,
-        "Fecha inicio":160,"Vencimiento":160,"Fecha fin":160,"Duración":110,"Días hábiles":120,
-        "Cumplimiento":180,"¿Generó alerta?":150,"Tipo de alerta":200,"¿Se corrigió?":140,"Evaluación":170,"Calificación":120}
+# ----- Ocultas en el GRID (pero presentes para export/Sheets) -----
+for ocultar in ["Fecha Pausado","Hora Pausado","Fecha Cancelado","Hora Cancelado","Fecha Eliminado","Hora Eliminado"]:
+    gob.configure_column(ocultar, hide=True)
 
+# ----- Formatters útiles -----
 flag_formatter = JsCode("""
 function(p){ const v=String(p.value||'');
   if(v==='Alta') return '🔴 Alta'; if(v==='Media') return '🟡 Media'; if(v==='Baja') return '🟢 Baja'; return v||'—'; }""")
@@ -2636,28 +2651,55 @@ function(p){
   return '★'.repeat(n) + '☆'.repeat(5-n);
 }""")
 
-for c, fx in [("Tarea",3), ("Tipo",2), ("Tipo de alerta",2), ("Responsable",2), ("Fase",1)]:
+# ----- Anchos/flex (ligeros) -----
+colw = {
+    "Tarea":260, "Detalle":240, "Ciclo de mejora":140, "Complejidad":130, "Prioridad":130,
+    "Estado":130, "Duración":110, "Fecha Registro":160, "Hora Registro":140,
+    "Fecha inicio":160, "Hora de inicio":140, "Vencimiento":160,
+    "Fecha fin":160, "Hora Terminado":140, "¿Generó alerta?":150, "N° de alerta":140,
+    "Fecha de detección":160, "Hora de detección":140, "¿Se corrigió?":140,
+    "Fecha de corrección":160, "Hora de corrección":140, "Cumplimiento":180, "Evaluación":170, "Calificación":120
+}
+for c, fx in [("Tarea",3), ("Detalle",2), ("Ciclo de mejora",1), ("Complejidad",1), ("Prioridad",1), ("Estado",1),
+              ("Duración",1), ("Fecha Registro",1), ("Hora Registro",1),
+              ("Fecha inicio",1), ("Hora de inicio",1),
+              ("Vencimiento",1), ("Fecha fin",1), ("Hora Terminado",1),
+              ("¿Generó alerta?",1), ("N° de alerta",1), ("Fecha de detección",1), ("Hora de detección",1),
+              ("¿Se corrigió?",1), ("Fecha de corrección",1), ("Hora de corrección",1),
+              ("Cumplimiento",1), ("Evaluación",1), ("Calificación",0)]:
     if c in df_grid.columns:
-        gob.configure_column(c, editable=True, minWidth=colw.get(c,120), flex=fx, valueFormatter=fmt_dash)
+        gob.configure_column(c,
+            editable=True if c not in ["Duración"] else False,   # Duración en blanco (no editable)
+            minWidth=colw.get(c,120),
+            flex=fx,
+            valueFormatter=fmt_dash if c not in ["Calificación","Prioridad"] else None,
+        )
 
-for c in ["Complejidad", "Prioridad"]:
+# Priori con banderitas
+if "Prioridad" in df_grid.columns:
+    gob.configure_column("Prioridad",
+        editable=True, cellEditor="agSelectCellEditor",
+        cellEditorParams={"values": ["Alta","Media","Baja"]},
+        valueFormatter=flag_formatter, minWidth=colw["Prioridad"], maxWidth=220, flex=1
+    )
+
+# Chips para Cumplimiento / Evaluación / ¿Se corrigió? / ¿Generó alerta?
+for c, vals in [("Cumplimiento", CUMPLIMIENTO),
+                ("¿Se corrigió?", SI_NO),
+                ("¿Generó alerta?", SI_NO),
+                ("Evaluación", ["Aprobada","Desaprobada","Pendiente de revisión","Observada","Cancelada","Pausada"])]:
     if c in df_grid.columns:
         gob.configure_column(c, editable=True, cellEditor="agSelectCellEditor",
-                             cellEditorParams={"values": ["Alta","Media","Baja"]},
-                             valueFormatter=flag_formatter, minWidth=colw[c], maxWidth=220, flex=1)
+                             cellEditorParams={"values": vals},
+                             cellStyle=chip_style, valueFormatter=fmt_dash,
+                             minWidth=colw.get(c,120), maxWidth=260, flex=1)
 
-for c, vals in [("Estado", ESTADO), ("Cumplimiento", CUMPLIMIENTO), ("¿Generó alerta?", SI_NO),
-                ("¿Se corrigió?", SI_NO), ("Evaluación", ["Aprobada","Desaprobada","Pendiente de revisión","Observada","Cancelada","Pausada"])]:
-    if c in df_grid.columns:
-        gob.configure_column(c, editable=True, cellEditor="agSelectCellEditor",
-                             cellEditorParams={"values": vals}, cellStyle=chip_style, valueFormatter=fmt_dash,
-                             minWidth=colw.get(c, 120), maxWidth=260, flex=1)
-
+# Calificación con estrellas (solo formato aquí)
 if "Calificación" in df_grid.columns:
     gob.configure_column("Calificación", editable=True, valueFormatter=stars_fmt,
                          minWidth=colw["Calificación"], maxWidth=140, flex=0)
 
-# Editor de fecha/hora (FIX: classList con punto)
+# Editor de fecha/hora para campos de fecha (sin tocar tu lógica general)
 date_time_editor = JsCode("""
 class DateTimeEditor{
   init(p){
@@ -2676,25 +2718,16 @@ class DateTimeEditor{
   afterGuiAttached(){ this.eInput.focus() }
   getValue(){ return this.eInput.value }
 }""")
-
 date_time_fmt = JsCode("""
 function(p){ if(p.value===null||p.value===undefined) return '—';
   const d=new Date(String(p.value).trim()); if(isNaN(d.getTime())) return '—';
   const pad=n=>String(n).padStart(2,'0');
   return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes()); }""")
 
-for c in ["Fecha inicio","Vencimiento","Fecha fin"]:
+for c in ["Fecha Registro","Fecha inicio","Fecha Pausado","Fecha Cancelado","Fecha Eliminado","Vencimiento","Fecha fin",
+          "Fecha de detección","Fecha de corrección"]:
     if c in df_grid.columns:
-        gob.configure_column(c, editable=True, cellEditor=date_time_editor, valueFormatter=date_time_fmt,
-                             minWidth=colw[c], maxWidth=200, flex=1)
-
-dur_getter = JsCode("function(p){const s=p.data['Fecha inicio'],e=p.data['Vencimiento'];if(!s||!e)return null;const sd=new Date(s),ed=new Date(e);if(isNaN(sd.getTime()))return null;return Math.floor((ed-sd)/(1000*60*60*24));}")
-bd_getter  = JsCode("function(p){const s=p.data['Fecha inicio'],e=p.data['Vencimiento'];if(!s||!e)return null;let sd=new Date(s),ed=new Date(e);if(isNaN(sd.getTime()))return null;if(ed<sd)return 0;sd=new Date(sd.getFullYear(),sd.getMonth(),sd.getDate());ed=new Date(ed.getFullYear(),ed.getMonth(),ed.getDate());let c=0;const one=24*60*60*1000;for(let t=sd.getTime();t<=ed.getTime();t+=one){const d=new Date(t).getDay();if(d!==0&&d!==6)c++;}return c;}")
-
-if "Duración" in df_grid.columns:
-    gob.configure_column("Duración", editable=False, valueGetter=dur_getter, valueFormatter=fmt_dash, minWidth=colw["Duración"], maxWidth=130, flex=0)
-if "Días hábiles" in df_grid.columns:
-    gob.configure_column("Días hábiles", editable=False, valueGetter=bd_getter, valueFormatter=fmt_dash, minWidth=colw["Días hábiles"], maxWidth=140, flex=0)
+        gob.configure_column(c, editable=True, cellEditor=date_time_editor, valueFormatter=date_time_fmt)
 
 # Tooltips en headers
 for col in df_grid.columns:
