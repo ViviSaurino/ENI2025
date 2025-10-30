@@ -1582,7 +1582,6 @@ if st.session_state["est_visible"]:
     st.markdown('</div>', unsafe_allow_html=True)
 
 
-
 # ================== Nueva alerta ==================
 
 st.session_state.setdefault("na_visible", True)
@@ -1608,15 +1607,12 @@ if st.session_state["na_visible"]:
     st.markdown('<div id="na-section">', unsafe_allow_html=True)
     st.markdown("""
     <style>
-      /* Botones a todo el ancho de su columna */
       #na-section .stButton > button { width: 100% !important; }
-
-      /* Reduce micro-espacio entre help-strip y tarjeta en esta sección */
       .section-na .help-strip-na + .form-card{ margin-top: 6px !important; }
     </style>
     """, unsafe_allow_html=True)
 
-    # ===== Wrapper UNIDO: help-strip + form-card (sin hueco de por medio) =====
+    # ===== Wrapper UNIDO: help-strip + form-card =====
     st.markdown("""
     <div class="section-na">
       <div class="help-strip help-strip-na" id="na-help">
@@ -1625,12 +1621,12 @@ if st.session_state["na_visible"]:
       <div class="form-card">
     """, unsafe_allow_html=True)
 
-    # Proporciones idénticas a "Editar estado"
+    # Proporciones (igual que Editar estado)
     A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
     df_all = st.session_state["df_main"].copy()
 
-    # ===== FILTROS (un solo form con su submit dentro) =====
+    # ===== FILTROS =====
     with st.form("na_filtros_v3", clear_on_submit=False):
         c_area, c_fase, c_resp, c_desde, c_hasta, c_buscar = st.columns([A, Fw, T_width, D, R, C], gap="medium")
 
@@ -1658,7 +1654,7 @@ if st.session_state["na_visible"]:
             st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
             na_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
-    # ===== Filtrado de tareas (para llenar la tabla) =====
+    # ===== Filtrado de tareas =====
     df_tasks = df_all.copy()
     if na_do_buscar:
         if na_area != "Todas":
@@ -1674,10 +1670,9 @@ if st.session_state["na_visible"]:
             if na_hasta:
                 df_tasks = df_tasks[fcol <= (pd.to_datetime(na_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
 
-    # ===== Tabla solicitada =====
+    # ===== Tabla =====
     st.markdown("**Resultados**")
 
-    # Columnas de salida en el orden pedido
     cols_out = [
         "Id", "Tarea",
         "¿Generó alerta?", "N° alerta",
@@ -1685,7 +1680,6 @@ if st.session_state["na_visible"]:
         "¿Se corrigió?", "Fecha de corrección", "Hora de corrección",
     ]
 
-    # Construye df_view (con defaults "1" y "No")
     df_view = pd.DataFrame(columns=cols_out)
     if not df_tasks.empty:
         df_tmp = df_tasks.dropna(subset=["Id"]).copy()
@@ -1694,53 +1688,146 @@ if st.session_state["na_visible"]:
                 df_tmp[needed] = ""
         df_view = df_tmp.assign(
             **{
-                "¿Generó alerta?": "",
-                "N° alerta": "1",                        # default
+                "¿Generó alerta?": "No",               # default
+                "N° alerta": "1",                       # default
                 "Fecha de detección": "",
                 "Hora de detección": "",
-                "¿Se corrigió?": "No",                   # default
+                "¿Se corrigió?": "No",                  # default
                 "Fecha de corrección": "",
                 "Hora de corrección": "",
             }
         )[cols_out].copy()
 
-    from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode
+    # ====== AG-GRID ======
+    from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode, JsCode
+
+    # editores de fecha
+    date_editor = JsCode("""
+    class DateEditor{
+      init(p){
+        this.eInput = document.createElement('input');
+        this.eInput.type = 'date';
+        this.eInput.classList.add('ag-input');
+        this.eInput.style.width = '100%';
+        const v = (p.value || '').toString().trim();
+        if (/^\\d{4}-\\d{2}-\\d{2}$/.test(v)) { this.eInput.value = v; }
+        else {
+          const d = new Date(v);
+          if (!isNaN(d.getTime())){
+            const pad=n=>String(n).padStart(2,'0');
+            this.eInput.value = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+          }
+        }
+      }
+      getGui(){ return this.eInput }
+      afterGuiAttached(){ this.eInput.focus() }
+      getValue(){ return this.eInput.value }
+    }""")
+
+    # formateo Sí/No con emoji (string seguro) + color por cellStyle
+    si_no_formatter = JsCode("""
+    function(p){
+      const v = String(p.value || '');
+      const M = {"Sí":"✅ Sí","No":"✖️ No","":"—"};
+      return M[v] || v;
+    }""")
+
+    si_no_style_genero = JsCode("""
+    function(p){
+      const v = String(p.value || '');
+      if (v === 'Sí') return {backgroundColor:'#FFF3E0', color:'#E65100', fontWeight:'600', textAlign:'center', borderRadius:'12px'};
+      if (v === 'No') return {backgroundColor:'#ECEFF1', color:'#37474F', fontWeight:'600', textAlign:'center', borderRadius:'12px'};
+      return {};
+    }""")
+
+    si_no_style_corrigio = JsCode("""
+    function(p){
+      const v = String(p.value || '');
+      if (v === 'Sí') return {backgroundColor:'#E8F5E9', color:'#1B5E20', fontWeight:'600', textAlign:'center', borderRadius:'12px'};
+      if (v === 'No') return {backgroundColor:'#FFE0E0', color:'#B71C1C', fontWeight:'600', textAlign:'center', borderRadius:'12px'};
+      return {};
+    }""")
+
+    # cuando cambia una fecha, colocar hora actual correspondiente
+    on_cell_changed = JsCode("""
+    function(params){
+      const pad = n => String(n).padStart(2,'0');
+      const now = new Date(); const hhmm = pad(now.getHours())+':'+pad(now.getMinutes());
+      if (params.colDef.field === 'Fecha de detección'){
+        params.node.setDataValue('Hora de detección', hhmm);
+      }
+      if (params.colDef.field === 'Fecha de corrección'){
+        params.node.setDataValue('Hora de corrección', hhmm);
+      }
+    }""")
+
+    # autosize a todo el ancho (headers llenan la tabla)
+    on_ready_size = JsCode("function(p){ p.api.sizeColumnsToFit(); }")
+    on_first_size = JsCode("function(p){ p.api.sizeColumnsToFit(); }")
+
     gob = GridOptionsBuilder.from_dataframe(df_view)
+    gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, minWidth=110, flex=1)
     gob.configure_grid_options(
-        suppressMovableColumns=True, domLayout="normal", ensureDomOrder=True,
-        rowHeight=38, headerHeight=42
+        suppressMovableColumns=True,
+        domLayout="normal",
+        ensureDomOrder=True,
+        rowHeight=38,
+        headerHeight=42,
+        suppressHorizontalScroll=True,
     )
 
-    # Id y Tarea no editables
-    for ro in ["Id","Tarea"]:
-        gob.configure_column(ro, editable=False)
+    # Id y Tarea
+    gob.configure_column("Id", editable=False, pinned="left", flex=1.2)
+    gob.configure_column("Tarea", editable=False, flex=3)
 
-    # Selectores
-    gob.configure_column("¿Generó alerta?", editable=True,
-                         cellEditor="agSelectCellEditor", cellEditorParams={"values": ["","Sí","No"]}, width=160)
-    gob.configure_column("N° alerta", editable=True,
-                         cellEditor="agSelectCellEditor", cellEditorParams={"values": ["1","2","3","+4"]}, width=120)
-    gob.configure_column("¿Se corrigió?", editable=True,
-                         cellEditor="agSelectCellEditor", cellEditorParams={"values": ["Sí","No"]}, width=150)
+    # Selectores con Sí/No
+    gob.configure_column("¿Generó alerta?",
+                         editable=True,
+                         cellEditor="agSelectCellEditor",
+                         cellEditorParams={"values": ["No","Sí"]},
+                         valueFormatter=si_no_formatter,
+                         cellStyle=si_no_style_genero,
+                         flex=1.2)
 
-    # Fechas / horas como texto (ingresa YYYY-MM-DD y HH:mm)
-    gob.configure_column("Fecha de detección", editable=True, width=170)
-    gob.configure_column("Hora de detección",   editable=True, width=160)
-    gob.configure_column("Fecha de corrección", editable=True, width=170)
-    gob.configure_column("Hora de corrección",  editable=True, width=160)
+    gob.configure_column("N° alerta",
+                         editable=True,
+                         cellEditor="agSelectCellEditor",
+                         cellEditorParams={"values": ["1","2","3","+4"]},
+                         flex=0.8, minWidth=120)
+
+    gob.configure_column("¿Se corrigió?",
+                         editable=True,
+                         cellEditor="agSelectCellEditor",
+                         cellEditorParams={"values": ["No","Sí"]},
+                         valueFormatter=si_no_formatter,
+                         cellStyle=si_no_style_corrigio,
+                         flex=1.2)
+
+    # Fechas (calendario) + horas (solo lectura/auto)
+    gob.configure_column("Fecha de detección", editable=True, cellEditor=date_editor, flex=1.2, minWidth=150)
+    gob.configure_column("Hora de detección",  editable=False, flex=1.0, minWidth=140)
+    gob.configure_column("Fecha de corrección", editable=True, cellEditor=date_editor, flex=1.2, minWidth=150)
+    gob.configure_column("Hora de corrección",  editable=False, flex=1.0, minWidth=140)
+
+    grid_opts = gob.build()
+    grid_opts["onCellValueChanged"] = on_cell_changed.js_code
+    grid_opts["onGridReady"] = on_ready_size.js_code
+    grid_opts["onFirstDataRendered"] = on_first_size.js_code
 
     grid = AgGrid(
         df_view,
-        gridOptions=gob.build(),
+        gridOptions=grid_opts,
         data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
         update_mode=GridUpdateMode.VALUE_CHANGED,
-        fit_columns_on_grid_load=False,
+        fit_columns_on_grid_load=True,          # << llena el ancho
         enable_enterprise_modules=False,
         reload_data=False,
-        height=220
+        height=220,
+        allow_unsafe_jscode=True,               # necesario para JsCode
+        theme="balham",
     )
 
-    # ===== Guardar (aplica cambios por Id en df_main) =====
+    # ===== Guardar (merge por Id en df_main) =====
     _sp, _btn = st.columns([A+Fw+T_width+D+R, C], gap="medium")
     with _btn:
         if st.button("💾 Guardar cambios", use_container_width=True):
@@ -1764,13 +1851,13 @@ if st.session_state["na_visible"]:
                             return 1
                         return 0
 
-                    cambios += _set("¿Generó alerta?",       row.get("¿Generó alerta?"))
-                    cambios += _set("N° alerta",             row.get("N° alerta"))
-                    cambios += _set("Fecha de detección",    row.get("Fecha de detección"))
-                    cambios += _set("Hora de detección",     row.get("Hora de detección"))
-                    cambios += _set("¿Se corrigió?",         row.get("¿Se corrigió?"))
-                    cambios += _set("Fecha de corrección",   row.get("Fecha de corrección"))
-                    cambios += _set("Hora de corrección",    row.get("Hora de corrección"))
+                    cambios += _set("¿Generó alerta?",     row.get("¿Generó alerta?"))
+                    cambios += _set("N° alerta",           row.get("N° alerta"))
+                    cambios += _set("Fecha de detección",  row.get("Fecha de detección"))
+                    cambios += _set("Hora de detección",   row.get("Hora de detección"))
+                    cambios += _set("¿Se corrigió?",       row.get("¿Se corrigió?"))
+                    cambios += _set("Fecha de corrección", row.get("Fecha de corrección"))
+                    cambios += _set("Hora de corrección",  row.get("Hora de corrección"))
 
                 if cambios > 0:
                     st.session_state["df_main"] = df_base.copy()
@@ -1787,6 +1874,7 @@ if st.session_state["na_visible"]:
 
     # Separación vertical entre secciones
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
+
 
 
 # =========================== PRIORIDAD ===============================
@@ -2542,6 +2630,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
