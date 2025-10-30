@@ -1142,7 +1142,7 @@ if "_auto_time_on_date" not in globals():
             pass
 
 
-# ================== Formulario (solo Fecha y Hora de REGISTRO) ==================
+# ================== Formulario (misma malla + hora inmediata) ==================
 
 st.session_state.setdefault("nt_visible", True)
 chev = "▾" if st.session_state.get("nt_visible", True) else "▸"
@@ -1169,8 +1169,7 @@ if st.session_state.get("nt_visible", True):
     # ===== Indicaciones cortas (debajo de la píldora) =====
     st.markdown("""
     <div class="help-strip">
-      ✳️ Completa: <strong>Área, Fase, Tarea, Responsable, Fecha y Hora</strong>.
-      (Se registran como <em>Fecha Registro</em> y <em>Hora Registro</em>).
+      ✳️ Completa: <strong>Área, Fase, Tarea, Responsable y Fecha</strong>. La hora es automática.
     </div>
     """, unsafe_allow_html=True)
 
@@ -1226,21 +1225,23 @@ if st.session_state.get("nt_visible", True):
         tipo   = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría", key="nt_tipo")
         estado = _opt_map(c2_2, "Estado", EMO_ESTADO, "No iniciado")
 
-        # === NUEVO: Fecha y Hora de REGISTRO (reemplaza 'Fecha de inicio' + 'Hora auto') ===
-        # Defaults: hoy y hora actual (editable)
-        _today = pd.Timestamp.now().to_pydatetime().date()
-        _now_t = pd.Timestamp.now().to_pydatetime().time().replace(microsecond=0)
+        # Fecha editable + callback inmediato
+        st.session_state.setdefault("fi_d", None)
+        st.session_state.setdefault("fi_t", None)
+        c2_3.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
 
-        st.session_state.setdefault("fr_d", _today)
-        st.session_state.setdefault("fr_t", _now_t)
+        # Hora auto (solo lectura)
+        _t = st.session_state.get("fi_t"); _t_txt = ""
+        if _t is not None:
+            try: _t_txt = _t.strftime("%H:%M")
+            except Exception: _t_txt = str(_t)
+        c2_4.text_input("Hora (auto)", value=_t_txt, disabled=True,
+                        help="Se asigna al elegir la fecha", key="fi_t_view")
 
-        c2_3.date_input("Fecha", value=st.session_state.get("fr_d", _today), key="fr_d")
-        c2_4.time_input("Hora",  value=st.session_state.get("fr_t", _now_t), step=60, key="fr_t")
-
-        # ID preview (igual que antes, pero mirando fr_d)
+        # ID preview
         _df_tmp = st.session_state.get("df_main", pd.DataFrame()).copy() if "df_main" in st.session_state else pd.DataFrame()
         prefix = make_id_prefix(st.session_state.get("nt_area", area), st.session_state.get("nt_resp", resp))
-        if st.session_state.get("fr_d"):
+        if st.session_state.get("fi_d"):
             id_preview = next_id_by_person(_df_tmp, st.session_state.get("nt_area", area), st.session_state.get("nt_resp", resp))
         else:
             id_preview = f"{prefix}_" if prefix else ""
@@ -1277,10 +1278,7 @@ if st.session_state.get("nt_visible", True):
                 return df_out
 
             df = _sanitize(df, COLS if "COLS" in globals() else None)
-
-            # === Nuevo: registrar Fecha/Hora de REGISTRO; no llenar 'Fecha inicio' aquí ===
-            fecha_reg = st.session_state.get("fr_d")
-            hora_reg  = st.session_state.get("fr_t")
+            f_ini = combine_dt(st.session_state.get("fi_d"), st.session_state.get("fi_t"))
 
             new = blank_row()
             new.update({
@@ -1290,16 +1288,13 @@ if st.session_state.get("nt_visible", True):
                 "Tipo": st.session_state.get("nt_tipo", ""),
                 "Responsable": st.session_state.get("nt_resp", ""),
                 "Fase": fase,
-                "Estado": estado,                   # 'No iniciado' por defecto
-                "Fecha Registro": fecha_reg,        # ← nuevo
-                "Hora Registro": hora_reg,          # ← nuevo
+                "Estado": estado,
+                "Fecha inicio": f_ini,
                 "Ciclo de mejora": ciclo_mejora,
                 "Detalle": st.session_state.get("nt_detalle", ""),
             })
 
             df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
-
-            # Formato de fecha inicio (si existe) queda como NaT al crear
             if "Fecha inicio" in df.columns:
                 df["Fecha inicio"] = pd.to_datetime(df["Fecha inicio"], errors="coerce")
 
@@ -2893,4 +2888,5 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
