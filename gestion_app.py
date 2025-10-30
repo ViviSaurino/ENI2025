@@ -1443,7 +1443,7 @@ if st.session_state["est_visible"]:
             "Hora estado modificado":  _fmt_time(base["Hora estado modificado"]),
         })[cols_out].copy()
 
-    # ========= editores y renderer =========
+    # ========= editores y estilo seguro (sin DOM manual) =========
     estados_editables = ["En curso","Terminado","Pausado","Cancelado","Eliminado"]
 
     date_editor = JsCode("""
@@ -1468,23 +1468,27 @@ if st.session_state["est_visible"]:
       getValue(){ return this.eInput.value }
     }""")
 
-    # chip renderer con emoji/colores (visual) → devuelve un elemento DOM (no string)
-    estado_mod_renderer = JsCode("""
+    # Mapea el texto a emoji (se devuelve STRING, no HTML)
+    estado_emoji_fmt = JsCode("""
     function(p){
-      const v = (p.value || '').toString();
-      const M = {
-        "En curso":   {txt:"🟣 En curso",     bg:"#EDE7F6", fg:"#4A148C"},
-        "Terminado":  {txt:"✅ Terminado",    bg:"#E8F5E9", fg:"#1B5E20"},
-        "Pausado":    {txt:"⏸️ Pausado",      bg:"#FFF8E1", fg:"#E65100"},
-        "Cancelado":  {txt:"⛔ Cancelado",    bg:"#FFEBEE", fg:"#B71C1C"},
-        "Eliminado":  {txt:"🗑️ Eliminado",    bg:"#ECEFF1", fg:"#263238"}
+      const v = String(p.value || '');
+      const M = {"En curso":"🟣 En curso","Terminado":"✅ Terminado","Pausado":"⏸️ Pausado","Cancelado":"⛔ Cancelado","Eliminado":"🗑️ Eliminado"};
+      return M[v] || v;
+    }""")
+
+    # Aplica colores con cellStyle (objeto JS), compatible con React
+    estado_cell_style = JsCode("""
+    function(p){
+      const v = String(p.value || '');
+      const S = {
+        "En curso":   {bg:"#EDE7F6", fg:"#4A148C"},
+        "Terminado":  {bg:"#E8F5E9", fg:"#1B5E20"},
+        "Pausado":    {bg:"#FFF8E1", fg:"#E65100"},
+        "Cancelado":  {bg:"#FFEBEE", fg:"#B71C1C"},
+        "Eliminado":  {bg:"#ECEFF1", fg:"#263238"}
       };
-      const m = M[v]; if(!m) return v;
-      const e = document.createElement('span');
-      e.textContent = m.txt;
-      e.style.cssText = "display:inline-block;padding:4px 10px;border-radius:12px;font-weight:600;text-align:center;"
-                        + "background:"+m.bg+";color:"+m.fg+";";
-      return e;
+      const m = S[v]; if(!m) return {};
+      return {backgroundColor:m.bg, color:m.fg, fontWeight:'600', textAlign:'center', borderRadius:'12px'};
     }""")
 
     on_cell_changed = JsCode("""
@@ -1515,7 +1519,8 @@ if st.session_state["est_visible"]:
         editable=True,
         cellEditor="agSelectCellEditor",
         cellEditorParams={"values": estados_editables},
-        cellRenderer=estado_mod_renderer,
+        valueFormatter=estado_emoji_fmt,
+        cellStyle=estado_cell_style,
         minWidth=180
     )
     gob.configure_column("Fecha estado modificado", editable=True, cellEditor=date_editor, minWidth=160)
@@ -1538,7 +1543,6 @@ if st.session_state["est_visible"]:
     )
 
     # ===== Guardar cambios (actualiza la MISMA fila por Id) =====
-    # NOTA: quitamos el uso de 'selected_rows' para evitar ValueError por truth-value ambiguo.
     u1, u2 = st.columns([A+Fw+T_width+D+R, C], gap="medium")
     with u2:
         if st.button("💾 Guardar cambios", use_container_width=True, key="est_guardar_inline_v3"):
@@ -2538,6 +2542,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
