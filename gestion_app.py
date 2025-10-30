@@ -1733,7 +1733,7 @@ if st.session_state["na_visible"]:
       return M[v] || v;
     }""")
 
-    // Estilos compactos (mantienen la fila delgada)
+    # Estilos compactos (mantienen la fila delgada)
     si_no_style_genero = JsCode("""
     function(p){
       const v = String(p.value || '');
@@ -1812,16 +1812,16 @@ if st.session_state["na_visible"]:
         "columnDefs": col_defs,
         "defaultColDef": {
             "resizable": True,
-            "wrapText": False,      # << una sola línea
-            "autoHeight": False,    # << evita crecer por contenido
+            "wrapText": False,      # una sola línea
+            "autoHeight": False,    # evita crecer por contenido
             "minWidth": 110,
             "flex": 1
         },
         "suppressMovableColumns": True,
         "domLayout": "normal",
         "ensureDomOrder": True,
-        "rowHeight": 30,           # << filas más delgadas
-        "headerHeight": 36,        # << encabezado compacto
+        "rowHeight": 30,           # filas más delgadas
+        "headerHeight": 36,        # encabezado compacto
         "suppressHorizontalScroll": True,
         "onCellValueChanged": on_cell_changed,
         "onGridReady": on_ready_size,
@@ -1888,6 +1888,7 @@ if st.session_state["na_visible"]:
 
     # Separación vertical entre secciones
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
+
 
 
 # =========================== PRIORIDAD ===============================
@@ -2643,6 +2644,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
