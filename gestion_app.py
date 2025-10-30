@@ -1176,10 +1176,7 @@ if st.session_state.get("nt_visible", True):
     # === SOLO este ajuste: separar indicaciones del card de la sección ===
     st.markdown("""
     <style>
-      /* Aplica al contenedor del card (el que contiene el sentinel) */
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
-        margin-top: 10px !important; /* Ajusta a 6–14px según prefieras */
-      }
+      #nt-section .help-strip{ margin-bottom: 10px !important; } /* ajusta 6–14px a gusto */
     </style>
     """, unsafe_allow_html=True)
 
@@ -1317,6 +1314,7 @@ if st.session_state.get("nt_visible", True):
 
 # Separación vertical
 st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
+
 
 
 # ================== EDITAR ESTADO (mismo layout que "Nueva alerta") ==================
@@ -2478,6 +2476,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
