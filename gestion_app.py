@@ -1928,25 +1928,32 @@ if st.session_state["pri_visible"]:
       #pri-section .stButton > button { width: 100% !important; }
       .section-pri .help-strip-pri + .form-card{ margin-top: 6px !important; }
 
-      /* ---- Forzar que el HEADER de AgGrid se vea y en negrita (solo aquí) ---- */
-      #pri-section .ag-theme-alpine .ag-header { 
-        height: 44px !important; min-height: 44px !important; 
+      /* ==== FORZAR HEADER VISIBLE Y EN NEGRITA (alpine y streamlit) ==== */
+      #pri-section .ag-theme-alpine .ag-header,
+      #pri-section .ag-theme-streamlit .ag-header{
+        height: 44px !important; min-height: 44px !important;
       }
       #pri-section .ag-theme-alpine .ag-header-viewport,
       #pri-section .ag-theme-alpine .ag-header-container,
-      #pri-section .ag-theme-alpine .ag-header-row{
+      #pri-section .ag-theme-alpine .ag-header-row,
+      #pri-section .ag-theme-streamlit .ag-header-viewport,
+      #pri-section .ag-theme-streamlit .ag-header-container,
+      #pri-section .ag-theme-streamlit .ag-header-row{
         height: 44px !important; min-height: 44px !important;
       }
-      #pri-section .ag-theme-alpine .ag-header-cell,
-      #pri-section .ag-theme-alpine .ag-header-cell-text{
-        display:flex !important; align-items:center !important;
+      #pri-section .ag-theme-alpine .ag-header-cell-text,
+      #pri-section .ag-theme-streamlit .ag-header-cell-text{
+        font-weight: 700 !important;
+        color: #1f2937 !important;          /* gris-900 */
+        opacity: 1 !important;
+        visibility: visible !important;
       }
       #pri-section .ag-theme-alpine .ag-header-cell-label,
-      #pri-section .ag-theme-alpine .ag-header-cell-text{
-        font-weight: 700 !important;
+      #pri-section .ag-theme-streamlit .ag-header-cell-label{
+        display:flex !important; align-items:center !important;
       }
 
-      /* Colores para prioridad (se aplican por reglas de clase) */
+      /* Colores para prioridad */
       #pri-section .pri-low   { color:#2563eb !important; }   /* azul */
       #pri-section .pri-med   { color:#ca8a04 !important; }   /* ámbar */
       #pri-section .pri-high  { color:#dc2626 !important; }   /* rojo */
@@ -2053,7 +2060,6 @@ if st.session_state["pri_visible"]:
     df_safe = df_view.copy().astype(str)
 
     gob = GridOptionsBuilder.from_dataframe(df_safe)
-    # ocupar todo el ancho
     gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, flex=1, minWidth=120)
     gob.configure_grid_options(
         suppressMovableColumns=True,
@@ -2063,11 +2069,11 @@ if st.session_state["pri_visible"]:
         headerHeight=44,
         suppressHorizontalScroll=True
     )
-    # Asegurar header names explícitos (por si acaso)
+    # Header names explícitos
     for col in cols_out:
         gob.configure_column(col, headerName=col)
 
-    # no editables
+    # Columnas no editables
     for ro in ["Id", "Responsable", "Tarea", "Prioridad actual"]:
         gob.configure_column(ro, editable=False)
 
@@ -2093,7 +2099,8 @@ if st.session_state["pri_visible"]:
         fit_columns_on_grid_load=True,
         enable_enterprise_modules=False,
         reload_data=False,
-        height=260
+        height=260,
+        theme="alpine"          # <- forzamos tema compatible con el CSS
     )
 
     # ===== Guardar (actualiza Prioridad en df_main) =====
@@ -2704,6 +2711,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
