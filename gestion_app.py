@@ -1900,7 +1900,6 @@ if st.session_state["na_visible"]:
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
 
 
-
 # =========================== PRIORIDAD ===============================
 
 st.session_state.setdefault("pri_visible", True)
@@ -1922,14 +1921,20 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 if st.session_state["pri_visible"]:
 
-    # --- contenedor local + css (botones, strip y encabezados en negrita SOLO aquí) ---
+    # --- contenedor local + css ---
     st.markdown('<div id="pri-section">', unsafe_allow_html=True)
     st.markdown("""
     <style>
       #pri-section .stButton > button { width: 100% !important; }
       .section-pri .help-strip-pri + .form-card{ margin-top: 6px !important; }
-      /* Encabezados en negrita SOLO en esta tabla */
+
+      /* Encabezados en negrita SOLO aquí */
       #pri-section .ag-theme-alpine .ag-header-cell-label{ font-weight: 600 !important; }
+
+      /* Colores para prioridad (se aplican por reglas de clase) */
+      #pri-section .pri-low   { color:#2563eb !important; }   /* azul */
+      #pri-section .pri-med   { color:#ca8a04 !important; }   /* ámbar */
+      #pri-section .pri-high  { color:#dc2626 !important; }   /* rojo */
     </style>
     """, unsafe_allow_html=True)
 
@@ -1942,16 +1947,20 @@ if st.session_state["pri_visible"]:
       <div class="form-card">
     """, unsafe_allow_html=True)
 
-    # Proporciones alineadas con las otras secciones
+    # Proporciones
     A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
-    df_all = st.session_state["df_main"].copy()
-    # Asegura columna Prioridad
+    df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
+    if df_all.empty:
+        df_all = pd.DataFrame(columns=["Id","Área","Fase","Responsable","Tarea","Fecha inicio"])
+
+    # Asegurar columna Prioridad con default Media
     if "Prioridad" not in df_all.columns:
         df_all["Prioridad"] = "Media"
+    df_all["Prioridad"] = df_all["Prioridad"].fillna("Media").replace({"": "Media"})
 
-    # ===== FILTROS (Área, Fase, Responsable[multi], Desde, Hasta, Buscar) =====
-    with st.form("pri_filtros_v1", clear_on_submit=False):
+    # ===== FILTROS =====
+    with st.form("pri_filtros_v2", clear_on_submit=False):
         c_area, c_fase, c_resp, c_desde, c_hasta, c_buscar = st.columns([A, Fw, T_width, D, R, C], gap="medium")
 
         AREAS_OPC = st.session_state.get(
@@ -1963,19 +1972,15 @@ if st.session_state["pri_visible"]:
         fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
         pri_fase = c_fase.selectbox("Fase", ["Todas"] + fases_all, index=0, key="pri_fase")
 
-        # Fuente para responsables según filtros previos
+        # Multiselección de responsables
         df_resp_src = df_all.copy()
         if pri_area != "Todas":
-            df_resp_src = df_resp_src[df_resp_src["Área"] == pri_area]
+            df_resp_src = df_resp_src[df_resp_src.get("Área","").astype(str) == pri_area]
         if pri_fase != "Todas" and "Fase" in df_resp_src.columns:
             df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str) == pri_fase]
-        responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
 
-        # Multiselección de responsables
-        pri_resp_multi = c_resp.multiselect(
-            "Responsable", options=responsables_all, default=[],
-            placeholder="Todos", key="pri_resp_multi"
-        )
+        responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+        pri_resp = c_resp.multiselect("Responsable", options=responsables_all, default=[], placeholder="Selecciona responsable(s)")
 
         pri_desde = c_desde.date_input("Desde", value=None, key="pri_desde")
         pri_hasta = c_hasta.date_input("Hasta",  value=None, key="pri_hasta")
@@ -1988,11 +1993,11 @@ if st.session_state["pri_visible"]:
     df_filtrado = df_all.copy()
     if pri_do_buscar:
         if pri_area != "Todas":
-            df_filtrado = df_filtrado[df_filtrado["Área"] == pri_area]
+            df_filtrado = df_filtrado[df_filtrado.get("Área","").astype(str) == pri_area]
         if pri_fase != "Todas" and "Fase" in df_filtrado.columns:
             df_filtrado = df_filtrado[df_filtrado["Fase"].astype(str) == pri_fase]
-        if pri_resp_multi:  # lista no vacía → filtra IN
-            df_filtrado = df_filtrado[df_filtrado["Responsable"].astype(str).isin(pri_resp_multi)]
+        if pri_resp:  # lista no vacía
+            df_filtrado = df_filtrado[df_filtrado.get("Responsable","").astype(str).isin(pri_resp)]
 
         base_fecha_col = "Fecha inicio" if "Fecha inicio" in df_filtrado.columns else None
         if base_fecha_col:
@@ -2002,82 +2007,79 @@ if st.session_state["pri_visible"]:
             if pri_hasta:
                 df_filtrado = df_filtrado[fcol <= (pd.to_datetime(pri_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
 
-    # ===== Tabla PRIORIDAD =====
     st.markdown("**Resultados**")
 
-    # Orden final de columnas:
+    # ===== Vista para AgGrid (orden y tipos seguros) =====
     cols_out = ["Id", "Responsable", "Tarea", "Prioridad actual", "Prioridad a ajustar"]
 
     df_view = pd.DataFrame(columns=cols_out)
     if not df_filtrado.empty:
-        df_tmp = df_filtrado.dropna(subset=["Id"]).copy()
-        if "Tarea" not in df_tmp.columns:        df_tmp["Tarea"] = ""
-        if "Responsable" not in df_tmp.columns:   df_tmp["Responsable"] = ""
-
-        # prior actual = Prioridad (default Media)
-        prior_actual = df_tmp.get("Prioridad", "Media").fillna("Media").replace({"": "Media"})
+        tmp = df_filtrado.copy()
+        for need in ["Id","Responsable","Tarea","Prioridad"]:
+            if need not in tmp.columns:
+                tmp[need] = ""
+        prior_actual = tmp["Prioridad"].fillna("Media").replace({"": "Media"})
 
         df_view = pd.DataFrame({
-            "Id": df_tmp["Id"].astype(str),
-            "Responsable": df_tmp["Responsable"].astype(str).replace({"nan": ""}),
-            "Tarea": df_tmp["Tarea"].astype(str).replace({"nan": ""}),
-            "Prioridad actual": prior_actual,
-            # Por defecto proponemos la misma prioridad actual (editable)
-            "Prioridad a ajustar": prior_actual
+            "Id": tmp["Id"].astype(str),
+            "Responsable": tmp["Responsable"].astype(str).replace({"nan": ""}),
+            "Tarea": tmp["Tarea"].astype(str).replace({"nan": ""}),
+            "Prioridad actual": prior_actual.astype(str),
+            "Prioridad a ajustar": prior_actual.astype(str)
         })[cols_out].copy()
 
-    # === AgGrid con renderer de prioridad (píldoras con color + emoji) ===
-    from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode, JsCode
+    # ---- Opciones de AgGrid (sin JS, todo serializable) ----
+    from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode
 
-    pill_renderer = JsCode("""
-        function(params){
-            var v = (params.value || '').toString().toLowerCase();
-            var label = params.value || '';
-            var bg = '#EEF2FF', color = '#0B3B76';
-            if (v.indexOf('baja') >= 0){  bg = '#E7F7ED'; color = '#0E6245'; label = '🟢 Baja'; }
-            else if (v.indexOf('alta') >= 0){ bg = '#FDE2E1'; color = '#7A271A'; label = '🔴 Alta'; }
-            else { bg = '#FFF4CE'; color = '#7A5A00'; label = '🟡 Media'; }
-            return `<span style="padding:4px 10px;border-radius:999px;background:${bg};color:${color};font-weight:600;">${label}</span>`;
-        }
-    """)
+    # Mapeo emoji <-> texto (guardaremos texto)
+    PRI_OPC_SHOW = ["🔵 Baja","🟡 Media","🔴 Alta"]
+    PRI_MAP_TO_TEXT = {"🔵 Baja":"Baja", "🟡 Media":"Media", "🔴 Alta":"Alta",
+                       "Baja":"Baja", "Media":"Media", "Alta":"Alta"}
 
-    gob = GridOptionsBuilder.from_dataframe(df_view)
+    # Convertimos visibles a string (evita MarshallComponentException)
+    df_safe = df_view.copy()
+    for c in df_safe.columns:
+        df_safe[c] = df_safe[c].astype(str)
+
+    gob = GridOptionsBuilder.from_dataframe(df_safe)
     gob.configure_grid_options(
         suppressMovableColumns=True,
         domLayout="normal",
         ensureDomOrder=True,
-        rowHeight=40,
+        rowHeight=38,
         headerHeight=42,
-        defaultColDef={
-            "resizable": True,
-            "sortable": False
-        }
+        suppressHorizontalScroll=True  # intentará ocupar ancho
     )
+    # Expandir columnas al cargar
+    fit_cols = True
 
-    # Tamaños / flex para llenar todo el ancho
-    gob.configure_column("Id", width=90, editable=False)
-    gob.configure_column("Responsable", flex=1, minWidth=160, editable=False)
-    gob.configure_column("Tarea", flex=2, minWidth=240, editable=False)
+    # Solo lectura
+    for ro in ["Id", "Responsable", "Tarea", "Prioridad actual"]:
+        gob.configure_column(ro, editable=False)
 
-    # Prioridad actual (no editable) con renderer
-    gob.configure_column("Prioridad actual", width=170, editable=False, cellRenderer=pill_renderer)
-
-    # Editable: lista Baja/Media/Alta (renderizada con píldora)
+    # Editable con lista (emojis). Añadimos clases por reglas de celda (sin JS funciones).
+    # Las reglas se expresan como strings y son serializables.
+    cell_class_rules = {
+        "pri-low":  "value == '🔵 Baja' || value == 'Baja'",
+        "pri-med":  "value == '🟡 Media' || value == 'Media'",
+        "pri-high": "value == '🔴 Alta' || value == 'Alta'",
+    }
     gob.configure_column(
         "Prioridad a ajustar",
-        width=190,
         editable=True,
         cellEditor="agSelectCellEditor",
-        cellEditorParams={"values": ["Baja", "Media", "Alta"]},
-        cellRenderer=pill_renderer
+        cellEditorParams={"values": PRI_OPC_SHOW},
+        cellClassRules=cell_class_rules,
+        wrapText=True,
+        autoHeight=True
     )
 
     grid_pri = AgGrid(
-        df_view,
+        df_safe,
         gridOptions=gob.build(),
         data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
         update_mode=GridUpdateMode.VALUE_CHANGED,
-        fit_columns_on_grid_load=True,   # ocupa todo el ancho
+        fit_columns_on_grid_load=fit_cols,
         enable_enterprise_modules=False,
         reload_data=False,
         height=260
@@ -2090,26 +2092,22 @@ if st.session_state["pri_visible"]:
 
     if do_save_pri:
         try:
-            edited = pd.DataFrame(grid_pri["data"]).copy()
+            edited = pd.DataFrame(grid_pri.get("data", []))
             if edited.empty:
                 st.info("No hay filas para actualizar.")
             else:
-                df_base = st.session_state["df_main"].copy()
+                df_base = st.session_state.get("df_main", pd.DataFrame()).copy()
                 cambios = 0
                 for _, row in edited.iterrows():
                     id_row = str(row.get("Id", "")).strip()
                     if not id_row:
                         continue
-                    nuevo = str(row.get("Prioridad a ajustar", "")).strip()
-                    if not nuevo:
-                        continue
+                    valor_ui = str(row.get("Prioridad a ajustar", "Media")).strip()
+                    nuevo = PRI_MAP_TO_TEXT.get(valor_ui, "Media")  # guardamos sin emoji
                     m = df_base["Id"].astype(str).str.strip() == id_row
-                    if not m.any():
-                        continue
-                    # Persistir prioridad final
-                    df_base.loc[m, "Prioridad"] = nuevo
-                    cambios += 1
-
+                    if m.any():
+                        df_base.loc[m, "Prioridad"] = nuevo
+                        cambios += 1
                 if cambios > 0:
                     st.session_state["df_main"] = df_base.copy()
                     _save_local(df_base.copy())
@@ -2124,7 +2122,8 @@ if st.session_state["pri_visible"]:
     st.markdown('</div>', unsafe_allow_html=True)        # cierra #pri-section
 
     # Separación vertical
-    st.markdown("<div style='height:{}px'></div>".format(SECTION_GAP), unsafe_allow_html=True)
+    st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
+
 
 
 # =========================== EVALUACIÓN ===============================
@@ -2694,6 +2693,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
