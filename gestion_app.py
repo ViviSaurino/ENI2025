@@ -1166,18 +1166,19 @@ if st.session_state.get("nt_visible", True):
     # ===== Scope local para NO afectar otras secciones =====
     st.markdown('<div id="nt-section">', unsafe_allow_html=True)
 
-    # --- (Ajuste) Separación entre indicaciones y card ---
-    st.markdown("""
-    <style>
-      #nt-section .help-strip{ margin-bottom: 10px; } /* ajusta 8–14px si deseas */
-    </style>
-    """, unsafe_allow_html=True)
-
     # ===== Indicaciones cortas (debajo de la píldora) =====
     st.markdown("""
     <div class="help-strip">
       ✳️ Completa: <strong>Área, Fase, Tarea, Responsable y Fecha</strong>. La hora es automática.
     </div>
+    """, unsafe_allow_html=True)
+
+    # --- SOLO este ajuste: separar indicaciones del card ---
+    st.markdown("""
+    <style>
+      /* Espacio bajo las indicaciones del formulario */
+      #nt-section .help-strip{ margin-bottom: 10px !important; }
+    </style>
     """, unsafe_allow_html=True)
 
     submitted = False
@@ -1186,7 +1187,7 @@ if st.session_state.get("nt_visible", True):
     with st.container(border=True):
         # Sentinel para limitar estilos SOLO a este card
         st.markdown('<span id="nt-card-sentinel"></span>', unsafe_allow_html=True)
-       
+
         # CSS mínimo SOLO para inputs al 100% dentro de este card
         st.markdown("""
         <style>
@@ -1313,8 +1314,7 @@ if st.session_state.get("nt_visible", True):
             st.error(f"No pude guardar la nueva tarea: {e}")
 
 # Separación vertical
-gap = globals().get("SECTION_GAP", 12)  # ajusta 12 si quieres
-st.markdown(f"<div style='height:{int(gap)}px'></div>", unsafe_allow_html=True)
+st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
 
 
 # ================== EDITAR ESTADO (mismo layout que "Nueva alerta") ==================
@@ -2476,6 +2476,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
