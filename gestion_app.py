@@ -1934,29 +1934,20 @@ if st.session_state["pri_visible"]:
         height: 44px !important; min-height: 44px !important;
       }
 
-      /* ====== Encabezados menos "negrita" (aplica a todo el header) ====== */
-      /* Alpine */
-      #pri-section .ag-theme-alpine .ag-header,
-      #pri-section .ag-theme-alpine .ag-header-row,
-      #pri-section .ag-theme-alpine .ag-header-cell,
-      #pri-section .ag-theme-alpine .ag-header-group-cell,
+      /* ===== Encabezados más livianos ===== */
+      /* Reducimos el peso tipográfico en ambos temas y evitamos "fake bold" */
+      #pri-section .ag-theme-alpine{ --ag-font-weight: 400; }
+      #pri-section .ag-theme-streamlit{ --ag-font-weight: 400; }
+
       #pri-section .ag-theme-alpine .ag-header-cell-label,
       #pri-section .ag-theme-alpine .ag-header-cell-text,
-      #pri-section .ag-theme-alpine .ag-header-cell-text *{
-        font-weight: 400 !important;          /* cambia a 400 si la quieres normal */
-        color: #1f2937 !important;
-        opacity: 1 !important;
-        visibility: visible !important;
-      }
-      /* Streamlit (por si cambias de tema) */
-      #pri-section .ag-theme-streamlit .ag-header,
-      #pri-section .ag-theme-streamlit .ag-header-row,
-      #pri-section .ag-theme-streamlit .ag-header-cell,
-      #pri-section .ag-theme-streamlit .ag-header-group-cell,
+      #pri-section .ag-theme-alpine .ag-header *:not(.ag-icon),
       #pri-section .ag-theme-streamlit .ag-header-cell-label,
       #pri-section .ag-theme-streamlit .ag-header-cell-text,
-      #pri-section .ag-theme-streamlit .ag-header-cell-text *{
-        font-weight: 500 !important;
+      #pri-section .ag-theme-streamlit .ag-header *:not(.ag-icon){
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif !important;
+        font-weight: 400 !important;              /* Regular */
+        font-synthesis-weight: none !important;   /* sin negrita sintética */
         color: #1f2937 !important;
         opacity: 1 !important;
         visibility: visible !important;
@@ -1968,6 +1959,7 @@ if st.session_state["pri_visible"]:
       #pri-section .pri-high  { color:#dc2626 !important; }  /* 🔴 Alta */
     </style>
     """, unsafe_allow_html=True)
+
 
     # ===== Wrapper UNIDO: help-strip + form-card =====
     st.markdown("""
@@ -2151,6 +2143,7 @@ if st.session_state["pri_visible"]:
 
     # Separación vertical
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
+
 
 
 
@@ -2721,6 +2714,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
