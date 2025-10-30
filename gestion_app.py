@@ -1820,8 +1820,8 @@ if st.session_state["na_visible"]:
         "suppressMovableColumns": True,
         "domLayout": "normal",
         "ensureDomOrder": True,
-        "rowHeight": 30,           # filas más delgadas
-        "headerHeight": 36,        # encabezado compacto
+        "rowHeight": 34,           # ⬅️ altura de celdas ligeramente mayor
+        "headerHeight": 36,        # encabezado compacto (sin cambios en títulos)
         "suppressHorizontalScroll": True,
         "onCellValueChanged": on_cell_changed,
         "onGridReady": on_ready_size,
@@ -2644,6 +2644,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
