@@ -2109,7 +2109,7 @@ if st.session_state["pri_visible"]:
         fit_columns_on_grid_load=False,   # las columnas llenan por flex
         enable_enterprise_modules=False,
         reload_data=False,
-        height=300,
+        height=220,
         theme="alpine",
         custom_css=custom_css_pri,        # <<--- ajuste que reduce la “negrita”
     )
@@ -2722,6 +2722,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
