@@ -2143,7 +2143,6 @@ if st.session_state["eva_visible"]:
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
 
 
-
 # ================== Historial ==================
 
 st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
@@ -2203,6 +2202,19 @@ if hist_do_buscar:
     if f_hasta:
         df_view = df_view[df_view["Fecha inicio"].dt.date <= f_hasta]
 
+# ===== ORDENAR POR RECIENTES (fallback a Fecha inicio) =====
+# Asegura columnas y construye timestamp: modificado > actual > inicio
+for c in ["Fecha estado modificado", "Fecha estado actual", "Fecha inicio"]:
+    if c not in df_view.columns:
+        df_view[c] = pd.NaT
+
+ts_mod = pd.to_datetime(df_view["Fecha estado modificado"], errors="coerce")
+ts_act = pd.to_datetime(df_view["Fecha estado actual"], errors="coerce")
+ts_ini = pd.to_datetime(df_view["Fecha inicio"], errors="coerce")
+
+df_view["__ts__"] = ts_mod.combine_first(ts_act).combine_first(ts_ini)
+df_view = df_view.sort_values("__ts__", ascending=False, na_position="last")
+
 st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
 
 # === ORDEN DE COLUMNAS ===
@@ -2210,7 +2222,8 @@ cols_first = ["Id", "Área", "Responsable", "Tarea", "Tipo", "Ciclo de mejora"]
 if "Ciclo de mejora" not in df_view.columns:
     df_view["Ciclo de mejora"] = ""
 
-cols_order = cols_first + [c for c in df_view.columns if c not in cols_first + ["__DEL__"]]
+# Oculta __ts__ del grid
+cols_order = cols_first + [c for c in df_view.columns if c not in cols_first + ["__DEL__","__ts__"]]
 extra = ["__DEL__"] if "__DEL__" in df_view.columns else []
 
 df_grid = (pd.DataFrame(columns=cols_order + extra) if df_view.empty
@@ -2473,69 +2486,5 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
