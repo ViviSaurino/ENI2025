@@ -1928,7 +1928,7 @@ if st.session_state["pri_visible"]:
       #pri-section .stButton > button { width: 100% !important; }
       .section-pri .help-strip-pri + .form-card{ margin-top: 6px !important; }
 
-      /* Header siempre visible y en negrita */
+      /* Header visible y en negrita */
       #pri-section .ag-theme-alpine .ag-header,
       #pri-section .ag-theme-streamlit .ag-header{
         height: 44px !important; min-height: 44px !important;
@@ -1940,10 +1940,10 @@ if st.session_state["pri_visible"]:
         visibility: visible !important;
       }
 
-      /* Colores para prioridad (reglas de clase) */
-      #pri-section .pri-low   { color:#2563eb !important; }  /* 🔵 */
-      #pri-section .pri-med   { color:#ca8a04 !important; }  /* 🟡 */
-      #pri-section .pri-high  { color:#dc2626 !important; }  /* 🔴 */
+      /* Colores para prioridad (por clase) */
+      #pri-section .pri-low   { color:#2563eb !important; }  /* 🔵 Baja */
+      #pri-section .pri-med   { color:#ca8a04 !important; }  /* 🟡 Media */
+      #pri-section .pri-high  { color:#dc2626 !important; }  /* 🔴 Alta */
     </style>
     """, unsafe_allow_html=True)
 
@@ -2018,7 +2018,7 @@ if st.session_state["pri_visible"]:
 
     st.markdown("**Resultados**")
 
-    # ===== Vista para AgGrid =====
+    # ===== DataFrame para la grilla (con columnas aunque esté vacío) =====
     cols_out = ["Id", "Responsable", "Tarea", "Prioridad actual", "Prioridad a ajustar"]
     if df_filtrado.empty:
         df_view = pd.DataFrame({c: pd.Series(dtype="str") for c in cols_out})
@@ -2036,52 +2036,55 @@ if st.session_state["pri_visible"]:
             "Prioridad a ajustar": prior_actual.astype(str)
         })[cols_out].copy()
 
-    # ---- Configuración AgGrid ----
-    from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode
+    # ====== AG-GRID con columnDefs explícitos (muestra encabezados aunque no haya filas) ======
+    from st_aggrid import AgGrid, GridUpdateMode, DataReturnMode
 
     PRI_OPC_SHOW = ["🔵 Baja","🟡 Media","🔴 Alta"]
     PRI_MAP_TO_TEXT = {"🔵 Baja":"Baja","🟡 Media":"Media","🔴 Alta":"Alta",
                        "Baja":"Baja","Media":"Media","Alta":"Alta"}
 
-    df_safe = df_view.copy().astype(str)
-
+    # Reglas de color sin JS (expresiones)
     cell_class_rules = {
         "pri-low":  "value == '🔵 Baja' || value == 'Baja'",
         "pri-med":  "value == '🟡 Media' || value == 'Media'",
         "pri-high": "value == '🔴 Alta' || value == 'Alta'",
     }
 
-    gob = GridOptionsBuilder.from_dataframe(df_safe)
-    gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, flex=1, minWidth=120)
-    gob.configure_grid_options(
-        suppressMovableColumns=True,
-        ensureDomOrder=True,
-        domLayout="normal",
-        rowHeight=38,
-        headerHeight=44,
-        suppressHorizontalScroll=True
-    )
+    col_defs = [
+        {"field":"Id", "headerName":"ID", "editable": False, "flex":1.0, "minWidth":110},
+        {"field":"Responsable", "headerName":"Responsable", "editable": False, "flex":1.6, "minWidth":160},
+        {"field":"Tarea", "headerName":"Tarea", "editable": False, "flex":2.4, "minWidth":240,
+         "wrapText": True, "autoHeight": True},
+        {"field":"Prioridad actual", "headerName":"Prioridad actual", "editable": False,
+         "flex":1.2, "minWidth":160, "cellClassRules": cell_class_rules},
+        {"field":"Prioridad a ajustar", "headerName":"Prioridad a ajustar", "editable": True,
+         "cellEditor":"agSelectCellEditor", "cellEditorParams":{"values": PRI_OPC_SHOW},
+         "flex":1.2, "minWidth":180, "cellClassRules": cell_class_rules},
+    ]
 
-    # Columnas (orden ya viene de df_safe)
-    gob.configure_column("Id", headerName="Id", editable=False, flex=1, minWidth=110)
-    gob.configure_column("Responsable", editable=False, flex=2, minWidth=160)
-    gob.configure_column("Tarea", editable=False, flex=3, minWidth=220)
-    gob.configure_column("Prioridad actual", headerName="Prioridad actual",
-                         editable=False, flex=1, minWidth=160, cellClassRules=cell_class_rules)
-    gob.configure_column("Prioridad a ajustar", headerName="Prioridad a ajustar",
-                         editable=True, flex=1, minWidth=180,
-                         cellEditor="agSelectCellEditor",
-                         cellEditorParams={"values": PRI_OPC_SHOW},
-                         cellClassRules=cell_class_rules)
-
-    grid_options = gob.build()
+    grid_opts = {
+        "columnDefs": col_defs,
+        "defaultColDef": {
+            "resizable": True,
+            "wrapText": True,
+            "autoHeight": True,
+            "minWidth": 120,
+            "flex": 1
+        },
+        "suppressMovableColumns": True,
+        "domLayout": "normal",
+        "ensureDomOrder": True,
+        "rowHeight": 38,
+        "headerHeight": 44,
+        "suppressHorizontalScroll": True
+    }
 
     grid_pri = AgGrid(
-        df_safe,
-        gridOptions=grid_options,
+        df_view,
+        gridOptions=grid_opts,
         data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
         update_mode=GridUpdateMode.VALUE_CHANGED,
-        fit_columns_on_grid_load=True,
+        fit_columns_on_grid_load=False,   # las columnas llenan por flex
         enable_enterprise_modules=False,
         reload_data=False,
         height=300,
@@ -2106,7 +2109,7 @@ if st.session_state["pri_visible"]:
                     if not id_row:
                         continue
                     valor_ui = str(row.get("Prioridad a ajustar", "Media")).strip()
-                    nuevo = PRI_MAP_TO_TEXT.get(valor_ui, "Media")
+                    nuevo = PRI_MAP_TO_TEXT.get(valor_ui, "Media")  # guardamos sin emoji
                     m = df_base["Id"].astype(str).str.strip() == id_row
                     if m.any():
                         df_base.loc[m, "Prioridad"] = nuevo
@@ -2696,6 +2699,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
