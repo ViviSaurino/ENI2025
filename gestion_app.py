@@ -2156,7 +2156,6 @@ if st.session_state["pri_visible"]:
 
 
 # =========================== EVALUACIÓN ===============================
-
 st.session_state.setdefault("eva_visible", True)
 chev_eva = "▾" if st.session_state["eva_visible"] else "▸"
 
@@ -2176,16 +2175,34 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 if st.session_state["eva_visible"]:
 
-    # --- contenedor local + css (ancho de botón y micro-gap del help-strip) ---
+    # --- contenedor local + css (botón, headers 600, colores y estrellas) ---
     st.markdown('<div id="eva-section">', unsafe_allow_html=True)
     st.markdown("""
     <style>
       #eva-section .stButton > button { width: 100% !important; }
       .section-eva .help-strip-eval + .form-card{ margin-top: 6px !important; }
+
+      /* Headers más marcados */
+      #eva-section .ag-header .ag-header-cell-text{
+        font-weight: 600 !important;
+      }
+
+      /* Colorear celdas por estado */
+      #eva-section .eva-ok  { color:#16a34a !important; }  /* verde  */
+      #eva-section .eva-bad { color:#dc2626 !important; }  /* rojo   */
+      #eva-section .eva-obs { color:#d97706 !important; }  /* naranja*/
+
+      /* Estrellas (gris por defecto, amarillo al seleccionar) */
+      #eva-section .ag-star{
+        cursor: pointer; user-select: none;
+        font-size: 16px; line-height: 1; margin: 0 1px;
+      }
+      #eva-section .ag-star.on  { color: #fbbf24; }  /* amarillo */
+      #eva-section .ag-star.off { color: #9ca3af; }  /* gris     */
     </style>
     """, unsafe_allow_html=True)
 
-    # ===== Wrapper UNIDO: help-strip + form-card (sin hueco de por medio) =====
+    # ===== Wrapper UNIDO: help-strip + form-card =====
     st.markdown("""
     <div class="section-eva">
       <div class="help-strip help-strip-eval" id="eva-help">
@@ -2206,7 +2223,7 @@ if st.session_state["eva_visible"]:
         df_all["Calificación"] = 0
 
     # ===== FILTROS (misma fila estándar) =====
-    with st.form("eva_filtros_v1", clear_on_submit=False):
+    with st.form("eva_filtros_v2", clear_on_submit=False):
         c_area, c_fase, c_resp, c_desde, c_hasta, c_buscar = st.columns([A, Fw, T_width, D, R, C], gap="medium")
 
         AREAS_OPC = st.session_state.get(
@@ -2218,13 +2235,14 @@ if st.session_state["eva_visible"]:
         fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
         eva_fase = c_fase.selectbox("Fase", ["Todas"] + fases_all, index=0, key="eva_fase")
 
+        # --- Responsable como MULTISELECCIÓN ---
         df_resp_src = df_all.copy()
         if eva_area != "Todas":
-            df_resp_src = df_resp_src[df_resp_src["Área"] == eva_area]
+            df_resp_src = df_resp_src[df_resp_src.get("Área","").astype(str) == eva_area]
         if eva_fase != "Todas" and "Fase" in df_resp_src.columns:
             df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str) == eva_fase]
         responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
-        eva_resp = c_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0, key="eva_resp")
+        eva_resp = c_resp.multiselect("Responsable", options=responsables_all, default=[], placeholder="Selecciona responsable(s)")
 
         eva_desde = c_desde.date_input("Desde", value=None, key="eva_desde")
         eva_hasta = c_hasta.date_input("Hasta",  value=None, key="eva_hasta")
@@ -2237,11 +2255,12 @@ if st.session_state["eva_visible"]:
     df_filtrado = df_all.copy()
     if eva_do_buscar:
         if eva_area != "Todas":
-            df_filtrado = df_filtrado[df_filtrado["Área"] == eva_area]
+            df_filtrado = df_filtrado[df_filtrado.get("Área","").astype(str) == eva_area]
         if eva_fase != "Todas" and "Fase" in df_filtrado.columns:
             df_filtrado = df_filtrado[df_filtrado["Fase"].astype(str) == eva_fase]
-        if eva_resp != "Todos":
-            df_filtrado = df_filtrado[df_filtrado["Responsable"].astype(str) == eva_resp]
+        if eva_resp:  # lista no vacía
+            df_filtrado = df_filtrado[df_filtrado.get("Responsable","").astype(str).isin(eva_resp)]
+
         base_fecha_col = "Fecha inicio" if "Fecha inicio" in df_filtrado.columns else None
         if base_fecha_col:
             fcol = pd.to_datetime(df_filtrado[base_fecha_col], errors="coerce")
@@ -2253,75 +2272,117 @@ if st.session_state["eva_visible"]:
     # ===== Tabla de Evaluación =====
     st.markdown("**Resultados**")
 
-    cols_out = ["Id", "Tarea", "Evaluación actual", "Evaluación ajustada", "Calificación"]
+    # Mapeos de evaluación (con/sin emoji)
+    EVA_OPC_SHOW = ["Sin evaluar", "🟢 Aprobado", "🔴 Desaprobado", "🟠 Observado"]
+    EVA_TO_TEXT = {
+        "🟢 Aprobado": "Aprobado", "🔴 Desaprobado": "Desaprobado", "🟠 Observado": "Observado",
+        "Aprobado":"Aprobado","Desaprobado":"Desaprobado","Observado":"Observado",
+        "Sin evaluar":"Sin evaluar","":"Sin evaluar"
+    }
+    TEXT_TO_SHOW = {"Aprobado":"🟢 Aprobado","Desaprobado":"🔴 Desaprobado","Observado":"🟠 Observado","Sin evaluar":"Sin evaluar"}
 
+    cols_out = ["Id", "Responsable", "Tarea", "Evaluación actual", "Evaluación ajustada", "Calificación"]
     df_view = pd.DataFrame(columns=cols_out)
     if not df_filtrado.empty:
-        df_tmp = df_filtrado.dropna(subset=["Id"]).copy()
-        if "Tarea" not in df_tmp.columns:
-            df_tmp["Tarea"] = ""
-        eva_actual = df_tmp.get("Evaluación", "Sin evaluar").fillna("Sin evaluar").replace({"": "Sin evaluar"})
-        calif = pd.to_numeric(df_tmp.get("Calificación", 0), errors="coerce").fillna(0).astype(int)
+        tmp = df_filtrado.dropna(subset=["Id"]).copy()
+        for need in ["Responsable","Tarea","Evaluación","Calificación"]:
+            if need not in tmp.columns:
+                tmp[need] = ""
+        eva_actual_txt = tmp["Evaluación"].fillna("Sin evaluar").replace({"": "Sin evaluar"}).astype(str)
+        eva_ajustada_show = eva_actual_txt.apply(lambda v: TEXT_TO_SHOW.get(v, "Sin evaluar"))
+
+        calif = pd.to_numeric(tmp.get("Calificación", 0), errors="coerce").fillna(0).astype(int)
+        calif = calif.clip(lower=0, upper=5)
+
         df_view = pd.DataFrame({
-            "Id": df_tmp["Id"].astype(str),
-            "Tarea": df_tmp["Tarea"].astype(str).replace({"nan": ""}),
-            "Evaluación actual": eva_actual,
-            "Evaluación ajustada": eva_actual,  # arranca con el valor actual
-            "Calificación": calif
+            "Id": tmp["Id"].astype(str),
+            "Responsable": tmp["Responsable"].astype(str).replace({"nan": ""}),
+            "Tarea": tmp["Tarea"].astype(str).replace({"nan": ""}),
+            "Evaluación actual": eva_actual_txt,
+            "Evaluación ajustada": eva_ajustada_show,   # arranca con el valor actual (con emoji)
+            "Calificación": calif                        # conserva lo guardado (por defecto 0)
         })[cols_out].copy()
 
     from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode, JsCode
 
-    # Formateador de estrellas (solo display)
-    star_formatter = JsCode("""
+    # CellClassRules para colorear ambas columnas de evaluación
+    eva_cell_rules = {
+        "eva-ok":  "value == '🟢 Aprobado' || value == 'Aprobado'",
+        "eva-bad": "value == '🔴 Desaprobado' || value == 'Desaprobado'",
+        "eva-obs": "value == '🟠 Observado' || value == 'Observado'",
+    }
+
+    # Renderer de estrellas clicables (actualiza el valor numérico 1..5 en la celda)
+    star_renderer = JsCode("""
         function(params){
-            var v = parseInt(params.value || 0);
+            var v = parseInt(params.value);
             if (isNaN(v)) v = 0;
-            if (v < 0) v = 0; if (v > 5) v = 5;
-            return '★'.repeat(v) + '☆'.repeat(5 - v);
+            v = Math.max(0, Math.min(5, v));
+
+            var container = document.createElement('div');
+            for (let i=1; i<=5; i++){
+                var s = document.createElement('span');
+                s.className = 'ag-star ' + (i<=v ? 'on' : 'off');
+                s.textContent = '★';
+                s.setAttribute('data-v', i);
+                s.addEventListener('click', function(e){
+                    var nv = parseInt(e.target.getAttribute('data-v'));
+                    if (!isNaN(nv)){
+                        params.node.setDataValue(params.colDef.field, nv);
+                    }
+                });
+                container.appendChild(s);
+            }
+            return container;
         }
     """)
 
     gob = GridOptionsBuilder.from_dataframe(df_view)
+    gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, minWidth=120, flex=1)
     gob.configure_grid_options(
         suppressMovableColumns=True, domLayout="normal", ensureDomOrder=True,
-        rowHeight=38, headerHeight=42
+        rowHeight=38, headerHeight=44, suppressHorizontalScroll=True
     )
 
     # Lectura
-    for ro in ["Id", "Tarea", "Evaluación actual"]:
-        gob.configure_column(ro, editable=False)
+    for ro in ["Id", "Responsable", "Tarea", "Evaluación actual"]:
+        gob.configure_column(ro, editable=False, cellClassRules=eva_cell_rules if ro=="Evaluación actual" else None)
 
-    # Editable: Evaluación ajustada (combo)
-    EVA_OPC = ["Sin evaluar", "Aprobada", "Desaprobada", "Observada"]
+    # Editable: Evaluación ajustada (combo con emojis) + colores
     gob.configure_column(
         "Evaluación ajustada",
         editable=True,
         cellEditor="agSelectCellEditor",
-        cellEditorParams={"values": EVA_OPC},
-        width=190
+        cellEditorParams={"values": EVA_OPC_SHOW},
+        cellClassRules=eva_cell_rules,
+        flex=1.4, minWidth=180
     )
 
-    # Editable: Calificación (1..5) + estrellas como formato
+    # Editable: Calificación con estrellas clicables (0..5)
     gob.configure_column(
         "Calificación",
         editable=True,
-        cellEditor="agSelectCellEditor",
-        cellEditorParams={"values": ["1","2","3","4","5"]},
-        valueFormatter=star_formatter,
-        width=170
+        cellRenderer=star_renderer,
+        flex=1.1, minWidth=160
     )
+
+    # Ajuste de flex para ocupar todo el ancho cómodamente
+    gob.configure_column("Id",            flex=1.0, minWidth=110)
+    gob.configure_column("Responsable",   flex=1.6, minWidth=160)
+    gob.configure_column("Tarea",         flex=2.4, minWidth=260)
+    gob.configure_column("Evaluación actual", flex=1.3, minWidth=160)
 
     grid_eval = AgGrid(
         df_view,
         gridOptions=gob.build(),
         data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
         update_mode=GridUpdateMode.VALUE_CHANGED,
-        fit_columns_on_grid_load=False,
+        fit_columns_on_grid_load=False,   # usamos flex
         enable_enterprise_modules=False,
         allow_unsafe_jscode=True,
         reload_data=False,
-        height=220
+        theme="alpine",
+        height=300
     )
 
     # ===== Guardar cambios =====
@@ -2341,26 +2402,27 @@ if st.session_state["eva_visible"]:
                     id_row = str(row.get("Id", "")).strip()
                     if not id_row:
                         continue
-                    eva_new = str(row.get("Evaluación ajustada", "")).strip()
-                    cal_new = row.get("Calificación", "")
-                    # normaliza calificación a entero 1..5
+
+                    eva_new_raw = str(row.get("Evaluación ajustada", "")).strip()
+                    eva_new = EVA_TO_TEXT.get(eva_new_raw, "Sin evaluar")
+
+                    cal_new = row.get("Calificación", 0)
                     try:
                         cal_new = int(cal_new)
                     except Exception:
-                        cal_new = None
-                    if cal_new is not None:
-                        cal_new = max(1, min(5, cal_new))
+                        cal_new = 0
+                    cal_new = max(0, min(5, cal_new))
 
                     m = df_base["Id"].astype(str).str.strip() == id_row
                     if not m.any():
                         continue
 
+                    # Actualiza evaluación y calificación (persisten para el siguiente ajuste)
                     if eva_new:
                         df_base.loc[m, "Evaluación"] = eva_new
                         cambios += 1
-                    if cal_new is not None:
-                        df_base.loc[m, "Calificación"] = int(cal_new)
-                        cambios += 1
+                    df_base.loc[m, "Calificación"] = cal_new
+                    cambios += 1
 
                 if cambios > 0:
                     st.session_state["df_main"] = df_base.copy()
@@ -2377,6 +2439,7 @@ if st.session_state["eva_visible"]:
 
     # Separación vertical entre secciones
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
+
 
 
 # ================== Historial ==================
@@ -2722,6 +2785,7 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
 
 
