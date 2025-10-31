@@ -20,6 +20,19 @@ if not hasattr(_stc, "components"):
 
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, JsCode, DataReturnMode
 
+# ---------- 🔐 Guardia de login (al inicio) ----------
+# Si ya estás logueada, google_login devolverá el usuario y no interrumpe nada.
+__allowed_emails  = st.secrets.get("auth", {}).get("allowed_emails", [])
+__allowed_domains = st.secrets.get("auth", {}).get("allowed_domains", [])
+__user = google_login(
+    allowed_emails=__allowed_emails,
+    allowed_domains=__allowed_domains,
+    redirect_page=None
+)
+if not __user:
+    st.stop()
+# -----------------------------------------------------
+
 # ================== Constantes de layout / UI ==================
 SECTION_GAP = 30  # píxeles de separación vertical entre secciones
 
@@ -491,6 +504,7 @@ if "df_main" not in st.session_state:
         base["Calificación"] = pd.to_numeric(base["Calificación"], errors="coerce").fillna(0).astype(int)
 
     st.session_state["df_main"] = base[COLS + ["__DEL__"]].copy()
+
 
 
 # ---------- CSS ----------
