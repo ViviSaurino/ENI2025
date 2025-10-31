@@ -2274,14 +2274,6 @@ if st.session_state["eva_visible"]:
       #eva-section .eva-ok  { color:#16a34a !important; }
       #eva-section .eva-bad { color:#dc2626 !important; }
       #eva-section .eva-obs { color:#d97706 !important; }
-
-      /* Estrellas (fuera del iframe; dentro lo hacemos con custom_css_eval) */
-      #eva-section .ag-star{
-        cursor: pointer; user-select: none;
-        font-size: 16px; line-height: 1; margin: 0 1px;
-      }
-      #eva-section .ag-star.on  { color: #fbbf24; }
-      #eva-section .ag-star.off { color: #9ca3af; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -2395,29 +2387,14 @@ if st.session_state["eva_visible"]:
         "eva-obs": "value == '🟠 Observado' || value == 'Observado'",
     }
 
-    # Renderer de estrellas clicables (actualiza el valor numérico 1..5 en la celda)
-    star_renderer = JsCode("""
-        function(params){
-            var v = parseInt(params.value);
-            if (isNaN(v)) v = 0;
-            v = Math.max(0, Math.min(5, v));
-
-            var container = document.createElement('div');
-            for (let i=1; i<=5; i++){
-                var s = document.createElement('span');
-                s.className = 'ag-star ' + (i<=v ? 'on' : 'off');
-                s.textContent = '★';
-                s.setAttribute('data-v', i);
-                s.addEventListener('click', function(e){
-                    var nv = parseInt(e.target.getAttribute('data-v'));
-                    if (!isNaN(nv)){
-                        params.node.setDataValue(params.colDef.field, nv);
-                    }
-                });
-                container.appendChild(s);
-            }
-            return container;
-        }
+    # Formatter de estrellas (0..5) — edita con combo y muestra estrellas
+    stars_fmt = JsCode("""
+      function(p){
+        var n = parseInt(p.value||0);
+        if (isNaN(n) || n < 0) n = 0;
+        if (n > 5) n = 5;
+        return '★'.repeat(n) + '☆'.repeat(5-n);
+      }
     """)
 
     gob = GridOptionsBuilder.from_dataframe(df_view)
@@ -2441,11 +2418,13 @@ if st.session_state["eva_visible"]:
         flex=1.4, minWidth=180
     )
 
-    # Editable: Calificación con estrellas clicables (0..5)
+    # Editable: Calificación (selector 0..5) + estrellas visuales
     gob.configure_column(
         "Calificación",
         editable=True,
-        cellRenderer=star_renderer,
+        cellEditor="agSelectCellEditor",
+        cellEditorParams={"values": [0,1,2,3,4,5]},
+        valueFormatter=stars_fmt,
         flex=1.1, minWidth=160
     )
 
@@ -2455,7 +2434,7 @@ if st.session_state["eva_visible"]:
     gob.configure_column("Tarea",         flex=2.4, minWidth=260)
     gob.configure_column("Evaluación actual", flex=1.3, minWidth=160)
 
-    # === CSS dentro del iframe de AgGrid (clave para header, colores y estrellas) ===
+    # === CSS dentro del iframe de AgGrid (clave para header y colores) ===
     custom_css_eval = {
         ".ag-header-cell-text": {"font-weight": "600 !important"},
         ".ag-header-cell-label": {"font-weight": "600 !important"},
@@ -2467,11 +2446,6 @@ if st.session_state["eva_visible"]:
         ".eva-ok":  {"color": "#16a34a !important"},
         ".eva-bad": {"color": "#dc2626 !important"},
         ".eva-obs": {"color": "#d97706 !important"},
-
-        # Estrellas dentro del iframe
-        ".ag-star":     {"cursor":"pointer", "user-select":"none", "font-size":"16px", "line-height":"1", "margin":"0 1px"},
-        ".ag-star.on":  {"color":"#fbbf24"},
-        ".ag-star.off": {"color":"#9ca3af"},
     }
 
     grid_eval = AgGrid(
@@ -2485,7 +2459,7 @@ if st.session_state["eva_visible"]:
         reload_data=False,
         theme="alpine",
         height=300,
-        custom_css=custom_css_eval  # <<--- AQUI aplicamos estilos dentro del iframe
+        custom_css=custom_css_eval
     )
 
     # ===== Guardar cambios =====
@@ -3074,4 +3048,5 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
 
