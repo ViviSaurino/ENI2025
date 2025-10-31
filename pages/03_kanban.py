@@ -1,7 +1,8 @@
 # pages/03_kanban.py
+import os, unicodedata
 import streamlit as st
 import pandas as pd
-from auth_google import google_login
+from auth_google import google_login, logout
 from shared import init_data, sidebar_userbox, save_local
 
 st.set_page_config(
@@ -10,76 +11,91 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ----------------- Guardia de login -----------------
+# ---------- helpers para resolver rutas reales en /pages ----------
+def _norm(s: str) -> str:
+    s = os.path.basename(s).lower()
+    s = ''.join(c for c in unicodedata.normalize('NFKD', s) if not unicodedata.combining(c))
+    return s.replace(' ', '_')
+
+def _resolve(cands: list[str]) -> str | None:
+    if not os.path.isdir("pages"):
+        return None
+    norm_map = {_norm(f"pages/{f}"): f"pages/{f}" for f in os.listdir("pages") if f.endswith(".py")}
+    for c in cands:
+        k = _norm(c)
+        if k in norm_map:
+            return norm_map[k]
+    # fallbacks difusos
+    for k, p in norm_map.items():
+        if "gestion" in k and "tarea" in k:
+            return p
+    for k, p in norm_map.items():
+        if "kanban" in k:
+            return p
+    return None
+
+GT_PAGE = _resolve([
+    "02_gestion_tareas.py", "01_gestion_tareas.py",
+    "gestion_de_tareas.py", "Gestión de tareas.py",
+    "02_GESTION_TAREAS.py", "01_GESTION_TAREAS.py",
+])
+KB_PAGE = _resolve(["03_kanban.py", "02_kanban.py", "kanban.py"]) or "pages/03_kanban.py"
+
+# ---------- login ----------
 allowed_emails  = st.secrets.get("auth", {}).get("allowed_emails", [])
 allowed_domains = st.secrets.get("auth", {}).get("allowed_domains", [])
 user = google_login(
-    allowed_emails=allowed_emails,
-    allowed_domains=allowed_domains,
+    allowed_emails=allowed_emails if allowed_emails else None,
+    allowed_domains=allowed_domains if allowed_domains else None,
     redirect_page=None
 )
 if not user:
     st.stop()
 
-# ----------------- Sidebar (NAV fija) -----------------
+# ---------- sidebar: navegación robusta ----------
 with st.sidebar:
     st.header("Secciones")
-    st.page_link("gestion_app.py",             label="Inicio",             icon="🏠")
-    st.page_link("pages/02_gestion_tareas.py", label="Gestión de tareas",  icon="🗂️")
-    st.page_link("pages/03_kanban.py",         label="Kanban",             icon="🧩")
+    st.page_link("gestion_app.py", label="Inicio", icon="🏠")
+    st.page_link(GT_PAGE, label="Gestión de tareas", icon="📁") if GT_PAGE else st.markdown("• Gestión de tareas")
+    st.page_link(KB_PAGE, label="Kanban", icon="🧩")
+    st.divider()
+    sidebar_userbox(user)  # usuario + logout
 
-# Caja de usuario / logout (usa su propio with st.sidebar)
-sidebar_userbox(user)
-
-# ----------------- Datos compartidos -----------------
+# ---------- datos y UI Kanban ----------
 init_data()
 st.title("🧩 Kanban")
 
-dfk = st.session_state.get("df_main", pd.DataFrame()).copy()
+dfk = st.session_state["df_main"].copy()
 if dfk.empty:
     st.info("No hay tareas aún.")
     st.stop()
 
-# ----------------- Lanes y estado -----------------
 LANES = ["No iniciado", "En curso", "Terminado", "Pausado", "Cancelado"]
 if "Estado" not in dfk.columns:
     dfk["Estado"] = "No iniciado"
 
-# ----------------- Vencimiento robusto -----------------
-# Si no existe Vencimiento o está vacío/NaN, lo componemos desde Fecha/Hora Vencimiento
-def _hhmm_to_time(s: str) -> str:
-    try:
-        s = (s or "").strip()
-        if not s or s.lower() in {"nan", "nat", "none", "null"}:
-            return "17:00"
-        hh, mm = s.split(":")[:2]
-        return f"{int(hh):02d}:{int(mm):02d}"
-    except Exception:
-        return "17:00"
-
-fv = pd.to_datetime(dfk.get("Fecha Vencimiento"), errors="coerce")
-hv = dfk.get("Hora Vencimiento", "").astype(str).str.strip().apply(_hhmm_to_time)
-venc_from_pair = pd.to_datetime(
-    fv.dt.strftime("%Y-%m-%d") + " " + hv,
-    errors="coerce"
-) if fv is not None else pd.Series(pd.NaT, index=dfk.index)
-
+# Compone 'Vencimiento' si no existe (desde Fecha/Hora Vencimiento)
 if "Vencimiento" not in dfk.columns:
-    dfk["Vencimiento"] = venc_from_pair
-else:
-    # Rellena donde esté NaT/NaN/cadena vacía
-    blank_mask = (
-        dfk["Vencimiento"].isna() |
-        dfk["Vencimiento"].astype(str).str.strip().isin(["", "nan", "NaN", "NaT"])
-    )
-    dfk.loc[blank_mask, "Vencimiento"] = venc_from_pair[blank_mask]
+    fv = pd.to_datetime(dfk.get("Fecha Vencimiento"), errors="coerce")
+    hv = dfk.get("Hora Vencimiento", "").astype(str).str.strip()
 
-# ----------------- Filtros -----------------
+    def _hhmm_to_time(s: str):
+        try:
+            if not s or s.lower() in {"nan", "nat", "none", "null"}:
+                return "17:00"
+            hh, mm = s.split(":")[:2]
+            return f"{int(hh):02d}:{int(mm):02d}"
+        except Exception:
+            return "17:00"
+
+    hv_norm = hv.apply(_hhmm_to_time)
+    dfk["Vencimiento"] = pd.to_datetime(fv.dt.strftime("%Y-%m-%d") + " " + hv_norm, errors="coerce")
+
+# Filtros
 c1, c2 = st.columns([1, 1])
-areas = ["Todas"] + sorted([x for x in dfk.get("Área", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+areas = ["Todas"] + sorted([x for x in dfk["Área"].astype(str).unique() if x and x != "nan"])
 area_f = c1.selectbox("Filtrar por área", areas, index=0)
-
-resps = ["Todos"] + sorted([x for x in dfk.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+resps = ["Todos"] + sorted([x for x in dfk["Responsable"].astype(str).unique() if x and x != "nan"])
 resp_f = c2.selectbox("Filtrar por responsable", resps, index=0)
 
 if area_f != "Todas":
@@ -87,7 +103,7 @@ if area_f != "Todas":
 if resp_f != "Todos":
     dfk = dfk[dfk["Responsable"].astype(str) == resp_f]
 
-# ----------------- Estilos tarjetas -----------------
+# Estilos tarjetas
 st.markdown("""
 <style>
   .kb-card{border:1px solid #E5E7EB;border-radius:14px;padding:10px 12px;margin-bottom:10px;background:#fff}
@@ -102,16 +118,12 @@ def prio_chip(v):
     color = {"Alta":"#FEE2E2", "Media":"#FEF9C3", "Baja":"#DCFCE7"}.get(v, "#E5E7EB")
     return f"<span class='kb-tag' style='background:{color}'>{v or '—'}</span>"
 
-# ----------------- Render de columnas -----------------
 cols = st.columns(len(LANES), gap="large")
 
 for i, lane in enumerate(LANES):
     with cols[i]:
         st.markdown(f"### {lane}")
-
         col_df = dfk[dfk["Estado"].astype(str) == lane].copy()
-
-        # Orden por vencimiento (si está disponible), luego por Id
         if "Vencimiento" in col_df.columns:
             col_df["Vencimiento"] = pd.to_datetime(col_df["Vencimiento"], errors="coerce")
             col_df = col_df.sort_values(["Vencimiento", "Id"], na_position="last")
@@ -147,7 +159,7 @@ for i, lane in enumerate(LANES):
                 unsafe_allow_html=True
             )
 
-            # Form para mover estado
+            # Mover de estado
             with st.form(f"mv_{id_}", clear_on_submit=True):
                 new_state = st.selectbox(
                     "Mover a", LANES,
