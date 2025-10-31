@@ -2,7 +2,7 @@
 import os, unicodedata
 import streamlit as st
 import pandas as pd
-from auth_google import google_login, logout
+from auth_google import google_login
 from shared import init_data, sidebar_userbox, save_local
 
 st.set_page_config(
@@ -11,23 +11,41 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ---------- helpers para resolver rutas reales en /pages ----------
+# Oculta nav nativo del sidebar
+st.markdown("""
+<style>
+[data-testid="stSidebarNav"]{display:none!important;}
+section[data-testid="stSidebar"] nav{display:none!important;}
+[data-testid="stSidebar"] [data-testid="stSidebarHeader"]{display:none!important;}
+</style>
+""", unsafe_allow_html=True)
+
+# ---------- resolver de páginas ----------
 def _norm(s: str) -> str:
     s = os.path.basename(s).lower()
     s = ''.join(c for c in unicodedata.normalize('NFKD', s) if not unicodedata.combining(c))
     return s.replace(' ', '_')
 
+def _pages_dir() -> str | None:
+    for d in ("pages", "Pages", "PAGES"):
+        if os.path.isdir(d):
+            return d
+    for d in os.listdir("."):
+        if os.path.isdir(d) and d.lower() == "pages":
+            return d
+    return None
+
 def _resolve(cands: list[str]) -> str | None:
-    if not os.path.isdir("pages"):
+    pdir = _pages_dir()
+    if not pdir:
         return None
-    norm_map = {_norm(f"pages/{f}"): f"pages/{f}" for f in os.listdir("pages") if f.endswith(".py")}
+    norm_map = {_norm(f"{pdir}/{f}"): f"{pdir}/{f}" for f in os.listdir(pdir) if f.endswith(".py")}
     for c in cands:
-        k = _norm(c)
+        k = _norm(c if c.startswith(pdir) else f"{pdir}/{c}")
         if k in norm_map:
             return norm_map[k]
-    # fallbacks difusos
     for k, p in norm_map.items():
-        if "gestion" in k and "tarea" in k:
+        if "gestion" in k and ("tarea" in k or "tareas" in k):
             return p
     for k, p in norm_map.items():
         if "kanban" in k:
@@ -35,13 +53,13 @@ def _resolve(cands: list[str]) -> str | None:
     return None
 
 GT_PAGE = _resolve([
-    "02_gestion_tareas.py", "01_gestion_tareas.py",
-    "gestion_de_tareas.py", "Gestión de tareas.py",
-    "02_GESTION_TAREAS.py", "01_GESTION_TAREAS.py",
+    "02_gestion_tareas.py","01_gestion_tareas.py",
+    "gestion_de_tareas.py","Gestión de tareas.py",
+    "02_GESTION_TAREAS.py","01_GESTION_TAREAS.py",
 ])
 KB_PAGE = _resolve(["03_kanban.py", "02_kanban.py", "kanban.py"]) or "pages/03_kanban.py"
 
-# ---------- login ----------
+# --- Guardia de login ---
 allowed_emails  = st.secrets.get("auth", {}).get("allowed_emails", [])
 allowed_domains = st.secrets.get("auth", {}).get("allowed_domains", [])
 user = google_login(
@@ -52,16 +70,20 @@ user = google_login(
 if not user:
     st.stop()
 
-# ---------- sidebar: navegación robusta ----------
+# --- Sidebar coherente (sin ternarios) ---
 with st.sidebar:
     st.header("Secciones")
     st.page_link("gestion_app.py", label="Inicio", icon="🏠")
-    st.page_link(GT_PAGE, label="Gestión de tareas", icon="📁") if GT_PAGE else st.markdown("• Gestión de tareas")
-    st.page_link(KB_PAGE, label="Kanban", icon="🧩")
+    if GT_PAGE:
+        st.page_link(GT_PAGE, label="Gestión de tareas", icon="📁")
+    else:
+        st.markdown("• Gestión de tareas")
+    if KB_PAGE:
+        st.page_link(KB_PAGE, label="Kanban", icon="🧩")
     st.divider()
-    sidebar_userbox(user)  # usuario + logout
+    sidebar_userbox(user)
 
-# ---------- datos y UI Kanban ----------
+# --- Datos + UI Kanban ---
 init_data()
 st.title("🧩 Kanban")
 
@@ -74,7 +96,7 @@ LANES = ["No iniciado", "En curso", "Terminado", "Pausado", "Cancelado"]
 if "Estado" not in dfk.columns:
     dfk["Estado"] = "No iniciado"
 
-# Compone 'Vencimiento' si no existe (desde Fecha/Hora Vencimiento)
+# Vencimiento compuesto si falta
 if "Vencimiento" not in dfk.columns:
     fv = pd.to_datetime(dfk.get("Fecha Vencimiento"), errors="coerce")
     hv = dfk.get("Hora Vencimiento", "").astype(str).str.strip()
@@ -89,7 +111,10 @@ if "Vencimiento" not in dfk.columns:
             return "17:00"
 
     hv_norm = hv.apply(_hhmm_to_time)
-    dfk["Vencimiento"] = pd.to_datetime(fv.dt.strftime("%Y-%m-%d") + " " + hv_norm, errors="coerce")
+    dfk["Vencimiento"] = pd.to_datetime(
+        fv.dt.strftime("%Y-%m-%d") + " " + hv_norm,
+        errors="coerce"
+    )
 
 # Filtros
 c1, c2 = st.columns([1, 1])
@@ -159,7 +184,6 @@ for i, lane in enumerate(LANES):
                 unsafe_allow_html=True
             )
 
-            # Mover de estado
             with st.form(f"mv_{id_}", clear_on_submit=True):
                 new_state = st.selectbox(
                     "Mover a", LANES,
