@@ -1,207 +1,24 @@
-# shared.py
+# ============================
+# Utilidades compartidas (ENI2025)
+# ============================
+from __future__ import annotations
 import os
+from io import BytesIO
+from datetime import datetime, date, time
 import pandas as pd
 import streamlit as st
-from auth_google import google_login, logout
 
-# =========================
-# Esquema de columnas (canon)
-# =========================
-
-# Núcleo visible (según tus grids y colw/target_cols)
-COLS_CORE = [
-    "Id","Área","Fase","Responsable",
-    "Tarea","Tipo","Detalle","Ciclo de mejora","Complejidad","Prioridad",
-    "Estado",
-    "Duración",                 # (opcional) si no lo calculas aún quedará vacío
-    "Fecha Registro","Hora Registro",
-    "Fecha inicio","Hora de inicio",
-    "Fecha Vencimiento","Hora Vencimiento",
-    "Fecha Terminado","Hora Terminado",
-    "¿Generó alerta?",
-    "Fecha de detección","Hora de detección",
-    "¿Se corrigió?","Fecha de corrección","Hora de corrección",
-    "Cumplimiento","Evaluación","Calificación",
-    "Fecha Pausado","Hora Pausado",
-    "Fecha Cancelado","Hora Cancelado",
-    "Fecha Eliminado","Hora Eliminado",
-]
-
-# Columnas internas/auxiliares que usa la app para cálculos y limpieza
-COLS_INTERNAL = [
-    "Estado modificado",
-    "Fecha estado modificado","Hora estado modificado",
-    "Fecha estado actual","Hora estado actual",
-    "N° de alerta","Tipo de alerta",
-    "Fecha","Hora",            # fuentes crudas para completar Registro si falta
-    "Vencimiento",             # fuente cruda para completar Fecha/Hora Vencimiento
-    "¿Eliminar?",              # flag usado en algunas vistas
-    "__SEL__","__DEL__",       # selección/tachado en grids
-]
-
-# (Opcional) Si mantienes este campo en otras vistas/cálculos, lo conservamos
-EXTRAS_COMPAT = [
-    "Días hábiles",
-]
-
-# Esquema canónico total
-COLS_CANON = COLS_CORE + COLS_INTERNAL + EXTRAS_COMPAT
-
-# Orden sugerido para exportar/guardar (sin columnas internas)
-COLS_EXPORT = [c for c in COLS_CORE + EXTRAS_COMPAT if c not in {"__SEL__","__DEL__"}]
-
-# =========================
-# Normalización de nombres
-# =========================
-RENAME_LEGACY_TO_NEW = {
-    # nombres antiguos -> nombres actuales
-    "Fecha fin": "Fecha Terminado",
-    "Fecha detectada": "Fecha de detección",
-    "Hora detectada":  "Hora de detección",
-    "Fecha corregida": "Fecha de corrección",
-    "Hora corregida":  "Hora de corrección",
-    # por si vinieran variantes sin mayúsculas iniciales
-    "fecha fin": "Fecha Terminado",
-    "fecha detectada": "Fecha de detección",
-    "hora detectada":  "Hora de detección",
-    "fecha corregida": "Fecha de corrección",
-    "hora corregida":  "Hora de corrección",
-}
-
-# =========================
-# Autenticación compartida
-# =========================
-def ensure_login():
-    """Fuerza login y devuelve dict user. Guarda en st.session_state['user']."""
-    if "user" in st.session_state and st.session_state["user"]:
-        return st.session_state["user"]
-
-    allowed_emails  = st.secrets.get("auth", {}).get("allowed_emails", [])
-    allowed_domains = st.secrets.get("auth", {}).get("allowed_domains", [])
-
-    user = google_login(
-        allowed_emails=allowed_emails,
-        allowed_domains=allowed_domains,
-        redirect_page=None
-    )
-    if not user:
-        st.stop()
-    st.session_state["user"] = user
-    return user
-
-def sidebar_userbox(user):
-    with st.sidebar:
-        st.markdown(f"**{user.get('name','')}**  \n{user.get('email','')}")
-        if st.button("Cerrar sesión", use_container_width=True):
-            logout()
-            st.rerun()
-
-# =========================
-# Datos compartidos (df_main)
-# =========================
-def _blank_df() -> pd.DataFrame:
-    """DataFrame vacío con el esquema canónico."""
-    return pd.DataFrame(columns=COLS_CANON)
-
-def _apply_renames(df: pd.DataFrame) -> pd.DataFrame:
-    """Renombra columnas legadas a las actuales si existen."""
-    to_rename = {old: new for old, new in RENAME_LEGACY_TO_NEW.items() if old in df.columns}
-    if to_rename:
-        df = df.rename(columns=to_rename)
-    return df
-
-def _ensure_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """Asegura presencia de todas las columnas del esquema canónico."""
-    for c in COLS_CANON:
-        if c not in df.columns:
-            df[c] = pd.NA
-    # Id siempre string
-    if "Id" in df.columns:
-        df["Id"] = df["Id"].astype(str)
-    # Flags booleanos por defecto
-    for flag in ["__SEL__","__DEL__","¿Eliminar?","¿Generó alerta?","¿Se corrigió?"]:
-        if flag in df.columns:
-            # Mantén como bool si ya vino; si no, inicializa False
-            if df[flag].isna().all():
-                df[flag] = False
-    return df
-
-def init_data(csv_path: str = "data/tareas.csv"):
-    """Carga/crea df_main compartido en st.session_state['df_main'] con columnas normalizadas."""
-    if "df_main" in st.session_state and isinstance(st.session_state["df_main"], pd.DataFrame):
-        return
-
+# -------- Patch Streamlit + st-aggrid ----------
+def patch_streamlit_aggrid():
     try:
-        if os.path.exists(csv_path):
-            df = pd.read_csv(csv_path, dtype=str, keep_default_na=False, na_values=["", "NaN", "nan"])
-        else:
-            os.makedirs(os.path.dirname(csv_path), exist_ok=True)
-            df = _blank_df()
+        import streamlit.components.v1 as _stc
+        import types as _types
+        if not hasattr(_stc, "components"):
+            _stc.components = _types.SimpleNamespace(MarshallComponentException=Exception)
     except Exception:
-        df = _blank_df()
+        pass
 
-    # Normaliza nombres y asegura columnas
-    df = _apply_renames(df)
-    df = _ensure_columns(df)
-
-    # Reordena (primero exportables, luego internas, luego cualquier otra extra que hubiera)
-    front = [c for c in COLS_EXPORT if c in df.columns]
-    intern = [c for c in COLS_INTERNAL if c in df.columns]
-    others = [c for c in df.columns if c not in set(front + intern)]
-    df = df[front + intern + others].copy()
-
-    st.session_state["df_main"] = df
-
-def save_local(csv_path: str = "data/tareas.csv") -> bool:
-    """Guarda df_main a CSV local en un orden estable (sin columnas internas)."""
-    try:
-        os.makedirs(os.path.dirname(csv_path), exist_ok=True)
-        df = st.session_state.get("df_main", _blank_df()).copy()
-
-        # Aseguramos columnas y reordenamos para exportar
-        df = _apply_renames(df)
-        df = _ensure_columns(df)
-
-        cols = [c for c in COLS_EXPORT if c in df.columns]
-        # Conserva extras no internas (por si agregas campos nuevos visibles)
-        extras_visibles = [c for c in df.columns if c not in set(cols + COLS_INTERNAL)]
-        out = df[cols + extras_visibles].copy()
-
-        out.to_csv(csv_path, index=False, encoding="utf-8-sig")
-        return True
-    except Exception:
-        return False
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# ================== Utilidades de fecha/hora ==================
-from datetime import datetime, date, time
-
-# TZ robusta: usa pytz si está, si no zoneinfo
+# --------- Zona horaria Lima ----------
 try:
     import pytz
     LIMA_TZ = pytz.timezone("America/Lima")
@@ -210,30 +27,23 @@ except Exception:
         from zoneinfo import ZoneInfo
         LIMA_TZ = ZoneInfo("America/Lima")
     except Exception:
-        LIMA_TZ = None  # fallback sin TZ
+        LIMA_TZ = None
 
 def now_lima_trimmed():
-    """Hora actual en Lima sin segundos/microsegundos."""
     now = datetime.now()
-    if LIMA_TZ:
-        try:
-            # Si es pytz, localize; si es ZoneInfo, replace tzinfo
+    try:
+        if LIMA_TZ:
             if hasattr(LIMA_TZ, "localize"):
                 now = LIMA_TZ.localize(now)
             else:
                 now = now.replace(tzinfo=LIMA_TZ)
-        except Exception:
-            pass
+    except Exception:
+        pass
     return now.replace(second=0, microsecond=0)
 
 def combine_dt(d, t):
-    """
-    Une fecha (date|str) y hora (time|str 'HH:mm') en pd.Timestamp.
-    Si falta fecha -> NaT. Si falta hora -> 00:00.
-    """
     if d in (None, "", pd.NaT):
         return pd.NaT
-
     if isinstance(d, str):
         d_parsed = pd.to_datetime(d, errors="coerce")
         if pd.isna(d_parsed):
@@ -247,10 +57,7 @@ def combine_dt(d, t):
         return pd.NaT
 
     if t in (None, "", "HH:mm", pd.NaT):
-        try:
-            return pd.Timestamp(datetime.combine(d, time(0, 0)))
-        except Exception:
-            return pd.NaT
+        return pd.Timestamp(datetime.combine(d, time(0, 0)))
 
     if isinstance(t, str):
         try:
@@ -270,200 +77,92 @@ def combine_dt(d, t):
     except Exception:
         return pd.NaT
 
-# ===== Hora auto al elegir fecha (usa zona Lima) =====
-def _auto_time_on_date():
-    if st.session_state.get("fi_d"):
-        st.session_state["fi_t"] = now_lima_trimmed().time()
+# -------- Datos base / persistencia local --------
+DATA_DIR = st.session_state.get("DATA_DIR", "data")
+os.makedirs(DATA_DIR, exist_ok=True)
 
-# ================== Utilidad: fila en blanco ==================
+COLS = st.session_state.get(
+    "COLS",
+    ["Id","Área","Responsable","Tarea","Prioridad","Evaluación","Fecha inicio","__DEL__"]
+)
+TAB_NAME = st.session_state.get("TAB_NAME", "Tareas")
+COLS_XLSX = [c for c in COLS if c not in ("__DEL__","DEL")]
+
+def _csv_path() -> str:
+    return os.path.join(DATA_DIR, "tareas.csv")
+
+def read_local() -> pd.DataFrame:
+    path = _csv_path()
+    if not os.path.exists(path) or os.path.getsize(path) == 0:
+        return pd.DataFrame([], columns=COLS)
+    try:
+        df = pd.read_csv(path, encoding="utf-8-sig")
+    except (pd.errors.EmptyDataError, ValueError):
+        return pd.DataFrame([], columns=COLS)
+    # asegurar columnas
+    for c in COLS:
+        if c not in df.columns:
+            df[c] = None
+    # ordenar
+    df = df[[c for c in COLS if c in df.columns] + [c for c in df.columns if c not in COLS]]
+    return df
+
+def save_local(df: pd.DataFrame):
+    try:
+        df.to_csv(_csv_path(), index=False, encoding="utf-8-sig")
+    except Exception:
+        pass
+
+def write_sheet_tab(df: pd.DataFrame):
+    """Placeholder si luego conectas a Google Sheets."""
+    return False, "No conectado a Google Sheets (fallback activo)"
+
+def ensure_df_main():
+    if "df_main" in st.session_state:
+        return
+    base = read_local()
+    if "__DEL__" not in base.columns:
+        base["__DEL__"] = False
+    base["__DEL__"] = base["__DEL__"].fillna(False).astype(bool)
+    if "Calificación" in base.columns:
+        base["Calificación"] = pd.to_numeric(base["Calificación"], errors="coerce").fillna(0).astype(int)
+    keep_cols = [c for c in COLS if c in base.columns] + (["__DEL__"] if "__DEL__" in base.columns else [])
+    st.session_state["df_main"] = base[keep_cols].copy()
+
+# --------- Fila en blanco ----------
 def blank_row():
-    """
-    Devuelve un diccionario 'fila en blanco' que respeta el orden de columnas.
-    - Si existe COLS (lista de columnas objetivo), la usa.
-    - Si hay df_main en session_state, usa sus columnas actuales.
-    - En último caso, usa un conjunto mínimo seguro de columnas.
-    """
     try:
         if "COLS" in globals() and COLS:
             cols = list(COLS)
         elif "df_main" in st.session_state and isinstance(st.session_state["df_main"], pd.DataFrame) and not st.session_state["df_main"].empty:
             cols = list(st.session_state["df_main"].columns)
         else:
-            cols = [
-                "Área", "Id", "Tarea", "Tipo", "Responsable", "Fase", "Estado",
-                "Fecha inicio", "Ciclo de mejora", "Detalle"
-            ]
-
+            cols = ["Área","Id","Tarea","Tipo","Responsable","Fase","Estado","Fecha inicio","Ciclo de mejora","Detalle"]
         row = {c: None for c in cols}
         if "__DEL__" in row:
             row["__DEL__"] = False
         return row
-
     except Exception:
-        return {
-            "Área": None, "Id": None, "Tarea": None, "Tipo": None, "Responsable": None,
-            "Fase": None, "Estado": None, "Fecha inicio": None, "Ciclo de mejora": None,
-            "Detalle": None
-        }
+        return {"Área":None,"Id":None,"Tarea":None,"Tipo":None,"Responsable":None,"Fase":None,"Estado":None,"Fecha inicio":None,"Ciclo de mejora":None,"Detalle":None}
 
-# ======= Utilidades de tablas (Prioridad / Evaluación) =======
-# (estos imports duplicados no hacen daño; los mantengo tal cual)
-import streamlit as st
-from st_aggrid import GridOptionsBuilder
-# from auth_google import google_login, logout  # ya gestionado arriba
-
-# ===== Ajuste 1: Constantes y fallbacks (deben estar antes del formulario) =====
-AREAS_OPC = st.session_state.get(
-    "AREAS_OPC",
-    ["Jefatura", "Gestión", "Metodología", "Base de datos", "Capacitación", "Monitoreo", "Consistencia"]
-)
-ESTADO = ["No iniciado", "En curso"]
-CUMPLIMIENTO = ["Entregado a tiempo", "Entregado con retraso", "No entregado", "En riesgo de retraso"]
-SI_NO = ["Sí", "No"]
-
-# ===== Ajuste 3: Reglas de anchos (igualar columnas) =====
-PILL_W_AREA  = 168  # píldora "Área"
-PILL_W_RESP  = 220  # píldora "Responsable"
-PILL_W_HASTA = 220  # píldora "Hasta"
-PILL_W_TAREA = PILL_W_HASTA
-
-ALIGN_FIXES = {
-    "Id":          10,
-    "Área":        10,
-    "Responsable": 10,
-    "Tarea":       10,
-    "Prioridad":   10,
-    "Evaluación":  10,
-    "Desde":       10,
-}
-
-COL_W_ID         = PILL_W_AREA
-COL_W_AREA       = PILL_W_RESP
-COL_W_DESDE      = PILL_W_RESP
-COL_W_TAREA      = PILL_W_TAREA
-COL_W_PRIORIDAD  = COL_W_TAREA + COL_W_ID
-COL_W_EVALUACION = COL_W_TAREA + COL_W_ID
-
-COLUMN_WIDTHS = {
-    "Id":          COL_W_ID        + ALIGN_FIXES.get("Id", 0),
-    "Área":        COL_W_AREA      + ALIGN_FIXES.get("Área", 0),
-    "Responsable": PILL_W_RESP     + ALIGN_FIXES.get("Responsable", 0),
-    "Tarea":       COL_W_TAREA     + ALIGN_FIXES.get("Tarea", 0),
-    "Prioridad":   COL_W_PRIORIDAD + ALIGN_FIXES.get("Prioridad", 0),
-    "Evaluación":  COL_W_EVALUACION+ ALIGN_FIXES.get("Evaluación", 0),
-    "Desde":       COL_W_DESDE     + ALIGN_FIXES.get("Desde", 0),
-}
-
-# ===== IDs por Área (normalizado a minúsculas) =====
-AREA_PREFIX = {
-    "jefatura":      "JF",
-    "gestión":       "GE",
-    "metodología":   "MT",
-    "base de datos": "BD",
-    "monitoreo":     "MO",
-    "capacitación":  "CA",
-    "consistencia":  "CO",
-}
-
-def next_id_area(df, area: str) -> str:
-    import pandas as pd
-    area_key = str(area).strip().lower()
-    pref = AREA_PREFIX.get(area_key, "OT")
-    serie_ids = df.get("Id", pd.Series([], dtype=str)).astype(str)
-    nums = (serie_ids.str.extract(rf"^{pref}(\d+)$")[0]).dropna()
-    try:
-        mx = nums.astype(int).max()
-        nxt = int(mx) + 1 if pd.notna(mx) else 1
-    except Exception:
-        nxt = 1
-    return f"{pref}{nxt}"
-
-def _clean_df_for_grid(df):
-    if df.index.name is not None:
-        df.index.name = None
-    return df.reset_index(drop=True).copy()
-
-def _grid_options_prioridad(df):
-    gob = GridOptionsBuilder.from_dataframe(df, enableRowGroup=False, enableValue=False, enablePivot=False)
-    gob.configure_grid_options(
-        suppressMovableColumns=True,
-        domLayout="normal",
-        ensureDomOrder=True,
-        rowHeight=38,
-        headerHeight=42
-    )
-    gob.configure_column("Id",            width=COLUMN_WIDTHS["Id"],          editable=False)
-    gob.configure_column("Área",          width=COLUMN_WIDTHS["Área"],        editable=False)
-    gob.configure_column("Responsable",   width=COLUMN_WIDTHS["Responsable"], editable=False)
-    if "Desde" in df.columns:
-        gob.configure_column("Desde",     width=COLUMN_WIDTHS["Desde"],       editable=False)
-    gob.configure_column("Tarea",         width=COLUMN_WIDTHS["Tarea"],       editable=False)
-    gob.configure_column(
-        "Prioridad",
-        width=COLUMN_WIDTHS["Prioridad"],
-        editable=True,
-        cellEditor="agSelectCellEditor",
-        cellEditorParams={"values": ["Urgente", "Alta", "Media", "Baja"]}
-    )
-    gob.configure_grid_options(suppressColumnVirtualisation=False)
-    return gob.build()
-
-def _grid_options_evaluacion(df):
-    gob = GridOptionsBuilder.from_dataframe(df, enableRowGroup=False, enableValue=False, enablePivot=False)
-    gob.configure_grid_options(
-        suppressMovableColumns=True,
-        domLayout="normal",
-        ensureDomOrder=True,
-        rowHeight=38,
-        headerHeight=42
-    )
-    gob.configure_column("Id",           width=COLUMN_WIDTHS["Id"],          editable=False)
-    gob.configure_column("Área",         width=COLUMN_WIDTHS["Área"],        editable=False)
-    gob.configure_column("Responsable",  width=COLUMN_WIDTHS["Responsable"], editable=False)
-    if "Desde" in df.columns:
-        gob.configure_column("Desde",    width=COLUMN_WIDTHS["Desde"],       editable=False)
-    gob.configure_column("Tarea",        width=COLUMN_WIDTHS["Tarea"],       editable=False)
-    gob.configure_column(
-        "Evaluación",
-        width=COLUMN_WIDTHS["Evaluación"],
-        editable=True,
-        cellEditor="agSelectCellEditor",
-        cellEditorParams={"values": [5,4,3,2,1]}
-    )
-    gob.configure_grid_options(suppressColumnVirtualisation=False)
-    return gob.build()
-
-# --- allow-list (puedes seguir usándolo desde la página) ---
-allowed_emails  = st.secrets.get("auth", {}).get("allowed_emails", [])
-allowed_domains = st.secrets.get("auth", {}).get("allowed_domains", [])
-
-# ========= Utilitario para exportar a Excel (auto-engine) =========
-def export_excel(df, filename: str = "ENI2025_tareas.xlsx", sheet_name: str = "Tareas", **kwargs):
-    """
-    Devuelve un BytesIO con el .xlsx. Usa xlsxwriter si está instalado;
-    si no, cae a openpyxl sin que tengas que cambiar nada en el resto del código.
-    Acepta 'sheet' como alias de 'sheet_name'.
-    """
-    from io import BytesIO
-    import pandas as pd
-
+# --------- Exportar a Excel ----------
+def export_excel(df: pd.DataFrame, filename: str = "ENI2025_tareas.xlsx", sheet_name: str = "Tareas", **kwargs) -> BytesIO:
     if "sheet" in kwargs and not sheet_name:
         sheet_name = kwargs.pop("sheet")
     else:
         kwargs.pop("sheet", None)
 
     buf = BytesIO()
-
     engine = None
     try:
-        import xlsxwriter  # noqa: F401
+        import xlsxwriter  # noqa
         engine = "xlsxwriter"
     except Exception:
         try:
-            import openpyxl  # noqa: F401
+            import openpyxl  # noqa
             engine = "openpyxl"
         except Exception:
-            raise ImportError("No hay motor para Excel. Instala 'xlsxwriter' o 'openpyxl'.")
+            raise ImportError("Instala 'xlsxwriter' u 'openpyxl' para exportar a Excel.")
 
     with pd.ExcelWriter(buf, engine=engine) as xw:
         sheet = sheet_name or "Tareas"
@@ -482,6 +181,106 @@ def export_excel(df, filename: str = "ENI2025_tareas.xlsx", sheet_name: str = "T
                     ws.set_column(i, i, maxlen)
         except Exception:
             pass
-
     buf.seek(0)
     return buf
+
+# --------- Catálogos y mapas ----------
+AREAS_OPC = st.session_state.get(
+    "AREAS_OPC",
+    ["Jefatura","Gestión","Metodología","Base de datos","Capacitación","Monitoreo","Consistencia"]
+)
+FASES = ["Capacitación","Post-capacitación","Pre-consistencia","Consistencia","Operación de campo"]
+EMO_AREA = {"😃 Jefatura":"Jefatura","✏️ Gestión":"Gestión","💻 Base de datos":"Base de datos","📈  Metodología":"Metodología","🔠 Monitoreo":"Monitoreo","🥇 Capacitación":"Capacitación","💾 Consistencia":"Consistencia"}
+EMO_COMPLEJIDAD = {"🔴 Alta":"Alta","🟡 Media":"Media","🟢 Baja":"Baja"}
+EMO_PRIORIDAD   = {"🔥 Alta":"Alta","✨ Media":"Media","🍃 Baja":"Baja"}
+EMO_ESTADO      = {"🍼 No iniciado":"No iniciado","⏳ En curso":"En curso"}
+SI_NO = ["Sí","No"]
+CUMPLIMIENTO = ["Entregado a tiempo","Entregado con retraso","No entregado","En riesgo de retraso"]
+
+# --------- IDs por área/persona ----------
+import re
+def _area_initial(area: str) -> str:
+    if not area: return ""
+    m = re.search(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]", str(area))
+    return (m.group(0).upper() if m else "")
+
+def _person_initials(nombre: str) -> str:
+    if not nombre: return ""
+    parts = [p for p in re.split(r"\s+", str(nombre).strip()) if p]
+    if not parts: return ""
+    import re as _re
+    ini1 = _re.sub(r"[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ]", "", parts[0])[:1].upper() if parts else ""
+    ini2 = ""
+    for p in parts[1:]:
+        t = _re.sub(r"[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ]", "", p)
+        if t:
+            ini2 = t[0].upper()
+            break
+    return f"{ini1}{ini2}"
+
+def make_id_prefix(area: str, responsable: str) -> str:
+    return f"{_area_initial(area)}{_person_initials(responsable)}"
+
+def next_id_by_person(df: pd.DataFrame, area: str, responsable: str) -> str:
+    prefix = make_id_prefix(area, responsable)
+    if not prefix:
+        return ""
+    if "Id" not in df.columns or df.empty:
+        seq = 1
+    else:
+        serie = df["Id"].astype(str).fillna("")
+        seq = 1 + serie.str.startswith(prefix + "_").sum()
+    return f"{prefix}_{seq}"
+
+# --------- CSS global ----------
+def inject_global_css():
+    st.markdown("""
+<style>
+:root{
+  --lilac:#B38BE3; --lilac-50:#F6EEFF; --lilac-600:#8B5CF6;
+  --blue-pill-bg:#38BDF8; --blue-pill-bd:#0EA5E9; --blue-pill-fg:#ffffff;
+  --pill-h:36px; --pill-width:158px;
+  --pill-azul:#94BEEA; --pill-azul-bord:#94BEEA;
+  --pill-rosa:#67D3C4; --pill-rosa-bord:#67D3C4;
+}
+/* Sidebar */
+[data-testid="stSidebar"]{ background:var(--lilac-50) !important; border-right:1px solid #ECE6FF !important; }
+[data-testid="stSidebar"] a{ color:var(--lilac-600) !important; font-weight:600 !important; text-decoration:none !important; }
+/* Espaciados */
+.block-container h1{ margin-bottom:18px !important; }
+.topbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval{ margin:12px 0 !important; }
+.form-card{ margin-top:10px !important; margin-bottom:28px !important; }
+/* Inputs */
+.form-card [data-baseweb="input"] > div,
+.form-card [data-baseweb="textarea"] > div,
+.form-card [data-baseweb="select"] > div,
+.form-card [data-baseweb="datepicker"] > div{
+  min-height:44px !important; border-radius:12px !important; border:1px solid #E5E7EB !important; background:#fff !important;
+}
+/* Píldoras celestes */
+.form-title,.form-title-ux,.form-title-na{
+  display:inline-flex !important; align-items:center !important; gap:.5rem !important;
+  padding:6px 12px !important; border-radius:12px !important; background:var(--pill-azul) !important;
+  border:1px solid var(--pill-azul-bord) !important; color:#fff !important; font-weight:800 !important;
+  margin:6px 0 10px 0 !important; width:var(--pill-width) !important; justify-content:center !important;
+  box-shadow:0 6px 16px rgba(148,190,234,.3) !important; min-height:var(--pill-h) !important; height:var(--pill-h) !important;
+}
+/* SELECT más anchos en primera columna de filas 1 y 2 */
+.form-card [data-baseweb="select"] > div{ min-width:240px !important; }
+.form-card [data-testid="stHorizontalBlock"]:nth-of-type(1) > [data-testid="column"]:first-child [data-baseweb="select"] > div{ min-width:300px !important; }
+.form-card [data-testid="stHorizontalBlock"]:nth-of-type(2) > [data-testid="column"]:first-child [data-baseweb="select"] > div{ min-width:300px !important; }
+/* Topbar layout */
+.topbar, .topbar-ux, .topbar-na{ display:flex !important; align-items:center !important; gap:8px !important; }
+.topbar .stButton>button, .topbar-ux .stButton>button, .topbar-na .stButton>button{
+  height:var(--pill-h) !important; padding:0 16px !important; border-radius:10px !important; display:inline-flex !important; align-items:center !important;
+}
+/* PRIORIDAD / EVALUACIÓN */
+.topbar-pri, .topbar-eval{ display:flex !important; align-items:center !important; gap:8px !important; }
+.form-title-pri, .form-title-eval{
+  display:inline-flex !important; align-items:center !important; gap:.5rem !important; padding:6px 12px !important; border-radius:12px !important;
+  background:var(--pill-rosa) !important; border:1px solid var(--pill-rosa-bord) !important; color:#fff !important; font-weight:800 !important;
+  font-size:14px !important; letter-spacing:.2px !important; white-space:nowrap !important; margin:6px 0 10px 0 !important; width:var(--pill-width) !important;
+  justify-content:center !important; box-shadow:0 6px 16px rgba(214,154,194,.30) !important; min-height:var(--pill-h) !important; height:var(--pill-h) !important;
+}
+</style>
+""", unsafe_allow_html=True)
