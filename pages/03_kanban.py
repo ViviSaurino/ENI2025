@@ -22,7 +22,15 @@ user = google_login(
 if not user:
     st.stop()
 
-# Sidebar con usuario / logout (tu helper)
+# --- Navegación fija en la barra lateral (Inicio / Gestión de tareas / Kanban) ---
+with st.sidebar:
+    st.header("kanban")
+    st.page_link("gestion_app.py",             label="inicio",             icon="🏠")
+    st.page_link("pages/02_gestion_tareas.py", label="gestión de tareas",  icon="🗂️")
+    st.page_link("pages/03_kanban.py",         label="kanban",             icon="🧩")
+    st.divider()
+
+# Sidebar con usuario / logout (tu helper, se mantiene)
 sidebar_userbox(user)
 
 # Datos compartidos (asegura df_main en session_state)
@@ -49,7 +57,6 @@ if "Vencimiento" not in dfk.columns:
         try:
             if not s or s.lower() in {"nan", "nat", "none", "null"}:
                 return "17:00"
-            # normaliza H:MM -> HH:MM
             parts = s.split(":")
             if len(parts) >= 2 and parts[0].isdigit() and parts[1].isdigit():
                 return f"{int(parts[0]):02d}:{int(parts[1]):02d}"
@@ -152,4 +159,3 @@ for i, lane in enumerate(LANES):
                     save_local()
                     st.success(f"Movida {id_} → {new_state}.")
                     st.rerun()
-
