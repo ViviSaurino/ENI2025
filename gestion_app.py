@@ -2469,22 +2469,133 @@ st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
 st.subheader("📝 Tareas recientes")
 st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
+# --- Fila tachada para eliminadas (soft-delete) ---
+st.markdown("""
+<style>
+.ag-theme-balham .row-deleted .ag-cell {
+  text-decoration: line-through;
+  color: #6b7280 !important;           /* gris 600 */
+  background-color: #f3f4f6 !important;/* gris 100 */
+  opacity: 0.85;
+}
+</style>
+""", unsafe_allow_html=True)
+
 import re
 from datetime import datetime, time
 
-# -------- Helpers extra (FIX Sí/No y claves) --------
+# Base completa sin filtrar para poblar combos
+df_all = st.session_state["df_main"].copy()
+
+# --- Migración de columna de borrado: 🗑 -> ¿Eliminar? ---
+if "¿Eliminar?" not in df_all.columns:
+    if "🗑" in df_all.columns:
+        df_all = df_all.rename(columns={"🗑": "¿Eliminar?"})
+    else:
+        df_all["¿Eliminar?"] = "No"
+
+# Normaliza a "Sí"/"No" (robusto)
 def _norm_si_no(x: str) -> str:
     s = str(x or "").strip()
-    # Corrige UTF-8 roto: SÃ­ -> Sí
-    s = s.replace("Ã­", "í").replace("Í", "Í")
+    s = s.replace("Ã­", "í")  # sanea UTF-8 roto
     s_low = s.lower()
-    truthy = {"sí","si","s","yes","y","true","1"}
-    falsy  = {"no","n","false","0"}
-    if s_low in truthy: return "Sí"
-    if s_low in falsy or s_low == "":
-        return "No"
-    return "No" if s_low not in truthy else "Sí"
+    if s_low in {"sí","si","s","yes","y","true","1"}: return "Sí"
+    return "No"
 
+df_all["¿Eliminar?"] = df_all["¿Eliminar?"].map(_norm_si_no)
+
+# Propaga migración/normalización a la sesión
+try:
+    _dfm = st.session_state["df_main"].copy()
+    if "🗑" in _dfm.columns and "¿Eliminar?" not in _dfm.columns:
+        _dfm = _dfm.rename(columns={"🗑": "¿Eliminar?"})
+    if "¿Eliminar?" not in _dfm.columns:
+        _dfm["¿Eliminar?"] = "No"
+    _dfm["¿Eliminar?"] = _dfm["¿Eliminar?"].map(_norm_si_no)
+    st.session_state["df_main"] = _dfm.copy()
+except Exception:
+    pass
+
+df_view = df_all.copy()
+
+# ===== Proporciones de filtros =====
+A_f, Fw_f, T_width_f, D_f, R_f, C_f = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
+
+# ===== FILA DE 5 FILTROS + Buscar =====
+with st.form("hist_filtros_v1", clear_on_submit=False):
+    cA, cF, cR, cD, cH, cB = st.columns([A_f, Fw_f, T_width_f, D_f, R_f, C_f], gap="medium")
+
+    # Área
+    area_sel = cA.selectbox("Área", options=["Todas"] + st.session_state.get(
+        "AREAS_OPC",
+        ["Jefatura","Gestión","Metodología","Base de datos","Monitoreo","Capacitación","Consistencia"]
+    ), index=0, key="hist_area")
+
+    # Fase
+    fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+    fase_sel = cF.selectbox("Fase", options=["Todas"] + fases_all, index=0, key="hist_fase")
+
+    # Responsable (depende de Área/Fase)
+    df_resp_src = df_all.copy()
+    if area_sel != "Todas":
+        df_resp_src = df_resp_src[df_resp_src["Área"] == area_sel]
+    if fase_sel != "Todas" and "Fase" in df_resp_src.columns:
+        df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str) == fase_sel]
+    responsables = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+    resp_sel = cR.selectbox("Responsable", options=["Todos"] + responsables, index=0, key="hist_resp")
+
+    # Rango de fechas (por Fecha inicio)
+    f_desde = cD.date_input("Desde", value=None, key="hist_desde")
+    f_hasta = cH.date_input("Hasta",  value=None, key="hist_hasta")
+
+    with cB:
+        st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
+        hist_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
+
+# ---- Mostrar/ocultar eliminadas (soft-delete) ----
+show_deleted = st.toggle("Mostrar eliminadas (tachadas)", value=True, key="hist_show_deleted")
+
+# ---- Aplicar filtros sobre df_view SOLO si se presiona Buscar ----
+df_view["Fecha inicio"] = pd.to_datetime(df_view.get("Fecha inicio"), errors="coerce")
+
+if hist_do_buscar:
+    if area_sel != "Todas":
+        df_view = df_view[df_view["Área"] == area_sel]
+    if fase_sel != "Todas" and "Fase" in df_view.columns:
+        df_view = df_view[df_view["Fase"].astype(str) == fase_sel]
+    if resp_sel != "Todos":
+        df_view = df_view[df_view["Responsable"].astype(str) == resp_sel]
+    if f_desde:
+        df_view = df_view[df_view["Fecha inicio"].dt.date >= f_desde]
+    if f_hasta:
+        df_view = df_view[df_view["Fecha inicio"].dt.date <= f_hasta]
+
+# Ocultar eliminadas si el toggle está apagado
+if not show_deleted and "¿Eliminar?" in df_view.columns:
+    df_view = df_view[df_view["¿Eliminar?"].map(_norm_si_no) != "Sí"]
+
+# ===== ORDENAR POR RECIENTES =====
+for c in ["Fecha estado modificado", "Fecha estado actual", "Fecha inicio"]:
+    if c not in df_view.columns:
+        df_view[c] = pd.NaT
+
+ts_mod = pd.to_datetime(df_view["Fecha estado modificado"], errors="coerce")
+ts_act = pd.to_datetime(df_view["Fecha estado actual"], errors="coerce")
+ts_ini = pd.to_datetime(df_view["Fecha inicio"], errors="coerce")
+
+df_view["__ts__"] = ts_mod.combine_first(ts_act).combine_first(ts_ini)
+df_view = df_view.sort_values("__ts__", ascending=False, na_position="last")
+
+st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
+
+# --- FIX: eliminar columnas duplicadas ---
+df_view = df_view.copy()
+df_view.columns = df_view.columns.astype(str)
+dups = df_view.columns.duplicated()
+if dups.any():
+    df_view = df_view.loc[:, ~dups]
+
+# ===== Helpers de normalización =====
 def _to_date(v):
     if pd.isna(v): return pd.NaT
     if isinstance(v, (pd.Timestamp, datetime)): return pd.Timestamp(v).normalize()
@@ -2506,97 +2617,6 @@ def _to_hhmm(v):
         pass
     return ""
 
-# -------- Base completa para combos --------
-df_all = st.session_state["df_main"].copy()
-
-# --- Migración de columna de borrado: 🗑 -> ¿Eliminar? ---
-if "¿Eliminar?" not in df_all.columns:
-    if "🗑" in df_all.columns:
-        df_all = df_all.rename(columns={"🗑": "¿Eliminar?"})
-    else:
-        df_all["¿Eliminar?"] = "No"
-
-# Normaliza robusto a "No"/"Sí" en la vista
-df_all["¿Eliminar?"] = df_all["¿Eliminar?"].map(_norm_si_no)
-
-# --- Propaga la migración a la sesión para que persista entre reruns ---
-try:
-    _dfm = st.session_state["df_main"]
-    if "🗑" in _dfm.columns and "¿Eliminar?" not in _dfm.columns:
-        _dfm = _dfm.rename(columns={"🗑": "¿Eliminar?"})
-    if "¿Eliminar?" not in _dfm.columns:
-        _dfm["¿Eliminar?"] = "No"
-    _dfm["¿Eliminar?"] = _dfm["¿Eliminar?"].map(_norm_si_no)
-    st.session_state["df_main"] = _dfm.copy()
-except Exception:
-    pass
-
-df_view = df_all.copy()
-
-# ===== Proporciones de filtros =====
-A_f, Fw_f, T_width_f, D_f, R_f, C_f = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
-
-# ===== FILA DE 5 FILTROS + Buscar =====
-with st.form("hist_filtros_v1", clear_on_submit=False):
-    cA, cF, cR, cD, cH, cB = st.columns([A_f, Fw_f, T_width_f, D_f, R_f, C_f], gap="medium")
-
-    area_sel = cA.selectbox("Área", options=["Todas"] + st.session_state.get(
-        "AREAS_OPC",
-        ["Jefatura","Gestión","Metodología","Base de datos","Monitoreo","Capacitación","Consistencia"]
-    ), index=0, key="hist_area")
-
-    fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
-    fase_sel = cF.selectbox("Fase", options=["Todas"] + fases_all, index=0, key="hist_fase")
-
-    df_resp_src = df_all.copy()
-    if area_sel != "Todas":
-        df_resp_src = df_resp_src[df_resp_src["Área"] == area_sel]
-    if fase_sel != "Todas" and "Fase" in df_resp_src.columns:
-        df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str) == fase_sel]
-    responsables = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
-    resp_sel = cR.selectbox("Responsable", options=["Todos"] + responsables, index=0, key="hist_resp")
-
-    f_desde = cD.date_input("Desde", value=None, key="hist_desde")
-    f_hasta = cH.date_input("Hasta",  value=None, key="hist_hasta")
-
-    with cB:
-        st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
-        hist_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
-
-# ---- Aplicar filtros ----
-df_view["Fecha inicio"] = pd.to_datetime(df_view.get("Fecha inicio"), errors="coerce")
-if hist_do_buscar:
-    if area_sel != "Todas":
-        df_view = df_view[df_view["Área"] == area_sel]
-    if fase_sel != "Todas" and "Fase" in df_view.columns:
-        df_view = df_view[df_view["Fase"].astype(str) == fase_sel]
-    if resp_sel != "Todos":
-        df_view = df_view[df_view["Responsable"].astype(str) == resp_sel]
-    if f_desde:
-        df_view = df_view[df_view["Fecha inicio"].dt.date >= f_desde]
-    if f_hasta:
-        df_view = df_view[df_view["Fecha inicio"].dt.date <= f_hasta]
-
-# ===== ORDENAR POR RECIENTES =====
-for c in ["Fecha estado modificado", "Fecha estado actual", "Fecha inicio"]:
-    if c not in df_view.columns:
-        df_view[c] = pd.NaT
-
-ts_mod = pd.to_datetime(df_view["Fecha estado modificado"], errors="coerce")
-ts_act = pd.to_datetime(df_view["Fecha estado actual"], errors="coerce")
-ts_ini = pd.to_datetime(df_view["Fecha inicio"], errors="coerce")
-df_view["__ts__"] = ts_mod.combine_first(ts_act).combine_first(ts_ini)
-df_view = df_view.sort_values("__ts__", ascending=False, na_position="last")
-
-st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
-
-# --- FIX: quitar duplicadas ---
-df_view = df_view.copy()
-df_view.columns = df_view.columns.astype(str)
-dups = df_view.columns.duplicated()
-if dups.any():
-    df_view = df_view.loc[:, ~dups]
-
 # ===== Semántica de tiempos / estado =====
 if "Estado modificado" in df_view.columns:
     _em = df_view["Estado modificado"].astype(str).str.strip()
@@ -2607,19 +2627,23 @@ if "Estado modificado" in df_view.columns:
 
 if "Fecha Registro" not in df_view.columns: df_view["Fecha Registro"] = pd.NaT
 if "Hora Registro"   not in df_view.columns: df_view["Hora Registro"]   = ""
+
 df_view["Fecha Registro"] = df_view["Fecha Registro"].apply(_to_date)
 df_view["Hora Registro"]  = df_view["Hora Registro"].apply(_to_hhmm)
 
 _fr_fb = pd.to_datetime(df_view["Fecha"], errors="coerce").dt.normalize() if "Fecha" in df_view.columns else pd.Series(pd.NaT, index=df_view.index)
 _hr_fb = df_view["Hora"].apply(_to_hhmm) if "Hora" in df_view.columns else pd.Series([""]*len(df_view), index=df_view.index)
+
 mask_fr_missing = df_view["Fecha Registro"].isna()
 mask_hr_missing = (df_view["Hora Registro"].eq("")) | (df_view["Hora Registro"].eq("00:00"))
+
 df_view.loc[mask_fr_missing, "Fecha Registro"] = _fr_fb[mask_fr_missing]
 df_view.loc[mask_hr_missing, "Hora Registro"]  = _hr_fb[mask_hr_missing]
 
 if "Hora de inicio" not in df_view.columns: df_view["Hora de inicio"] = ""
 if "Fecha Terminado" not in df_view.columns: df_view["Fecha Terminado"] = pd.NaT
 if "Hora Terminado" not in df_view.columns: df_view["Hora Terminado"] = ""
+
 if "Fecha terminado" in df_view.columns:
     _tmp_ft = pd.to_datetime(df_view["Fecha terminado"], errors="coerce")
     df_view["Fecha Terminado"] = df_view["Fecha Terminado"].combine_first(_tmp_ft)
@@ -2631,18 +2655,22 @@ _hmod = df_view["Hora estado modificado"].apply(_to_hhmm) if "Hora estado modifi
 if "Estado" in df_view.columns:
     _en_curso   = df_view["Estado"].astype(str) == "En curso"
     _terminado  = df_view["Estado"].astype(str) == "Terminado"
+
     _h_ini = _hmod.where(_hmod != "", _mod.dt.strftime("%H:%M"))
     need_ini_dt = _en_curso & df_view["Fecha inicio"].isna()
     need_ini_tm = _en_curso & (df_view["Hora de inicio"].astype(str).str.strip() == "")
     df_view.loc[need_ini_dt, "Fecha inicio"]   = _mod.dt.normalize()[need_ini_dt]
     df_view.loc[need_ini_tm, "Hora de inicio"] = _h_ini[need_ini_tm]
+
     need_fin_dt = _terminado & df_view["Fecha Terminado"].isna()
     need_fin_tm = _terminado & (df_view["Hora Terminado"].astype(str).str.strip() == "")
     df_view.loc[need_fin_dt, "Fecha Terminado"]      = _mod[need_fin_dt]
     df_view.loc[need_fin_tm, "Hora Terminado"] = _hmod.where(_hmod != "", _mod.dt.strftime("%H:%M"))[need_fin_tm]
 
+# 3.b) VENCIMIENTO
 if "Fecha Vencimiento" not in df_view.columns: df_view["Fecha Vencimiento"] = pd.NaT
 if "Hora Vencimiento" not in df_view.columns:  df_view["Hora Vencimiento"]  = ""
+
 if "Vencimiento" in df_view.columns:
     _vdt = pd.to_datetime(df_view["Vencimiento"], errors="coerce")
     mask_fv = df_view["Fecha Vencimiento"].isna()
@@ -2651,15 +2679,17 @@ if "Vencimiento" in df_view.columns:
     hv_now = df_view["Hora Vencimiento"].astype(str).str.strip()
     mask_hv = hv_now.eq("") | hv_now.eq("00:00")
     df_view.loc[mask_hv, "Hora Vencimiento"] = hv_from[mask_hv]
+
 df_view["Fecha Vencimiento"] = df_view["Fecha Vencimiento"].apply(_to_date)
 df_view["Hora Vencimiento"]  = df_view["Hora Vencimiento"].apply(_to_hhmm)
 df_view.loc[df_view["Hora Vencimiento"] == "", "Hora Vencimiento"] = "17:00"
 
-# === ORDEN Y PRESENCIA ===
+# === ORDEN Y PRESENCIA DE COLUMNAS ===
 target_cols = [
     "¿Eliminar?","Id","Área","Fase","Responsable",
     "Tarea","Tipo","Detalle","Ciclo de mejora","Complejidad","Prioridad",
-    "Estado","Duración",
+    "Estado",
+    "Duración",
     "Fecha Registro","Hora Registro",
     "Fecha inicio","Hora de inicio",
     "Fecha Pausado","Hora Pausado",
@@ -2673,17 +2703,25 @@ target_cols = [
     "Cumplimiento","Evaluación","Calificación",
     "__SEL__","__DEL_CLIENT__"
 ]
+
 HIDDEN_COLS = [
-    "Estado modificado","Fecha estado modificado","Hora estado modificado",
+    "Estado modificado",
+    "Fecha estado modificado","Hora estado modificado",
     "Fecha estado actual","Hora estado actual",
-    "N° de alerta","Tipo de alerta","Fecha","Hora","Vencimiento",
+    "N° de alerta","Tipo de alerta",
+    "Fecha","Hora",
+    "Vencimiento",
     "__ts__","__DEL__","__SEL__","__DEL_CLIENT__"
 ]
+
 for c in target_cols:
     if c not in df_view.columns:
-        if c == "¿Eliminar?": df_view[c] = "No"
-        elif c in ["__SEL__","__DEL_CLIENT__"]: df_view[c] = False
-        else: df_view[c] = ""
+        if c == "¿Eliminar?":
+            df_view[c] = "No"
+        elif c in ["__SEL__","__DEL_CLIENT__"]:
+            df_view[c] = False
+        else:
+            df_view[c] = ""
 
 df_view["Duración"] = df_view["Duración"].astype(str).fillna("")
 df_view["¿Eliminar?"] = df_view["¿Eliminar?"].map(_norm_si_no)
@@ -2694,15 +2732,16 @@ df_grid = df_view.reindex(columns=target_cols_u + rest).copy()
 df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()
 df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
 
-# ================= GRID =================
+# ================= GRID OPTIONS =================
 from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode, JsCode
 
 gob = GridOptionsBuilder.from_dataframe(df_grid)
 gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, editable=False)
 
-# 👉 Desactiva checkboxes de selección globalmente (solo resaltado si seleccionas)
+# Desactiva checkbox en ID; "¿Eliminar?" usa editor select
 gob.configure_selection(selection_mode="multiple", use_checkbox=False)
 
+# Regla: solo editable si Tipo == 'Otros'
 edit_if_otros = JsCode("""
 function(p){
   const t = String((p.data && p.data['Tipo']) || '').trim();
@@ -2727,7 +2766,7 @@ gob.configure_grid_options(
     getRowId=JsCode("function(p){ return (p.data && (p.data.Id || p.data['Id'])) + ''; }"),
 )
 
-# Columna ¿Eliminar?: editor con "No" primero (["No","Sí"])
+# ¿Eliminar? con ["No","Sí"] (No primero)
 gob.configure_column("¿Eliminar?",
     headerName="¿Eliminar?",
     editable=True,
@@ -2738,26 +2777,30 @@ gob.configure_column("¿Eliminar?",
     checkboxSelection=False
 )
 
-# ID sin checkbox de selección (forzado)
+# ID sin checkbox
 gob.configure_column("Id",
     headerName="ID",
     editable=False, width=110, pinned="left",
     suppressMovable=True,
     checkboxSelection=False
 )
+
 gob.configure_column("Área",        editable=edit_if_otros,  width=160, pinned="left", suppressMovable=True)
 gob.configure_column("Fase",        editable=edit_if_otros,  width=140, pinned="left", suppressMovable=True)
 gob.configure_column("Responsable", editable=edit_if_otros,  minWidth=180, pinned="left", suppressMovable=True)
 
+# Alias
 gob.configure_column("Estado",            headerName="Estado actual")
 gob.configure_column("Fecha Vencimiento", headerName="Fecha límite")
 gob.configure_column("Fecha inicio",      headerName="Fecha de inicio")
 gob.configure_column("Fecha Terminado",   headerName="Fecha Terminado")
 
+# Ocultas
 for ocultar in HIDDEN_COLS + ["Fecha Pausado","Hora Pausado","Fecha Cancelado","Hora Cancelado","Fecha Eliminado","Hora Eliminado"]:
     if ocultar in df_view.columns:
         gob.configure_column(ocultar, hide=True, suppressMenu=True, filter=False)
 
+# Formatters y estilos (igual que tenías)
 flag_formatter = JsCode("""
 function(p){
   const v=String(p.value||'');
@@ -2834,6 +2877,7 @@ colw = {
     "¿Se corrigió?":140, "Fecha de corrección":160, "Hora de corrección":140,
     "Cumplimiento":180, "Evaluación":170, "Calificación":120
 }
+
 for c, fx in [("Tarea",3), ("Tipo",1), ("Detalle",2), ("Ciclo de mejora",1), ("Complejidad",1), ("Prioridad",1), ("Estado",1),
               ("Duración",1), ("Fecha Registro",1), ("Hora Registro",1),
               ("Fecha inicio",1), ("Hora de inicio",1),
@@ -2843,8 +2887,6 @@ for c, fx in [("Tarea",3), ("Tipo",1), ("Detalle",2), ("Ciclo de mejora",1), ("C
               ("¿Se corrigió?",1), ("Fecha de corrección",1), ("Hora de corrección",1),
               ("Cumplimiento",1), ("Evaluación",1), ("Calificación",0)]:
     if c in df_grid.columns:
-        if c == "¿Eliminar?":
-            continue
         gob.configure_column(
             c,
             editable=(False if c in ["Duración","Id","¿Eliminar?"] else edit_if_otros),
@@ -2867,30 +2909,15 @@ for c, fx in [("Tarea",3), ("Tipo",1), ("Detalle",2), ("Ciclo de mejora",1), ("C
                                   "Fecha de corrección","Hora de corrección"] else None
         )
 
-if "Prioridad" in df_grid.columns:
-    gob.configure_column("Prioridad",
-        editable=edit_if_otros, cellEditor="agSelectCellEditor",
-        cellEditorParams={"values": ["Alta","Media","Baja"]},
-        valueFormatter=flag_formatter, minWidth=colw["Prioridad"], maxWidth=220, flex=1
-    )
-
-for c, vals in [("Cumplimiento", CUMPLIMIENTO),
-                ("¿Se corrigió?", SI_NO),
-                ("¿Generó alerta?", SI_NO),
-                ("Evaluación", ["Aprobada","Desaprobada","Pendiente de revisión","Observada","Cancelada","Pausada"])]:
-    if c in df_grid.columns:
-        gob.configure_column(c, editable=edit_if_otros, cellEditor="agSelectCellEditor",
-                             cellEditorParams={"values": vals},
-                             cellStyle=chip_style, valueFormatter=fmt_dash,
-                             minWidth=colw.get(c,120), maxWidth=260, flex=1)
-
-if "Calificación" in df_grid.columns:
-    gob.configure_column("Calificación", editable=edit_if_otros, valueFormatter=JsCode("""
-      function(p){ let n=parseInt(p.value||0); if(isNaN(n)||n<0) n=0; if(n>5) n=5; return '★'.repeat(n)+'☆'.repeat(5-n); }
-    """), minWidth=colw["Calificación"], maxWidth=140, flex=0)
-
-for col in df_grid.columns:
-    gob.configure_column(col, headerTooltip=col)
+# ==== Reglas de clase por fila (tachado si ¿Eliminar? = Sí) ====
+row_class_rules = {
+    "row-deleted": JsCode("""
+        function(params){
+            var v = String((params.data && params.data['¿Eliminar?']) || '').toLowerCase().trim();
+            return (v === 'sí' || v === 'si');
+        }
+    """).js_code
+}
 
 autosize_on_ready = JsCode("""
 function(params){
@@ -2922,6 +2949,7 @@ function(params){
 """)
 
 grid_opts = gob.build()
+grid_opts["rowClassRules"] = row_class_rules
 grid_opts["onGridReady"] = autosize_on_ready.js_code
 grid_opts["onFirstDataRendered"] = autosize_on_data.js_code
 grid_opts["onColumnEverythingChanged"] = autosize_on_data.js_code
@@ -2940,12 +2968,11 @@ grid = AgGrid(
     allow_unsafe_jscode=True, theme="balham",
 )
 
-# --- Captura última data visible del grid (y los IDs a borrar) ---
+# Guarda última data del grid y los Ids marcados con Sí
 try:
     if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
         _latest = pd.DataFrame(grid["data"]).copy()
         st.session_state["_grid_historial_latest"] = _latest.copy()
-        # Guarda los Ids marcados con "Sí" para borrarlos en el botón
         if "¿Eliminar?" in _latest.columns and "Id" in _latest.columns:
             st.session_state["_hist_del_ids"] = (
                 _latest.loc[_latest["¿Eliminar?"].map(_norm_si_no).eq("Sí"), "Id"]
@@ -2965,7 +2992,7 @@ except Exception:
     sel_ids = []
 st.session_state["hist_sel_ids"] = sel_ids
 
-# --- Sincroniza SOLO EDICIONES (persistir ¿Eliminar?) ---
+# --- Sincroniza SOLO EDICIONES (persistiendo ¿Eliminar?) ---
 if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
     try:
         edited = pd.DataFrame(grid["data"]).copy()
@@ -3025,37 +3052,40 @@ with b_xlsx:
     except Exception as e:
         st.error(f"No pude generar Excel: {e}")
 
-# 2) Grabar (tabla local) — elimina filas marcadas con ¿Eliminar? = "Sí" usando IDs capturados
+# 2) Grabar (tabla local) — SOFT-DELETE: marca __DEL__=True para ¿Eliminar?=Sí
 with b_save_local:
     if st.button("💾 Grabar", use_container_width=True):
         base = st.session_state["df_main"].copy()
         base["Id"] = base["Id"].astype(str)
+        if "__DEL__" not in base.columns:
+            base["__DEL__"] = False
 
         del_ids = st.session_state.get("_hist_del_ids", []) or []
         del_ids = [str(x) for x in del_ids if str(x).strip() != ""]
 
-        removed = 0
+        # Marca eliminadas (NO borra la fila)
         if del_ids:
-            before = len(base)
-            base = base[~base["Id"].isin(del_ids)].copy()
-            removed = before - len(base)
+            now = pd.Timestamp.now()
+            mask = base["Id"].isin(del_ids)
+            base.loc[mask, "__DEL__"] = True
+            # Sella fecha/hora si existen columnas
+            if "Fecha Eliminado" in base.columns:
+                base.loc[mask, "Fecha Eliminado"] = now.normalize()
+            if "Hora Eliminado" in base.columns:
+                base.loc[mask, "Hora Eliminado"] = now.strftime("%H:%M")
 
-        # 🔎 Si no se borró nada, muestra una alerta para revisar el ID
-        if not del_ids:
-            st.warning("No hay filas marcadas con 'Sí' en ¿Eliminar? (o no se capturó la edición).")
-        elif removed == 0:
-            st.warning("No se encontró coincidencia para borrar por ID. Revisa el ID al costado de '¿Eliminar?'.")
-
-        # Actualiza sesión y graba CSV
         st.session_state["df_main"] = base.reset_index(drop=True)
+
+        # Graba solo columnas oficiales
         df_save = st.session_state["df_main"][COLS].copy()
         _save_local(df_save.copy())
 
-        # Nota: ya no reseteamos '¿Eliminar?' a 'No' para las que quedan
+        if del_ids:
+            st.info(f"Se marcaron {len(del_ids)} fila(s) como eliminadas (tachadas).")
+        else:
+            st.warning("No hay filas marcadas con 'Sí' en ¿Eliminar? (o no se capturó la edición).")
+
         st.success("Datos grabados en la tabla local (CSV).")
-        if removed:
-            st.info(f"Se eliminaron {removed} fila(s) marcadas para borrar.")
-        st.rerun()
 
 # 3) Subir a Sheets (respeta orden oficial)
 with b_save_sheets:
