@@ -45,7 +45,9 @@ if not st.session_state.get("_routed_to_gestion_tareas", False):
 
 # --- Sidebar (navegación fija + caja de usuario) ---
 with st.sidebar:
-    st.header("Inicio")
+    st.header("Secciones")
+
+    # Navegación
     st.page_link("gestion_app.py",               label="Inicio",             icon="🏠")
     st.page_link("pages/02_gestion_tareas.py",   label="Gestión de tareas",  icon="🗂️")
     st.page_link("pages/03_kanban.py",           label="Kanban",             icon="🧩")
