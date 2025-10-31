@@ -2487,7 +2487,7 @@ from datetime import datetime, time
 # Base completa sin filtrar para poblar combos
 df_all = st.session_state["df_main"].copy()
 
-# ===== Proporciones de filtros =====
+# ===== Proporciones de filtros (mantenemos las tuyas) =====
 A_f, Fw_f, T_width_f, D_f, R_f, C_f = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
 # ===== FILA DE 5 FILTROS + Buscar =====
@@ -2667,7 +2667,9 @@ target_cols = [
     "__SEL__","__DEL__"
 ]
 
+# Agrego “¿Eliminar?” aquí para que NO aparezca en el grid
 HIDDEN_COLS = [
+    "¿Eliminar?",
     "Estado modificado",
     "Fecha estado modificado","Hora estado modificado",
     "Fecha estado actual","Hora estado actual",
@@ -2693,18 +2695,11 @@ df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
 from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode, JsCode
 
 gob = GridOptionsBuilder.from_dataframe(df_grid)
+# Solo lectura total
 gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, editable=False)
 
-# Selección sin checkbox
+# Sin checkbox de selección (puedes dejarlo si te sirve)
 gob.configure_selection(selection_mode="multiple", use_checkbox=False)
-
-# Regla: solo editable si Tipo == 'Otros' (para el resto)
-edit_if_otros = JsCode("""
-function(p){
-  const t = String((p.data && p.data['Tipo']) || '').trim();
-  return t === 'Otros';
-}
-""")
 
 gob.configure_grid_options(
     rowSelection="multiple",
@@ -2715,19 +2710,19 @@ gob.configure_grid_options(
     headerHeight=42,
     enableRangeSelection=True,
     enableCellTextSelection=True,
-    singleClickEdit=True,
+    singleClickEdit=False,          # 🔒 sin edición
     stopEditingWhenCellsLoseFocus=True,
-    undoRedoCellEditing=True,
-    enterMovesDown=True,
+    undoRedoCellEditing=False,      # 🔒
+    enterMovesDown=False,           # 🔒
     suppressMovableColumns=False,
     getRowId=JsCode("function(p){ return (p.data && (p.data.Id || p.data['Id'])) + ''; }"),
 )
 
-# ID y columnas fijas a la izquierda
+# ID y columnas fijas a la izquierda (todas no editables)
 gob.configure_column("Id", headerName="ID", editable=False, width=110, pinned="left", suppressMovable=True)
-gob.configure_column("Área",        editable=edit_if_otros,  width=160, pinned="left", suppressMovable=True)
-gob.configure_column("Fase",        editable=edit_if_otros,  width=140, pinned="left", suppressMovable=True)
-gob.configure_column("Responsable", editable=edit_if_otros,  minWidth=180, pinned="left", suppressMovable=True)
+gob.configure_column("Área",        editable=False, width=160, pinned="left", suppressMovable=True)
+gob.configure_column("Fase",        editable=False, width=140, pinned="left", suppressMovable=True)
+gob.configure_column("Responsable", editable=False, minWidth=180, pinned="left", suppressMovable=True)
 
 # Alias
 gob.configure_column("Estado",            headerName="Estado actual")
@@ -2740,37 +2735,7 @@ for ocultar in HIDDEN_COLS + ["Fecha Pausado","Hora Pausado","Fecha Cancelado","
     if ocultar in df_view.columns:
         gob.configure_column(ocultar, hide=True, suppressMenu=True, filter=False)
 
-# ----- Formatters -----
-flag_formatter = JsCode("""
-function(p){
-  const v=String(p.value||'');
-  if(v==='Alta') return '🔴 Alta';
-  if(v==='Media') return '🟡 Media';
-  if(v==='Baja') return '🟢 Baja';
-  return v||'—';
-}""")
-
-chip_style = JsCode("""
-function(p){
-  const v = String(p.value || '');
-  let bg='#E0E0E0', fg='#FFFFFF';
-  if (v==='No iniciado'){bg:'#90A4AE'}
-  else if(v==='En curso'){bg:'#B388FF'}
-  else if(v==='Terminado'){bg:'#00C4B3'}
-  else if(v==='Cancelado'){bg:'#FF2D95'}
-  else if(v==='Pausado'){bg:'#7E57C2'}
-  else if(v==='Entregado a tiempo'){bg:'#00C4B3'}
-  else if(v==='Entregado con retraso'){bg:'#00ACC1'}
-  else if(v==='No entregado'){bg:'#006064'}
-  else if(v==='En riesgo de retraso'){bg:'#0277BD'}
-  else if(v==='Aprobada'){bg:'#8BC34A'; fg:'#0A2E00'}
-  else if(v==='Desaprobada'){bg:'#FF8A80'}
-  else if(v==='Pendiente de revisión'){bg:'#BDBDBD'; fg:'#2B2B2B'}
-  else if(v==='Observada'){bg:'#D7A56C'}
-  return { backgroundColor:bg, color:fg, fontWeight:'600', textAlign:'center',
-           borderRadius:'10px', padding:'4px 10px' };
-}""")
-
+# ----- Formatters (sin cambios de estilo) -----
 fmt_dash = JsCode("""
 function(p){
   if(p.value===null||p.value===undefined) return '—';
@@ -2834,7 +2799,7 @@ for c, fx in [("Tarea",3), ("Tipo",1), ("Detalle",2), ("Ciclo de mejora",1), ("C
     if c in df_grid.columns:
         gob.configure_column(
             c,
-            editable=(False if c in ["Duración","Id"] else edit_if_otros),
+            editable=False,  # 🔒 todas no editables
             minWidth=colw.get(c,120),
             flex=fx,
             valueFormatter=(
@@ -2914,14 +2879,14 @@ grid = AgGrid(
     allow_unsafe_jscode=True, theme="balham",
 )
 
-# Guarda última data del grid
+# Guarda última data del grid (por si la usas en otros procesos)
 try:
     if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
         st.session_state["_grid_historial_latest"] = pd.DataFrame(grid["data"]).copy()
 except Exception:
     pass
 
-# --- Sincroniza ediciones al df_main ---
+# --- Sincroniza (no editable, pero mantenemos la coherencia con df_main) ---
 if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
     try:
         edited = pd.DataFrame(grid["data"]).copy()
@@ -2939,20 +2904,14 @@ if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
     except Exception:
         pass
 
-# ---- Botones (Exportar, Grabar local, Subir a Sheets) ALINEADOS A LA DERECHA ----
-total_btn_width = (1.2 + 1.2) + (3.2 / 2)
-btn_w = total_btn_width / 3
-_spacer, b_xlsx, b_save_local, b_save_sheets = st.columns(
-    [(3.2 / 2) + 2.4, btn_w, btn_w, btn_w],  # spacer grande primero -> botones a la derecha
-    gap="medium"
-)
+# ---- Botones alineados EXACTAMENTE bajo "Desde | Hasta | Buscar" ----
+left_spacer = A_f + Fw_f + T_width_f  # ocupa Área + Fase + Responsable
+_spacer, b_xlsx, b_save_local, b_save_sheets = st.columns([left_spacer, D_f, R_f, C_f], gap="medium")
 
-# 1) Exportar Excel (respeta orden oficial)
 with b_xlsx:
     try:
         df_xlsx = st.session_state["df_main"].copy()
-        # Por si existen columnas internas
-        drop_cols = [c for c in ("__DEL__", "DEL", "__SEL__") if c in df_xlsx.columns]
+        drop_cols = [c for c in ("__DEL__", "DEL", "__SEL__", "¿Eliminar?") if c in df_xlsx.columns]
         if drop_cols:
             df_xlsx.drop(columns=drop_cols, inplace=True)
         cols_order = globals().get("COLS_XLSX", []) or [c for c in target_cols if c not in ["__SEL__","__DEL__"]]
@@ -2960,19 +2919,15 @@ with b_xlsx:
         if cols_order:
             df_xlsx = df_xlsx.reindex(columns=cols_order)
         xlsx_b = export_excel(df_xlsx, sheet_name=TAB_NAME)
-        st.download_button(
-            "⬇️ Exportar Excel",
-            data=xlsx_b,
-            file_name="tareas.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True
-        )
+        st.download_button("⬇️ Exportar Excel", data=xlsx_b,
+                           file_name="tareas.xlsx",
+                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                           use_container_width=True)
     except ImportError:
         st.error("No pude generar Excel: falta instalar 'xlsxwriter' u 'openpyxl' en el entorno.")
     except Exception as e:
         st.error(f"No pude generar Excel: {e}")
 
-# 2) 💾 Grabar (marca __DEL__ si Estado = 'Eliminado' y estampa fecha/hora si faltan)
 with b_save_local:
     if st.button("💾 Grabar", use_container_width=True):
         base = st.session_state["df_main"].copy()
@@ -2995,7 +2950,6 @@ with b_save_local:
 
         st.session_state["df_main"] = base.reset_index(drop=True)
 
-        # Graba solo columnas oficiales
         df_save = st.session_state["df_main"][COLS].copy()
         _save_local(df_save.copy())
         n_elim = int((st.session_state["df_main"].get("__DEL__", False)==True).sum()) if "__DEL__" in st.session_state["df_main"].columns else 0
@@ -3003,7 +2957,6 @@ with b_save_local:
         if n_elim:
             st.info(f"Filas con Estado='Eliminado' (tachadas): {n_elim}")
 
-# 3) Subir a Sheets (respeta orden oficial)
 with b_save_sheets:
     if st.button("📤 Subir a Sheets", use_container_width=True):
         df = st.session_state["df_main"].copy()
@@ -3014,3 +2967,4 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
