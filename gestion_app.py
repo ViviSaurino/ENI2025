@@ -2530,9 +2530,17 @@ from datetime import datetime, time
 
 # Base completa sin filtrar para poblar combos
 df_all = st.session_state["df_main"].copy()
-# Asegura columna 🗑 en la base si no existe (default "No", sin pisar valores existentes)
-if "🗑" not in df_all.columns:
-    df_all["🗑"] = "No"
+
+# --- Migración de columna de borrado: 🗑 -> ¿Eliminar? ---
+if "¿Eliminar?" not in df_all.columns:
+    if "🗑" in df_all.columns:
+        df_all = df_all.rename(columns={"🗑": "¿Eliminar?"})
+    else:
+        df_all["¿Eliminar?"] = "No"
+# Normaliza a "Sí"/"No"
+df_all["¿Eliminar?"] = df_all["¿Eliminar?"].astype(str).str.strip()
+df_all.loc[~df_all["¿Eliminar?"].isin(["Sí","No"]), "¿Eliminar?"] = "No"
+
 df_view = df_all.copy()
 
 # ===== Proporciones de filtros (alineadas al resto de secciones) =====
@@ -2701,9 +2709,9 @@ df_view["Fecha Vencimiento"] = df_view["Fecha Vencimiento"].apply(_to_date)
 df_view["Hora Vencimiento"]  = df_view["Hora Vencimiento"].apply(_to_hhmm)
 df_view.loc[df_view["Hora Vencimiento"] == "", "Hora Vencimiento"] = "17:00"
 
-# === ORDEN Y PRESENCIA DE COLUMNAS (agrega columna visible '🗑' al inicio) ===
+# === ORDEN Y PRESENCIA DE COLUMNAS (agrega columna visible '¿Eliminar?' al inicio) ===
 target_cols = [
-    "🗑","Id","Área","Fase","Responsable",
+    "¿Eliminar?","Id","Área","Fase","Responsable",
     "Tarea","Tipo","Detalle","Ciclo de mejora","Complejidad","Prioridad",
     "Estado",
     "Duración",
@@ -2733,7 +2741,7 @@ HIDDEN_COLS = [
 
 for c in target_cols:
     if c not in df_view.columns:
-        if c == "🗑":
+        if c == "¿Eliminar?":
             df_view[c] = "No"
         elif c in ["__SEL__","__DEL_CLIENT__"]:
             df_view[c] = False
@@ -2741,8 +2749,8 @@ for c in target_cols:
             df_view[c] = ""
 
 df_view["Duración"] = df_view["Duración"].astype(str).fillna("")
-df_view["🗑"] = df_view["🗑"].fillna("No").astype(str)
-df_view.loc[~df_view["🗑"].isin(["Sí","No"]), "🗑"] = "No"
+df_view["¿Eliminar?"] = df_view["¿Eliminar?"].fillna("No").astype(str)
+df_view.loc[~df_view["¿Eliminar?"].isin(["Sí","No"]), "¿Eliminar?"] = "No"
 
 target_cols_u = list(dict.fromkeys(target_cols))
 rest = [c for c in df_view.columns if c not in target_cols_u + HIDDEN_COLS]
@@ -2784,13 +2792,13 @@ gob.configure_grid_options(
 )
 
 # ----- Fijas a la izquierda -----
-# Columna 🗑: SIEMPRE editable como lista (Sí/No)
-gob.configure_column("🗑",
-    headerName="🗑",
+# Columna ¿Eliminar?: SIEMPRE editable como lista (Sí/No)
+gob.configure_column("¿Eliminar?",
+    headerName="¿Eliminar?",
     editable=True,
     cellEditor="agSelectCellEditor",
     cellEditorParams={"values": ["No","Sí"]},
-    width=70, pinned="left",
+    width=110, pinned="left",
     suppressMovable=True, filter=False
 )
 
@@ -2910,7 +2918,7 @@ for c, fx in [("Tarea",3), ("Tipo",1), ("Detalle",2), ("Ciclo de mejora",1), ("C
     if c in df_grid.columns:
         gob.configure_column(
             c,
-            editable=(False if c in ["Duración","Id","🗑"] else edit_if_otros),
+            editable=(False if c in ["Duración","Id","¿Eliminar?"] else edit_if_otros),
             minWidth=colw.get(c,120),
             flex=fx,
             valueFormatter=(
@@ -3061,10 +3069,13 @@ b_xlsx, b_save_local, b_save_sheets, _spacer = st.columns(
 with b_xlsx:
     try:
         df_xlsx = st.session_state["df_main"].copy()
-        drop_cols = [c for c in ("__DEL__", "DEL", "__SEL__", "__DEL_CLIENT__", "🗑") if c in df_xlsx.columns]
+        # Migración por si quedó 🗑 en versiones viejas
+        if "🗑" in df_xlsx.columns and "¿Eliminar?" not in df_xlsx.columns:
+            df_xlsx = df_xlsx.rename(columns={"🗑": "¿Eliminar?"})
+        drop_cols = [c for c in ("__DEL__", "DEL", "__SEL__", "__DEL_CLIENT__", "¿Eliminar?") if c in df_xlsx.columns]
         if drop_cols:
             df_xlsx.drop(columns=drop_cols, inplace=True)
-        cols_order = globals().get("COLS_XLSX", []) or [c for c in target_cols if c not in ["__SEL__","__DEL_CLIENT__","🗑"]]
+        cols_order = globals().get("COLS_XLSX", []) or [c for c in target_cols if c not in ["__SEL__","__DEL_CLIENT__","¿Eliminar?"]]
         cols_order = [c for c in cols_order if c in df_xlsx.columns]
         if cols_order:
             df_xlsx = df_xlsx.reindex(columns=cols_order)
@@ -3081,10 +3092,9 @@ with b_xlsx:
     except Exception as e:
         st.error(f"No pude generar Excel: {e}")
 
-# 2) Grabar (tabla local) — elimina filas marcadas con 🗑 = "Sí" según la data más reciente del GRID
+# 2) Grabar (tabla local) — elimina filas marcadas con ¿Eliminar? = "Sí" según la data más reciente del GRID
 with b_save_local:
     if st.button("💾 Grabar", use_container_width=True):
-        # Usa la última data del grid (captura ediciones recientes aunque no hayan pasado a df_main)
         edited = st.session_state.get("_grid_historial_latest")
         base = st.session_state["df_main"].copy()
         base["Id"] = base["Id"].astype(str)
@@ -3092,10 +3102,12 @@ with b_save_local:
         del_ids = []
         if isinstance(edited, pd.DataFrame) and "Id" in edited.columns:
             edited = edited.copy()
+            # migración por si el grid aún trae 🗑
+            if "¿Eliminar?" not in edited.columns and "🗑" in edited.columns:
+                edited = edited.rename(columns={"🗑": "¿Eliminar?"})
             edited["Id"] = edited["Id"].astype(str)
-            if "🗑" in edited.columns:
-                # Acepta 'Sí' con o sin acento / mayúsculas
-                m = edited["🗑"].astype(str).str.strip().str.lower().isin(["sí","si"])
+            if "¿Eliminar?" in edited.columns:
+                m = edited["¿Eliminar?"].astype(str).str.strip().str.lower().isin(["sí","si"])
                 del_ids = edited.loc[m, "Id"].dropna().unique().tolist()
 
         removed = 0
@@ -3112,14 +3124,17 @@ with b_save_local:
         _save_local(df_save.copy())
         st.success("Datos grabados en la tabla local (CSV).")
         if removed:
-            st.info(f"Se eliminaron {removed} fila(s) marcadas con 🗑 = 'Sí'.")
+            st.info(f"Se eliminaron {removed} fila(s) marcadas para borrar.")
         st.rerun()
 
 # 3) Subir a Sheets (respeta orden oficial)
 with b_save_sheets:
     if st.button("📤 Subir a Sheets", use_container_width=True):
         df = st.session_state["df_main"].copy()
-        cols_order = globals().get("COLS_XLSX", []) or [c for c in target_cols if c not in ["__SEL__","__DEL_CLIENT__","🗑"]]
+        # migración por si quedó 🗑
+        if "🗑" in df.columns and "¿Eliminar?" not in df.columns:
+            df = df.rename(columns={"🗑": "¿Eliminar?"})
+        cols_order = globals().get("COLS_XLSX", []) or [c for c in target_cols if c not in ["__SEL__","__DEL_CLIENT__","¿Eliminar?"]]
         cols_order = [c for c in cols_order if c in df.columns]
         if cols_order:
             df = df.reindex(columns=cols_order)
