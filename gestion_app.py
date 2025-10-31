@@ -1,10 +1,15 @@
 # gestion_app.py  (Inicio / router)
-import os, re
+import os
+import unicodedata
 import streamlit as st
 from auth_google import google_login, logout
 
-# --- Config inicial ---
-st.set_page_config(page_title="Gestión — ENI2025", layout="wide", initial_sidebar_state="collapsed")
+# --- Config inicial (primero siempre) ---
+st.set_page_config(
+    page_title="Gestión — ENI2025",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
 
 # Oculta la navegación nativa de páginas
 st.markdown("""
@@ -13,108 +18,99 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ========= Helpers de navegación robusta =========
-def _discover_pages(keywords: list[str]) -> list[str]:
+# ===================== Utilidades de navegación =====================
+
+def _norm_name(s: str) -> str:
+    """normaliza: minúsculas, sin tildes, espacios->_"""
+    s = os.path.basename(s)
+    s = s.lower()
+    s = ''.join(c for c in unicodedata.normalize('NFKD', s) if not unicodedata.combining(c))
+    s = s.replace(' ', '_')
+    return s
+
+def resolve_page(preferred_candidates: list[str]) -> str | None:
     """
-    Busca scripts .py que contengan todas las 'keywords' (case-insensitive)
-    primero en ./pages y luego en la raíz. Devuelve rutas relativas ordenadas.
+    Devuelve la ruta real 'pages/xxx.py' si existe.
+    - Hace match exacto sobre nombre normalizado.
+    - Si no encuentra, prueba una búsqueda difusa por palabras clave.
     """
-    found = []
-    kw = [k.lower() for k in keywords]
-    for base in ("pages", "."):
-        if not os.path.isdir(base): 
-            continue
-        for fn in os.listdir(base):
-            if not fn.lower().endswith(".py"):
-                continue
-            name = fn.lower()
-            if all(k in name for k in kw):
-                path = os.path.join(base, fn) if base == "pages" else fn
-                found.append(path)
-    # Ordena priorizando numeración tipo "01_", "02_", etc.
-    def _sort_key(p):
-        m = re.match(r".*?(\d+)", os.path.basename(p))
-        return (int(m.group(1)) if m else 9999, p.lower())
-    return sorted(set(found), key=_sort_key)
+    if not os.path.isdir("pages"):
+        return None
 
-def _safe_switch_page(targets: list[str]) -> bool:
-    """Intenta cambiar de página probando varios targets. True si alguna funcionó."""
-    for t in targets:
-        try:
-            st.switch_page(t)
-            return True
-        except Exception:
-            continue
-    return False
+    # todas las páginas .py en /pages
+    all_pages = [f"pages/{f}" for f in os.listdir("pages") if f.endswith(".py")]
+    norm_map = {_norm_name(p): p for p in all_pages}
 
-def _safe_page_link(targets: list[str], label: str, icon: str = "🧭"):
-    """
-    Dibuja un page_link contra el primer target válido.
-    Si ninguno existe, muestra un rótulo gris (no clickable).
-    """
-    for t in targets:
-        try:
-            st.page_link(t, label=label, icon=icon)
-            return
-        except Exception:
-            continue
-    st.markdown(f"<span style='opacity:.55;'>• {icon} {label}</span>", unsafe_allow_html=True)
+    # intento por candidatos preferidos
+    for cand in preferred_candidates:
+        key = _norm_name(cand)
+        if key in norm_map:
+            return norm_map[key]
 
-# Variantes por si hiciera falta (backups)
-TARGET_TAREAS_FALLBACKS = [
-    "pages/01_gestion_tareas.py", "pages/02_gestion_tareas.py",
-    "pages/01_GESTION_TAREAS.py", "pages/02_GESTION_TAREAS.py",
-    "pages/01_Gestion_Tareas.py", "pages/02_Gestion_Tareas.py",
-    "01_gestion_tareas", "02_gestion_tareas",
-    "01_GESTION_TAREAS", "02_GESTION_TAREAS",
-    "01_Gestion_Tareas", "02_Gestion_Tareas",
-    "Gestión de tareas", "Gestion de tareas",
-]
+    # búsqueda difusa por palabras clave
+    for key, path in norm_map.items():
+        if "gestion" in key and "tarea" in key:
+            return path  # Gestión de tareas
+    for key, path in norm_map.items():
+        if "kanban" in key:
+            return path
 
-TARGET_KANBAN_FALLBACKS = [
-    "pages/02_kanban.py", "pages/03_kanban.py",
-    "pages/02_KANBAN.py", "pages/03_KANBAN.py",
-    "02_kanban", "03_kanban", "02_KANBAN", "03_KANBAN",
-    "Kanban",
-]
+    return None
 
-# Descubrimiento real en el filesystem
-FOUND_TAREAS = _discover_pages(["gestion", "tarea"])
-FOUND_KANBAN = _discover_pages(["kanban"])
+# Candidatos típicos (cubre 01_/02_, mayúsculas, tildes, etc.)
+GESTION_TAREAS_PAGE = resolve_page([
+    "02_gestion_tareas.py", "01_gestion_tareas.py",
+    "02_GESTION_TAREAS.py", "01_GESTION_TAREAS.py",
+    "gestion_de_tareas.py", "Gestión de tareas.py",
+])
+KANBAN_PAGE = resolve_page([
+    "03_kanban.py", "02_kanban.py", "kanban.py", "KANBAN.py",
+])
 
-# --- Filtros de acceso (secrets) ---
-auth_cfg = st.secrets.get("auth", {}) or {}
+# --- Lectura de filtros de acceso (secrets) ---
+auth_cfg = st.secrets.get("auth", {})
 allowed_emails  = auth_cfg.get("allowed_emails", []) or []
 allowed_domains = auth_cfg.get("allowed_domains", []) or []
+
 if not allowed_emails and not allowed_domains:
-    st.caption("⚠️ No hay filtros de acceso en `st.secrets['auth']`. Modo abierto (cualquier cuenta podrá iniciar sesión).")
+    st.caption("⚠️ No hay filtros de acceso en `st.secrets['auth']`. Cualquier cuenta podrá iniciar sesión (modo abierto).")
 
 # --- Login Google ---
 user = google_login(
-    allowed_emails=allowed_emails or None,
-    allowed_domains=allowed_domains or None,
-    redirect_page=None,   # enrutamos abajo
+    allowed_emails=allowed_emails if allowed_emails else None,
+    allowed_domains=allowed_domains if allowed_domains else None,
+    redirect_page=None  # no redirigimos aquí; control total abajo
 )
 if not user:
     st.stop()
 
-# --- Redirección a Gestión de tareas (una sola vez por sesión) ---
+# --- Redirección automática a Gestión de tareas (si existe y 1 sola vez) ---
 if not st.session_state.get("_routed_to_gestion_tareas", False):
-    if _safe_switch_page(FOUND_TAREAS + TARGET_TAREAS_FALLBACKS):
-        st.session_state["_routed_to_gestion_tareas"] = True
+    if GESTION_TAREAS_PAGE:
+        try:
+            st.session_state["_routed_to_gestion_tareas"] = True
+            st.switch_page(GESTION_TAREAS_PAGE)
+        except Exception:
+            # si la API no puede redirigir, mostramos aviso y seguimos
+            st.session_state["_routed_to_gestion_tareas"] = True
+            st.info("No pude redirigirte automáticamente. Usa el menú lateral 👉 **Gestión de tareas**.")
     else:
-        st.info("No pude redirigirte automáticamente. Usa el menú lateral 👉 **Gestión de tareas**.")
+        st.info("No encontré la página de **Gestión de tareas** en la carpeta `pages/`. Verifica el nombre del archivo.")
 
-# --- Sidebar: navegación + usuario ---
+# --- Sidebar: navegación fija + usuario ---
 with st.sidebar:
     st.header("Secciones")
-    try:
-        st.page_link("gestion_app.py", label="Inicio", icon="🏠")
-    except Exception:
-        st.markdown("<span style='opacity:.55;'>• 🏠 Inicio</span>", unsafe_allow_html=True)
+    st.page_link("gestion_app.py", label="Inicio", icon="🏠")
 
-    _safe_page_link(FOUND_TAREAS + TARGET_TAREAS_FALLBACKS, label="Gestión de tareas", icon="🗂️")
-    _safe_page_link(FOUND_KANBAN + TARGET_KANBAN_FALLBACKS, label="Kanban", icon="🧩")
+    if GESTION_TAREAS_PAGE:
+        st.page_link(GESTION_TAREAS_PAGE, label="Gestión de tareas", icon="📁")
+    else:
+        st.markdown("• Gestión de tareas")
+
+    if KANBAN_PAGE:
+        st.page_link(KANBAN_PAGE, label="Kanban", icon="🧩")
+    else:
+        st.markdown("• Kanban")
 
     st.divider()
     st.markdown(f"**{user.get('name','')}**  \n{user.get('email','')}")
@@ -123,5 +119,5 @@ with st.sidebar:
         logout()
         st.rerun()
 
-# --- Cuerpo ---
+# --- Cuerpo (mensaje de aterrizaje) ---
 st.info("Redirigiéndote a **Gestión de tareas**… Si no ocurre automáticamente, usa el menú lateral.")
