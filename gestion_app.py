@@ -2931,6 +2931,9 @@ for c, fx in [("Tarea",3), ("Tipo",1), ("Detalle",2), ("Ciclo de mejora",1), ("C
               ("¿Se corrigió?",1), ("Fecha de corrección",1), ("Hora de corrección",1),
               ("Cumplimiento",1), ("Evaluación",1), ("Calificación",0)]:
     if c in df_grid.columns:
+        # >>> FIX: no reconfigurar "¿Eliminar?" aquí para no sobreescribir la config editable anterior
+        if c == "¿Eliminar?":
+            continue
         gob.configure_column(
             c,
             editable=(False if c in ["Duración","Id","¿Eliminar?"] else edit_if_otros),
@@ -3065,9 +3068,17 @@ if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
         b_i = base.set_index("Id")
         e_i = edited.set_index("Id")
         common = b_i.index.intersection(e_i.index)
+
+        # Mantén comportamiento previo...
         b_i.loc[common, :] = b_i.loc[common, :].combine_first(e_i.loc[common, :])
-        # Copiar valores editados (prioriza edited)
+        # ...y prioriza lo editado
         b_i.update(e_i)
+        # >>> FIX: forzar escritura explícita de "¿Eliminar?" desde el grid (no se pisa)
+        if "¿Eliminar?" in e_i.columns:
+            if "¿Eliminar?" not in b_i.columns:
+                b_i["¿Eliminar?"] = "No"
+            b_i.loc[common, "¿Eliminar?"] = e_i.loc[common, "¿Eliminar?"]
+
         st.session_state["df_main"] = b_i.reset_index()
     except Exception:
         pass
@@ -3165,5 +3176,3 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
