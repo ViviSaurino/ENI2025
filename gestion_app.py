@@ -1,72 +1,81 @@
 # gestion_app.py  (Inicio / router)
-import os, unicodedata
+import os, unicodedata, re
 import streamlit as st
 from auth_google import google_login, logout
 
-# -------- helpers de resolución de páginas ----------
+# ---------------- RESOLUCIÓN DE PÁGINAS (robusto) ----------------
 def _norm(s: str) -> str:
-    s = os.path.basename(s).lower()
-    s = ''.join(c for c in unicodedata.normalize('NFKD', s) if not unicodedata.combining(c))
-    return s.replace(' ', '_')
+    """lower + sin acentos + guiones bajos."""
+    s = os.path.basename(s).strip()
+    s = ''.join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c))
+    return s.lower().replace(" ", "_")
 
 def _pages_dir() -> str | None:
-    for d in ("pages", "Pages", "PAGES"):
-        if os.path.isdir(d):
-            return d
-    # por si existe con otra capitalización
+    # Busca carpeta "pages" con cualquier capitalización
     for d in os.listdir("."):
         if os.path.isdir(d) and d.lower() == "pages":
             return d
     return None
 
-def _resolve_tareas(cands: list[str]) -> str | None:
-    """Devuelve SOLO la página de 'gestión de tareas' o None (nunca kanban)."""
+def _list_pages() -> list[str]:
     pdir = _pages_dir()
     if not pdir:
+        return []
+    return [os.path.join(pdir, f) for f in os.listdir(pdir) if f.endswith(".py")]
+
+def _match_by_names(files: list[str], candidates: list[str]) -> str | None:
+    """Match exacto por nombre conocido (tolerante a mayúsculas/acentos)."""
+    if not files:
         return None
-    norm_map = {_norm(f"{pdir}/{f}"): f"{pdir}/{f}" for f in os.listdir(pdir) if f.endswith(".py")}
-    for c in cands:
-        k = _norm(c if c.startswith(pdir) else f"{pdir}/{c}")
-        if k in norm_map:
-            return norm_map[k]
-    # heurística: archivos que contengan gestion + tarea(s)
-    for k, p in norm_map.items():
-        if "gestion" in k and ("tarea" in k or "tareas" in k):
-            return p
+    files_map = {_norm(f): f for f in files}
+    for cand in candidates:
+        key = _norm(cand if cand.startswith("pages/") else f"pages/{cand}")
+        if key in files_map:
+            return files_map[key]
     return None
 
-def _resolve_kanban(cands: list[str]) -> str | None:
-    """Devuelve la página de kanban (si no encuentra candidatos, usa la primera que contenga 'kanban')."""
-    pdir = _pages_dir()
-    if not pdir:
+def _match_by_keywords(files: list[str], require_all: list[str]) -> str | None:
+    """Match por palabras clave en el nombre del archivo (orden libre)."""
+    if not files:
         return None
-    norm_map = {_norm(f"{pdir}/{f}"): f"{pdir}/{f}" for f in os.listdir(pdir) if f.endswith(".py")}
-    for c in cands:
-        k = _norm(c if c.startswith(pdir) else f"{pdir}/{c}")
-        if k in norm_map:
-            return norm_map[k]
-    for k, p in norm_map.items():
-        if "kanban" in k:
-            return p
+    req = [r.lower() for r in require_all]
+    for f in files:
+        k = _norm(f)
+        if all(r in k for r in req):
+            return f
     return None
 
-GT_PAGE = _resolve_tareas([
-    "01_gestion_tareas.py", "02_gestion_tareas.py",
-    "gestion_tareas.py", "gestion_de_tareas.py",
-    "Gestión de tareas.py", "GESTION_TAREAS.py",
-])
-KB_PAGE = _resolve_kanban([
-    "03_kanban.py", "02_kanban.py", "kanban.py", "KANBAN.py",
-])
+def resolve_tareas() -> str | None:
+    files = _list_pages()
+    # 1) coincidencias directas más comunes
+    exact = _match_by_names(files, [
+        "01_gestion_tareas.py", "02_gestion_tareas.py",
+        "gestion_tareas.py", "gestion_de_tareas.py",
+        "Gestión de tareas.py", "GESTION_TAREAS.py",
+    ])
+    if exact: return exact
+    # 2) heurística por keywords (gestión + tarea)
+    return _match_by_keywords(files, ["gestion", "tarea"])
 
-# --- Config inicial ---
+def resolve_kanban() -> str | None:
+    files = _list_pages()
+    exact = _match_by_names(files, [
+        "03_kanban.py", "02_kanban.py", "kanban.py", "KANBAN.py",
+    ])
+    if exact: return exact
+    return _match_by_keywords(files, ["kanban"])
+
+GT_PAGE = resolve_tareas()   # ← SOLO gestión de tareas (nunca kanban)
+KB_PAGE = resolve_kanban()
+
+# ---------------- CONFIG INICIAL ----------------
 st.set_page_config(
     page_title="Gestión — ENI2025",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-# Oculta navegación nativa del sidebar
+# Ocultar navegación nativa para tener sidebar fijo personalizado
 st.markdown("""
 <style>
 [data-testid="stSidebarNav"]{display:none!important;}
@@ -75,23 +84,22 @@ section[data-testid="stSidebar"] nav{display:none!important;}
 </style>
 """, unsafe_allow_html=True)
 
-# --- Filtros de acceso ---
+# ---------------- LOGIN ----------------
 auth_cfg = st.secrets.get("auth", {})
 allowed_emails  = auth_cfg.get("allowed_emails", []) or []
 allowed_domains = auth_cfg.get("allowed_domains", []) or []
 if not allowed_emails and not allowed_domains:
     st.caption("⚠️ Modo abierto: sin filtros en `st.secrets['auth']`.")
 
-# --- Login Google (sin redirect aquí para evitar bucles) ---
 user = google_login(
     allowed_emails=allowed_emails if allowed_emails else None,
     allowed_domains=allowed_domains if allowed_domains else None,
-    redirect_page=None,
+    redirect_page=None,       # evita bucles
 )
 if not user:
     st.stop()
 
-# --- Redirigir una sola vez a Gestión de tareas (si existe) ---
+# ---------------- REDIRECCIÓN (una sola vez) ----------------
 def _try_switch_to_tasks() -> bool:
     if GT_PAGE:
         try:
@@ -107,7 +115,7 @@ if not st.session_state.get("_routed_to_gestion_tareas", False):
     else:
         st.info("No pude redirigirte automáticamente. Usa el menú lateral 👉 **Gestión de tareas**.")
 
-# --- Sidebar: navegación + usuario ---
+# ---------------- SIDEBAR (3 secciones, cada una a su página) ----------------
 with st.sidebar:
     st.header("Secciones")
     st.page_link("gestion_app.py", label="Inicio", icon="🏠")
@@ -117,13 +125,15 @@ with st.sidebar:
         st.markdown("• Gestión de tareas")
     if KB_PAGE:
         st.page_link(KB_PAGE, label="Kanban", icon="🧩")
+    else:
+        st.markdown("• Kanban")
 
-    st.divider()
+    st.markdown("---")
     st.markdown(f"**{user.get('name','')}**  \n{user.get('email','')}")
     if st.button("Cerrar sesión", use_container_width=True):
         st.session_state.pop("_routed_to_gestion_tareas", None)
         logout()
         st.rerun()
 
-# --- Cuerpo ---
+# ---------------- CUERPO ----------------
 st.info("Redirigiéndote a **Gestión de tareas**… Si no ocurre automáticamente, usa el menú lateral.")
