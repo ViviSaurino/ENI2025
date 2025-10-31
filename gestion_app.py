@@ -2726,9 +2726,9 @@ HIDDEN_COLS = [
     "Estado modificado",
     "Fecha estado modificado","Hora estado modificado",
     "Fecha estado actual","Hora estado actual",
-    "N° de alerta","Tipo de alerta",   # ← ocultas siempre
-    "Fecha","Hora",                    # ← columnas del formulario
-    "Vencimiento",                     # ← ocultamos la antigua columna combinada
+    "N° de alerta","Tipo de alerta",
+    "Fecha","Hora",
+    "Vencimiento",
     "__ts__","__DEL__"
 ]
 
@@ -2787,10 +2787,10 @@ gob.configure_column("Fase",        editable=True,  width=140, pinned="left", su
 gob.configure_column("Responsable", editable=True,  minWidth=180, pinned="left", suppressMovable=True)
 
 # ----- Alias de encabezados -----
-gob.configure_column("Estado",              headerName="Estado actual")
-gob.configure_column("Fecha Vencimiento",   headerName="Fecha límite")
-gob.configure_column("Fecha inicio",        headerName="Fecha de inicio")
-gob.configure_column("Fecha Terminado",     headerName="Fecha Terminado")
+gob.configure_column("Estado",            headerName="Estado actual")
+gob.configure_column("Fecha Vencimiento", headerName="Fecha límite")
+gob.configure_column("Fecha inicio",      headerName="Fecha de inicio")
+gob.configure_column("Fecha Terminado",   headerName="Fecha Terminado")
 
 # ----- Ocultas en GRID -----
 for ocultar in HIDDEN_COLS + ["Fecha Pausado","Hora Pausado","Fecha Cancelado","Hora Cancelado","Fecha Eliminado","Hora Eliminado"]:
@@ -2814,11 +2814,11 @@ function(p){
   if (v==='No iniciado'){bg='#90A4AE'}
   else if(v==='En curso'){bg='#B388FF'}
   else if(v==='Terminado'){bg='#00C4B3'}
-  else if(v==='Cancelado'){bg:'#FF2D95'}
-  else if(v==='Pausado'){bg:'#7E57C2'}
-  else if(v==='Entregado a tiempo'){bg:'#00C4B3'}
-  else if(v==='Entregado con retraso'){bg:'#00ACC1'}
-  else if(v==='No entregado'){bg:'#006064'}
+  else if(v==='Cancelado'){bg='#FF2D95'}
+  else if(v==='Pausado'){bg='#7E57C2'}
+  else if(v==='Entregado a tiempo'){bg='#00C4B3'}
+  else if(v==='Entregado con retraso'){bg='#00ACC1'}
+  else if(v==='No entregado'){bg='#006064'}
   else if(v==='En riesgo de retraso'){bg:'#0277BD'}
   else if(v==='Aprobada'){bg:'#8BC34A'; fg:'#0A2E00'}
   else if(v==='Desaprobada'){bg:'#FF8A80'}
@@ -2941,7 +2941,7 @@ if "Calificación" in df_grid.columns:
 for col in df_grid.columns:
     gob.configure_column(col, headerTooltip=col)
 
-# === Autosize callbacks ===
+# === Autosize + borrar con tecla Supr/Del ===
 autosize_on_ready = JsCode("""
 function(params){
   const all = params.columnApi.getAllDisplayedColumns();
@@ -2954,11 +2954,24 @@ function(params){
     params.columnApi.autoSizeColumns(all, true);
   }
 }""")
+delete_with_key = JsCode("""
+function(params){
+  const e = params.event;
+  if(!e) return;
+  if ((e.key === 'Delete' || e.key === 'Backspace') && !params.editing){
+    const sel = params.api.getSelectedRows();
+    if (sel && sel.length){
+      params.api.applyTransaction({ remove: sel });
+    }
+  }
+}
+""")
 
 grid_opts = gob.build()
 grid_opts["onGridReady"] = autosize_on_ready.js_code
 grid_opts["onFirstDataRendered"] = autosize_on_data.js_code
 grid_opts["onColumnEverythingChanged"] = autosize_on_data.js_code
+grid_opts["onCellKeyDown"] = delete_with_key.js_code  # ← borrar con teclado
 
 # Recordar selección entre reruns
 grid_opts["rowSelection"] = "multiple"
@@ -2983,12 +2996,24 @@ _ids_now = [str((r.get("Id") or r.get("ID") or "")).strip()
 if _ids_now:
     st.session_state["hist_sel_ids"] = _ids_now
 
-# Sincroniza ediciones por Id
-if isinstance(grid, dict) and "data" in grid and grid["data"] is not None and len(grid["data"]) > 0:
+# Sincroniza ediciones y BORRADOS por Id (según data visible del grid)
+if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
     try:
         edited = pd.DataFrame(grid["data"]).copy()
-        base = st.session_state["df_main"].copy().set_index("Id")
-        st.session_state["df_main"] = base.combine_first(edited.set_index("Id")).reset_index()
+        edited["Id"] = edited["Id"].astype(str)
+
+        base = st.session_state["df_main"].copy()
+        base["Id"] = base["Id"].astype(str)
+
+        # 1) BORRADOS: conserva solo los Ids que siguen en el grid
+        keep_ids = set(edited["Id"].tolist())
+        base = base[base["Id"].isin(keep_ids)].copy()
+
+        # 2) EDICIONES: actualiza valores con lo que venga del grid
+        b_i = base.set_index("Id")
+        e_i = edited.set_index("Id")
+        b_i.update(e_i)  # sobrescribe con no-NA de e_i
+        st.session_state["df_main"] = b_i.reset_index()
     except Exception:
         pass
 
@@ -3061,3 +3086,4 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
