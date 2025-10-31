@@ -50,9 +50,16 @@ if not st.session_state.get("_routed_to_gestion_tareas", False):
             "Asegúrate de que exista `pages/02_gestion_tareas.py`."
         )
 
-# --- Sidebar mínimo (sin page_link para evitar duplicados) ---
+# --- Sidebar (agrega navegación fija + caja de usuario) ---
 with st.sidebar:
     st.header("Inicio")
+
+    # 🔗 Navegación fija entre páginas
+    st.page_link("gestion_app.py",               label="Inicio",             icon="🏠")
+    st.page_link("pages/02_gestion_tareas.py",   label="Gestión de tareas",  icon="🗂️")
+    st.page_link("pages/03_kanban.py",           label="Kanban",             icon="🧩")
+
+    st.divider()
     st.markdown(f"**{user.get('name','')}**  \n{user.get('email','')}")
     if st.button("Cerrar sesión", use_container_width=True):
         # Limpia flags locales de ruteo para que la próxima vez vuelva a redirigir
