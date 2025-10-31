@@ -1,123 +1,185 @@
-# gestion_app.py  (Inicio / router)
-import os
-import unicodedata
+# pages/03_kanban.py
+import os, unicodedata
 import streamlit as st
-from auth_google import google_login, logout
+import pandas as pd
+from auth_google import google_login
+from shared import init_data, sidebar_userbox, save_local
 
-# --- Config inicial (primero siempre) ---
 st.set_page_config(
-    page_title="Gestión — ENI2025",
+    page_title="Kanban — ENI2025",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
-# Oculta la navegación nativa de páginas
-st.markdown("""
-<style>
-[data-testid="stSidebarNav"] { display: none !important; }
-</style>
-""", unsafe_allow_html=True)
-
-# ===================== Utilidades de navegación =====================
-
-def _norm_name(s: str) -> str:
-    """normaliza: minúsculas, sin tildes, espacios->_"""
-    s = os.path.basename(s)
-    s = s.lower()
+# ---------- helpers para resolver rutas reales en /pages ----------
+def _norm(s: str) -> str:
+    s = os.path.basename(s).lower()
     s = ''.join(c for c in unicodedata.normalize('NFKD', s) if not unicodedata.combining(c))
-    s = s.replace(' ', '_')
-    return s
+    return s.replace(' ', '_')
 
-def resolve_page(preferred_candidates: list[str]) -> str | None:
-    """
-    Devuelve la ruta real 'pages/xxx.py' si existe.
-    - Hace match exacto sobre nombre normalizado.
-    - Si no encuentra, prueba una búsqueda difusa por palabras clave.
-    """
+def _resolve(cands: list[str]) -> str | None:
     if not os.path.isdir("pages"):
         return None
-
-    # todas las páginas .py en /pages
-    all_pages = [f"pages/{f}" for f in os.listdir("pages") if f.endswith(".py")]
-    norm_map = {_norm_name(p): p for p in all_pages}
-
-    # intento por candidatos preferidos
-    for cand in preferred_candidates:
-        key = _norm_name(cand)
-        if key in norm_map:
-            return norm_map[key]
-
-    # búsqueda difusa por palabras clave
-    for key, path in norm_map.items():
-        if "gestion" in key and "tarea" in key:
-            return path  # Gestión de tareas
-    for key, path in norm_map.items():
-        if "kanban" in key:
-            return path
-
+    norm_map = {_norm(f"pages/{f}"): f"pages/{f}" for f in os.listdir("pages") if f.endswith(".py")}
+    for c in cands:
+        k = _norm(c)
+        if k in norm_map:
+            return norm_map[k]
+    for k, p in norm_map.items():
+        if "gestion" in k and "tarea" in k:
+            return p
+    for k, p in norm_map.items():
+        if "kanban" in k:
+            return p
     return None
 
-# Candidatos típicos (cubre 01_/02_, mayúsculas, tildes, etc.)
-GESTION_TAREAS_PAGE = resolve_page([
+GT_PAGE = _resolve([
     "02_gestion_tareas.py", "01_gestion_tareas.py",
-    "02_GESTION_TAREAS.py", "01_GESTION_TAREAS.py",
     "gestion_de_tareas.py", "Gestión de tareas.py",
+    "02_GESTION_TAREAS.py", "01_GESTION_TAREAS.py",
 ])
-KANBAN_PAGE = resolve_page([
-    "03_kanban.py", "02_kanban.py", "kanban.py", "KANBAN.py",
-])
+KB_PAGE = _resolve(["03_kanban.py", "02_kanban.py", "kanban.py"]) or "pages/03_kanban.py"
 
-# --- Lectura de filtros de acceso (secrets) ---
-auth_cfg = st.secrets.get("auth", {})
-allowed_emails  = auth_cfg.get("allowed_emails", []) or []
-allowed_domains = auth_cfg.get("allowed_domains", []) or []
-
-if not allowed_emails and not allowed_domains:
-    st.caption("⚠️ No hay filtros de acceso en `st.secrets['auth']`. Cualquier cuenta podrá iniciar sesión (modo abierto).")
-
-# --- Login Google ---
+# --- Guardia de login ---
+allowed_emails  = st.secrets.get("auth", {}).get("allowed_emails", [])
+allowed_domains = st.secrets.get("auth", {}).get("allowed_domains", [])
 user = google_login(
     allowed_emails=allowed_emails if allowed_emails else None,
     allowed_domains=allowed_domains if allowed_domains else None,
-    redirect_page=None  # no redirigimos aquí; control total abajo
+    redirect_page=None
 )
 if not user:
     st.stop()
 
-# --- Redirección automática a Gestión de tareas (si existe y 1 sola vez) ---
-if not st.session_state.get("_routed_to_gestion_tareas", False):
-    if GESTION_TAREAS_PAGE:
-        try:
-            st.session_state["_routed_to_gestion_tareas"] = True
-            st.switch_page(GESTION_TAREAS_PAGE)
-        except Exception:
-            # si la API no puede redirigir, mostramos aviso y seguimos
-            st.session_state["_routed_to_gestion_tareas"] = True
-            st.info("No pude redirigirte automáticamente. Usa el menú lateral 👉 **Gestión de tareas**.")
-    else:
-        st.info("No encontré la página de **Gestión de tareas** en la carpeta `pages/`. Verifica el nombre del archivo.")
-
-# --- Sidebar: navegación fija + usuario ---
+# --- Sidebar: una sola NAV coherente (sin ternarios dentro de page_link) ---
 with st.sidebar:
     st.header("Secciones")
     st.page_link("gestion_app.py", label="Inicio", icon="🏠")
-
-    if GESTION_TAREAS_PAGE:
-        st.page_link(GESTION_TAREAS_PAGE, label="Gestión de tareas", icon="📁")
+    if GT_PAGE:
+        st.page_link(GT_PAGE, label="Gestión de tareas", icon="📁")
     else:
         st.markdown("• Gestión de tareas")
-
-    if KANBAN_PAGE:
-        st.page_link(KANBAN_PAGE, label="Kanban", icon="🧩")
-    else:
-        st.markdown("• Kanban")
-
+    st.page_link(KB_PAGE, label="Kanban", icon="🧩")
     st.divider()
-    st.markdown(f"**{user.get('name','')}**  \n{user.get('email','')}")
-    if st.button("Cerrar sesión", use_container_width=True):
-        st.session_state.pop("_routed_to_gestion_tareas", None)
-        logout()
-        st.rerun()
+    sidebar_userbox(user)
 
-# --- Cuerpo (mensaje de aterrizaje) ---
-st.info("Redirigiéndote a **Gestión de tareas**… Si no ocurre automáticamente, usa el menú lateral.")
+# --- Datos compartidos y UI Kanban ---
+init_data()
+st.title("🧩 Kanban")
+
+dfk = st.session_state["df_main"].copy()
+if dfk.empty:
+    st.info("No hay tareas aún.")
+    st.stop()
+
+LANES = ["No iniciado", "En curso", "Terminado", "Pausado", "Cancelado"]
+if "Estado" not in dfk.columns:
+    dfk["Estado"] = "No iniciado"
+
+# Si no existe 'Vencimiento', compónla desde Fecha/Hora Vencimiento
+if "Vencimiento" not in dfk.columns:
+    fv = pd.to_datetime(dfk.get("Fecha Vencimiento"), errors="coerce")
+    hv = dfk.get("Hora Vencimiento", "").astype(str).str.strip()
+
+    def _hhmm_to_time(s: str):
+        try:
+            if not s or s.lower() in {"nan", "nat", "none", "null"}:
+                return "17:00"
+            hh, mm = s.split(":")[:2]
+            return f"{int(hh):02d}:{int(mm):02d}"
+        except Exception:
+            return "17:00"
+
+    hv_norm = hv.apply(_hhmm_to_time)
+    dfk["Vencimiento"] = pd.to_datetime(
+        fv.dt.strftime("%Y-%m-%d") + " " + hv_norm,
+        errors="coerce"
+    )
+
+# Filtros
+c1, c2 = st.columns([1, 1])
+areas = ["Todas"] + sorted([x for x in dfk["Área"].astype(str).unique() if x and x != "nan"])
+area_f = c1.selectbox("Filtrar por área", areas, index=0)
+resps = ["Todos"] + sorted([x for x in dfk["Responsable"].astype(str).unique() if x and x != "nan"])
+resp_f = c2.selectbox("Filtrar por responsable", resps, index=0)
+
+if area_f != "Todas":
+    dfk = dfk[dfk["Área"].astype(str) == area_f]
+if resp_f != "Todos":
+    dfk = dfk[dfk["Responsable"].astype(str) == resp_f]
+
+# Estilos tarjetas
+st.markdown("""
+<style>
+  .kb-card{border:1px solid #E5E7EB;border-radius:14px;padding:10px 12px;margin-bottom:10px;background:#fff}
+  .kb-title{font-weight:700;margin:0 0 4px 0}
+  .kb-sub{font-size:12px;color:#6B7280;margin:0 0 6px 0}
+  .kb-tag{display:inline-block;border-radius:10px;padding:2px 8px;background:#F3F4F6;font-size:12px;margin-right:6px}
+</style>
+""", unsafe_allow_html=True)
+
+def prio_chip(v):
+    v = str(v or "").strip()
+    color = {"Alta":"#FEE2E2", "Media":"#FEF9C3", "Baja":"#DCFCE7"}.get(v, "#E5E7EB")
+    return f"<span class='kb-tag' style='background:{color}'>{v or '—'}</span>"
+
+cols = st.columns(len(LANES), gap="large")
+
+for i, lane in enumerate(LANES):
+    with cols[i]:
+        st.markdown(f"### {lane}")
+        col_df = dfk[dfk["Estado"].astype(str) == lane].copy()
+        if "Vencimiento" in col_df.columns:
+            col_df["Vencimiento"] = pd.to_datetime(col_df["Vencimiento"], errors="coerce")
+            col_df = col_df.sort_values(["Vencimiento", "Id"], na_position="last")
+        else:
+            col_df = col_df.sort_values(["Id"], na_position="last")
+
+        if col_df.empty:
+            st.caption("—")
+            continue
+
+        for _, r in col_df.iterrows():
+            id_ = str(r.get("Id", ""))
+            tit = (str(r.get("Tarea", "")).strip() or "—")
+            res = (str(r.get("Responsable", "")).strip() or "—")
+
+            ven_str = "—"
+            ven = r.get("Vencimiento", None)
+            try:
+                d = pd.to_datetime(ven, errors="coerce")
+                if pd.notna(d):
+                    ven_str = d.strftime("%Y-%m-%d %H:%M")
+            except Exception:
+                pass
+
+            pr = prio_chip(r.get("Prioridad", ""))
+
+            st.markdown(
+                f"<div class='kb-card'>"
+                f"<div class='kb-title'>{id_} · {tit}</div>"
+                f"<div class='kb-sub'>👤 {res}</div>"
+                f"<div class='kb-sub'>⏰ {ven_str}</div>"
+                f"{pr}</div>",
+                unsafe_allow_html=True
+            )
+
+            # Mover de estado
+            with st.form(f"mv_{id_}", clear_on_submit=True):
+                new_state = st.selectbox(
+                    "Mover a", LANES,
+                    index=LANES.index(lane),
+                    label_visibility="collapsed",
+                    key=f"sel_{id_}"
+                )
+                moved = st.form_submit_button("Mover", use_container_width=True)
+
+            if moved and new_state != lane:
+                df = st.session_state["df_main"].copy()
+                m = df["Id"].astype(str) == id_
+                if m.any():
+                    df.loc[m, "Estado"] = new_state
+                    st.session_state["df_main"] = df.copy()
+                    save_local()
+                    st.success(f"Movida {id_} → {new_state}.")
+                    st.rerun()
