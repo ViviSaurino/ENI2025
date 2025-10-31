@@ -2469,13 +2469,13 @@ st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
 st.subheader("📝 Tareas recientes")
 st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
-# --- Estilo visual para eliminadas (tachado + rojo pastel muy suave) ---
+# --- Estilo para filas eliminadas (tachado + rojo pastel suave) ---
 st.markdown("""
 <style>
 .ag-theme-balham .row-deleted .ag-cell {
   text-decoration: line-through;
-  background-color: #FDE7E9 !important;  /* rojo pastel suave */
-  color: #6B7280 !important;             /* gris para texto */
+  background-color: #FEE2E2 !important; /* rojo pastel */
+  color: #7F1D1D !important;            /* rojo oscuro suave */
   opacity: 0.95;
 }
 </style>
@@ -2486,39 +2486,6 @@ from datetime import datetime, time
 
 # Base completa sin filtrar para poblar combos
 df_all = st.session_state["df_main"].copy()
-
-# --- Migración de columna de borrado: 🗑 -> ¿Eliminar? ---
-if "¿Eliminar?" not in df_all.columns:
-    if "🗑" in df_all.columns:
-        df_all = df_all.rename(columns={"🗑": "¿Eliminar?"})
-    else:
-        df_all["¿Eliminar?"] = "No"
-
-# Normalizador robusto Sí/No
-def _norm_si_no(x: str) -> str:
-    s = str(x or "").strip()
-    s = s.replace("Ã­", "í")  # por si acaso
-    sl = s.lower()
-    if sl in {"sí","si","s","yes","y","true","1"}: return "Sí"
-    return "No"
-
-df_all["¿Eliminar?"] = df_all["¿Eliminar?"].map(_norm_si_no)
-
-# --- Propaga la migración/normalización a la sesión ---
-try:
-    _dfm = st.session_state["df_main"].copy()
-    if "🗑" in _dfm.columns and "¿Eliminar?" not in _dfm.columns:
-        _dfm = _dfm.rename(columns={"🗑": "¿Eliminar?"})
-    if "¿Eliminar?" not in _dfm.columns:
-        _dfm["¿Eliminar?"] = "No"
-    _dfm["¿Eliminar?"] = _dfm["¿Eliminar?"].map(_norm_si_no)
-    if "__DEL_CLIENT__" not in _dfm.columns:
-        _dfm["__DEL_CLIENT__"] = False
-    st.session_state["df_main"] = _dfm.copy()
-except Exception:
-    pass
-
-df_view = df_all.copy()
 
 # ===== Proporciones de filtros =====
 A_f, Fw_f, T_width_f, D_f, R_f, C_f = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
@@ -2550,10 +2517,11 @@ with st.form("hist_filtros_v1", clear_on_submit=False):
         st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
         hist_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
-# Mostrar/ocultar eliminadas (soft-delete)
+# Toggle mostrar/ocultar eliminadas
 show_deleted = st.toggle("Mostrar eliminadas (tachadas)", value=True, key="hist_show_deleted")
 
 # ---- Aplicar filtros sobre df_view SOLO si se presiona Buscar ----
+df_view = df_all.copy()
 df_view["Fecha inicio"] = pd.to_datetime(df_view.get("Fecha inicio"), errors="coerce")
 
 if hist_do_buscar:
@@ -2568,10 +2536,11 @@ if hist_do_buscar:
     if f_hasta:
         df_view = df_view[df_view["Fecha inicio"].dt.date <= f_hasta]
 
-if not show_deleted and "¿Eliminar?" in df_view.columns:
-    df_view = df_view[df_view["¿Eliminar?"].map(_norm_si_no) != "Sí"]
+# Ocultar eliminadas si el toggle está OFF (Estado != 'Eliminado')
+if not show_deleted and "Estado" in df_view.columns:
+    df_view = df_view[df_view["Estado"].astype(str).str.strip() != "Eliminado"]
 
-# ===== ORDENAR POR RECIENTES (fallback a Fecha inicio) =====
+# ===== ORDENAR POR RECIENTES =====
 for c in ["Fecha estado modificado", "Fecha estado actual", "Fecha inicio"]:
     if c not in df_view.columns:
         df_view[c] = pd.NaT
@@ -2661,7 +2630,7 @@ if "Estado" in df_view.columns:
     df_view.loc[need_fin_dt, "Fecha Terminado"]      = _mod[need_fin_dt]
     df_view.loc[need_fin_tm, "Hora Terminado"] = _hmod.where(_hmod != "", _mod.dt.strftime("%H:%M"))[need_fin_tm]
 
-# 3.b) VENCIMIENTO — separar FECHA y HORA (default hora 17:00)
+# 3.b) VENCIMIENTO
 if "Fecha Vencimiento" not in df_view.columns: df_view["Fecha Vencimiento"] = pd.NaT
 if "Hora Vencimiento" not in df_view.columns:  df_view["Hora Vencimiento"]  = ""
 
@@ -2678,9 +2647,9 @@ df_view["Fecha Vencimiento"] = df_view["Fecha Vencimiento"].apply(_to_date)
 df_view["Hora Vencimiento"]  = df_view["Hora Vencimiento"].apply(_to_hhmm)
 df_view.loc[df_view["Hora Vencimiento"] == "", "Hora Vencimiento"] = "17:00"
 
-# === ORDEN Y PRESENCIA DE COLUMNAS (agrega '¿Eliminar?' al inicio) ===
+# === ORDEN Y PRESENCIA DE COLUMNAS ===
 target_cols = [
-    "¿Eliminar?","Id","Área","Fase","Responsable",
+    "Id","Área","Fase","Responsable",
     "Tarea","Tipo","Detalle","Ciclo de mejora","Complejidad","Prioridad",
     "Estado",
     "Duración",
@@ -2695,7 +2664,7 @@ target_cols = [
     "Fecha de detección","Hora de detección",
     "¿Se corrigió?","Fecha de corrección","Hora de corrección",
     "Cumplimiento","Evaluación","Calificación",
-    "__SEL__","__DEL_CLIENT__"
+    "__SEL__","__DEL__"
 ]
 
 HIDDEN_COLS = [
@@ -2705,24 +2674,18 @@ HIDDEN_COLS = [
     "N° de alerta","Tipo de alerta",
     "Fecha","Hora",
     "Vencimiento",
-    "__ts__","__DEL__","__SEL__","__DEL_CLIENT__"
+    "__ts__","__DEL__","__SEL__"
 ]
 
 for c in target_cols:
     if c not in df_view.columns:
-        if c == "¿Eliminar?":
-            df_view[c] = "No"
-        elif c in ["__SEL__","__DEL_CLIENT__"]:
+        if c in ["__SEL__","__DEL__"]:
             df_view[c] = False
         else:
             df_view[c] = ""
 
 df_view["Duración"] = df_view["Duración"].astype(str).fillna("")
-df_view["¿Eliminar?"] = df_view["¿Eliminar?"].map(_norm_si_no)
-
-target_cols_u = list(dict.fromkeys(target_cols))
-rest = [c for c in df_view.columns if c not in target_cols_u + HIDDEN_COLS]
-df_grid = df_view.reindex(columns=target_cols_u + rest).copy()
+df_grid = df_view.reindex(columns=list(dict.fromkeys(target_cols)) + [c for c in df_view.columns if c not in target_cols + HIDDEN_COLS]).copy()
 df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()
 df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
 
@@ -2732,10 +2695,10 @@ from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode
 gob = GridOptionsBuilder.from_dataframe(df_grid)
 gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, editable=False)
 
-# Desactivar checkbox en ID; usamos solo el select de ¿Eliminar?
+# Selección sin checkbox
 gob.configure_selection(selection_mode="multiple", use_checkbox=False)
 
-# Regla: solo editable si Tipo == 'Otros' (para el resto de columnas)
+# Regla: solo editable si Tipo == 'Otros' (para el resto)
 edit_if_otros = JsCode("""
 function(p){
   const t = String((p.data && p.data['Tipo']) || '').trim();
@@ -2760,48 +2723,24 @@ gob.configure_grid_options(
     getRowId=JsCode("function(p){ return (p.data && (p.data.Id || p.data['Id'])) + ''; }"),
 )
 
-# ¿Eliminar? con ["No","Sí"] y valueSetter + onCellValueChanged que setean __DEL_CLIENT__
-gob.configure_column(
-    "¿Eliminar?",
-    headerName="¿Eliminar?",
-    editable=True,
-    cellEditor="agSelectCellEditor",
-    cellEditorParams={"values": ["No","Sí"]},
-    width=110, pinned="left",
-    suppressMovable=True, filter=False, checkboxSelection=False,
-    valueSetter=JsCode("""
-      function(p){
-        var v = String(p.newValue||'').trim().toLowerCase();
-        var yes = (v==='sí'||v==='si'||v==='s'||v==='yes'||v==='y'||v==='true'||v==='1');
-        p.data['¿Eliminar?'] = yes ? 'Sí' : 'No';
-        p.data['__DEL_CLIENT__'] = !!yes;
-        return true;
-      }
-    """)
-)
-
-# ID sin checkbox
-gob.configure_column("Id",
-    headerName="ID",
-    editable=False, width=110, pinned="left",
-    suppressMovable=True, checkboxSelection=False
-)
-
-# ----- Alias de encabezados -----
+# ID y columnas fijas a la izquierda
+gob.configure_column("Id", headerName="ID", editable=False, width=110, pinned="left", suppressMovable=True)
 gob.configure_column("Área",        editable=edit_if_otros,  width=160, pinned="left", suppressMovable=True)
 gob.configure_column("Fase",        editable=edit_if_otros,  width=140, pinned="left", suppressMovable=True)
 gob.configure_column("Responsable", editable=edit_if_otros,  minWidth=180, pinned="left", suppressMovable=True)
+
+# Alias
 gob.configure_column("Estado",            headerName="Estado actual")
 gob.configure_column("Fecha Vencimiento", headerName="Fecha límite")
 gob.configure_column("Fecha inicio",      headerName="Fecha de inicio")
 gob.configure_column("Fecha Terminado",   headerName="Fecha Terminado")
 
-# ----- Ocultas -----
+# Ocultas
 for ocultar in HIDDEN_COLS + ["Fecha Pausado","Hora Pausado","Fecha Cancelado","Hora Cancelado","Fecha Eliminado","Hora Eliminado"]:
     if ocultar in df_view.columns:
         gob.configure_column(ocultar, hide=True, suppressMenu=True, filter=False)
 
-# ----- Formatters & estilos -----
+# ----- Formatters -----
 flag_formatter = JsCode("""
 function(p){
   const v=String(p.value||'');
@@ -2893,8 +2832,6 @@ for c, fx in [("Tarea",3), ("Tipo",1), ("Detalle",2), ("Ciclo de mejora",1), ("C
               ("¿Se corrigió?",1), ("Fecha de corrección",1), ("Hora de corrección",1),
               ("Cumplimiento",1), ("Evaluación",1), ("Calificación",0)]:
     if c in df_grid.columns:
-        if c == "¿Eliminar?":  # ya configurada con editor/normalizador
-            continue
         gob.configure_column(
             c,
             editable=(False if c in ["Duración","Id"] else edit_if_otros),
@@ -2917,14 +2854,13 @@ for c, fx in [("Tarea",3), ("Tipo",1), ("Detalle",2), ("Ciclo de mejora",1), ("C
                                   "Fecha de corrección","Hora de corrección"] else None
         )
 
-# ==== Reglas de clase por fila (tachado si ¿Eliminar? = Sí) ====
+# ==== Reglas de clase por fila (tachado/pintado si Estado = Eliminado o __DEL__ True) ====
 row_class_rules = {
     "row-deleted": JsCode("""
         function(params){
-            var v = String((params.data && params.data['¿Eliminar?']) || '').toLowerCase().trim();
-            var flag = (v === 'sí' || v === 'si');
-            if (!flag && params.data && params.data['__DEL_CLIENT__']===true) flag = true;
-            return flag;
+            const est = String((params.data && params.data['Estado']) || '').trim();
+            const del = !!(params.data && params.data['__DEL__']);
+            return (est === 'Eliminado') || del;
         }
     """).js_code
 }
@@ -2958,26 +2894,12 @@ function(params){
 }
 """)
 
-# Captura inmediata del cambio en ¿Eliminar?
-on_cell_changed = JsCode("""
-function(e){
-  if(e.colDef && e.colDef.field === '¿Eliminar?'){
-    var v = String(e.newValue||'').toLowerCase().trim();
-    var yes = (v==='sí'||v==='si'||v==='s'||v==='yes'||v==='y'||v==='true'||v==='1');
-    e.data['¿Eliminar?'] = yes ? 'Sí' : 'No';
-    e.data['__DEL_CLIENT__'] = !!yes;
-    e.api.applyTransaction({update:[e.data]});
-  }
-}
-""")
-
 grid_opts = gob.build()
 grid_opts["rowClassRules"] = row_class_rules
 grid_opts["onGridReady"] = autosize_on_ready.js_code
 grid_opts["onFirstDataRendered"] = autosize_on_data.js_code
 grid_opts["onColumnEverythingChanged"] = autosize_on_data.js_code
 grid_opts["onSelectionChanged"] = sync_selection.js_code
-grid_opts["onCellValueChanged"] = on_cell_changed.js_code
 grid_opts["rowSelection"] = "multiple"
 grid_opts["rowMultiSelectWithClick"] = True
 grid_opts["rememberSelection"] = True
@@ -2992,44 +2914,36 @@ grid = AgGrid(
     allow_unsafe_jscode=True, theme="balham",
 )
 
-# Guarda la última data visible del grid para usarla al grabar
+# Guarda última data del grid
 try:
     if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
         st.session_state["_grid_historial_latest"] = pd.DataFrame(grid["data"]).copy()
 except Exception:
     pass
 
-# --- Sincroniza SOLO EDICIONES (incluye ¿Eliminar? y __DEL_CLIENT__) ---
+# --- Sincroniza ediciones al df_main ---
 if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
     try:
         edited = pd.DataFrame(grid["data"]).copy()
         edited["Id"] = edited["Id"].astype(str)
-        if "¿Eliminar?" in edited.columns:
-            edited["¿Eliminar?"] = edited["¿Eliminar?"].map(_norm_si_no)
-        if "__DEL_CLIENT__" not in edited.columns:
-            edited["__DEL_CLIENT__"] = False
 
         base = st.session_state["df_main"].copy()
         base["Id"] = base["Id"].astype(str)
-        if "__DEL_CLIENT__" not in base.columns:
-            base["__DEL_CLIENT__"] = False
 
         b_i = base.set_index("Id")
         e_i = edited.set_index("Id")
         common = b_i.index.intersection(e_i.index)
-
         b_i.loc[common, :] = b_i.loc[common, :].combine_first(e_i.loc[common, :])
         b_i.update(e_i)
-
         st.session_state["df_main"] = b_i.reset_index()
     except Exception:
         pass
 
-# ---- Botones (Exportar, Grabar local, Subir a Sheets) ----
+# ---- Botones (Exportar, Grabar local, Subir a Sheets) ALINEADOS A LA DERECHA ----
 total_btn_width = (1.2 + 1.2) + (3.2 / 2)
 btn_w = total_btn_width / 3
-b_xlsx, b_save_local, b_save_sheets, _spacer = st.columns(
-    [btn_w, btn_w, btn_w, (3.2 / 2) + 2.4],
+_spacer, b_xlsx, b_save_local, b_save_sheets = st.columns(
+    [(3.2 / 2) + 2.4, btn_w, btn_w, btn_w],  # spacer grande primero -> botones a la derecha
     gap="medium"
 )
 
@@ -3037,12 +2951,11 @@ b_xlsx, b_save_local, b_save_sheets, _spacer = st.columns(
 with b_xlsx:
     try:
         df_xlsx = st.session_state["df_main"].copy()
-        if "🗑" in df_xlsx.columns and "¿Eliminar?" not in df_xlsx.columns:
-            df_xlsx = df_xlsx.rename(columns={"🗑": "¿Eliminar?"})
-        drop_cols = [c for c in ("__DEL__", "DEL", "__SEL__", "__DEL_CLIENT__", "¿Eliminar?") if c in df_xlsx.columns]
+        # Por si existen columnas internas
+        drop_cols = [c for c in ("__DEL__", "DEL", "__SEL__") if c in df_xlsx.columns]
         if drop_cols:
             df_xlsx.drop(columns=drop_cols, inplace=True)
-        cols_order = globals().get("COLS_XLSX", []) or [c for c in target_cols if c not in ["__SEL__","__DEL_CLIENT__","¿Eliminar?"]]
+        cols_order = globals().get("COLS_XLSX", []) or [c for c in target_cols if c not in ["__SEL__","__DEL__"]]
         cols_order = [c for c in cols_order if c in df_xlsx.columns]
         if cols_order:
             df_xlsx = df_xlsx.reindex(columns=cols_order)
@@ -3059,64 +2972,42 @@ with b_xlsx:
     except Exception as e:
         st.error(f"No pude generar Excel: {e}")
 
-# 2) Grabar (tabla local) — SOFT-DELETE (marca __DEL__ y tacha)
+# 2) 💾 Grabar (marca __DEL__ si Estado = 'Eliminado' y estampa fecha/hora si faltan)
 with b_save_local:
     if st.button("💾 Grabar", use_container_width=True):
-        # Preferir la última captura del grid; fallback al df_main
-        if st.session_state.get("_grid_historial_latest") is not None:
-            source = st.session_state["_grid_historial_latest"].copy()
-        else:
-            source = st.session_state["df_main"].copy()
-
-        source["Id"] = source["Id"].astype(str)
-        if "¿Eliminar?" in source.columns:
-            source["¿Eliminar?"] = source["¿Eliminar?"].map(_norm_si_no)
-        if "__DEL_CLIENT__" not in source.columns:
-            source["__DEL_CLIENT__"] = False
-
         base = st.session_state["df_main"].copy()
         base["Id"] = base["Id"].astype(str)
         if "__DEL__" not in base.columns:
             base["__DEL__"] = False
 
-        # Filas marcadas 'Sí' (o flag booleano)
-        mask_del = source["__DEL_CLIENT__"].astype(bool)
-        if "¿Eliminar?" in source.columns:
-            mask_del = mask_del | source["¿Eliminar?"].eq("Sí")
+        if "Estado" in base.columns:
+            mask_elim = base["Estado"].astype(str).str.strip() == "Eliminado"
+            base["__DEL__"] = mask_elim | base["__DEL__"].astype(bool)
 
-        ids_del = set(source.loc[mask_del, "Id"].astype(str).tolist())
-        removed_n = len(ids_del)
-
-        if removed_n:
-            now = pd.Timestamp.now()
-            base.loc[base["Id"].astype(str).isin(ids_del), "__DEL__"] = True
-            if "Fecha Eliminado" in base.columns:
-                base.loc[base["Id"].astype(str).isin(ids_del), "Fecha Eliminado"] = now.normalize()
-            if "Hora Eliminado" in base.columns:
-                base.loc[base["Id"].astype(str).isin(ids_del), "Hora Eliminado"] = now.strftime("%H:%M")
-            # Reflejar también el texto ¿Eliminar?
-            if "¿Eliminar?" in base.columns:
-                base.loc[base["Id"].astype(str).isin(ids_del), "¿Eliminar?"] = "Sí"
+            if mask_elim.any():
+                now = pd.Timestamp.now()
+                if "Fecha Eliminado" in base.columns:
+                    fe = pd.to_datetime(base["Fecha Eliminado"], errors="coerce")
+                    base.loc[mask_elim & fe.isna(), "Fecha Eliminado"] = now.normalize()
+                if "Hora Eliminado" in base.columns:
+                    he = base["Hora Eliminado"].astype(str).str.strip()
+                    base.loc[mask_elim & ((he=="")|(he=="nan")|(he=="NaN")), "Hora Eliminado"] = now.strftime("%H:%M")
 
         st.session_state["df_main"] = base.reset_index(drop=True)
 
         # Graba solo columnas oficiales
         df_save = st.session_state["df_main"][COLS].copy()
         _save_local(df_save.copy())
-
-        if removed_n:
-            st.info(f"Se marcaron {removed_n} fila(s) como eliminadas (tachadas).")
-        else:
-            st.warning("No hay filas con 'Sí' en ¿Eliminar? (o la edición no se confirmó).")
+        n_elim = int((st.session_state["df_main"].get("__DEL__", False)==True).sum()) if "__DEL__" in st.session_state["df_main"].columns else 0
         st.success("Datos grabados en la tabla local (CSV).")
+        if n_elim:
+            st.info(f"Filas con Estado='Eliminado' (tachadas): {n_elim}")
 
 # 3) Subir a Sheets (respeta orden oficial)
 with b_save_sheets:
     if st.button("📤 Subir a Sheets", use_container_width=True):
         df = st.session_state["df_main"].copy()
-        if "🗑" in df.columns and "¿Eliminar?" not in df.columns:
-            df = df.rename(columns={"🗑": "¿Eliminar?"})
-        cols_order = globals().get("COLS_XLSX", []) or [c for c in target_cols if c not in ["__SEL__","__DEL_CLIENT__","¿Eliminar?"]]
+        cols_order = globals().get("COLS_XLSX", []) or [c for c in target_cols if c not in ["__SEL__","__DEL__"]]
         cols_order = [c for c in cols_order if c in df.columns]
         if cols_order:
             df = df.reindex(columns=cols_order)
