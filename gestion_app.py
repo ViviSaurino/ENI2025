@@ -2653,8 +2653,14 @@ df_view.loc[mask_hr_missing, "Hora Registro"]  = _hr_fb[mask_hr_missing]
 
 # 3) INICIO y FIN — HUELLAS que NO se borran (solo se completan si están vacías)
 if "Hora de inicio" not in df_view.columns: df_view["Hora de inicio"] = ""
-if "Fecha terminado" not in df_view.columns: df_view["Fecha terminado"] = pd.NaT
+if "Fecha Terminado" not in df_view.columns: df_view["Fecha Terminado"] = pd.NaT
 if "Hora Terminado" not in df_view.columns: df_view["Hora Terminado"] = ""
+
+# Migración: si existiera la antigua 'Fecha terminado' (minúscula), pasar datos y eliminar
+if "Fecha terminado" in df_view.columns:
+    _tmp_ft = pd.to_datetime(df_view["Fecha terminado"], errors="coerce")
+    df_view["Fecha Terminado"] = df_view["Fecha Terminado"].combine_first(_tmp_ft)
+    df_view.drop(columns=["Fecha terminado"], inplace=True, errors="ignore")
 
 _mod = pd.to_datetime(df_view.get("Fecha estado modificado"), errors="coerce")
 _hmod = df_view["Hora estado modificado"].apply(_to_hhmm) if "Hora estado modificado" in df_view.columns else pd.Series([""]*len(df_view), index=df_view.index)
@@ -2784,7 +2790,7 @@ gob.configure_column("Responsable", editable=True,  minWidth=180, pinned="left",
 gob.configure_column("Estado",              headerName="Estado actual")
 gob.configure_column("Fecha Vencimiento",   headerName="Fecha límite")
 gob.configure_column("Fecha inicio",        headerName="Fecha de inicio")
-gob.configure_column("Fecha Terminado",           headerName="Fecha Terminado")
+gob.configure_column("Fecha Terminado",     headerName="Fecha Terminado")
 
 # ----- Ocultas en GRID -----
 for ocultar in HIDDEN_COLS + ["Fecha Pausado","Hora Pausado","Fecha Cancelado","Hora Cancelado","Fecha Eliminado","Hora Eliminado"]:
@@ -2808,12 +2814,12 @@ function(p){
   if (v==='No iniciado'){bg='#90A4AE'}
   else if(v==='En curso'){bg='#B388FF'}
   else if(v==='Terminado'){bg='#00C4B3'}
-  else if(v==='Cancelado'){bg='#FF2D95'}
-  else if(v==='Pausado'){bg='#7E57C2'}
-  else if(v==='Entregado a tiempo'){bg='#00C4B3'}
-  else if(v==='Entregado con retraso'){bg='#00ACC1'}
-  else if(v==='No entregado'){bg='#006064'}
-  else if(v==='En riesgo de retraso'){bg='#0277BD'}
+  else if(v==='Cancelado'){bg:'#FF2D95'}
+  else if(v==='Pausado'){bg:'#7E57C2'}
+  else if(v==='Entregado a tiempo'){bg:'#00C4B3'}
+  else if(v==='Entregado con retraso'){bg:'#00ACC1'}
+  else if(v==='No entregado'){bg:'#006064'}
+  else if(v==='En riesgo de retraso'){bg:'#0277BD'}
   else if(v==='Aprobada'){bg:'#8BC34A'; fg:'#0A2E00'}
   else if(v==='Desaprobada'){bg:'#FF8A80'}
   else if(v==='Pendiente de revisión'){bg:'#BDBDBD'; fg:'#2B2B2B'}
@@ -2898,11 +2904,11 @@ for c, fx in [("Tarea",3), ("Tipo",1), ("Detalle",2), ("Ciclo de mejora",1), ("C
             ),
             suppressMenu=True if c in ["Fecha Registro","Hora Registro","Fecha inicio","Hora de inicio",
                                        "Fecha Vencimiento","Hora Vencimiento",
-                                       "Fecha terminado","Fecha de detección","Hora de detección",
+                                       "Fecha Terminado","Fecha de detección","Hora de detección",
                                        "Fecha de corrección","Hora de corrección"] else False,
             filter=False if c in ["Fecha Registro","Hora Registro","Fecha inicio","Hora de inicio",
                                   "Fecha Vencimiento","Hora Vencimiento",
-                                  "Fecha terminado","Fecha de detección","Hora de detección",
+                                  "Fecha Terminado","Fecha de detección","Hora de detección",
                                   "Fecha de corrección","Hora de corrección"] else None
         )
 
@@ -2969,10 +2975,13 @@ grid = AgGrid(
     allow_unsafe_jscode=True, theme="balham",
 )
 
-# Guarda selección
+# Guarda selección (persistente y sin pisar con vacío)
+st.session_state.setdefault("hist_sel_ids", [])
 sel_rows_now = grid.get("selected_rows", []) if isinstance(grid, dict) else []
-st.session_state["hist_sel_ids"] = [str((r.get("Id") or r.get("ID") or "")).strip()
-                                    for r in sel_rows_now if str((r.get("Id") or r.get("ID") or "")).strip()]
+_ids_now = [str((r.get("Id") or r.get("ID") or "")).strip()
+            for r in sel_rows_now if str((r.get("Id") or r.get("ID") or "")).strip()]
+if _ids_now:
+    st.session_state["hist_sel_ids"] = _ids_now
 
 # Sincroniza ediciones por Id
 if isinstance(grid, dict) and "data" in grid and grid["data"] is not None and len(grid["data"]) > 0:
