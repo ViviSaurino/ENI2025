@@ -2934,7 +2934,7 @@ with b_xlsx:
         st.download_button("⬇️ Exportar Excel", data=xlsx_b,
                            file_name="tareas.xlsx",
                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                           use_container_width=True)
+                           use_container_width=False)
     except ImportError:
         st.error("No pude generar Excel: falta instalar 'xlsxwriter' u 'openpyxl' en el entorno.")
     except Exception as e:
@@ -2982,3 +2982,4 @@ with b_save_sheets:
 
 # cierre del wrapper de acciones
 st.markdown('</div>', unsafe_allow_html=True)
+
