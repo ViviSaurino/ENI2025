@@ -2478,6 +2478,15 @@ st.markdown("""
   color: #7F1D1D !important;            /* rojo oscuro suave */
   opacity: 0.95;
 }
+
+/* ===== Alineación exacta de los botones inferiores con los filtros =====
+   Igualamos el “acolchado” lateral del bloque inferior al que usa el st.form
+   para que los botones queden dentro de las mismas guías (rayas rojas). */
+:root{ --hist-pad-x: 16px; }  /* si ves 1–2 px de desfase, puedes mover a 14 o 18 */
+.hist-actions{
+  padding-left: var(--hist-pad-x) !important;
+  padding-right: var(--hist-pad-x) !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -2698,7 +2707,7 @@ gob = GridOptionsBuilder.from_dataframe(df_grid)
 # Solo lectura total
 gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, editable=False)
 
-# Sin checkbox de selección (puedes dejarlo si te sirve)
+# Sin checkbox de selección
 gob.configure_selection(selection_mode="multiple", use_checkbox=False)
 
 gob.configure_grid_options(
@@ -2906,6 +2915,9 @@ if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
 
 # ---- Botones alineados EXACTAMENTE bajo "Desde | Hasta | Buscar" ----
 left_spacer = A_f + Fw_f + T_width_f  # ocupa Área + Fase + Responsable
+
+# ⬇️ Wrapper con el mismo padding lateral que el st.form de los filtros
+st.markdown('<div class="hist-actions">', unsafe_allow_html=True)
 _spacer, b_xlsx, b_save_local, b_save_sheets = st.columns([left_spacer, D_f, R_f, C_f], gap="medium")
 
 with b_xlsx:
@@ -2968,3 +2980,5 @@ with b_save_sheets:
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
 
+# cierre del wrapper de acciones
+st.markdown('</div>', unsafe_allow_html=True)
