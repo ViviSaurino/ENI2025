@@ -2017,6 +2017,10 @@ if st.session_state["pri_visible"]:
       #pri-section .stButton > button { width: 100% !important; }
       .section-pri .help-strip-pri + .form-card{ margin-top: 6px !important; }
 
+      /* Evita efectos colaterales: solo dentro de PRIORIDAD */
+      #pri-section .ag-body-horizontal-scroll,
+      #pri-section .ag-center-cols-viewport { overflow-x: auto !important; }
+
       /* Header visible (altura fija) */
       #pri-section .ag-theme-alpine .ag-header,
       #pri-section .ag-theme-streamlit .ag-header{
@@ -2201,12 +2205,13 @@ if st.session_state["pri_visible"]:
         height=220,
         theme="alpine",
         custom_css=custom_css_pri,        # <<--- ajuste que reduce la “negrita”
+        key="grid_prioridad",             # <<--- KEY ÚNICO PARA EVITAR CONFLICTOS
     )
 
     # ===== Guardar (actualiza Prioridad en df_main) =====
     _sp_pri, _btn_pri = st.columns([A+Fw+T_width+D+R, C], gap="medium")
     with _btn_pri:
-        do_save_pri = st.button("🧭 Dar prioridad", use_container_width=True)
+        do_save_pri = st.button("🧭 Dar prioridad", use_container_width=True, key="pri_guardar_v1")
 
     if do_save_pri:
         try:
@@ -2244,6 +2249,7 @@ if st.session_state["pri_visible"]:
 
 
 
+
 # =========================== EVALUACIÓN ===============================
 st.session_state.setdefault("eva_visible", True)
 chev_eva = "▾" if st.session_state["eva_visible"] else "▸"
@@ -2271,12 +2277,16 @@ if st.session_state["eva_visible"]:
       #eva-section .stButton > button { width: 100% !important; }
       .section-eva .help-strip-eval + .form-card{ margin-top: 6px !important; }
 
-      /* Esta regla NO afecta al iframe, se deja como respaldo visual fuera del grid */
+      /* Aseguramos que cualquier overflow horizontal quede visible SOLO aquí */
+      #eva-section .ag-body-horizontal-scroll,
+      #eva-section .ag-center-cols-viewport { overflow-x: auto !important; }
+
+      /* Esta regla NO afecta fuera del contenedor */
       #eva-section .ag-header .ag-header-cell-text{
         font-weight: 600 !important;
       }
 
-      /* Colorear celdas por estado (fuera del iframe; dentro lo hacemos con custom_css_eval) */
+      /* Colorear celdas por estado (solo dentro de #eva-section) */
       #eva-section .eva-ok  { color:#16a34a !important; }
       #eva-section .eva-bad { color:#dc2626 !important; }
       #eva-section .eva-obs { color:#d97706 !important; }
@@ -2465,8 +2475,10 @@ if st.session_state["eva_visible"]:
         reload_data=False,
         theme="alpine",
         height=300,
-        custom_css=custom_css_eval
+        custom_css=custom_css_eval,
+        key="grid_evaluacion",  # <<--- KEY ÚNICO PARA EVITAR CONFLICTOS CON OTRAS TABLAS
     )
+
 
 
 # ================== Historial ==================
@@ -3009,3 +3021,4 @@ with b_save_sheets:
 
 # cierre del wrapper de acciones
 st.markdown('</div>', unsafe_allow_html=True)
+
