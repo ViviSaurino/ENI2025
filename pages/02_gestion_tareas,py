@@ -1,0 +1,6 @@
+# pages/02_gestion_tareas.py
+import streamlit as st
+
+st.set_page_config(page_title="Gestión de tareas", layout="wide")
+st.title("Gestión de tareas")
+st.write("Ping de prueba: la página se registró correctamente.")
