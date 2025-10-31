@@ -2492,25 +2492,28 @@ st.markdown('<div id="hist-section">', unsafe_allow_html=True)
 st.markdown("""
 <style>
 /* Blindaje local: nada fuera de #hist-section debe ocultar/colapsar este grid */
-#hist-section .ag-center-cols-viewport,
-#hist-section .ag-body-horizontal-scroll{
-  overflow-x: auto !important;
-  overflow-y: auto !important;
-  visibility: visible !important;
+#hist-section{ display:block !important; visibility:visible !important; }
+
+/* Previene heights 0 en wrappers de Streamlit que contengan el grid */
+#hist-section [data-testid="stHorizontalBlock"],
+#hist-section [data-testid="column"],
+#hist-section [data-testid="stVerticalBlock"]{
+  display:block !important; visibility:visible !important; min-height:1px !important;
 }
+
+/* Contenedores de Ag-Grid siempre visibles */
 #hist-section .ag-root-wrapper,
 #hist-section .ag-root,
 #hist-section .ag-body-viewport,
-#hist-section .ag-center-cols-container{
-  display: block !important;
-  visibility: visible !important;
+#hist-section .ag-center-cols-viewport,
+#hist-section .ag-center-cols-container,
+#hist-section .ag-body-horizontal-scroll{
+  display:block !important;
+  visibility:visible !important;
+  overflow: auto !important;
 }
-</style>
-""", unsafe_allow_html=True)
 
-# --- Estilo para filas eliminadas (tachado + rojo pastel suave) ---
-st.markdown("""
-<style>
+/* ===== Estilo fila Eliminado ===== */
 .ag-theme-balham .row-deleted .ag-cell {
   text-decoration: line-through;
   background-color: #FEE2E2 !important; /* rojo pastel */
@@ -2518,15 +2521,15 @@ st.markdown("""
   opacity: 0.95;
 }
 
-/* ===== Alineación exacta de los botones inferiores con los filtros ===== */
+/* ===== Alineación exacta botones inferiores con filtros ===== */
 :root{ --hist-pad-x: 16px; --muted-bg:#ECEFF1; --muted-fg:#90A4AE; }
 .hist-actions{
   padding-left: var(--hist-pad-x) !important;
   padding-right: var(--hist-pad-x) !important;
 }
 
-/* Encabezados gris tenue para columnas Pausado/Cancelado/Eliminado */
-.ag-theme-balham .ag-header-cell.muted-col .ag-header-cell-label{
+/* Encabezados gris tenue para Pausado/Cancelado/Eliminado */
+#hist-section .ag-theme-balham .ag-header-cell.muted-col .ag-header-cell-label{
   color: var(--muted-fg) !important;
 }
 </style>
@@ -2747,12 +2750,8 @@ df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
 from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode, JsCode
 
 gob = GridOptionsBuilder.from_dataframe(df_grid)
-# Solo lectura total
 gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, editable=False)
-
-# Sin checkbox de selección
 gob.configure_selection(selection_mode="multiple", use_checkbox=False)
-
 gob.configure_grid_options(
     rowSelection="multiple",
     rowMultiSelectWithClick=True,
@@ -2762,32 +2761,28 @@ gob.configure_grid_options(
     headerHeight=42,
     enableRangeSelection=True,
     enableCellTextSelection=True,
-    singleClickEdit=False,          # 🔒 sin edición
+    singleClickEdit=False,
     stopEditingWhenCellsLoseFocus=True,
-    undoRedoCellEditing=False,      # 🔒
-    enterMovesDown=False,           # 🔒
+    undoRedoCellEditing=False,
+    enterMovesDown=False,
     suppressMovableColumns=False,
     getRowId=JsCode("function(p){ return (p.data && (p.data.Id || p.data['Id'])) + ''; }"),
 )
 
-# ID y columnas fijas a la izquierda (todas no editables)
 gob.configure_column("Id", headerName="ID", editable=False, width=110, pinned="left", suppressMovable=True)
 gob.configure_column("Área",        editable=False, width=160, pinned="left", suppressMovable=True)
 gob.configure_column("Fase",        editable=False, width=140, pinned="left", suppressMovable=True)
 gob.configure_column("Responsable", editable=False, minWidth=180, pinned="left", suppressMovable=True)
 
-# Alias
 gob.configure_column("Estado",            headerName="Estado actual")
 gob.configure_column("Fecha Vencimiento", headerName="Fecha límite")
 gob.configure_column("Fecha inicio",      headerName="Fecha de inicio")
 gob.configure_column("Fecha Terminado",   headerName="Fecha Terminado")
 
-# Ocultas (ya NO ocultamos Pausado/Cancelado/Eliminado)
 for ocultar in HIDDEN_COLS:
     if ocultar in df_view.columns:
         gob.configure_column(ocultar, hide=True, suppressMenu=True, filter=False)
 
-# ----- Formatters (sin cambios, solo añadimos las 3 fechas nuevas) -----
 fmt_dash = JsCode("""
 function(p){
   if(p.value===null||p.value===undefined) return '—';
@@ -2882,7 +2877,7 @@ for c, fx in [("Tarea",3), ("Tipo",1), ("Detalle",2), ("Ciclo de mejora",1), ("C
                                   "Fecha Eliminado","Hora Eliminado"] else None
         )
 
-# —— Estilo gris para las 6 columnas (celdas y encabezado) —
+# —— Estilo gris para las 6 columnas (celdas y encabezado)
 MUTED_CELL_STYLE = {"backgroundColor":"#ECEFF1","color":"#90A4AE"}
 for cc in ["Fecha Pausado","Hora Pausado","Fecha Cancelado","Hora Cancelado","Fecha Eliminado","Hora Eliminado"]:
     if cc in df_grid.columns:
@@ -2955,7 +2950,7 @@ grid = AgGrid(
                  | GridUpdateMode.FILTERING_CHANGED | GridUpdateMode.SORTING_CHANGED
                  | GridUpdateMode.SELECTION_CHANGED),
     allow_unsafe_jscode=True, theme="balham",
-    custom_css=custom_css_hist,  # <<— blindaje
+    custom_css=custom_css_hist,
 )
 
 # Guarda última data del grid (por si la usas en otros procesos)
@@ -2986,7 +2981,6 @@ if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
 # ---- Botones alineados EXACTAMENTE bajo "Desde | Hasta | Buscar" ----
 left_spacer = A_f + Fw_f + T_width_f  # ocupa Área + Fase + Responsable
 
-# ⬇️ Wrapper con el mismo padding lateral que el st.form de los filtros
 st.markdown('<div class="hist-actions">', unsafe_allow_html=True)
 _spacer, b_xlsx, b_save_local, b_save_sheets = st.columns([left_spacer, D_f, R_f, C_f], gap="medium")
 
