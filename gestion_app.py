@@ -2537,9 +2537,24 @@ if "¿Eliminar?" not in df_all.columns:
         df_all = df_all.rename(columns={"🗑": "¿Eliminar?"})
     else:
         df_all["¿Eliminar?"] = "No"
-# Normaliza a "Sí"/"No"
+
+# Normaliza a "Sí"/"No" en la vista
 df_all["¿Eliminar?"] = df_all["¿Eliminar?"].astype(str).str.strip()
 df_all.loc[~df_all["¿Eliminar?"].isin(["Sí","No"]), "¿Eliminar?"] = "No"
+
+# --- Propaga la migración a la sesión para que persista entre reruns ---
+try:
+    _dfm = st.session_state["df_main"]
+    if "🗑" in _dfm.columns and "¿Eliminar?" not in _dfm.columns:
+        _dfm = _dfm.rename(columns={"🗑": "¿Eliminar?"})
+    if "¿Eliminar?" not in _dfm.columns:
+        _dfm["¿Eliminar?"] = "No"
+    # Normaliza en sesión también
+    _dfm["¿Eliminar?"] = _dfm["¿Eliminar?"].astype(str).str.strip()
+    _dfm.loc[~_dfm["¿Eliminar?"].isin(["Sí","No"]), "¿Eliminar?"] = "No"
+    st.session_state["df_main"] = _dfm.copy()
+except Exception:
+    pass
 
 df_view = df_all.copy()
 
@@ -2837,7 +2852,7 @@ chip_style = JsCode("""
 function(p){
   const v = String(p.value || '');
   let bg='#E0E0E0', fg='#FFFFFF';
-  if (v==='No iniciado'){bg='#90A4AE'}
+  if (v==='No iniciado'){bg:'#90A4AE'}
   else if(v==='En curso'){bg:'#B388FF'}
   else if(v==='Terminado'){bg:'#00C4B3'}
   else if(v==='Cancelado'){bg:'#FF2D95'}
@@ -3092,23 +3107,32 @@ with b_xlsx:
     except Exception as e:
         st.error(f"No pude generar Excel: {e}")
 
-# 2) Grabar (tabla local) — elimina filas marcadas con ¿Eliminar? = "Sí" según la data más reciente del GRID
+# 2) Grabar (tabla local) — elimina filas marcadas con ¿Eliminar? = "Sí"
 with b_save_local:
     if st.button("💾 Grabar", use_container_width=True):
-        edited = st.session_state.get("_grid_historial_latest")
+        # Fuente de verdad: grid.data si existe; si no, última captura; si no, df_main
+        if isinstance(grid, dict) and grid.get("data") is not None:
+            edited = pd.DataFrame(grid["data"]).copy()
+        elif st.session_state.get("_grid_historial_latest") is not None:
+            edited = st.session_state["_grid_historial_latest"].copy()
+        else:
+            edited = st.session_state["df_main"].copy()
+
         base = st.session_state["df_main"].copy()
+
+        # Migración y normalización por si acaso
+        if "¿Eliminar?" not in edited.columns and "🗑" in edited.columns:
+            edited = edited.rename(columns={"🗑": "¿Eliminar?"})
+        if "¿Eliminar?" not in base.columns and "🗑" in base.columns:
+            base = base.rename(columns={"🗑": "¿Eliminar?"})
+
+        edited["Id"] = edited["Id"].astype(str)
         base["Id"] = base["Id"].astype(str)
 
         del_ids = []
-        if isinstance(edited, pd.DataFrame) and "Id" in edited.columns:
-            edited = edited.copy()
-            # migración por si el grid aún trae 🗑
-            if "¿Eliminar?" not in edited.columns and "🗑" in edited.columns:
-                edited = edited.rename(columns={"🗑": "¿Eliminar?"})
-            edited["Id"] = edited["Id"].astype(str)
-            if "¿Eliminar?" in edited.columns:
-                m = edited["¿Eliminar?"].astype(str).str.strip().str.lower().isin(["sí","si"])
-                del_ids = edited.loc[m, "Id"].dropna().unique().tolist()
+        if "¿Eliminar?" in edited.columns and "Id" in edited.columns:
+            m = edited["¿Eliminar?"].astype(str).str.strip().str.lower().isin(["sí","si"])
+            del_ids = edited.loc[m, "Id"].dropna().astype(str).unique().tolist()
 
         removed = 0
         if del_ids:
@@ -3141,3 +3165,5 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
+
