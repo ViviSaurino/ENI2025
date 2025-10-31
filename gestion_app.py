@@ -1,15 +1,16 @@
-# gestion_app.py  (Inicio / router)
+# gestion_app.py — Router minimal: login -> switch a Gestión de tareas
 import os, unicodedata
 import streamlit as st
-from auth_google import google_login, logout
+from auth_google import google_login
 
-# ------------------ helpers: resolver páginas ------------------
+# --------- helpers para ubicar la página de Gestión de tareas ----------
 def _norm(s: str) -> str:
     s = os.path.basename(s).lower()
     s = ''.join(c for c in unicodedata.normalize('NFKD', s) if not unicodedata.combining(c))
     return s.replace(' ', '_')
 
 def _pages_dir() -> str | None:
+    # respeta mayúsculas/minúsculas en Linux
     for d in ("pages", "Pages", "PAGES"):
         if os.path.isdir(d):
             return d
@@ -18,48 +19,41 @@ def _pages_dir() -> str | None:
             return d
     return None
 
-def _resolve(cands: list[str]) -> str | None:
+def _resolve_gt() -> str | None:
     pdir = _pages_dir()
     if not pdir:
         return None
     files = [f for f in os.listdir(pdir) if f.endswith(".py")]
     norm_map = {_norm(f"{pdir}/{f}"): f"{pdir}/{f}" for f in files}
-    # candidatos exactos
-    for c in cands:
-        k = _norm(c if c.startswith((pdir + "/", pdir + "\\")) else f"{pdir}/{c}")
+    candidates = [
+        "02_gestion_tareas.py","01_gestion_tareas.py",
+        "gestion_tareas.py","gestion_de_tareas.py",
+        "02_GESTION_TAREAS.py","01_GESTION_TAREAS.py",
+    ]
+    for c in candidates:
+        k = _norm(c if c.startswith(pdir + "/") else f"{pdir}/{c}")
         if k in norm_map:
             return norm_map[k]
-    # heurísticas
+    # heurística: cualquier archivo que tenga "gestion" y "tarea"
     for k, p in norm_map.items():
         if "gestion" in k and ("tarea" in k or "tareas" in k):
             return p
-    for k, p in norm_map.items():
-        if "kanban" in k:
-            return p
     return None
 
-GT_PAGE = _resolve([
-    "02_gestion_tareas.py","01_gestion_tareas.py",
-    "gestion_tareas.py","gestion_de_tareas.py",
-    "02_GESTION_TAREAS.py","01_GESTION_TAREAS.py",
-])
-KB_PAGE = _resolve(["03_kanban.py","02_kanban.py","kanban.py"])
+GT_PAGE = _resolve_gt()
 
-# ------------------ config UI ------------------
-st.set_page_config(
-    page_title="Gestión — ENI2025",
-    layout="wide",
-    initial_sidebar_state="collapsed",
-)
+# --------- config visual básica (sin secciones ni sidebar) ----------
+st.set_page_config(page_title="ENI2025 — Ingreso", layout="wide", initial_sidebar_state="collapsed")
 st.markdown("""
 <style>
+/* oculta navegación nativa para que no aparezca “Páginas” */
 [data-testid="stSidebarNav"]{display:none!important;}
 section[data-testid="stSidebar"] nav{display:none!important;}
 [data-testid="stSidebar"] [data-testid="stSidebarHeader"]{display:none!important;}
 </style>
 """, unsafe_allow_html=True)
 
-# ------------------ login ------------------
+# --------- login (sin “Inicio”, solo botón Google) ----------
 auth_cfg = st.secrets.get("auth", {})
 allowed_emails  = auth_cfg.get("allowed_emails", []) or None
 allowed_domains = auth_cfg.get("allowed_domains", []) or None
@@ -67,38 +61,21 @@ allowed_domains = auth_cfg.get("allowed_domains", []) or None
 user = google_login(
     allowed_emails=allowed_emails,
     allowed_domains=allowed_domains,
-    redirect_page=None  # nos quedamos en Inicio y luego redirigimos una sola vez
+    redirect_page=None  # nos quedamos aquí para hacer el salto manual
 )
 if not user:
-    st.stop()
+    st.stop()  # se está mostrando la UI de login; no renders extra
 
-# ------------------ redirección única a Gestión de tareas ------------------
-if GT_PAGE and not st.session_state.get("_routed_to_gestion_tareas", False):
-    st.session_state["_routed_to_gestion_tareas"] = True
+# --------- salto automático a Gestión de tareas (una sola vez) ----------
+if GT_PAGE and not st.session_state.get("_jumped_to_gt", False):
+    st.session_state["_jumped_to_gt"] = True
     try:
         st.switch_page(GT_PAGE)
     except Exception:
-        pass  # si falla, queda el aviso abajo
+        pass  # si algo falla, mostramos fallback abajo
 
-# ------------------ sidebar ------------------
-with st.sidebar:
-    st.header("Secciones")
-    st.page_link("gestion_app.py", label="Inicio", icon="🏠")
-    if GT_PAGE:
-        st.page_link(GT_PAGE, label="Gestión de tareas", icon="📁")
-    else:
-        st.markdown("• Gestión de tareas")
-    if KB_PAGE:
-        st.page_link(KB_PAGE, label="Kanban", icon="🧩")
-    st.divider()
-    st.markdown(f"**{user.get('name','')}**  \n{user.get('email','')}")
-    if st.button("Cerrar sesión", use_container_width=True):
-        st.session_state.pop("_routed_to_gestion_tareas", None)
-        logout()
-        st.rerun()
-
-# ------------------ cuerpo (solo mensaje de aterrizaje) ------------------
-if GT_PAGE:
-    st.info("Redirigiéndote a **Gestión de tareas**… Si no ocurre automáticamente, usa el menú lateral.")
+# Fallback ultra mínimo si no pudo saltar:
+if not GT_PAGE:
+    st.error("No encontré la página **Gestión de tareas** en la carpeta `pages`. Revisa el nombre del archivo.")
 else:
-    st.info("No encontré la página **Gestión de tareas** en la carpeta *pages*. Verifica el nombre del archivo.")
+    st.info("Ingresaste correctamente. Abre **Gestión de tareas** desde el menú si no fuiste redirigida automáticamente.")
