@@ -1305,7 +1305,12 @@ if st.session_state.get("nt_visible", True):
                 "Hora": reg_hora_txt,               # respaldo simple (fallback)
                 "Fecha Registro": reg_fecha,        # registro explícito
                 "Hora Registro": reg_hora_txt,      # registro explícito
-                # NO asignamos 'Fecha inicio' aquí (solo cuando pase a "En curso")
+                # Campos de inicio/fin (se llenan más adelante)
+                "Fecha inicio": None,
+                "Hora de inicio": "",
+                "Fecha Terminado": None,            # ← agregado para compatibilidad
+                "Hora Terminado": "",               # ← agregado para compatibilidad
+                # Otros
                 "Ciclo de mejora": ciclo_mejora,
                 "Detalle": st.session_state.get("nt_detalle", ""),
             })
@@ -1324,6 +1329,7 @@ if st.session_state.get("nt_visible", True):
 
 # Separación vertical
 st.markdown(f"<div style='height:{SECTION_GAP}px;'></div>", unsafe_allow_html=True)
+
 
 
 
@@ -3068,3 +3074,4 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
