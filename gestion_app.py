@@ -1443,7 +1443,7 @@ if st.session_state["est_visible"]:
             "Id","Tarea","Estado",
             "Fecha Registro","Hora Registro","Fecha","Hora",
             "Fecha inicio","Hora de inicio",
-            "Fecha fin","Hora Terminado",
+            "Fecha terminada","Hora Terminado",
             "Fecha Pausado","Hora Pausado",
             "Fecha Cancelado","Hora Cancelado",
             "Fecha Eliminado","Hora Eliminado",
@@ -1476,7 +1476,7 @@ if st.session_state["est_visible"]:
         hr_enc   = _time_norm("Hora de inicio")
 
         # Terminado
-        fr_fin   = _date_norm("Fecha fin")
+        fr_fin   = _date_norm("Fecha Terminado")
         hr_fin   = _time_norm("Hora Terminado")
 
         # Pausado / Cancelado / Eliminado
@@ -2673,7 +2673,7 @@ df_view.loc[mask_hr_missing, "Hora Registro"]  = _hr_fb[mask_hr_missing]
 
 # 3) INICIO y FIN — HUELLAS que NO se borran (solo se completan si están vacías)
 if "Hora de inicio" not in df_view.columns: df_view["Hora de inicio"] = ""
-if "Fecha fin" not in df_view.columns: df_view["Fecha fin"] = pd.NaT
+if "Fecha terminado" not in df_view.columns: df_view["Fecha terminado"] = pd.NaT
 if "Hora Terminado" not in df_view.columns: df_view["Hora Terminado"] = ""
 
 _mod = pd.to_datetime(df_view.get("Fecha estado modificado"), errors="coerce")
@@ -2691,9 +2691,9 @@ if "Estado" in df_view.columns:
     df_view.loc[need_ini_tm, "Hora de inicio"] = _h_ini[need_ini_tm]
 
     # Terminado → fin (solo si faltan)
-    need_fin_dt = _terminado & df_view["Fecha fin"].isna()
+    need_fin_dt = _terminado & df_view["Fecha Terminado"].isna()
     need_fin_tm = _terminado & (df_view["Hora Terminado"].astype(str).str.strip() == "")
-    df_view.loc[need_fin_dt, "Fecha fin"]      = _mod[need_fin_dt]
+    df_view.loc[need_fin_dt, "Fecha Terminado"]      = _mod[need_fin_dt]
     df_view.loc[need_fin_tm, "Hora Terminado"] = _hmod.where(_hmod != "", _mod.dt.strftime("%H:%M"))[need_fin_tm]
 
 # 3.b) VENCIMIENTO — separar FECHA y HORA (default hora 17:00)
@@ -2727,7 +2727,7 @@ target_cols = [
     "Fecha Cancelado","Hora Cancelado",
     "Fecha Eliminado","Hora Eliminado",
     "Fecha Vencimiento","Hora Vencimiento",
-    "Fecha fin","Hora Terminado",
+    "Fecha Terminado","Hora Terminado",
     "¿Generó alerta?",
     # “N° de alerta” y “Tipo de alerta” se mantienen fuera del grid
     "Fecha de detección","Hora de detección",
@@ -2804,8 +2804,7 @@ gob.configure_column("Responsable", editable=True,  minWidth=180, pinned="left",
 gob.configure_column("Estado",              headerName="Estado actual")
 gob.configure_column("Fecha Vencimiento",   headerName="Fecha límite")
 gob.configure_column("Fecha inicio",        headerName="Fecha de inicio")
-gob.configure_column("Fecha fin",           headerName="Fecha fin")
-
+gob.configure_column("Fecha Terminado",           headerName="Fecha Terminado")
 
 # ----- Ocultas en GRID -----
 for ocultar in HIDDEN_COLS + ["Fecha Pausado","Hora Pausado","Fecha Cancelado","Hora Cancelado","Fecha Eliminado","Hora Eliminado"]:
@@ -2890,7 +2889,7 @@ colw = {
     "Estado":130, "Duración":110, "Fecha Registro":160, "Hora Registro":140,
     "Fecha inicio":160, "Hora de inicio":140,
     "Fecha Vencimiento":160, "Hora Vencimiento":140,
-    "Fecha fin":160, "Hora Terminado":140,
+    "Fecha Terminado":160, "Hora Terminado":140,
     "¿Generó alerta?":150, "Fecha de detección":160, "Hora de detección":140,
     "¿Se corrigió?":140, "Fecha de corrección":160, "Hora de corrección":140,
     "Cumplimiento":180, "Evaluación":170, "Calificación":120
@@ -2900,7 +2899,7 @@ for c, fx in [("Tarea",3), ("Tipo",1), ("Detalle",2), ("Ciclo de mejora",1), ("C
               ("Duración",1), ("Fecha Registro",1), ("Hora Registro",1),
               ("Fecha inicio",1), ("Hora de inicio",1),
               ("Fecha Vencimiento",1), ("Hora Vencimiento",1),
-              ("Fecha fin",1), ("Hora Terminado",1),
+              ("Fecha Terminado",1), ("Hora Terminado",1),
               ("¿Generó alerta?",1), ("Fecha de detección",1), ("Hora de detección",1),
               ("¿Se corrigió?",1), ("Fecha de corrección",1), ("Hora de corrección",1),
               ("Cumplimiento",1), ("Evaluación",1), ("Calificación",0)]:
@@ -2914,16 +2913,16 @@ for c, fx in [("Tarea",3), ("Tipo",1), ("Detalle",2), ("Ciclo de mejora",1), ("C
                 date_only_fmt if c in ["Fecha Registro","Fecha inicio","Fecha Vencimiento"] else
                 time_only_fmt if c in ["Hora Registro","Hora de inicio","Hora Pausado","Hora Cancelado","Hora Eliminado",
                                        "Hora Terminado","Hora de detección","Hora de corrección","Hora Vencimiento"] else
-                date_time_fmt if c in ["Fecha fin","Fecha de detección","Fecha de corrección"] else
+                date_time_fmt if c in ["Fecha Terminado","Fecha de detección","Fecha de corrección"] else
                 (None if c in ["Calificación","Prioridad"] else fmt_dash)
             ),
             suppressMenu=True if c in ["Fecha Registro","Hora Registro","Fecha inicio","Hora de inicio",
                                        "Fecha Vencimiento","Hora Vencimiento",
-                                       "Fecha fin","Fecha de detección","Hora de detección",
+                                       "Fecha terminado","Fecha de detección","Hora de detección",
                                        "Fecha de corrección","Hora de corrección"] else False,
             filter=False if c in ["Fecha Registro","Hora Registro","Fecha inicio","Hora de inicio",
                                   "Fecha Vencimiento","Hora Vencimiento",
-                                  "Fecha fin","Fecha de detección","Hora de detección",
+                                  "Fecha terminado","Fecha de detección","Hora de detección",
                                   "Fecha de corrección","Hora de corrección"] else None
         )
 
@@ -3069,5 +3068,3 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
