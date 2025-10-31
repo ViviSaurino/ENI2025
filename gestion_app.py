@@ -392,6 +392,28 @@ if "export_excel" not in globals():
         return buf
 
 
+# =========================
+# 🚧 GATE DE AUTENTICACIÓN
+# (sin UI, antes de cualquier render)
+# =========================
+def _is_authed() -> bool:
+    ss = st.session_state
+    return bool(
+        ss.get("user_email")
+        or ss.get("auth_ok")
+        or (ss.get("auth_user") or {}).get("email")
+        or (ss.get("google_user") or {}).get("email")
+        or (ss.get("g_user") or {}).get("email")
+        or ss.get("email")
+    )
+
+if not _is_authed():
+    # Bandera informativa por si la página la necesita
+    st.session_state["__waiting_login__"] = True
+    st.stop()
+
+
+
 # ====== ⬇️⬇️ NUEVO: CSS de espaciado entre título, píldoras y secciones ⬇️⬇️ ======
 st.markdown("""
 <style>
@@ -3013,3 +3035,4 @@ with b_save_sheets:
 
 # cierre del wrapper de acciones
 st.markdown('</div>', unsafe_allow_html=True)
+
