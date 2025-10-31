@@ -1332,7 +1332,6 @@ st.markdown(f"<div style='height:{SECTION_GAP}px;'></div>", unsafe_allow_html=Tr
 
 
 
-
 # ================== EDITAR ESTADO (mismo layout que "Nueva alerta") ==================
 st.session_state.setdefault("est_visible", True)
 chev_est = "▾" if st.session_state["est_visible"] else "▸"
@@ -1449,7 +1448,7 @@ if st.session_state["est_visible"]:
             "Id","Tarea","Estado",
             "Fecha Registro","Hora Registro","Fecha","Hora",
             "Fecha inicio","Hora de inicio",
-            "Fecha terminada","Hora Terminado",
+            "Fecha Terminado","Hora Terminado",          # <-- asegurar nombre correcto
             "Fecha Pausado","Hora Pausado",
             "Fecha Cancelado","Hora Cancelado",
             "Fecha Eliminado","Hora Eliminado",
@@ -1501,13 +1500,14 @@ if st.session_state["est_visible"]:
         m2 = (estado_now == "Terminado")
         m3 = (estado_now == "Pausado")
         m4 = (estado_now == "Cancelado")
+        m5 = (estado_now == "Eliminado")   # <-- FALTABA ESTA MÁSCARA
 
         fecha_from_estado[m0] = fr_noini[m0]; hora_from_estado[m0] = hr_noini[m0]
-        fecha_from_estado[m1] = fr_enc[m1];   hora_from_estado[m1]  = hr_enc[m1]
-        fecha_from_estado[m2] = fr_fin[m2];   hora_from_estado[m2]  = hr_fin[m2]
-        fecha_from_estado[m3] = fr_pau[m3];   hora_from_estado[m3]  = hr_pau[m3]
-        fecha_from_estado[m4] = fr_can[m4];   hora_from_estado[m4]  = hr_can[m4]
-        fecha_from_estado[m5] = fr_eli[m5];   hora_from_estado[m5]  = hr_eli[m5]
+        fecha_from_estado[m1] = fr_enc[m1];   hora_from_estado[m1] = hr_enc[m1]
+        fecha_from_estado[m2] = fr_fin[m2];   hora_from_estado[m2] = hr_fin[m2]
+        fecha_from_estado[m3] = fr_pau[m3];   hora_from_estado[m3] = hr_pau[m3]
+        fecha_from_estado[m4] = fr_can[m4];   hora_from_estado[m4] = hr_can[m4]
+        fecha_from_estado[m5] = fr_eli[m5];   hora_from_estado[m5] = hr_eli[m5]
 
         # Respetar valores existentes en "Fecha/Hora estado actual" si no están vacíos
         fecha_estado_exist = pd.to_datetime(base["Fecha estado actual"], errors="coerce").dt.normalize()
@@ -1567,6 +1567,7 @@ if st.session_state["est_visible"]:
         "Terminado":  {bg:"#E8F5E9", fg:"#1B5E20"},
         "Pausado":    {bg:"#FFF8E1", fg:"#E65100"},
         "Cancelado":  {bg:"#FFEBEE", fg:"#B71C1C"},
+        "Eliminado":  {bg:"#ECEFF1", fg:"#263238"}
       };
       const m = S[v]; if(!m) return {};
       return {backgroundColor:m.bg, color:m.fg, fontWeight:'600', textAlign:'center', borderRadius:'12px'};
@@ -1660,6 +1661,7 @@ if st.session_state["est_visible"]:
     # Cerrar form-card + section + contenedor
     st.markdown('</div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
+
 
 
 
@@ -3124,3 +3126,4 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
