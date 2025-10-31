@@ -9,8 +9,18 @@ import streamlit as st
 
 # ❌ set_page_config NO aquí (lo pone la página wrapper)
 
-# Puedes seguir importando utilidades (logout, etc.) si luego las usas
-from auth_google import google_login, logout
+# ---- Auth utils (con fallback seguro si el módulo no está disponible) ----
+try:
+    from auth_google import google_login, logout
+except Exception:
+    def google_login():
+        st.warning("⚠️ No se encontró 'auth_google'. Continuando sin login real (modo desarrollo).")
+        st.session_state["auth_ok"] = True
+        st.session_state["user_email"] = st.session_state.get("user_email", "dev@example.com")
+        return {}
+    def logout():
+        for k in ("auth_ok","user_email","auth_user","google_user","g_user","email"):
+            st.session_state.pop(k, None)
 
 # Parche compatibilidad Streamlit 1.50 + st-aggrid
 import streamlit.components.v1 as _stc
@@ -20,7 +30,6 @@ if not hasattr(_stc, "components"):
 
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, JsCode, DataReturnMode
 
-
 # ---------- 🧭 Sidebar: navegación fija ----------
 with st.sidebar:
     st.header("Secciones")
@@ -29,20 +38,36 @@ with st.sidebar:
     st.page_link("pages/03_kanban.py",         label="Kanban",             icon="🧩")
 # ------------------------------------------------------------------------
 
-
-
 # ================== Constantes de layout / UI ==================
 SECTION_GAP = 30  # píxeles de separación vertical entre secciones
 
 # ================== Utilidades de fecha/hora ==================
 from datetime import datetime, date, time
-import pytz
 
-LIMA_TZ = pytz.timezone("America/Lima")
+# TZ robusta: usa pytz si está, si no zoneinfo
+try:
+    import pytz
+    LIMA_TZ = pytz.timezone("America/Lima")
+except Exception:
+    try:
+        from zoneinfo import ZoneInfo
+        LIMA_TZ = ZoneInfo("America/Lima")
+    except Exception:
+        LIMA_TZ = None  # fallback sin TZ
 
 def now_lima_trimmed():
     """Hora actual en Lima sin segundos/microsegundos."""
-    return datetime.now(LIMA_TZ).replace(second=0, microsecond=0)
+    now = datetime.now()
+    if LIMA_TZ:
+        try:
+            # Si es pytz, localize; si es ZoneInfo, replace tzinfo
+            if hasattr(LIMA_TZ, "localize"):
+                now = LIMA_TZ.localize(now)
+            else:
+                now = now.replace(tzinfo=LIMA_TZ)
+        except Exception:
+            pass
+    return now.replace(second=0, microsecond=0)
 
 def combine_dt(d, t):
     """
@@ -88,12 +113,10 @@ def combine_dt(d, t):
     except Exception:
         return pd.NaT
 
-
 # ===== Hora auto al elegir fecha (usa zona Lima) =====
 def _auto_time_on_date():
     if st.session_state.get("fi_d"):
         st.session_state["fi_t"] = now_lima_trimmed().time()
-
 
 # ================== Utilidad: fila en blanco ==================
 def blank_row():
@@ -104,41 +127,33 @@ def blank_row():
     - En último caso, usa un conjunto mínimo seguro de columnas.
     """
     try:
-        # Prioriza el esquema objetivo si está definido
         if "COLS" in globals() and COLS:
             cols = list(COLS)
-        # Si ya hay una base cargada, respeta esas columnas
-        elif "df_main" in st.session_state and not st.session_state["df_main"].empty:
+        elif "df_main" in st.session_state and isinstance(st.session_state["df_main"], pd.DataFrame) and not st.session_state["df_main"].empty:
             cols = list(st.session_state["df_main"].columns)
         else:
-            # Fallback mínimo seguro
             cols = [
                 "Área", "Id", "Tarea", "Tipo", "Responsable", "Fase", "Estado",
                 "Fecha inicio", "Ciclo de mejora", "Detalle"
             ]
 
         row = {c: None for c in cols}
-
-        # Defaults útiles
         if "__DEL__" in row:
             row["__DEL__"] = False
-
         return row
 
     except Exception:
-        # Último recurso si algo falla al determinar columnas
         return {
             "Área": None, "Id": None, "Tarea": None, "Tipo": None, "Responsable": None,
             "Fase": None, "Estado": None, "Fecha inicio": None, "Ciclo de mejora": None,
             "Detalle": None
         }
 
-
-# ======= Utilidades de tablas (Prioridad / Evaluación) ======= 
+# ======= Utilidades de tablas (Prioridad / Evaluación) =======
 # (estos imports duplicados no hacen daño; los mantengo tal cual)
 import streamlit as st
 from st_aggrid import GridOptionsBuilder
-from auth_google import google_login, logout
+# from auth_google import google_login, logout  # ya gestionado arriba
 
 # ===== Ajuste 1: Constantes y fallbacks (deben estar antes del formulario) =====
 AREAS_OPC = st.session_state.get(
@@ -182,15 +197,15 @@ COLUMN_WIDTHS = {
     "Desde":       COL_W_DESDE     + ALIGN_FIXES.get("Desde", 0),
 }
 
-# ===== IDs por Área (PL, BD, CO, ME) =====
+# ===== IDs por Área (normalizado a minúsculas) =====
 AREA_PREFIX = {
-    "Jefatura":  "JF",
-    "Gestión":  "GE",
-    "Metodología":  "MT",
-    "Base de datos":  "BD",
-    "Monitoreo":  "MO",
-    "Capacitación":  "CA",
-    "Consistencia":  "CO",
+    "jefatura":      "JF",
+    "gestión":       "GE",
+    "metodología":   "MT",
+    "base de datos": "BD",
+    "monitoreo":     "MO",
+    "capacitación":  "CA",
+    "consistencia":  "CO",
 }
 
 def next_id_area(df, area: str) -> str:
@@ -275,7 +290,6 @@ def export_excel(df, filename: str = "ENI2025_tareas.xlsx", sheet_name: str = "T
     from io import BytesIO
     import pandas as pd
 
-    # Alias de compatibilidad por si alguien pasa sheet=
     if "sheet" in kwargs and not sheet_name:
         sheet_name = kwargs.pop("sheet")
     else:
@@ -283,7 +297,6 @@ def export_excel(df, filename: str = "ENI2025_tareas.xlsx", sheet_name: str = "T
 
     buf = BytesIO()
 
-    # Elegir motor disponible: xlsxwriter -> openpyxl
     engine = None
     try:
         import xlsxwriter  # noqa: F401
@@ -293,16 +306,13 @@ def export_excel(df, filename: str = "ENI2025_tareas.xlsx", sheet_name: str = "T
             import openpyxl  # noqa: F401
             engine = "openpyxl"
         except Exception:
-            raise ImportError(
-                "No hay motor para Excel. Instala 'xlsxwriter' o 'openpyxl' en tu entorno."
-            )
+            raise ImportError("No hay motor para Excel. Instala 'xlsxwriter' o 'openpyxl'.")
 
     with pd.ExcelWriter(buf, engine=engine) as xw:
         sheet = sheet_name or "Tareas"
         (df if isinstance(df, pd.DataFrame) else pd.DataFrame(df)).to_excel(
             xw, sheet_name=sheet, index=False
         )
-        # Auto-anchos (solo si el motor lo permite)
         try:
             if engine == "xlsxwriter":
                 ws = xw.sheets[sheet]
@@ -352,11 +362,9 @@ if "_read_sheet_tab" not in globals():
             df = _pd.read_csv(csv_path, encoding="utf-8-sig")
         except (_pd.errors.EmptyDataError, ValueError):
             return _pd.DataFrame([], columns=COLS)
-        # Garantiza columnas esperadas
         for c in COLS:
             if c not in df.columns:
                 df[c] = None
-        # Ordena según COLS, dejando extras al final
         df = df[[c for c in COLS if c in df.columns] + [c for c in df.columns if c not in COLS]]
         return df
 
@@ -374,38 +382,8 @@ if "_write_sheet_tab" not in globals():
     def _write_sheet_tab(df):
         return False, "No conectado a Google Sheets (fallback activo)"
 
-# 👇 Fallback para exportar Excel (firma correcta con sheet_name)
-if "export_excel" not in globals():
-    def export_excel(df, filename: str = "ENI2025_tareas.xlsx", sheet_name: str = "Tareas"):
-        from io import BytesIO
-        import pandas as pd
-        buf = BytesIO()
-        with pd.ExcelWriter(buf, engine="xlsxwriter") as xw:
-            # Copia y elimina columnas de control si existieran
-            df_to_write = (df if isinstance(df, pd.DataFrame) else pd.DataFrame(df)).copy()
-            for _c in ("__DEL__", "DEL"):
-                if _c in df_to_write.columns:
-                    df_to_write.drop(columns=[_c], inplace=True)
-            df_to_write.to_excel(xw, sheet_name=sheet_name, index=False)
-            # Autoajuste simple de anchos
-            ws = xw.sheets[sheet_name]
-            try:
-                for i, col in enumerate(df_to_write.columns):
-                    try:
-                        maxlen = int(pd.Series(df_to_write[col]).astype(str).map(len).max())
-                        maxlen = max(10, min(60, maxlen + 2))
-                    except Exception:
-                        maxlen = 12
-                    ws.set_column(i, i, maxlen)
-            except Exception:
-                pass
-        buf.seek(0)
-        return buf
-
-
 # =========================
-# 🚧 GATE DE AUTENTICACIÓN
-# (sin UI, antes de cualquier render)
+# 🚧 GATE DE AUTENTICACIÓN (con UI mínima en vez de st.stop() directo)
 # =========================
 def _is_authed() -> bool:
     ss = st.session_state
@@ -419,48 +397,31 @@ def _is_authed() -> bool:
     )
 
 if not _is_authed():
-    # Bandera informativa por si la página la necesita
     st.session_state["__waiting_login__"] = True
+    st.info("🔐 Por favor, inicia sesión para ver esta sección.")
+    if st.button("Iniciar sesión con Google"):
+        google_login()
     st.stop()
 
-
-
-# ====== ⬇️⬇️ NUEVO: CSS de espaciado entre título, píldoras y secciones ⬇️⬇️ ======
+# ====== ⬇️⬇️ CSS de espaciado entre título, píldoras y secciones (corregido) ⬇️⬇️ ======
 st.markdown("""
 <style>
 /* Espacio debajo del H1 principal */
-.block-container h1 {
-  margin-bottom: 25px !important;
-}
+.block-container h1 { margin-bottom: 25px !important; }
 
-/* Barras superiores con las píldoras (nueva tarea / editar estado / nueva alerta) */
-.topbar, .topbar-ux, .topbar-na {
-  margin-top: 12px !important;       /* arriba de la píldora */
-  margin-bottom: 12px !important;    /* abajo de la píldora  */
-}
+/* Barras superiores con las píldoras */
+.topbar, .topbar-ux, .topbar-na { margin-top: 12px !important; margin-bottom: 12px !important; }
 
 /* Evitar márgenes extra del botón */
-.topbar .stButton, .topbar-ux .stButton, .topbar-na .stButton {
-  margin: 0 !important;
-}
+.topbar .stButton, .topbar-ux .stButton, .topbar-na .stButton { margin: 0 !important; }
 
 /* Tira de ayuda */
-.help-strip {
-  margin-top: 8px !important;
-  margin-bottom: 12px !important;
-}
+.help-strip { margin-top: 8px !important; margin-bottom: 12px !important; }
 
-/* Tarjetas/secciones (formularios, tablas, etc.) */
-.form-card {
-  margin-top: 19px !important;       /* distancia entre píldora y tarjeta */
-  margin-bottom: 28px !important;    /* separación con la siguiente sección */
-  padding-top: 12px !important;
-}
+/* Tarjetas/secciones */
+.form-card { margin-top: 19px !important; margin-bottom: 28px !important; padding-top: 12px !important; }
 </style>
 """, unsafe_allow_html=True)
-
-# ====== ⬆️⬆️ FIN CSS de espaciado ⬆️⬆️ ======
-
 
 # ===== Inicialización de visibilidad por única vez =====
 if "_ui_bootstrap" not in st.session_state:
@@ -479,578 +440,126 @@ def render():
     Renderiza TODA la UI de Gestión (formulario, editar estado,
     nueva alerta, prioridad, evaluación, historial, etc.)
     """
+    # El cuerpo está en la segunda parte del archivo (que aún no pegaste).
 
 # ---------- Estado inicial (RESTABLECIDO) ----------
 if "df_main" not in st.session_state:
-    # ✅ USAR SOLO el lector robusto; NO volver a leer con read_csv
     base = _read_sheet_tab()
     if base is None or not isinstance(base, pd.DataFrame):
         base = pd.DataFrame([], columns=COLS)
 
-    # Garantizar columnas esperadas
     for c in COLS:
         if c not in base.columns:
             base[c] = None
 
-    # Columna de control
     if "__DEL__" not in base.columns:
         base["__DEL__"] = False
     base["__DEL__"] = base["__DEL__"].fillna(False).astype(bool)
 
-    # Normalización numérica si existe
     if "Calificación" in base.columns:
         base["Calificación"] = pd.to_numeric(base["Calificación"], errors="coerce").fillna(0).astype(int)
 
-    st.session_state["df_main"] = base[COLS + ["__DEL__"]].copy()
+    # Evita KeyError si hay columnas adicionales: intersecta columnas
+    keep_cols = [c for c in COLS if c in base.columns] + (["__DEL__"] if "__DEL__" in base.columns else [])
+    st.session_state["df_main"] = base[keep_cols].copy()
 
-
-
-# ---------- CSS ----------
+# ---------- CSS (bloque largo principal) ----------
 st.markdown("""
 <style>
-/* =================== Variables de tema =================== */
 :root{
-  --lilac:      #B38BE3;
-  --lilac-50:   #F6EEFF;
-  --lilac-600:  #8B5CF6;
-
-  --blue-pill-bg: #38BDF8;
-  --blue-pill-bd: #0EA5E9;
-  --blue-pill-fg: #ffffff;
-
-  /* Alto unificado de botón y píldora */
-  --pill-h: 36px;
-
-  /* Ancho de las píldoras (Nueva tarea / Editar estado / Nueva alerta) */
-  --pill-width: 158px;
-
-  /* Celeste institucional de títulos */
-  --pill-azul:      #94BEEA;
-  --pill-azul-bord: #94BEEA;
-
-  /* ===== Píldoras para Prioridad / Evaluación ===== */
-  --pill-rosa:      #67D3C4;
-  --pill-rosa-bord: #67D3C4;
+  --lilac:#B38BE3; --lilac-50:#F6EEFF; --lilac-600:#8B5CF6;
+  --blue-pill-bg:#38BDF8; --blue-pill-bd:#0EA5E9; --blue-pill-fg:#ffffff;
+  --pill-h:36px; --pill-width:158px;
+  --pill-azul:#94BEEA; --pill-azul-bord:#94BEEA;
+  --pill-rosa:#67D3C4; --pill-rosa-bord:#67D3C4;
 }
-
-/* ======= ESPACIADO GLOBAL AÑADIDO ======= */
-/* Más aire debajo del título principal */
-.block-container h1{
-  margin-bottom: 18px !important;
-}
-/* Margen arriba/abajo para TODAS las barras con píldoras */
-.topbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval{
-  margin-top: 12px !important;
-  margin-bottom: 12px !important;
-}
-/* Separación general entre tarjetas/secciones */
-.form-card{
-  margin-top: 10px !important;      /* respiro arriba */
-  margin-bottom: 28px !important;   /* respiro abajo entre secciones */
-}
-/* ======================================= */
-
-/* =================== Inputs =================== */
+/* ESPACIADO GLOBAL */
+.block-container h1{ margin-bottom:18px !important; }
+.topbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval{ margin:12px 0 !important; }
+.form-card{ margin-top:10px !important; margin-bottom:28px !important; }
+/* Inputs */
 .form-card [data-baseweb="input"] > div,
 .form-card [data-baseweb="textarea"] > div,
 .form-card [data-baseweb="select"] > div,
 .form-card [data-baseweb="datepicker"] > div{
-  min-height: 44px !important;
-  border-radius: 12px !important;
-  border: 1px solid #E5E7EB !important;
-  background: #fff !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
+  min-height:44px !important; border-radius:12px !important; border:1px solid #E5E7EB !important;
+  background:#fff !important; width:100% !important; box-sizing:border-box !important;
 }
 .form-card [data-baseweb="input"] input,
 .form-card [data-baseweb="textarea"] textarea,
 .form-card [data-baseweb="select"] div,
-.form-card [data-baseweb="datepicker"] input{
-  font-size: 15px !important;
+.form-card [data-baseweb="datepicker"] input{ font-size:15px !important; }
+/* Sidebar */
+[data-testid="stSidebar"]{ background:var(--lilac-50) !important; border-right:1px solid #ECE6FF !important; transition: width .2s ease, min-width .2s ease; }
+[data-testid="stSidebar"][aria-expanded="true"]{ width:200px !important; min-width:200px !important; }
+[data-testid="stSidebar"][aria-expanded="true"] > div{ width:200px !important; }
+[data-testid="stSidebar"][aria-expanded="false"]{ width:0 !important; min-width:0 !important; }
+[data-testid="stSidebar"][aria-expanded="false"] > div{ width:0 !important; }
+[data-testid="stSidebar"] a{ color:var(--lilac-600) !important; font-weight:600 !important; text-decoration:none !important; }
+/* Píldoras celestes */
+.form-title,.form-title-ux,.form-title-na{
+  display:inline-flex !important; align-items:center !important; gap:.5rem !important;
+  padding:6px 12px !important; border-radius:12px !important; background:var(--pill-azul) !important;
+  border:1px solid var(--pill-azul-bord) !important; color:#fff !important; font-weight:800 !important;
+  margin:6px 0 10px 0 !important; width:var(--pill-width) !important; justify-content:center !important;
+  box-shadow:0 6px 16px rgba(148,190,234,.3) !important; min-height:var(--pill-h) !important; height:var(--pill-h) !important; line-height:1 !important; font-size:14px !important;
 }
-
-/* Foco */
-.form-card [data-baseweb="input"] > div:has(input:focus),
-.form-card [data-baseweb="textarea"] > div:has(textarea:focus),
-.form-card [data-baseweb="select"] > div:focus-within,
-.form-card [data-baseweb="datepicker"] > div:focus-within{
-  border-color: #60A5FA !important;
-  box-shadow: 0 0 0 3px rgba(96,165,250,.25) !important;
-}
-
-/* =================== Sidebar (ancho dinámico) =================== */
-[data-testid="stSidebar"]{
-  background: var(--lilac-50) !important;
-  border-right: 1px solid #ECE6FF !important;
-  transition: width .2s ease, min-width .2s ease;
-}
-/* Sidebar ABIERTA -> 200px */
-[data-testid="stSidebar"][aria-expanded="true"]{
-  width: 200px !important;
-  min-width: 200px !important;
-}
-[data-testid="stSidebar"][aria-expanded="true"] > div{ width: 200px !important; }
-/* Sidebar CERRADA -> 0px (contenido se expande) */
-[data-testid="stSidebar"][aria-expanded="false"]{
-  width: 0 !important;
-  min-width: 0 !important;
-}
-[data-testid="stSidebar"][aria-expanded="false"] > div{ width: 0 !important; }
-[data-testid="stSidebar"] a{
-  color: var(--lilac-600) !important;
-  font-weight: 600 !important;
-  text-decoration: none !important;
-}
-[data-testid="stSidebar"] .stButton > button{
-  border-radius: 12px !important;
-  background: var(--lilac) !important;
-  border: 1px solid var(--lilac) !important;
-  color:#fff !important;
-  font-weight:800 !important;
-  box-shadow: 0 8px 18px rgba(179,139,227,.25) !important;
-}
-[data-testid="stSidebar"] .stButton > button:hover{ filter: brightness(.96); }
-
-/* =================== Píldoras (títulos celestes) =================== */
-.form-title,
-.form-title-ux,
-.form-title-na{
-  display:inline-flex !important;
-  align-items:center !important;
-  gap:.5rem !important;
-  padding: 6px 12px !important;
-  border-radius: 12px !important;
-  background: var(--pill-azul) !important;
-  border: 1px solid var(--pill-azul-bord) !important;
-  color: #ffffff !important;
-  font-weight: 800 !important;
-  letter-spacing: .2px !important;
-  margin: 6px 0 10px 0 !important;
-  width: var(--pill-width) !important;
-  justify-content: center !important;
-  box-shadow: 0 6px 16px rgba(148,190,234,.3) !important;
-  min-height: var(--pill-h) !important;
-  height: var(--pill-h) !important;
-  line-height:1 !important;
-  white-space: nowrap !important;
-  font-size: 14px !important;
-}
-
-/* =================== Triangulito (toggle) =================== */
-.toggle-icon{
-  display:flex !important;
-  align-items:center !important;
-}
-/* (Se mantiene para compatibilidad, pero lo anulamos abajo con el override) */
-.toggle-icon .stButton>button{
-  padding: 0px !important;
-  min-width: 32px !important;
-  height: var(--pill-h) !important;
-  border-radius: 10px !important;
-  background: var(--lilac-600) !important;
-  border: 1px solid var(--lilac-600) !important;
-  color: #ffffff !important;
-  font-weight: 800 !important;
-  line-height: 1 !important;
-  display:inline-flex !important; align-items:center !important;
-  box-shadow: 0 4px 12px rgba(139,92,246,.25) !important;
-}
-.toggle-icon .stButton>button:hover{ filter: brightness(.98) !important; }
-.toggle-icon .stButton>button:focus{
-  outline: none !important; box-shadow: 0 0 0 2px rgba(139,92,246,.35) !important;
-}
-
-/* =================== SELECTs =================== */
-.form-card [data-baseweb="select"] > div{
-  overflow: visible !important;
-  white-space: nowrap !important;
-  text-overflow: clip !important;
-  width: fit-content !重要;
-  min-width: 240px !important;
-}
-.form-card [data-baseweb="select"] [role="combobox"]{
-  overflow: visible !important;
-  white-space: nowrap !important;
-  text-overflow: clip !important;
-}
-.form-card [data-baseweb="select"] span,
-.form-card [data-baseweb="select"] label,
-.form-card [data-baseweb="select"] div div{
-  white-space: nowrap !important;
-  text-overflow: clip !important;
-  overflow: visible !important;
-  max-width: none !important;
-}
-
+/* SELECTs (corregido !important) */
+.form-card [data-baseweb="select"] > div{ overflow:visible !important; white-space:nowrap !important; text-overflow:clip !important; width: fit-content !important; min-width:240px !important; }
 /* Anchura mayor para Área y Estado (fila 1 col 1 y fila 2 col 1) */
-.form-card [data-testid="stHorizontalBlock"]:nth-of-type(1)
-  > [data-testid="column"]:first-child [data-baseweb="select"] > div{ min-width: 300px !important; }
-.form-card [data-testid="stHorizontalBlock"]:nth-of-type(2)
-  > [data-testid="column"]:first-child [data-baseweb="select"] > div{ min-width: 300px !important; }
-
-/* =================== Responsivo =================== */
-@media (max-width: 980px){
-  .form-card [data-baseweb="select"] > div{ min-width: 200px !important; }
-  .form-title, .form-title-ux, .form-title-na{ width: auto !important; }
-}
-
-/* =================== Tarjeta de Alertas (grid) =================== */
-.form-card.alertas-grid{
-  display: grid !important;
-  grid-template-columns: repeat(5, 1fr);
-  grid-column-gap: 20px;
-  grid-row-gap: 16px;
-  align-items: start;
-}
-.form-card.alertas-grid [data-testid="stHorizontalBlock"]{ display: contents !important; }
-.form-card.alertas-grid > [data-testid="column"]:nth-of-type(1){ grid-column: 1; }
-.form-card.alertas-grid > [data-testid="column"]:nth-of-type(2){ grid-column: 2 / 5; }
-.form-card.alertas-grid > [data-testid="column"]:nth-of-type(3){ grid-column: 5; }
-.form-card.alertas-grid > [data-testid="column"]:nth-of-type(4){ grid-column: 1; }
-.form-card.alertas-grid > [data-testid="column"]:nth-of-type(5){ grid-column: 2; }
-.form-card.alertas-grid > [data-testid="column"]:nth-of-type(6){ grid-column: 3; }
-.form-card.alertas-grid > [data-testid="column"]:nth-of-type(7){ grid-column: 4; }
-.form-card.alertas-grid > [data-testid="column"]:nth-of-type(8){ grid-column: 5; }
-.form-card.alertas-grid [data-baseweb="select"] > div,
-.form-card.alertas-grid [data-baseweb="input"] > div,
-.form-card.alertas-grid [data-baseweb="datepicker"] > div{
-  width: 100% !important; min-width: 0 !important; white-space: normal !important;
-}
-
-/* =================== Botones dentro de la card =================== */
-.form-card .stButton > button,
-.form-card [data-testid="baseButton-secondary"],
-.form-card [data-testid="baseButton-primary"]{ width: 100% !important; }
-.form-card .stButton > button{ padding-top: 10px !important; padding-bottom: 10px !important; }
-
-/* =================== Download button =================== */
-[data-testid="stDownloadButton"] a,
-[data-testid="stDownloadButton"] button,
-[data-testid="stDownloadButton"] a *,
-[data-testid="stDownloadButton"] button *{
-  font-size: var(--actions-font) !important;
-  line-height: 1.05 !important;
-  white-space: nowrap !important;
-}
-[data-testid="stDownloadButton"] a,
-[data-testid="stDownloadButton"] button{
-  padding: var(--actions-pad-y) var(--actions-pad-x) !important;
-  border-radius: 12px !important;
-  border: 1px solid #E5E7EB !important;
-  display: inline-flex !important; align-items: center !important; gap: 6px !important;
-}
-
-/* =================== Franja de indicaciones =================== */
-.help-strip{
-  display:block !important;
-  padding:2px 0 !important;
-  line-height:1.25 !important;
-  margin-top: 0px !important;
-  margin-bottom: 14px !important;
-}
-.form-card > .help-strip{
-  margin-top: 0px !important;
-  margin-bottom: 14px !important;
-}
-.help-strip strong{ display:inline-block !important; }
-
-/* =================== Topbar (expander + píldora) =================== */
-.topbar, .topbar-ux, .topbar-na{
-  display:flex !important;
-  align-items:center !important;
-  gap:8px !important;
-}
-.topbar .stButton,
-.topbar-ux .stButton,
-.topbar-na .stButton{ display:inline-flex !important; align-items:center !important; }
-.topbar .stButton>button,
-.topbar-ux .stButton>button,
-.topbar-na .stButton>button,
-.pill-btn .stButton>button{
-  height: var(--pill-h) !important;
-  padding:0 16px !important;
-  border-radius:10px !important;
-  display:inline-flex !important; align-items:center !important;
-}
-
-/* ================================================================== */
-/* =================== PRIORIDAD / EVALUACIÓN ======================= */
-/* ================================================================== */
-
-/* Barras superiores (mismo layout) */
-.topbar-pri, .topbar-eval{
-  display:flex !important;
-  align-items:center !important;
-  gap:8px !important;
-}
-.topbar-pri .stButton, .topbar-eval .stButton{
-  display:inline-flex !important; align-items:center !important;
-}
-.topbar-pri .stButton>button, .topbar-eval .stButton>button{
-  height: var(--pill-h) !important; padding:0 16px !important; border-radius:10px !important;
-  display:inline-flex !important; align-items:center !important;
-}
-
-/* ===== Píldoras ROSA (Prioridad y Evaluación) ===== */
-.form-title-pri,
-.form-title-eval{
-  display:inline-flex !important;
-  align-items:center !important;
-  gap:.5rem !important;
-  padding:6px 12px !important;
-  border-radius:12px !important;
-  background: var(--pill-rosa) !important;
-  border: 1px solid var(--pill-rosa-bord) !important;
-  color:#ffffff !important;
-  font-weight: 800 !important;
-  font-size: 14px !important;
-  letter-spacing:.2px !important;
-  white-space: nowrap !important;
-  margin:6px 0 10px 0 !important;
-  width: var(--pill-width) !important;
-  justify-content:center !important;
-  box-shadow:0 6px 16px rgba(214,154,194,.30) !important;
-  min-height: var(--pill-h) !important;
-  height: var(--pill-h) !important;
-  line-height:1 !important;
-}
-
+.form-card [data-testid="stHorizontalBlock"]:nth-of-type(1) > [data-testid="column"]:first-child [data-baseweb="select"] > div{ min-width:300px !important; }
+.form-card [data-testid="stHorizontalBlock"]:nth-of-type(2) > [data-testid="column"]:first-child [data-baseweb="select"] > div{ min-width:300px !important; }
 /* Responsivo */
 @media (max-width: 980px){
-  .form-title-pri, .form-title-eval{ width: auto !important; }
+  .form-card [data-baseweb="select"] > div{ min-width:200px !important; }
+  .form-title, .form-title-ux, .form-title-na{ width:auto !important; }
 }
-
-/* ===== Compactar espacios entre bloques ===== */
-.block-container [data-testid="stVerticalBlock"]{
-  row-gap: 10px !important;
-  gap: 6px !important;
+/* Topbar layout */
+.topbar, .topbar-ux, .topbar-na{ display:flex !important; align-items:center !important; gap:8px !important; }
+.topbar .stButton, .topbar-ux .stButton, .topbar-na .stButton{ display:inline-flex !important; align-items:center !important; }
+.topbar .stButton>button, .topbar-ux .stButton>button, .topbar-na .stButton>button, .pill-btn .stButton>button{
+  height:var(--pill-h) !important; padding:0 16px !important; border-radius:10px !important; display:inline-flex !important; align-items:center !important;
 }
+/* PRIORIDAD / EVALUACIÓN */
+.topbar-pri, .topbar-eval{ display:flex !important; align-items:center !important; gap:8px !important; }
+.form-title-pri, .form-title-eval{
+  display:inline-flex !important; align-items:center !important; gap:.5rem !important; padding:6px 12px !important; border-radius:12px !important;
+  background:var(--pill-rosa) !important; border:1px solid var(--pill-rosa-bord) !important; color:#fff !important; font-weight:800 !important;
+  font-size:14px !important; letter-spacing:.2px !important; white-space:nowrap !important; margin:6px 0 10px 0 !important; width:var(--pill-width) !important;
+  justify-content:center !important; box-shadow:0 6px 16px rgba(214,154,194,.30) !important; min-height:var(--pill-h) !important; height:var(--pill-h) !important; line-height:1 !important;
+}
+/* Compactación general */
+.block-container [data-testid="stVerticalBlock"]{ row-gap:10px !important; gap:6px !important; }
 .block-container [data-testid="stVerticalBlock"]:has(.topbar),
 .block-container [data-testid="stVerticalBlock"]:has(.topbar-ux),
 .block-container [data-testid="stVerticalBlock"]:has(.topbar-na),
 .block-container [data-testid="stVerticalBlock"]:has(.topbar-pri),
-.block-container [data-testid="stVerticalBlock"]:has(.topbar-eval){
-  row-gap: 4px !important;
-  gap: 4px !important;
-}
-.block-container [data-testid="stHorizontalBlock"]:has(.topbar),
-.block-container [data-testid="stHorizontalBlock"]:has(.topbar-ux),
-.block-container [data-testid="stHorizontalBlock"]:has(.topbar-na),
-.block-container [data-testid="stHorizontalBlock"]:has(.topbar-pri),
-.block-container [data-testid="stHorizontalBlock"]:has(.topbar-eval){
-  column-gap: 8px !important;
-  gap: 8px !important;
-}
-.block-container .element-container:has(.topbar),
-.block-container .element-container:has(.topbar-ux),
-.block-container .element-container:has(.topbar-na),
-.block-container .element-container:has(.topbar-pri),
-.block-container .element-container:has(.topbar-eval){
-  margin-top: 19px !important;
-  margin-bottom: 6px !important;
-}
-
-/* ===== Alineación robusta botón + píldora en TODAS las barras ===== */
-.topbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval{
-  align-items: center !important;
-}
+.block-container [data-testid="stVerticalBlock"]:has(.topbar-eval){ row-gap:4px !important; gap:4px !important; }
+/* Alineación robusta botón + píldora */
+.topbar, .topbar-ux, .topbar-na, .topbar-pri, .topbar-eval{ align-items:center !important; }
 .block-container .stMarkdown:has(.form-title),
 .block-container .stMarkdown:has(.form-title-ux),
 .block-container .stMarkdown:has(.form-title-na),
 .block-container .stMarkdown:has(.form-title-pri),
-.block-container .stMarkdown:has(.form-title-eval){
-  margin: 0 !important;
+.block-container .stMarkdown:has(.form-title-eval){ margin:0 !important; }
+/* ULTRA PATCH: eliminar “cuadradito” del toggle SOLO en #ntbar */
+#ntbar .toggle-icon, #ntbar .toggle-icon .element-container, #ntbar .toggle-icon [data-testid="stVerticalBlock"],
+#ntbar .toggle-icon [data-testid="stHorizontalBlock"], #ntbar .toggle-icon [data-testid="stButton"]{
+  background:transparent !important; border:0 !important; box-shadow:none !important; padding:0 !important; margin:0 !important;
 }
-
-/* === Override para bajar indicaciones (todas y por sección) === */
-#nt-help,
-#ux-help,
-#na-help,
-#pri-help,
-#eva-help{
-  transform: none !important;
-  margin-top: 10px !important;
-  margin-bottom: 14px !important;
-}
-.help-strip,
-.form-card > .help-strip{
-  margin-top: 10px !important;
-}
-
-/* ===== ULTRA PATCH: eliminar “cuadradito” del toggle SOLO en #ntbar ===== */
-
-/* 0) El contenedor de la columna NO debe aportar padding ni sombra */
-#ntbar .toggle-icon,
-#ntbar .toggle-icon .element-container,
-#ntbar .toggle-icon [data-testid="stVerticalBlock"],
-#ntbar .toggle-icon [data-testid="stHorizontalBlock"],
-#ntbar .toggle-icon [data-testid="stButton"]{
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
-}
-
-/* 1) Mata fondo/borde/sombra de TODOS los wrappers del botón en este bloque */
-#ntbar .toggle-icon .stButton,
-#ntbar .toggle-icon .stButton > div,
-#ntbar .toggle-icon [data-testid^="stButton"],
-#ntbar .toggle-icon [data-testid^="stButton"] > div,
-#ntbar .toggle-icon [data-testid^="baseButton"],
-#ntbar .toggle-icon [data-testid^="baseButton"] > div,
-#ntbar .toggle-icon [data-testid^="baseButton"] > div > div{
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  min-height: 0 !important;
-}
-
-/* 2) El <button> real */
-#ntbar .toggle-icon .stButton button,
-#ntbar .toggle-icon [data-testid^="stButton"] button,
-#ntbar .toggle-icon [data-testid^="baseButton"] button,
-#ntbar .toggle-icon button[kind],
-#ntbar .toggle-icon button[class*="primary"],
-#ntbar .toggle-icon button[class*="secondary"],
-#ntbar .toggle-icon [role="button"]{
-  background: transparent !important;
-  background-image: none !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  outline: 0 !important;
-  -webkit-appearance: none !important;
-  appearance: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  width: auto !important;
-  min-width: 0 !important;
-  height: auto !important;
-  min-height: 0 !important;
-  border-radius: 0 !important;
-
-  font-weight: 800 !important;
-  font-size: 20px !important;
-  line-height: 1 !important;
-  transform: translateY(8px);
-  color: inherit !important;
-  cursor: pointer !important;
-}
-
-/* 3) Evita que :hover/:focus/:active reintroduzcan estilos del tema */
-#ntbar .toggle-icon .stButton button:hover,
-#ntbar .toggle-icon .stButton button:focus,
-#ntbar .toggle-icon .stButton button:active,
-#ntbar .toggle-icon [data-testid^="stButton"] button:hover,
-#ntbar .toggle-icon [data-testid^="stButton"] button:focus,
-#ntbar .toggle-icon [data-testid^="stButton"] button:active,
-#ntbar .toggle-icon [data-testid^="baseButton"] button:hover,
-#ntbar .toggle-icon [data-testid^="baseButton"] button:focus,
-#ntbar .toggle-icon [data-testid^="baseButton"] button:active,
-#ntbar .toggle-icon [role="button"]:hover,
-#ntbar .toggle-icon [role="button"]:focus,
-#ntbar .toggle-icon [role="button"]:active{
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  outline: 0 !important;
-}
-
-/* 4) Por si el tema agrega pseudo-elementos decorativos */
-#ntbar .toggle-icon .stButton button::before,
-#ntbar .toggle-icon .stButton button::after,
-#ntbar .toggle-icon [data-testid^="stButton"] button::before,
-#ntbar .toggle-icon [data-testid^="stButton"] button::after,
-#ntbar .toggle-icon [data-testid^="baseButton"] button::before,
-#ntbar .toggle-icon [data-testid^="baseButton"] button::after,
-#ntbar .toggle-icon [role="button"]::before,
-#ntbar .toggle-icon [role="button"]::after{
-  content: none !important;
-  display: none !important;
-}
-
-/* ========== NUCLEAR RESET PARA EL TOGGLE EN #ntbar ========== */
-#ntbar .toggle-icon *,
-#ntbar .toggle-icon *::before,
-#ntbar .toggle-icon *::after{
-  background: transparent !important;
-  background-color: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
+#ntbar .toggle-icon .stButton, #ntbar .toggle-icon .stButton > div, #ntbar .toggle-icon [data-testid^="stButton"],
+#ntbar .toggle-icon [data-testid^="stButton"] > div, #ntbar .toggle-icon [data-testid^="baseButton"],
+#ntbar .toggle-icon [data-testid^="baseButton"] > div, #ntbar .toggle-icon [data-testid^="baseButton"] > div > div{
+  background:transparent !important; border:0 !important; box-shadow:none !important; padding:0 !important; margin:0 !important; min-height:0 !important;
 }
 #ntbar .toggle-icon :is(button, [role="button"], [data-testid^="baseButton"] button){
-  all: unset !important;
-  display: inline !important;
-  cursor: pointer !important;
-  user-select: none !important;
-  font-weight: 800 !important;
-  font-size: 20px !important;
-  line-height: 1 !important;
-  color: inherit !important;
-  transform: translateY(8px);
-  -webkit-appearance: none !important;
-  appearance: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  border-radius: 0 !important;
+  all:unset !important; display:inline !important; cursor:pointer !important; user-select:none !important; font-weight:800 !important; font-size:20px !important; line-height:1 !important; color:inherit !important; transform: translateY(8px);
 }
-#ntbar .toggle-icon :is(button, [role="button"], [data-testid^="baseButton"] button):hover,
-#ntbar .toggle-icon :is(button, [role="button"], [data-testid^="baseButton"] button):focus,
-#ntbar .toggle-icon :is(button, [role="button"], [data-testid^="baseButton"] button):active{
-  all: unset !important;
-  display: inline !important;
-  cursor: pointer !important;
-  font-weight: 800 !important;
-  font-size: 20px !important;
-  line-height: 1 !important;
-  color: inherit !important;
-  transform: translateY(8px);
-}
-#ntbar .toggle-icon [data-testid],
-#ntbar .toggle-icon .stButton,
-#ntbar .toggle-icon .stButton > div{
-  min-width: 0 !important;
-  min-height: 0 !important;
-  padding: 0 !important;
-  margin: 0 !important;
-}
-
-/* Más espacio entre las indicaciones (help-strip) y la sección */
-#nt-help, #ux-help, #na-help, #pri-help, #eva-help{
-  margin-bottom: 10px !important;
-}
-
-/* Respiro superior para tarjetas */
-#nt-section .form-card,
-#ux-section .form-card,
-#na-section .form-card,
-#pri-section .form-card,
-#eva-section .form-card{
-  margin-top: 8px !important;
-}
-
-/* ===== (ag-align-fix) integrado al bloque principal ===== */
-/* quita padding lateral que desalineaba 1–2px */
-#prior-grid .ag-header-viewport,
-#prior-grid .ag-center-cols-viewport,
-#eval-grid  .ag-header-viewport,
-#eval-grid  .ag-center-cols-viewport{
-  padding-left:0 !important;
-  padding-right:0 !important;
-}
-/* evita corrimientos distintos entre header y body */
+#prior-grid .ag-header-viewport, #prior-grid .ag-center-cols-viewport,
+#eval-grid  .ag-header-viewport, #eval-grid  .ag-center-cols-viewport{ padding-left:0 !important; padding-right:0 !important; }
 #prior-grid .ag-header, #prior-grid .ag-center-cols-container,
-#eval-grid  .ag-header, #eval-grid  .ag-center-cols-container{
-  transform: translateX(0) !important;
-}
-/* bordes de columnas uniformes (las “líneas plomitas”) */
-#prior-grid .ag-header-cell, #prior-grid .ag-cell,
-#eval-grid  .ag-header-cell, #eval-grid  .ag-cell{
-  border-right:1px solid #E9EDF3 !important;
-}
-           
+#eval-grid  .ag-header, #eval-grid  .ag-center-cols-container{ transform: translateX(0) !important; }
+#prior-grid .ag-header-cell, #prior-grid .ag-cell, #eval-grid  .ag-header-cell, #eval-grid  .ag-cell{ border-right:1px solid #E9EDF3 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -1094,33 +603,21 @@ FASES = [
 # ================== Utilidades de ID ==================
 import re
 import pandas as pd
-from datetime import datetime
+from datetime import datetime as _dt_for_ids
 
 def _area_initial(area: str) -> str:
-    """
-    Devuelve la primera letra alfabética del nombre del área (incluye tildes) en MAYÚSCULA.
-    Ej.: 'Jefatura' -> 'J', 'monitoreo' -> 'M'
-    """
     if not area:
         return ""
     m = re.search(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]", str(area))
     return (m.group(0).upper() if m else "")
 
 def _person_initials(nombre: str) -> str:
-    """
-    Toma la primera letra del nombre y la primera del primer apellido.
-    Ej.: 'Vivian Saurino' -> 'VS'; 'Elías A. Aguirre' -> 'EA'
-    Maneja puntos e iniciales sueltas.
-    """
     if not nombre:
         return ""
-    # Limpia separando por espacios y descartando vacíos
     parts = [p for p in re.split(r"\s+", str(nombre).strip()) if p]
     if not parts:
         return ""
-    # Primera inicial (nombre)
     ini1 = re.sub(r"[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ]", "", parts[0])[:1].upper() if parts else ""
-    # Segunda inicial (primer apellido que no sea inicial suelta tipo "A.")
     ini2 = ""
     for p in parts[1:]:
         t = re.sub(r"[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ]", "", p)
@@ -1130,21 +627,11 @@ def _person_initials(nombre: str) -> str:
     return f"{ini1}{ini2}"
 
 def make_id_prefix(area: str, responsable: str) -> str:
-    """
-    Construye el prefijo del ID: [primera letra de área][inicial nombre][inicial apellido]
-    Ej.: 'Jefatura' + 'Vivian Saurino' -> 'JVS'
-    """
     a = _area_initial(area)
     p = _person_initials(responsable)
     return f"{a}{p}"
 
 def next_id_by_person(df: pd.DataFrame, area: str, responsable: str) -> str:
-    """
-    Devuelve el siguiente ID correlativo para el prefijo calculado a partir de área y responsable.
-    Formato: PREFIJO + '_' + correlativo (1, 2, 3, ...)
-    Ej.: 'JVS_1', 'JVS_2', 'MEA_1', etc.
-    Cuenta existentes en df['Id'] que empiezan con 'PREFIJO_'.
-    """
     prefix = make_id_prefix(area, responsable)
     if not prefix:
         return ""
@@ -1155,28 +642,23 @@ def next_id_by_person(df: pd.DataFrame, area: str, responsable: str) -> str:
         seq = 1 + serie.str.startswith(prefix + "_").sum()
     return f"{prefix}_{seq}"
 
-# ====== Callback opcional: poner hora automática cuando se elige fecha ======
-# Nota: este callback se usa con date_input FUERA del st.form (porque dentro no disparan on_change).
-# Se define aquí de forma segura por si 'st' no está importado en este módulo.
+# ====== Callback opcional: hora automática al elegir fecha (fuera de forms) ======
 if "_auto_time_on_date" not in globals():
     def _auto_time_on_date():
-        """
-        Si hay fecha (fi_d) y no hay hora (fi_t) en st.session_state,
-        fija la hora actual (sin segundos). Requiere que en el módulo principal exista:
-        `import streamlit as st`.
-        """
         try:
-            # 'st' debe existir en el módulo principal
             import streamlit as st  # import local y seguro
             if st.session_state.get("fi_d") and not st.session_state.get("fi_t"):
                 now = datetime.now().replace(second=0, microsecond=0)
                 st.session_state["fi_t"] = now.time()
         except Exception:
-            # Si no hay streamlit o no hay session_state, simplemente no hacemos nada.
             pass
 
 
 # ================== Formulario (misma malla + hora inmediata) ==================
+
+# Fallback suave si aún no existe (no altera nada cuando ya viene del módulo principal)
+if "AREAS_OPC" not in globals():
+    AREAS_OPC = ["Jefatura", "Gestión", "Metodología", "Base de datos", "Capacitación", "Monitoreo", "Consistencia"]
 
 st.session_state.setdefault("nt_visible", True)
 chev = "▾" if st.session_state.get("nt_visible", True) else "▸"
@@ -1207,7 +689,7 @@ if st.session_state.get("nt_visible", True):
     </div>
     """, unsafe_allow_html=True)
 
-    # ===== ESPACIADOR entre indicaciones y el card (único ajuste pedido) =====
+    # ===== ESPACIADOR entre indicaciones y el card =====
     st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
 
     submitted = False
@@ -1263,16 +745,23 @@ if st.session_state.get("nt_visible", True):
             st.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
         estado = "No iniciado"
 
-        # Fecha editable + callback inmediato
-        st.session_state.setdefault("fi_d", None)
-        st.session_state.setdefault("fi_t", None)
+        # --- FECHA/HORA: corrección para evitar None en date_input ---
+        # Limpia claves inválidas antes de crear el widget (Streamlit no acepta None para date_input si la clave ya existe)
+        if st.session_state.get("fi_d", "___MISSING___") is None:
+            st.session_state.pop("fi_d")
+        if st.session_state.get("fi_t", "___MISSING___") is None:
+            st.session_state.pop("fi_t")
+
+        # Fecha editable + callback inmediato (pone hora al elegir fecha)
         c2_3.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
 
         # Hora auto (solo lectura)
         _t = st.session_state.get("fi_t"); _t_txt = ""
         if _t is not None:
-            try: _t_txt = _t.strftime("%H:%M")
-            except Exception: _t_txt = str(_t)
+            try:
+                _t_txt = _t.strftime("%H:%M")
+            except Exception:
+                _t_txt = str(_t)
         c2_4.text_input("Hora (auto)", value=_t_txt, disabled=True,
                         help="Se asigna al elegir la fecha", key="fi_t_view")
 
@@ -1306,11 +795,13 @@ if st.session_state.get("nt_visible", True):
                 elif "DEL" in df_out.columns:
                     df_out = df_out.rename(columns={"DEL": "__DEL__"})
                 df_out = df_out.loc[:, ~pd.Index(df_out.columns).duplicated()].copy()
-                if not df_out.index.is_unique: df_out = df_out.reset_index(drop=True)
+                if not df_out.index.is_unique:
+                    df_out = df_out.reset_index(drop=True)
                 if target_cols:
                     target = list(dict.fromkeys(list(target_cols)))
                     for c in target:
-                        if c not in df_out.columns: df_out[c] = None
+                        if c not in df_out.columns:
+                            df_out[c] = None
                     ordered = [c for c in target] + [c for c in df_out.columns if c not in target]
                     df_out = df_out.loc[:, ordered].copy()
                 return df_out
@@ -1342,8 +833,8 @@ if st.session_state.get("nt_visible", True):
                 # Campos de inicio/fin (se llenan más adelante)
                 "Fecha inicio": None,
                 "Hora de inicio": "",
-                "Fecha Terminado": None,            # ← agregado para compatibilidad
-                "Hora Terminado": "",               # ← agregado para compatibilidad
+                "Fecha Terminado": None,
+                "Hora Terminado": "",
                 # Otros
                 "Ciclo de mejora": ciclo_mejora,
                 "Detalle": st.session_state.get("nt_detalle", ""),
@@ -1362,7 +853,7 @@ if st.session_state.get("nt_visible", True):
             st.error(f"No pude guardar la nueva tarea: {e}")
 
 # Separación vertical
-st.markdown(f"<div style='height:{SECTION_GAP}px;'></div>", unsafe_allow_html=True)
+st.markdown(f"<div style='height:{SECTION_GAP if 'SECTION_GAP' in globals() else 30}px;'></div>", unsafe_allow_html=True)
 
 
 
@@ -1391,7 +882,7 @@ if st.session_state["est_visible"]:
     st.markdown("""
     <style>
       #est-section .stButton > button { width: 100% !important; }
-      #est-section .ag-theme-alpine .ag-header-cell-label{ font-weight: 400 !important; }
+      #est-section .ag-header-cell-label{ font-weight: 400 !important; }
       #est-section .ag-body-horizontal-scroll,
       #est-section .ag-center-cols-viewport { overflow-x: hidden !important; }
       .section-est .help-strip + .form-card{ margin-top: 6px !important; }
@@ -1417,44 +908,60 @@ if st.session_state["est_visible"]:
     with st.form("est_filtros_v3", clear_on_submit=False):
         c_area, c_fase, c_resp, c_desde, c_hasta, c_buscar = st.columns([A, Fw, T_width, D, R, C], gap="medium")
 
+        # Área
         AREAS_OPC = st.session_state.get(
             "AREAS_OPC",
             sorted([x for x in df_all.get("Área", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
         ) or []
         est_area = c_area.selectbox("Área", ["Todas"] + AREAS_OPC, index=0)
 
+        # Fase
         fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
         est_fase = c_fase.selectbox("Fase", ["Todas"] + fases_all, index=0)
 
+        # Responsable (dependiente de área/fase si existen)
         df_resp_src = df_all.copy()
-        if est_area != "Todas":
-            df_resp_src = df_resp_src[df_resp_src.get("Área", "") == est_area]
+        if est_area != "Todas" and "Área" in df_resp_src.columns:
+            df_resp_src = df_resp_src[df_resp_src["Área"].astype(str) == est_area]
         if est_fase != "Todas" and "Fase" in df_resp_src.columns:
             df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str) == est_fase]
         responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
         est_resp = c_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0)
 
-        est_desde = c_desde.date_input("Desde", value=None)
-        est_hasta = c_hasta.date_input("Hasta",  value=None)
+        # Rango de fechas (opcional) — sin value=None (rompe)
+        use_date_range = c_buscar.checkbox("Filtrar por fechas", value=False)
+        if use_date_range:
+            est_desde = c_desde.date_input("Desde")
+            est_hasta = c_hasta.date_input("Hasta")
+        else:
+            est_desde, est_hasta = None, None
+            # Mostrar labels “apagados” para mantener la malla
+            with c_desde:
+                st.caption("Desde")
+                st.markdown("<div style='height:38px;border:1px dashed #e5e7eb;border-radius:8px;'></div>", unsafe_allow_html=True)
+            with c_hasta:
+                st.caption("Hasta")
+                st.markdown("<div style='height:38px;border:1px dashed #e5e7eb;border-radius:8px;'></div>", unsafe_allow_html=True)
 
         with c_buscar:
-            st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
             est_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
     # ===== Filtrado de tareas =====
     df_tasks = df_all.copy()
     if est_do_buscar:
-        if est_area != "Todas":
-            df_tasks = df_tasks[df_tasks.get("Área", "") == est_area]
+        if est_area != "Todas" and "Área" in df_tasks.columns:
+            df_tasks = df_tasks[df_tasks["Área"].astype(str) == est_area]
         if est_fase != "Todas" and "Fase" in df_tasks.columns:
             df_tasks = df_tasks[df_tasks["Fase"].astype(str) == est_fase]
-        if est_resp != "Todos":
-            df_tasks = df_tasks[df_tasks.get("Responsable", "").astype(str) == est_resp]
-        if "Fecha inicio" in df_tasks.columns:
+        if est_resp != "Todos" and "Responsable" in df_tasks.columns:
+            df_tasks = df_tasks[df_tasks["Responsable"].astype(str) == est_resp]
+        if use_date_range and "Fecha inicio" in df_tasks.columns:
             fcol = pd.to_datetime(df_tasks["Fecha inicio"], errors="coerce")
             if est_desde:
                 df_tasks = df_tasks[fcol >= pd.to_datetime(est_desde)]
             if est_hasta:
+                # incluir todo el día de "hasta"
                 df_tasks = df_tasks[fcol <= (pd.to_datetime(est_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
 
     # ===== Tabla "Resultados" =====
@@ -1482,7 +989,7 @@ if st.session_state["est_visible"]:
             "Id","Tarea","Estado",
             "Fecha Registro","Hora Registro","Fecha","Hora",
             "Fecha inicio","Hora de inicio",
-            "Fecha Terminado","Hora Terminado",          # <-- asegurar nombre correcto
+            "Fecha Terminado","Hora Terminado",
             "Fecha Pausado","Hora Pausado",
             "Fecha Cancelado","Hora Cancelado",
             "Fecha Eliminado","Hora Eliminado",
@@ -1506,19 +1013,15 @@ if st.session_state["est_visible"]:
                 s = s.where(s.str.strip() != "", s_fb)
             return s
 
-        # No iniciado: tomar Registro (fallback a Fecha/Hora del formulario si existieran)
         fr_noini = _date_norm("Fecha Registro", "Fecha")
         hr_noini = _time_norm("Hora Registro", "Hora")
 
-        # En curso
         fr_enc   = _date_norm("Fecha inicio")
         hr_enc   = _time_norm("Hora de inicio")
 
-        # Terminado
         fr_fin   = _date_norm("Fecha Terminado")
         hr_fin   = _time_norm("Hora Terminado")
 
-        # Pausado / Cancelado / Eliminado
         fr_pau, hr_pau = _date_norm("Fecha Pausado"),  _time_norm("Hora Pausado")
         fr_can, hr_can = _date_norm("Fecha Cancelado"), _time_norm("Hora Cancelado")
         fr_eli, hr_eli = _date_norm("Fecha Eliminado"), _time_norm("Hora Eliminado")
@@ -1534,7 +1037,7 @@ if st.session_state["est_visible"]:
         m2 = (estado_now == "Terminado")
         m3 = (estado_now == "Pausado")
         m4 = (estado_now == "Cancelado")
-        m5 = (estado_now == "Eliminado")   # <-- FALTABA ESTA MÁSCARA
+        m5 = (estado_now == "Eliminado")
 
         fecha_from_estado[m0] = fr_noini[m0]; hora_from_estado[m0] = hr_noini[m0]
         fecha_from_estado[m1] = fr_enc[m1];   hora_from_estado[m1] = hr_enc[m1]
@@ -1561,8 +1064,8 @@ if st.session_state["est_visible"]:
             "Hora estado modificado":  _fmt_time(base["Hora estado modificado"]),
         })[cols_out].copy()
 
-    # ========= editores y estilo seguro (sin DOM manual) =========
-    estados_editables = ["En curso","Terminado","Pausado","Cancelado","Eliminado"]  # ← agregado
+    # ========= editores y estilo seguro =========
+    estados_editables = ["En curso","Terminado","Pausado","Cancelado","Eliminado"]
 
     date_editor = JsCode("""
     class DateEditor{
@@ -1594,7 +1097,7 @@ if st.session_state["est_visible"]:
         "Terminado":"✅ Terminado",
         "Pausado":"⏸️ Pausado",
         "Cancelado":"⛔ Cancelado",
-        "Eliminado":"🗑️ Eliminado"   // ← agregado
+        "Eliminado":"🗑️ Eliminado"
       };
       return M[v] || v;
     }""")
@@ -1703,8 +1206,6 @@ if st.session_state["est_visible"]:
     st.markdown('</div>', unsafe_allow_html=True)
 
 
-
-
 # ================== Nueva alerta ==================
 
 st.session_state.setdefault("na_visible", True)
@@ -1747,7 +1248,8 @@ if st.session_state["na_visible"]:
     # Proporciones (igual que Editar estado)
     A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
-    df_all = st.session_state["df_main"].copy()
+    # Base segura
+    df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
 
     # ===== FILTROS =====
     with st.form("na_filtros_v3", clear_on_submit=False):
@@ -1763,30 +1265,41 @@ if st.session_state["na_visible"]:
         na_fase = c_fase.selectbox("Fase", ["Todas"] + fases_all, index=0)
 
         df_resp_src = df_all.copy()
-        if na_area != "Todas":
-            df_resp_src = df_resp_src[df_resp_src["Área"] == na_area]
+        if na_area != "Todas" and "Área" in df_resp_src.columns:
+            df_resp_src = df_resp_src[df_resp_src["Área"].astype(str) == na_area]
         if na_fase != "Todas" and "Fase" in df_resp_src.columns:
             df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str) == na_fase]
         responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
         na_resp = c_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0)
 
-        na_desde = c_desde.date_input("Desde", value=None)
-        na_hasta = c_hasta.date_input("Hasta",  value=None)
+        # Rango de fechas opcional (evita value=None)
+        use_date_range = c_buscar.checkbox("Filtrar por fechas", value=False)
+        if use_date_range:
+            na_desde = c_desde.date_input("Desde")
+            na_hasta = c_hasta.date_input("Hasta")
+        else:
+            na_desde = na_hasta = None
+            with c_desde:
+                st.caption("Desde")
+                st.markdown("<div style='height:38px;border:1px dashed #e5e7eb;border-radius:8px;'></div>", unsafe_allow_html=True)
+            with c_hasta:
+                st.caption("Hasta")
+                st.markdown("<div style='height:38px;border:1px dashed #e5e7eb;border-radius:8px;'></div>", unsafe_allow_html=True)
 
         with c_buscar:
-            st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
             na_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
     # ===== Filtrado de tareas =====
     df_tasks = df_all.copy()
     if na_do_buscar:
-        if na_area != "Todas":
-            df_tasks = df_tasks[df_tasks["Área"] == na_area]
+        if na_area != "Todas" and "Área" in df_tasks.columns:
+            df_tasks = df_tasks[df_tasks["Área"].astype(str) == na_area]
         if na_fase != "Todas" and "Fase" in df_tasks.columns:
             df_tasks = df_tasks[df_tasks["Fase"].astype(str) == na_fase]
-        if na_resp != "Todos":
+        if na_resp != "Todos" and "Responsable" in df_tasks.columns:
             df_tasks = df_tasks[df_tasks["Responsable"].astype(str) == na_resp]
-        if "Fecha inicio" in df_tasks.columns:
+        if use_date_range and "Fecha inicio" in df_tasks.columns:
             fcol = pd.to_datetime(df_tasks["Fecha inicio"], errors="coerce")
             if na_desde:
                 df_tasks = df_tasks[fcol >= pd.to_datetime(na_desde)]
@@ -1805,24 +1318,24 @@ if st.session_state["na_visible"]:
 
     # Data para la grilla (puede ser vacía)
     df_view = pd.DataFrame(columns=cols_out)
-    if not df_tasks.empty:
+    if not df_tasks.empty and "Id" in df_tasks.columns:
         df_tmp = df_tasks.dropna(subset=["Id"]).copy()
-        for needed in ["Tarea"]:
-            if needed not in df_tmp.columns:
-                df_tmp[needed] = ""
-        df_view = df_tmp.assign(
-            **{
-                "¿Generó alerta?": "No",  # default
-                "N° alerta": "1",         # default
-                "Fecha de detección": "",
-                "Hora de detección": "",
-                "¿Se corrigió?": "No",    # default
-                "Fecha de corrección": "",
-                "Hora de corrección": "",
-            }
-        )[cols_out].copy()
 
-    # ====== AG-GRID (config directa sin GridOptionsBuilder) ======
+        # Garantizar columnas de alerta
+        alert_cols = ["¿Generó alerta?","N° alerta","Fecha de detección","Hora de detección",
+                      "¿Se corrigió?","Fecha de corrección","Hora de corrección"]
+        for c in ["Tarea"] + alert_cols:
+            if c not in df_tmp.columns:
+                df_tmp[c] = ""
+
+        # Prefiere valores existentes; usa defaults solo cuando están vacíos
+        df_tmp["¿Generó alerta?"] = df_tmp["¿Generó alerta?"].replace("", "No")
+        df_tmp["N° alerta"]       = df_tmp["N° alerta"].replace("", "1")
+
+        df_view = df_tmp[["Id","Tarea"] + alert_cols].copy()
+        df_view = df_view.rename(columns={})  # (reservado por si renombras algo luego)
+
+    # ====== AG-GRID ======
     from st_aggrid import AgGrid, GridUpdateMode, DataReturnMode, JsCode
 
     # editores de fecha
@@ -1848,7 +1361,7 @@ if st.session_state["na_visible"]:
       getValue(){ return this.eInput.value }
     }""")
 
-    # Sí/No con emoji (seguro) + color por cellStyle
+    # Sí/No con emoji
     si_no_formatter = JsCode("""
     function(p){
       const v = String(p.value || '');
@@ -1856,7 +1369,7 @@ if st.session_state["na_visible"]:
       return M[v] || v;
     }""")
 
-    # ✅ estilo centrado vertical/horizontal y “pill” compacto
+    # estilos “pill”
     si_no_style_genero = JsCode("""
     function(p){
       const base = {
@@ -1900,23 +1413,19 @@ if st.session_state["na_visible"]:
     on_ready_size = JsCode("function(p){ p.api.sizeColumnsToFit(); }")
     on_first_size = JsCode("function(p){ p.api.sizeColumnsToFit(); }")
 
-    # ColumnDefs SIEMPRE visibles
     col_defs = [
         {"field":"Id", "headerName":"Id", "editable": False, "pinned":"left", "flex":1.2, "minWidth":110},
         {"field":"Tarea", "headerName":"Tarea", "editable": False, "flex":3, "minWidth":200,
          "cellStyle": {"whiteSpace":"nowrap", "overflow":"hidden", "textOverflow":"ellipsis"}},
 
         {"field":"¿Generó alerta?", "headerName":"¿Generó alerta?",
-         "editable": True,
-         "cellEditor": "agSelectCellEditor",
+         "editable": True, "cellEditor": "agSelectCellEditor",
          "cellEditorParams": {"values": ["No","Sí"]},
-         "valueFormatter": si_no_formatter,
-         "cellStyle": si_no_style_genero,
+         "valueFormatter": si_no_formatter, "cellStyle": si_no_style_genero,
          "flex":1.2, "minWidth":140},
 
         {"field":"N° alerta", "headerName":"N° alerta",
-         "editable": True,
-         "cellEditor": "agSelectCellEditor",
+         "editable": True, "cellEditor": "agSelectCellEditor",
          "cellEditorParams": {"values": ["1","2","3","+4"]},
          "flex":0.8, "minWidth":120},
 
@@ -1927,11 +1436,9 @@ if st.session_state["na_visible"]:
          "editable": False, "flex":1.0, "minWidth":140},
 
         {"field":"¿Se corrigió?", "headerName":"¿Se corrigió?",
-         "editable": True,
-         "cellEditor": "agSelectCellEditor",
+         "editable": True, "cellEditor": "agSelectCellEditor",
          "cellEditorParams": {"values": ["No","Sí"]},
-         "valueFormatter": si_no_formatter,
-         "cellStyle": si_no_style_corrigio,
+         "valueFormatter": si_no_formatter, "cellStyle": si_no_style_corrigio,
          "flex":1.2, "minWidth":140},
 
         {"field":"Fecha de corrección", "headerName":"Fecha de corrección",
@@ -1945,16 +1452,16 @@ if st.session_state["na_visible"]:
         "columnDefs": col_defs,
         "defaultColDef": {
             "resizable": True,
-            "wrapText": False,      # una sola línea
-            "autoHeight": False,    # evita crecer por contenido
+            "wrapText": False,
+            "autoHeight": False,
             "minWidth": 110,
             "flex": 1
         },
         "suppressMovableColumns": True,
         "domLayout": "normal",
         "ensureDomOrder": True,
-        "rowHeight": 38,           # ⬅️ altura de celdas ligeramente mayor
-        "headerHeight": 36,        # encabezado compacto (sin cambios en títulos)
+        "rowHeight": 38,
+        "headerHeight": 36,
         "suppressHorizontalScroll": True,
         "onCellValueChanged": on_cell_changed,
         "onGridReady": on_ready_size,
@@ -1966,7 +1473,7 @@ if st.session_state["na_visible"]:
         gridOptions=grid_opts,
         data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
         update_mode=GridUpdateMode.VALUE_CHANGED,
-        fit_columns_on_grid_load=False,   # autosize en callbacks
+        fit_columns_on_grid_load=False,
         enable_enterprise_modules=False,
         reload_data=False,
         height=220,
@@ -1980,38 +1487,49 @@ if st.session_state["na_visible"]:
         if st.button("💾 Guardar cambios", use_container_width=True):
             try:
                 df_edit = pd.DataFrame(grid["data"]).copy()
-                df_base = st.session_state["df_main"].copy()
+                df_base = st.session_state.get("df_main", pd.DataFrame()).copy()
 
-                cambios = 0
-                for _, row in df_edit.iterrows():
-                    id_row = str(row.get("Id","")).strip()
-                    if not id_row:
-                        continue
-                    m = df_base["Id"].astype(str).str.strip() == id_row
-                    if not m.any():
-                        continue
-
-                    def _set(col_base, val):
-                        v = "" if val is None else str(val).strip()
-                        if v != "":
-                            df_base.loc[m, col_base] = v
-                            return 1
-                        return 0
-
-                    cambios += _set("¿Generó alerta?",     row.get("¿Generó alerta?"))
-                    cambios += _set("N° alerta",           row.get("N° alerta"))
-                    cambios += _set("Fecha de detección",  row.get("Fecha de detección"))
-                    cambios += _set("Hora de detección",   row.get("Hora de detección"))
-                    cambios += _set("¿Se corrigió?",       row.get("¿Se corrigió?"))
-                    cambios += _set("Fecha de corrección", row.get("Fecha de corrección"))
-                    cambios += _set("Hora de corrección",  row.get("Hora de corrección"))
-
-                if cambios > 0:
-                    st.session_state["df_main"] = df_base.copy()
-                    _save_local(df_base.copy())
-                    st.success(f"✔ Cambios guardados: {cambios} actualización(es).")
+                if df_edit.empty or "Id" not in df_edit.columns or df_base.empty or "Id" not in df_base.columns:
+                    st.info("No hay cambios para guardar.")
                 else:
-                    st.info("No se detectaron cambios para guardar.")
+                    # Asegurar columnas de alerta en base
+                    alert_cols = ["¿Generó alerta?","N° alerta","Fecha de detección","Hora de detección",
+                                  "¿Se corrigió?","Fecha de corrección","Hora de corrección"]
+                    for c in alert_cols:
+                        if c not in df_base.columns:
+                            df_base[c] = ""
+
+                    cambios = 0
+                    for _, row in df_edit.iterrows():
+                        id_row = str(row.get("Id","")).strip()
+                        if not id_row:
+                            continue
+                        m = df_base["Id"].astype(str).str.strip() == id_row
+                        if not m.any():
+                            continue
+
+                        def _set(col_base, val):
+                            v = "" if val is None else str(val).strip()
+                            if v != "":
+                                df_base.loc[m, col_base] = v
+                                return 1
+                            return 0
+
+                        cambios += _set("¿Generó alerta?",     row.get("¿Generó alerta?"))
+                        cambios += _set("N° alerta",           row.get("N° alerta"))
+                        cambios += _set("Fecha de detección",  row.get("Fecha de detección"))
+                        cambios += _set("Hora de detección",   row.get("Hora de detección"))
+                        cambios += _set("¿Se corrigió?",       row.get("¿Se corrigió?"))
+                        cambios += _set("Fecha de corrección", row.get("Fecha de corrección"))
+                        cambios += _set("Hora de corrección",  row.get("Hora de corrección"))
+
+                    if cambios > 0:
+                        st.session_state["df_main"] = df_base.copy()
+                        _save_local(df_base.copy())
+                        st.success(f"✔ Cambios guardados: {cambios} actualización(es).")
+                        st.rerun()
+                    else:
+                        st.info("No se detectaron cambios para guardar.")
             except Exception as e:
                 st.error(f"No pude guardar los cambios: {e}")
 
@@ -2061,8 +1579,7 @@ if st.session_state["pri_visible"]:
         height: 44px !important; min-height: 44px !important;
       }
 
-      /* ===== Encabezados más livianos ===== */
-      /* Reducimos el peso tipográfico en ambos temas y evitamos "fake bold" */
+      /* Encabezados más livianos */
       #pri-section .ag-theme-alpine{ --ag-font-weight: 400; }
       #pri-section .ag-theme-streamlit{ --ag-font-weight: 400; }
 
@@ -2073,8 +1590,8 @@ if st.session_state["pri_visible"]:
       #pri-section .ag-theme-streamlit .ag-header-cell-text,
       #pri-section .ag-theme-streamlit .ag-header *:not(.ag-icon){
         font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif !important;
-        font-weight: 100 !important;              /* Regular */
-        font-synthesis-weight: none !important;   /* sin negrita sintética */
+        font-weight: 400 !important;             /* normal */
+        font-synthesis-weight: none !important;  /* sin negrita sintética */
         color: #1f2937 !important;
         opacity: 1 !important;
         visibility: visible !important;
@@ -2102,7 +1619,7 @@ if st.session_state["pri_visible"]:
 
     df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
     if df_all.empty:
-        df_all = pd.DataFrame(columns=["Id","Área","Fase","Responsable","Tarea","Fecha inicio"])
+        df_all = pd.DataFrame(columns=["Id","Área","Fase","Responsable","Tarea","Fecha inicio","Prioridad"])
 
     # Asegurar columna Prioridad con default Media
     if "Prioridad" not in df_all.columns:
@@ -2132,11 +1649,22 @@ if st.session_state["pri_visible"]:
         responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
         pri_resp = c_resp.multiselect("Responsable", options=responsables_all, default=[], placeholder="Selecciona responsable(s)")
 
-        pri_desde = c_desde.date_input("Desde", value=None, key="pri_desde")
-        pri_hasta = c_hasta.date_input("Hasta",  value=None, key="pri_hasta")
+        # 🔁 Rango de fechas opcional (sin value=None)
+        use_date_range = c_buscar.checkbox("Filtrar por fechas", value=False, key="pri_use_dates")
+        if use_date_range:
+            pri_desde = c_desde.date_input("Desde", key="pri_desde")
+            pri_hasta = c_hasta.date_input("Hasta",  key="pri_hasta")
+        else:
+            pri_desde = pri_hasta = None
+            with c_desde:
+                st.caption("Desde")
+                st.markdown("<div style='height:38px;border:1px dashed #e5e7eb;border-radius:8px;'></div>", unsafe_allow_html=True)
+            with c_hasta:
+                st.caption("Hasta")
+                st.markdown("<div style='height:38px;border:1px dashed #e5e7eb;border-radius:8px;'></div>", unsafe_allow_html=True)
 
         with c_buscar:
-            st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
             pri_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
     # ===== Filtrado para la tabla =====
@@ -2152,9 +1680,9 @@ if st.session_state["pri_visible"]:
         base_fecha_col = "Fecha inicio" if "Fecha inicio" in df_filtrado.columns else None
         if base_fecha_col:
             fcol = pd.to_datetime(df_filtrado[base_fecha_col], errors="coerce")
-            if pri_desde:
+            if pri_desde is not None:
                 df_filtrado = df_filtrado[fcol >= pd.to_datetime(pri_desde)]
-            if pri_hasta:
+            if pri_hasta is not None:
                 df_filtrado = df_filtrado[fcol <= (pd.to_datetime(pri_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
 
     st.markdown("**Resultados**")
@@ -2220,12 +1748,12 @@ if st.session_state["pri_visible"]:
         "suppressHorizontalScroll": True
     }
 
-    # --- Encabezado más liviano DENTRO del iframe (clave) ---
+    # Encabezado más liviano DENTRO del iframe
     custom_css_pri = {
-        ".ag-header-cell-text": {"font-weight": "600 !important"},
-        ".ag-header-group-cell-label": {"font-weight": "600 !important"},
-        ".ag-header-cell-label": {"font-weight": "600 !important"},
-        ".ag-header": {"font-weight": "600 !important"},
+        ".ag-header-cell-text": {"font-weight": "500 !important"},
+        ".ag-header-group-cell-label": {"font-weight": "500 !important"},
+        ".ag-header-cell-label": {"font-weight": "500 !important"},
+        ".ag-header": {"font-weight": "500 !important"},
     }
 
     grid_pri = AgGrid(
@@ -2238,8 +1766,8 @@ if st.session_state["pri_visible"]:
         reload_data=False,
         height=220,
         theme="alpine",
-        custom_css=custom_css_pri,        # <<--- ajuste que reduce la “negrita”
-        key="grid_prioridad",             # <<--- KEY ÚNICO PARA EVITAR CONFLICTOS
+        custom_css=custom_css_pri,        # encabezado más liviano
+        key="grid_prioridad",             # KEY ÚNICO
     )
 
     # ===== Guardar (actualiza Prioridad en df_main) =====
@@ -2254,6 +1782,9 @@ if st.session_state["pri_visible"]:
                 st.info("No hay filas para actualizar.")
             else:
                 df_base = st.session_state.get("df_main", pd.DataFrame()).copy()
+                if "Prioridad" not in df_base.columns:
+                    df_base["Prioridad"] = "Media"
+
                 cambios = 0
                 for _, row in edited.iterrows():
                     id_row = str(row.get("Id", "")).strip()
@@ -2265,10 +1796,12 @@ if st.session_state["pri_visible"]:
                     if m.any():
                         df_base.loc[m, "Prioridad"] = nuevo
                         cambios += 1
+
                 if cambios > 0:
                     st.session_state["df_main"] = df_base.copy()
                     _save_local(df_base.copy())
                     st.success(f"✔ Prioridades actualizadas: {cambios} fila(s).")
+                    st.rerun()
                 else:
                     st.info("No se detectaron cambios para guardar.")
         except Exception as e:
@@ -2280,8 +1813,6 @@ if st.session_state["pri_visible"]:
 
     # Separación vertical
     st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
-
-
 
 
 # =========================== EVALUACIÓN ===============================
@@ -2311,16 +1842,14 @@ if st.session_state["eva_visible"]:
       #eva-section .stButton > button { width: 100% !important; }
       .section-eva .help-strip-eval + .form-card{ margin-top: 6px !important; }
 
-      /* Aseguramos que cualquier overflow horizontal quede visible SOLO aquí */
+      /* overflow horizontal visible SOLO aquí */
       #eva-section .ag-body-horizontal-scroll,
       #eva-section .ag-center-cols-viewport { overflow-x: auto !important; }
 
-      /* Esta regla NO afecta fuera del contenedor */
-      #eva-section .ag-header .ag-header-cell-text{
-        font-weight: 600 !important;
-      }
+      /* headers más marcados SOLO aquí */
+      #eva-section .ag-header .ag-header-cell-text{ font-weight: 600 !important; }
 
-      /* Colorear celdas por estado (solo dentro de #eva-section) */
+      /* clases de color por estado */
       #eva-section .eva-ok  { color:#16a34a !important; }
       #eva-section .eva-bad { color:#dc2626 !important; }
       #eva-section .eva-obs { color:#d97706 !important; }
@@ -2336,18 +1865,22 @@ if st.session_state["eva_visible"]:
       <div class="form-card">
     """, unsafe_allow_html=True)
 
-    # Anchos calcados a las otras secciones
+    # Anchos (consistentes)
     A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
-    df_all = st.session_state["df_main"].copy()
+    df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
+    if df_all.empty:
+        df_all = pd.DataFrame(columns=["Id","Área","Fase","Responsable","Tarea","Fecha inicio","Evaluación","Calificación"])
 
     # Asegura columnas base
     if "Evaluación" not in df_all.columns:
         df_all["Evaluación"] = "Sin evaluar"
+    df_all["Evaluación"] = df_all["Evaluación"].fillna("Sin evaluar").replace({"": "Sin evaluar"})
     if "Calificación" not in df_all.columns:
         df_all["Calificación"] = 0
+    df_all["Calificación"] = pd.to_numeric(df_all["Calificación"], errors="coerce").fillna(0).astype(int).clip(0,5)
 
-    # ===== FILTROS (misma fila estándar) =====
+    # ===== FILTROS =====
     with st.form("eva_filtros_v2", clear_on_submit=False):
         c_area, c_fase, c_resp, c_desde, c_hasta, c_buscar = st.columns([A, Fw, T_width, D, R, C], gap="medium")
 
@@ -2360,7 +1893,7 @@ if st.session_state["eva_visible"]:
         fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
         eva_fase = c_fase.selectbox("Fase", ["Todas"] + fases_all, index=0, key="eva_fase")
 
-        # --- Responsable como MULTISELECCIÓN ---
+        # Responsable MULTISELECCIÓN
         df_resp_src = df_all.copy()
         if eva_area != "Todas":
             df_resp_src = df_resp_src[df_resp_src.get("Área","").astype(str) == eva_area]
@@ -2369,11 +1902,22 @@ if st.session_state["eva_visible"]:
         responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
         eva_resp = c_resp.multiselect("Responsable", options=responsables_all, default=[], placeholder="Selecciona responsable(s)")
 
-        eva_desde = c_desde.date_input("Desde", value=None, key="eva_desde")
-        eva_hasta = c_hasta.date_input("Hasta",  value=None, key="eva_hasta")
+        # 🔁 Rango de fechas opcional
+        use_date_range = c_buscar.checkbox("Filtrar por fechas", value=False, key="eva_use_dates")
+        if use_date_range:
+            eva_desde = c_desde.date_input("Desde", key="eva_desde")
+            eva_hasta = c_hasta.date_input("Hasta",  key="eva_hasta")
+        else:
+            eva_desde = eva_hasta = None
+            with c_desde:
+                st.caption("Desde")
+                st.markdown("<div style='height:38px;border:1px dashed #e5e7eb;border-radius:8px;'></div>", unsafe_allow_html=True)
+            with c_hasta:
+                st.caption("Hasta")
+                st.markdown("<div style='height:38px;border:1px dashed #e5e7eb;border-radius:8px;'></div>", unsafe_allow_html=True)
 
         with c_buscar:
-            st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
             eva_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
     # ===== Filtrado para tabla =====
@@ -2383,15 +1927,14 @@ if st.session_state["eva_visible"]:
             df_filtrado = df_filtrado[df_filtrado.get("Área","").astype(str) == eva_area]
         if eva_fase != "Todas" and "Fase" in df_filtrado.columns:
             df_filtrado = df_filtrado[df_filtrado["Fase"].astype(str) == eva_fase]
-        if eva_resp:  # lista no vacía
+        if eva_resp:
             df_filtrado = df_filtrado[df_filtrado.get("Responsable","").astype(str).isin(eva_resp)]
-
         base_fecha_col = "Fecha inicio" if "Fecha inicio" in df_filtrado.columns else None
         if base_fecha_col:
             fcol = pd.to_datetime(df_filtrado[base_fecha_col], errors="coerce")
-            if eva_desde:
+            if use_date_range and (eva_desde is not None):
                 df_filtrado = df_filtrado[fcol >= pd.to_datetime(eva_desde)]
-            if eva_hasta:
+            if use_date_range and (eva_hasta is not None):
                 df_filtrado = df_filtrado[fcol <= (pd.to_datetime(eva_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
 
     # ===== Tabla de Evaluación =====
@@ -2400,44 +1943,43 @@ if st.session_state["eva_visible"]:
     # Mapeos de evaluación (con/sin emoji)
     EVA_OPC_SHOW = ["Sin evaluar", "🟢 Aprobado", "🔴 Desaprobado", "🟠 Observado"]
     EVA_TO_TEXT = {
-        "🟢 Aprobado": "Aprobado", "🔴 Desaprobado": "Desaprobado", "🟠 Observado": "Observado",
+        "🟢 Aprobado":"Aprobado", "🔴 Desaprobado":"Desaprobado", "🟠 Observado":"Observado",
         "Aprobado":"Aprobado","Desaprobado":"Desaprobado","Observado":"Observado",
         "Sin evaluar":"Sin evaluar","":"Sin evaluar"
     }
     TEXT_TO_SHOW = {"Aprobado":"🟢 Aprobado","Desaprobado":"🔴 Desaprobado","Observado":"🟠 Observado","Sin evaluar":"Sin evaluar"}
 
     cols_out = ["Id", "Responsable", "Tarea", "Evaluación actual", "Evaluación ajustada", "Calificación"]
-    df_view = pd.DataFrame(columns=cols_out)
-    if not df_filtrado.empty:
+    if df_filtrado.empty:
+        df_view = pd.DataFrame({c: pd.Series(dtype="str") for c in cols_out})
+    else:
         tmp = df_filtrado.dropna(subset=["Id"]).copy()
         for need in ["Responsable","Tarea","Evaluación","Calificación"]:
             if need not in tmp.columns:
                 tmp[need] = ""
         eva_actual_txt = tmp["Evaluación"].fillna("Sin evaluar").replace({"": "Sin evaluar"}).astype(str)
         eva_ajustada_show = eva_actual_txt.apply(lambda v: TEXT_TO_SHOW.get(v, "Sin evaluar"))
-
-        calif = pd.to_numeric(tmp.get("Calificación", 0), errors="coerce").fillna(0).astype(int)
-        calif = calif.clip(lower=0, upper=5)
+        calif = pd.to_numeric(tmp.get("Calificación", 0), errors="coerce").fillna(0).astype(int).clip(0,5)
 
         df_view = pd.DataFrame({
             "Id": tmp["Id"].astype(str),
             "Responsable": tmp["Responsable"].astype(str).replace({"nan": ""}),
             "Tarea": tmp["Tarea"].astype(str).replace({"nan": ""}),
             "Evaluación actual": eva_actual_txt,
-            "Evaluación ajustada": eva_ajustada_show,   # arranca con el valor actual (con emoji)
-            "Calificación": calif                        # conserva lo guardado (por defecto 0)
+            "Evaluación ajustada": eva_ajustada_show,
+            "Calificación": calif
         })[cols_out].copy()
 
     from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode, JsCode
 
-    # CellClassRules para colorear ambas columnas de evaluación
+    # Reglas de color
     eva_cell_rules = {
         "eva-ok":  "value == '🟢 Aprobado' || value == 'Aprobado'",
         "eva-bad": "value == '🔴 Desaprobado' || value == 'Desaprobado'",
         "eva-obs": "value == '🟠 Observado' || value == 'Observado'",
     }
 
-    # Formatter de estrellas (0..5) — edita con combo y muestra estrellas
+    # Estrellas (0..5)
     stars_fmt = JsCode("""
       function(p){
         var n = parseInt(p.value||0);
@@ -2458,7 +2000,7 @@ if st.session_state["eva_visible"]:
     for ro in ["Id", "Responsable", "Tarea", "Evaluación actual"]:
         gob.configure_column(ro, editable=False, cellClassRules=eva_cell_rules if ro=="Evaluación actual" else None)
 
-    # Editable: Evaluación ajustada (combo con emojis) + colores
+    # Editable: Evaluación ajustada
     gob.configure_column(
         "Evaluación ajustada",
         editable=True,
@@ -2468,7 +2010,7 @@ if st.session_state["eva_visible"]:
         flex=1.4, minWidth=180
     )
 
-    # Editable: Calificación (selector 0..5) + estrellas visuales
+    # Editable: Calificación (0..5) + estrellas
     gob.configure_column(
         "Calificación",
         editable=True,
@@ -2478,13 +2020,13 @@ if st.session_state["eva_visible"]:
         flex=1.1, minWidth=160
     )
 
-    # Ajuste de flex para ocupar todo el ancho cómodamente
+    # Ajuste flex
     gob.configure_column("Id",            flex=1.0, minWidth=110)
     gob.configure_column("Responsable",   flex=1.6, minWidth=160)
     gob.configure_column("Tarea",         flex=2.4, minWidth=260)
     gob.configure_column("Evaluación actual", flex=1.3, minWidth=160)
 
-    # === CSS dentro del iframe de AgGrid (clave para header y colores) ===
+    # CSS dentro del iframe de AgGrid
     custom_css_eval = {
         ".ag-header-cell-text": {"font-weight": "600 !important"},
         ".ag-header-cell-label": {"font-weight": "600 !important"},
@@ -2492,7 +2034,6 @@ if st.session_state["eva_visible"]:
         ".ag-theme-alpine": {"--ag-font-weight": "600"},
         ".ag-header": {"font-synthesis-weight": "none !important"},
 
-        # Colores de estado dentro del iframe
         ".eva-ok":  {"color": "#16a34a !important"},
         ".eva-bad": {"color": "#dc2626 !important"},
         ".eva-obs": {"color": "#d97706 !important"},
@@ -2510,8 +2051,79 @@ if st.session_state["eva_visible"]:
         theme="alpine",
         height=300,
         custom_css=custom_css_eval,
-        key="grid_evaluacion",  # <<--- KEY ÚNICO PARA EVITAR CONFLICTOS CON OTRAS TABLAS
+        key="grid_evaluacion",  # KEY ÚNICO
     )
+
+    # ===== Guardar cambios (merge por Id en df_main) =====
+    _sp_eva, _btn_eva = st.columns([A+Fw+T_width+D+R, C], gap="medium")
+    with _btn_eva:
+        do_save_eva = st.button("💾 Guardar evaluación", use_container_width=True, key="eva_guardar_v1")
+
+    if do_save_eva:
+        try:
+            edited = pd.DataFrame(grid_eval.get("data", []))
+            if edited.empty or "Id" not in edited.columns:
+                st.info("No hay filas para actualizar.")
+            else:
+                df_base = st.session_state.get("df_main", pd.DataFrame()).copy()
+                if df_base.empty:
+                    st.warning("No hay base para actualizar.")
+                else:
+                    # Asegurar columnas
+                    if "Evaluación" not in df_base.columns:
+                        df_base["Evaluación"] = "Sin evaluar"
+                    if "Calificación" not in df_base.columns:
+                        df_base["Calificación"] = 0
+
+                    cambios = 0
+                    for _, row in edited.iterrows():
+                        id_row = str(row.get("Id","")).strip()
+                        if not id_row:
+                            continue
+                        m = df_base["Id"].astype(str).str.strip() == id_row
+                        if not m.any():
+                            continue
+
+                        # Mapear evaluación con/sin emoji -> texto limpio
+                        eva_ui = str(row.get("Evaluación ajustada", "Sin evaluar")).strip()
+                        eva_new = EVA_TO_TEXT.get(eva_ui, "Sin evaluar")
+
+                        # Calificación segura 0..5
+                        cal_new = row.get("Calificación", 0)
+                        try:
+                            cal_new = int(cal_new)
+                        except Exception:
+                            cal_new = 0
+                        cal_new = max(0, min(5, cal_new))
+
+                        # Aplicar
+                        prev_eva = df_base.loc[m, "Evaluación"].iloc[0] if m.any() else None
+                        prev_cal = df_base.loc[m, "Calificación"].iloc[0] if m.any() else None
+
+                        if eva_new != prev_eva:
+                            df_base.loc[m, "Evaluación"] = eva_new
+                            cambios += 1
+                        if cal_new != prev_cal:
+                            df_base.loc[m, "Calificación"] = cal_new
+                            cambios += 1
+
+                    if cambios > 0:
+                        st.session_state["df_main"] = df_base.copy()
+                        _save_local(df_base.copy())
+                        st.success(f"✔ Evaluaciones actualizadas: {cambios} cambio(s).")
+                        st.rerun()
+                    else:
+                        st.info("No se detectaron cambios para guardar.")
+        except Exception as e:
+            st.error(f"No pude guardar la evaluación: {e}")
+
+    # Cerrar wrappers
+    st.markdown('</div></div>', unsafe_allow_html=True)  # cierra .form-card y .section-eva
+    st.markdown('</div>', unsafe_allow_html=True)        # cierra #eva-section
+
+    # Separación vertical
+    st.markdown(f"<div style='height:{SECTION_GAP}px'></div>", unsafe_allow_html=True)
+
 
 
 
@@ -2521,24 +2133,30 @@ st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
 st.subheader("📝 Tareas recientes")
 st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
-# --- Estilo para filas eliminadas (tachado + rojo pastel suave) ---
+# --- Estilo para filas eliminadas (tachado + rojo pastel suave) + wrapper de acciones alineado ---
 st.markdown("""
 <style>
 .ag-theme-balham .row-deleted .ag-cell {
   text-decoration: line-through;
-  background-color: #FEE2E2 !important; /* rojo pastel */
-  color: #7F1D1D !important;            /* rojo oscuro suave */
+  background-color: #FEE2E2 !important;
+  color: #7F1D1D !important;
   opacity: 0.95;
 }
 
 /* ===== Alineación exacta de los botones inferiores con los filtros ===== */
-:root{ --hist-pad-x: 16px; --muted-bg:#ECEFF1; --muted-fg:#90A4AE; }
+:root{
+  --hist-pad-x: 16px;        /* padding lateral del contenedor de botones */
+  --hist-border-w: 0px;      /* grosor de línea superior; pon 1px o 2px si quieres una línea visible */
+  --hist-border-c: #EF4444;  /* color de la línea (roja). Cambia si deseas otro color */
+}
 .hist-actions{
   padding-left: var(--hist-pad-x) !important;
   padding-right: var(--hist-pad-x) !important;
+  border-top: var(--hist-border-w) solid var(--hist-border-c);
 }
 
 /* Encabezados gris tenue para columnas Pausado/Cancelado/Eliminado */
+:root{ --muted-bg:#ECEFF1; --muted-fg:#90A4AE; }
 .ag-theme-balham .ag-header-cell.muted-col .ag-header-cell-label{
   color: var(--muted-fg) !important;
 }
@@ -2548,11 +2166,13 @@ st.markdown("""
 import re
 from datetime import datetime, time
 
-# Base completa sin filtrar para poblar combos
+# Base
 df_all = st.session_state["df_main"].copy()
 
-# ===== Proporciones de filtros (mantenemos las tuyas) =====
+# ===== Proporciones de filtros =====
 A_f, Fw_f, T_width_f, D_f, R_f, C_f = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
+# ⬇️ Para reducir el ancho de los 3 botones de abajo, ajusta estos tres (D_f, R_f, C_f).
+#    Ejemplo: D_f=1.6, R_f=1.4, C_f=1.2
 
 # ===== FILA DE 5 FILTROS + Buscar =====
 with st.form("hist_filtros_v1", clear_on_submit=False):
@@ -2600,11 +2220,11 @@ if hist_do_buscar:
     if f_hasta:
         df_view = df_view[df_view["Fecha inicio"].dt.date <= f_hasta]
 
-# Ocultar eliminadas si el toggle está OFF (Estado != 'Eliminado')
+# Ocultar eliminadas si el toggle está OFF
 if not show_deleted and "Estado" in df_view.columns:
     df_view = df_view[df_view["Estado"].astype(str).str.strip() != "Eliminado"]
 
-# ===== ORDENAR POR RECIENTES =====
+# ===== ORDEN POR RECIENTES =====
 for c in ["Fecha estado modificado", "Fecha estado actual", "Fecha inicio"]:
     if c not in df_view.columns:
         df_view[c] = pd.NaT
@@ -2612,7 +2232,6 @@ for c in ["Fecha estado modificado", "Fecha estado actual", "Fecha inicio"]:
 ts_mod = pd.to_datetime(df_view["Fecha estado modificado"], errors="coerce")
 ts_act = pd.to_datetime(df_view["Fecha estado actual"], errors="coerce")
 ts_ini = pd.to_datetime(df_view["Fecha inicio"], errors="coerce")
-
 df_view["__ts__"] = ts_mod.combine_first(ts_act).combine_first(ts_ini)
 df_view = df_view.sort_values("__ts__", ascending=False, na_position="last")
 
@@ -2725,16 +2344,16 @@ target_cols = [
     "Fecha de detección","Hora de detección",
     "¿Se corrigió?","Fecha de corrección","Hora de corrección",
     "Cumplimiento","Evaluación","Calificación",
-    # ← al final final, visibles:
+    # al final:
     "Fecha Pausado","Hora Pausado",
     "Fecha Cancelado","Hora Cancelado",
     "Fecha Eliminado","Hora Eliminado",
     "__SEL__","__DEL__"
 ]
 
-# Agrego “¿Eliminar?” aquí para que NO aparezca en el grid
+# Ocultas en grid (no visibles)
 HIDDEN_COLS = [
-    "¿Eliminar?",
+    "¿Eliminar?",                        # ← ELIMINADA del grid
     "Estado modificado",
     "Fecha estado modificado","Hora estado modificado",
     "Fecha estado actual","Hora estado actual",
@@ -2744,6 +2363,7 @@ HIDDEN_COLS = [
     "__ts__","__DEL__","__SEL__"
 ]
 
+# Asegurar columnas
 for c in target_cols:
     if c not in df_view.columns:
         if c in ["__SEL__","__DEL__"]:
@@ -2756,7 +2376,11 @@ df_grid = df_view.reindex(columns=list(dict.fromkeys(target_cols)) + [c for c in
 df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()
 df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
 
-# ================= GRID OPTIONS =================
+# 💥 Remueve completamente la columna ¿Eliminar? del grid
+if "¿Eliminar?" in df_grid.columns:
+    df_grid.drop(columns=["¿Eliminar?"], inplace=True, errors="ignore")
+
+# ================= GRID OPTIONS (solo lectura) =================
 from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode, JsCode
 
 gob = GridOptionsBuilder.from_dataframe(df_grid)
@@ -2789,8 +2413,9 @@ gob.configure_column("Fecha Vencimiento", headerName="Fecha límite")
 gob.configure_column("Fecha inicio",      headerName="Fecha de inicio")
 gob.configure_column("Fecha Terminado",   headerName="Fecha Terminado")
 
+# Ocultar columnas internas
 for ocultar in HIDDEN_COLS:
-    if ocultar in df_view.columns:
+    if ocultar in df_grid.columns:
         gob.configure_column(ocultar, hide=True, suppressMenu=True, filter=False)
 
 fmt_dash = JsCode("""
@@ -2960,7 +2585,7 @@ try:
 except Exception:
     pass
 
-# --- Sincroniza (no editable, pero mantenemos la coherencia con df_main) ---
+# --- Sincroniza (aunque es solo lectura, mantenemos coherencia por selección/flags) ---
 if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
     try:
         edited = pd.DataFrame(grid["data"]).copy()
@@ -2988,9 +2613,10 @@ _spacer, b_xlsx, b_save_local, b_save_sheets = st.columns([left_spacer, D_f, R_f
 with b_xlsx:
     try:
         df_xlsx = st.session_state["df_main"].copy()
+        # Remueve columnas internas, incl. ¿Eliminar?
         drop_cols = [c for c in ("__DEL__", "DEL", "__SEL__", "¿Eliminar?") if c in df_xlsx.columns]
         if drop_cols:
-            df_xlsx.drop(columns=drop_cols, inplace=True)
+            df_xlsx.drop(columns=drop_cols, inplace=True, errors="ignore")
         cols_order = globals().get("COLS_XLSX", []) or [c for c in target_cols if c not in ["__SEL__","__DEL__"]]
         cols_order = [c for c in cols_order if c in df_xlsx.columns]
         if cols_order:
