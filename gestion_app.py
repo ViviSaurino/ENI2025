@@ -2545,7 +2545,7 @@ with st.form("hist_filtros_v1", clear_on_submit=False):
         ["Jefatura","Gestión","Metodología","Base de datos","Monitoreo","Capacitación","Consistencia"]
     ), index=0, key="hist_area")
 
-    # Fase
+    # Fase (de lo que exista en la base)
     fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
     fase_sel = cF.selectbox("Fase", options=["Todas"] + fases_all, index=0, key="hist_fase")
 
@@ -2649,6 +2649,7 @@ mask_hr_missing = (df_view["Hora Registro"].eq("")) | (df_view["Hora Registro"].
 
 df_view.loc[mask_fr_missing, "Fecha Registro"] = _fr_fb[mask_fr_missing]
 df_view.loc[mask_hr_missing, "Hora Registro"]  = _hr_fb[mask_hr_missing]
+# (IMPORTANTE) Ya NO se limpian las huellas de registro.
 
 # 3) INICIO y FIN — HUELLAS que NO se borran (solo se completan si están vacías)
 if "Hora de inicio" not in df_view.columns: df_view["Hora de inicio"] = ""
@@ -2685,6 +2686,7 @@ if "Estado" in df_view.columns:
 if "Fecha Vencimiento" not in df_view.columns: df_view["Fecha Vencimiento"] = pd.NaT
 if "Hora Vencimiento" not in df_view.columns:  df_view["Hora Vencimiento"]  = ""
 
+# Si existe la vieja columna "Vencimiento", úsala para poblar por defecto
 if "Vencimiento" in df_view.columns:
     _vdt = pd.to_datetime(df_view["Vencimiento"], errors="coerce")
     mask_fv = df_view["Fecha Vencimiento"].isna()
@@ -2694,13 +2696,14 @@ if "Vencimiento" in df_view.columns:
     mask_hv = hv_now.eq("") | hv_now.eq("00:00")
     df_view.loc[mask_hv, "Hora Vencimiento"] = hv_from[mask_hv]
 
+# Normalizar tipos y aplicar 17:00 por defecto si vacío
 df_view["Fecha Vencimiento"] = df_view["Fecha Vencimiento"].apply(_to_date)
 df_view["Hora Vencimiento"]  = df_view["Hora Vencimiento"].apply(_to_hhmm)
 df_view.loc[df_view["Hora Vencimiento"] == "", "Hora Vencimiento"] = "17:00"
 
-# === ORDEN Y PRESENCIA DE COLUMNAS (agregamos columnas internas __SEL__ y __DEL_CLIENT__) ===
+# === ORDEN Y PRESENCIA DE COLUMNAS ===
 target_cols = [
-    "Id","Área","Fase","Responsable",
+    "Id","⛔ Borrar","Área","Fase","Responsable",
     "Tarea","Tipo","Detalle","Ciclo de mejora","Complejidad","Prioridad",
     "Estado",
     "Duración",
@@ -2714,10 +2717,10 @@ target_cols = [
     "¿Generó alerta?",
     "Fecha de detección","Hora de detección",
     "¿Se corrigió?","Fecha de corrección","Hora de corrección",
-    "Cumplimiento","Evaluación","Calificación",
-    "__SEL__","__DEL_CLIENT__"
+    "Cumplimiento","Evaluación","Calificación"
 ]
 
+# Columnas NO visibles en el grid
 HIDDEN_COLS = [
     "Estado modificado",
     "Fecha estado modificado","Hora estado modificado",
@@ -2725,29 +2728,35 @@ HIDDEN_COLS = [
     "N° de alerta","Tipo de alerta",
     "Fecha","Hora",
     "Vencimiento",
-    "__ts__","__DEL__","__SEL__","__DEL_CLIENT__"
+    "__ts__","__DEL__"
 ]
 
+# Asegura presencia de columnas
 for c in target_cols:
     if c not in df_view.columns:
-        if c in ["__SEL__","__DEL_CLIENT__"]:
+        if c == "⛔ Borrar":
             df_view[c] = False
         else:
             df_view[c] = ""
 
+# Tipos
 df_view["Duración"] = df_view["Duración"].astype(str).fillna("")
+df_view["⛔ Borrar"] = df_view["⛔ Borrar"].fillna(False).astype(bool)
 
+# Reindex (sin duplicados y excluyendo ocultas)
 target_cols_u = list(dict.fromkeys(target_cols))
 rest = [c for c in df_view.columns if c not in target_cols_u + HIDDEN_COLS]
 df_grid = df_view.reindex(columns=target_cols_u + rest).copy()
 df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()
+
+# Forzar Id a string
 df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
 
 # ================= GRID OPTIONS =================
 from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode, JsCode
 
 gob = GridOptionsBuilder.from_dataframe(df_grid)
-# Por defecto: nada editable
+# Por defecto: NADA editable (luego se habilita condicionalmente)
 gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, editable=False)
 
 # Regla: solo editable si Tipo == 'Otros'
@@ -2779,12 +2788,22 @@ gob.configure_grid_options(
 # ----- Fijas a la izquierda -----
 gob.configure_column("Id",
     headerName="ID",
-    editable=False, width=110, pinned="left",
+    editable=False, width=100, pinned="left",
     checkboxSelection=True,
     headerCheckboxSelection=True,
     headerCheckboxSelectionFilteredOnly=True,
     suppressMovable=True
 )
+# Columna de marcado para borrar (siempre editable)
+gob.configure_column("⛔ Borrar",
+    headerName="Borrar",
+    editable=True,
+    cellRenderer="agCheckboxCellRenderer",
+    cellEditor="agCheckboxCellEditor",
+    width=100, pinned="left",
+    suppressMovable=True, filter=False
+)
+
 gob.configure_column("Área",        editable=edit_if_otros,  width=160, pinned="left", suppressMovable=True)
 gob.configure_column("Fase",        editable=edit_if_otros,  width=140, pinned="left", suppressMovable=True)
 gob.configure_column("Responsable", editable=edit_if_otros,  minWidth=180, pinned="left", suppressMovable=True)
@@ -2795,7 +2814,7 @@ gob.configure_column("Fecha Vencimiento", headerName="Fecha límite")
 gob.configure_column("Fecha inicio",      headerName="Fecha de inicio")
 gob.configure_column("Fecha Terminado",   headerName="Fecha Terminado")
 
-# ----- Ocultas -----
+# ----- Ocultas en GRID -----
 for ocultar in HIDDEN_COLS + ["Fecha Pausado","Hora Pausado","Fecha Cancelado","Hora Cancelado","Fecha Eliminado","Hora Eliminado"]:
     if ocultar in df_view.columns:
         gob.configure_column(ocultar, hide=True, suppressMenu=True, filter=False)
@@ -2817,12 +2836,12 @@ function(p){
   if (v==='No iniciado'){bg='#90A4AE'}
   else if(v==='En curso'){bg='#B388FF'}
   else if(v==='Terminado'){bg='#00C4B3'}
-  else if(v==='Cancelado'){bg='#FF2D95'}
-  else if(v==='Pausado'){bg='#7E57C2'}
-  else if(v==='Entregado a tiempo'){bg='#00C4B3'}
-  else if(v==='Entregado con retraso'){bg='#00ACC1'}
-  else if(v==='No entregado'){bg='#006064'}
-  else if(v==='En riesgo de retraso'){bg='#0277BD'}
+  else if(v==='Cancelado'){bg:'#FF2D95'}
+  else if(v==='Pausado'){bg:'#7E57C2'}
+  else if(v==='Entregado a tiempo'){bg:'#00C4B3'}
+  else if(v==='Entregado con retraso'){bg:'#00ACC1'}
+  else if(v==='No entregado'){bg:'#006064'}
+  else if(v==='En riesgo de retraso'){bg:'#0277BD'}
   else if(v==='Aprobada'){bg:'#8BC34A'; fg:'#0A2E00'}
   else if(v==='Desaprobada'){bg:'#FF8A80'}
   else if(v==='Pendiente de revisión'){bg:'#BDBDBD'; fg:'#2B2B2B'}
@@ -2895,7 +2914,7 @@ for c, fx in [("Tarea",3), ("Tipo",1), ("Detalle",2), ("Ciclo de mejora",1), ("C
     if c in df_grid.columns:
         gob.configure_column(
             c,
-            editable=(False if c in ["Duración","Id"] else edit_if_otros),
+            editable=(False if c in ["Duración","Id","⛔ Borrar"] else edit_if_otros),
             minWidth=colw.get(c,120),
             flex=fx,
             valueFormatter=(
@@ -2944,7 +2963,7 @@ if "Calificación" in df_grid.columns:
 for col in df_grid.columns:
     gob.configure_column(col, headerTooltip=col)
 
-# === Autosize, sincronizar selección al server y borrar con Supr/Delete (cliente) ===
+# === Autosize ===
 autosize_on_ready = JsCode("""
 function(params){
   const all = params.columnApi.getAllDisplayedColumns();
@@ -2957,43 +2976,11 @@ function(params){
     params.columnApi.autoSizeColumns(all, true);
   }
 }""")
-# Marca __SEL__ en filas seleccionadas (esto fuerza un rerun y preserva selección en Python)
-sync_selection = JsCode("""
-function(params){
-  const selIds = new Set(params.api.getSelectedRows().map(r => String(r.Id||r['Id']||'')));
-  const updates = [];
-  params.api.forEachNode(n=>{
-    const id = String((n.data && (n.data.Id||n.data['Id'])) || '');
-    const flag = selIds.has(id);
-    if(!!n.data.__SEL__ !== flag){
-      const u = Object.assign({}, n.data);
-      u.__SEL__ = flag;
-      updates.push(u);
-    }
-  });
-  if(updates.length){ params.api.applyTransaction({update: updates}); }
-}
-""")
-# Supr/Delete: quita filas del grid inmediatamente (luego Python sincroniza por keep_ids)
-delete_with_key = JsCode("""
-function(params){
-  const e = params.event;
-  if(!e) return;
-  if ((e.key === 'Delete' || e.key === 'Backspace') && !params.editing){
-    const sel = params.api.getSelectedRows();
-    if (sel && sel.length){
-      params.api.applyTransaction({ remove: sel });
-    }
-  }
-}
-""")
 
 grid_opts = gob.build()
 grid_opts["onGridReady"] = autosize_on_ready.js_code
 grid_opts["onFirstDataRendered"] = autosize_on_data.js_code
 grid_opts["onColumnEverythingChanged"] = autosize_on_data.js_code
-grid_opts["onSelectionChanged"] = sync_selection.js_code
-grid_opts["onCellKeyDown"] = delete_with_key.js_code
 
 # Recordar selección entre reruns
 grid_opts["rowSelection"] = "multiple"
@@ -3003,106 +2990,62 @@ grid_opts["rememberSelection"] = True
 grid = AgGrid(
     df_grid, key="grid_historial", gridOptions=grid_opts, height=500,
     fit_columns_on_grid_load=False,
-    data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+    # *** CLAVE para persistir borrados/ediciones del cliente ***
+    data_return_mode=DataReturnMode.AS_INPUT,
     update_mode=(GridUpdateMode.VALUE_CHANGED | GridUpdateMode.MODEL_CHANGED
                  | GridUpdateMode.FILTERING_CHANGED | GridUpdateMode.SORTING_CHANGED
                  | GridUpdateMode.SELECTION_CHANGED),
     allow_unsafe_jscode=True, theme="balham",
 )
 
-# --- Determinar selección via columna __SEL__ (confiable entre reruns) ---
-try:
-    if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
-        _gdf = pd.DataFrame(grid["data"])
-        sel_ids = _gdf.loc[_gdf.get("__SEL__", False)==True, "Id"].astype(str).tolist()
-    else:
-        sel_ids = []
-except Exception:
-    sel_ids = []
+# Guarda selección (persistente y sin pisar con vacío)
+st.session_state.setdefault("hist_sel_ids", [])
+sel_rows_now = grid.get("selected_rows", []) if isinstance(grid, dict) else []
+_ids_now = [str((r.get("Id") or r.get("ID") or "")).strip()
+            for r in sel_rows_now if str((r.get("Id") or r.get("ID") or "")).strip()]
+if _ids_now:
+    st.session_state["hist_sel_ids"] = _ids_now
 
-st.session_state["hist_sel_ids"] = sel_ids
-
-# --- Sincroniza EDICIONES y BORRADOS por diferencia de Id (si el grid eliminó filas con Supr/Delete) ---
+# Sincroniza ediciones y BORRADOS por Id (con columna '⛔ Borrar')
 if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
     try:
         edited = pd.DataFrame(grid["data"]).copy()
-        edited["Id"] = edited["Id"].astype(str)
+        if "Id" in edited.columns:
+            edited["Id"] = edited["Id"].astype(str)
+        if "⛔ Borrar" in edited.columns:
+            edited["⛔ Borrar"] = edited["⛔ Borrar"].fillna(False).astype(bool)
 
         base = st.session_state["df_main"].copy()
-        base["Id"] = base["Id"].astype(str)
+        if "Id" in base.columns:
+            base["Id"] = base["Id"].astype(str)
 
-        # Mantener solo lo que el grid aún muestra (si se borró con Supr/Delete ya no estará)
-        keep_ids = set(edited["Id"].tolist())
-        base = base[base["Id"].isin(keep_ids)].copy()
+        # 1) Ids marcados para borrar
+        del_ids = []
+        if "⛔ Borrar" in edited.columns and "Id" in edited.columns:
+            del_ids = edited.loc[edited["⛔ Borrar"] == True, "Id"].astype(str).tolist()
+            # eliminar de la vista editada
+            edited = edited[~edited["Id"].isin(del_ids)]
 
-        # Actualizar valores con lo que venga del grid
-        b_i = base.set_index("Id")
-        e_i = edited.set_index("Id")
-        b_i.update(e_i)
-        st.session_state["df_main"] = b_i.reset_index()
+        # 2) Mantener solo los Ids que siguen apareciendo en el grid
+        keep_ids = set(edited["Id"].tolist()) if "Id" in edited.columns else set()
+        if "Id" in base.columns:
+            base = base[base["Id"].isin(keep_ids)].copy()
+
+        # 3) Actualizar valores con lo que venga del grid
+        if "Id" in edited.columns and not edited.empty:
+            b_i = base.set_index("Id")
+            e_i = edited.set_index("Id")
+            b_i.update(e_i)  # sobrescribe con no-NA de e_i
+            st.session_state["df_main"] = b_i.reset_index()
+        else:
+            st.session_state["df_main"] = base.copy()
+
+        # 4) Si hubo borrados, notifica y rerun
+        if del_ids:
+            st.success(f"Eliminadas {len(del_ids)} fila(s).")
+            st.rerun()
     except Exception:
         pass
 
-# ---- Botones ----
-total_btn_width = (1.2 + 1.2) + (3.2 / 2)
-btn_w = total_btn_width / 4
-b_del, b_xlsx, b_save_local, b_save_sheets, _spacer = st.columns(
-    [btn_w, btn_w, btn_w, btn_w, (3.2 / 2) + 2.4],
-    gap="medium"
-)
-
-# 1) Borrar seleccionados (usa selección sincronizada __SEL__)
-with b_del:
-    if st.button("🗑️ Borrar", use_container_width=True):
-        ids = [str(i).strip() for i in st.session_state.get("hist_sel_ids", []) if str(i).strip()]
-        if ids:
-            df0 = st.session_state["df_main"].copy()
-            st.session_state["df_main"] = df0[~df0["Id"].astype(str).isin(ids)].copy()
-            st.session_state["hist_sel_ids"] = []
-            st.success(f"Eliminadas {len(ids)} fila(s).")
-            st.rerun()
-        else:
-            st.warning("No hay filas seleccionadas.")
-
-# 2) Exportar Excel (respeta orden oficial)
-with b_xlsx:
-    try:
-        df_xlsx = st.session_state["df_main"].copy()
-        drop_cols = [c for c in ("__DEL__", "DEL", "__SEL__", "__DEL_CLIENT__") if c in df_xlsx.columns]
-        if drop_cols:
-            df_xlsx.drop(columns=drop_cols, inplace=True)
-        cols_order = globals().get("COLS_XLSX", []) or [c for c in target_cols if c not in ["__SEL__","__DEL_CLIENT__"]]
-        cols_order = [c for c in cols_order if c in df_xlsx.columns]
-        if cols_order:
-            df_xlsx = df_xlsx.reindex(columns=cols_order)
-        xlsx_b = export_excel(df_xlsx, sheet_name=TAB_NAME)
-        st.download_button(
-            "⬇️ Exportar Excel",
-            data=xlsx_b,
-            file_name="tareas.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True
-        )
-    except ImportError:
-        st.error("No pude generar Excel: falta instalar 'xlsxwriter' u 'openpyxl' en el entorno.")
-    except Exception as e:
-        st.error(f"No pude generar Excel: {e}")
-
-# 3) Guardar (tabla local)
-with b_save_local:
-    if st.button("💽 Guardar", use_container_width=True):
-        df = st.session_state["df_main"][COLS].copy()
-        _save_local(df.copy())
-        st.success("Datos guardados en la tabla local (CSV).")
-
-# 4) Subir a Sheets (respeta orden oficial)
-with b_save_sheets:
-    if st.button("📤 Subir a Sheets", use_container_width=True):
-        df = st.session_state["df_main"].copy()
-        cols_order = globals().get("COLS_XLSX", []) or [c for c in target_cols if c not in ["__SEL__","__DEL_CLIENT__"]]
-        cols_order = [c for c in cols_order if c in df.columns]
-        if cols_order:
-            df = df.reindex(columns=cols_order)
-        _save_local(df.copy())
-        ok, msg = _write_sheet_tab(df.copy())
-        st.success(msg) if ok else st.warning(msg)
+# ---- Botones (sin botón Borrar) ----
+total_btn_width = (1.2 + 1.2) + (3.2 / 2)  #
