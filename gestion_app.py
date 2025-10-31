@@ -1528,7 +1528,7 @@ if st.session_state["est_visible"]:
         })[cols_out].copy()
 
     # ========= editores y estilo seguro (sin DOM manual) =========
-    estados_editables = ["En curso","Terminado","Pausado","Cancelado"]
+    estados_editables = ["En curso","Terminado","Pausado","Cancelado","Eliminado"]  # ← agregado
 
     date_editor = JsCode("""
     class DateEditor{
@@ -1555,7 +1555,13 @@ if st.session_state["est_visible"]:
     estado_emoji_fmt = JsCode("""
     function(p){
       const v = String(p.value || '');
-      const M = {"En curso":"🟣 En curso","Terminado":"✅ Terminado","Pausado":"⏸️ Pausado","Cancelado":"⛔ Cancelado"};
+      const M = {
+        "En curso":"🟣 En curso",
+        "Terminado":"✅ Terminado",
+        "Pausado":"⏸️ Pausado",
+        "Cancelado":"⛔ Cancelado",
+        "Eliminado":"🗑️ Eliminado"   // ← agregado
+      };
       return M[v] || v;
     }""")
 
@@ -2479,13 +2485,16 @@ st.markdown("""
   opacity: 0.95;
 }
 
-/* ===== Alineación exacta de los botones inferiores con los filtros =====
-   Igualamos el “acolchado” lateral del bloque inferior al que usa el st.form
-   para que los botones queden dentro de las mismas guías (rayas rojas). */
-:root{ --hist-pad-x: 16px; }  /* si ves 1–2 px de desfase, puedes mover a 14 o 18 */
+/* ===== Alineación exacta de los botones inferiores con los filtros ===== */
+:root{ --hist-pad-x: 16px; --muted-bg:#ECEFF1; --muted-fg:#90A4AE; }
 .hist-actions{
   padding-left: var(--hist-pad-x) !important;
   padding-right: var(--hist-pad-x) !important;
+}
+
+/* Encabezados gris tenue para columnas Pausado/Cancelado/Eliminado */
+.ag-theme-balham .ag-header-cell.muted-col .ag-header-cell-label{
+  color: var(--muted-fg) !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -2664,15 +2673,16 @@ target_cols = [
     "Duración",
     "Fecha Registro","Hora Registro",
     "Fecha inicio","Hora de inicio",
-    "Fecha Pausado","Hora Pausado",
-    "Fecha Cancelado","Hora Cancelado",
-    "Fecha Eliminado","Hora Eliminado",
     "Fecha Vencimiento","Hora Vencimiento",
     "Fecha Terminado","Hora Terminado",
     "¿Generó alerta?",
     "Fecha de detección","Hora de detección",
     "¿Se corrigió?","Fecha de corrección","Hora de corrección",
     "Cumplimiento","Evaluación","Calificación",
+    # ← al final final, visibles:
+    "Fecha Pausado","Hora Pausado",
+    "Fecha Cancelado","Hora Cancelado",
+    "Fecha Eliminado","Hora Eliminado",
     "__SEL__","__DEL__"
 ]
 
@@ -2739,12 +2749,12 @@ gob.configure_column("Fecha Vencimiento", headerName="Fecha límite")
 gob.configure_column("Fecha inicio",      headerName="Fecha de inicio")
 gob.configure_column("Fecha Terminado",   headerName="Fecha Terminado")
 
-# Ocultas
-for ocultar in HIDDEN_COLS + ["Fecha Pausado","Hora Pausado","Fecha Cancelado","Hora Cancelado","Fecha Eliminado","Hora Eliminado"]:
+# Ocultas (ya NO ocultamos Pausado/Cancelado/Eliminado)
+for ocultar in HIDDEN_COLS:
     if ocultar in df_view.columns:
         gob.configure_column(ocultar, hide=True, suppressMenu=True, filter=False)
 
-# ----- Formatters (sin cambios de estilo) -----
+# ----- Formatters (sin cambios, solo añadimos las 3 fechas nuevas) -----
 fmt_dash = JsCode("""
 function(p){
   if(p.value===null||p.value===undefined) return '—';
@@ -2794,7 +2804,10 @@ colw = {
     "Fecha Terminado":160, "Hora Terminado":140,
     "¿Generó alerta?":150, "Fecha de detección":160, "Hora de detección":140,
     "¿Se corrigió?":140, "Fecha de corrección":160, "Hora de corrección":140,
-    "Cumplimiento":180, "Evaluación":170, "Calificación":120
+    "Cumplimiento":180, "Evaluación":170, "Calificación":120,
+    "Fecha Pausado":160, "Hora Pausado":140,
+    "Fecha Cancelado":160, "Hora Cancelado":140,
+    "Fecha Eliminado":160, "Hora Eliminado":140
 }
 
 for c, fx in [("Tarea",3), ("Tipo",1), ("Detalle",2), ("Ciclo de mejora",1), ("Complejidad",1), ("Prioridad",1), ("Estado",1),
@@ -2804,15 +2817,19 @@ for c, fx in [("Tarea",3), ("Tipo",1), ("Detalle",2), ("Ciclo de mejora",1), ("C
               ("Fecha Terminado",1), ("Hora Terminado",1),
               ("¿Generó alerta?",1), ("Fecha de detección",1), ("Hora de detección",1),
               ("¿Se corrigió?",1), ("Fecha de corrección",1), ("Hora de corrección",1),
-              ("Cumplimiento",1), ("Evaluación",1), ("Calificación",0)]:
+              ("Cumplimiento",1), ("Evaluación",1), ("Calificación",0),
+              ("Fecha Pausado",1), ("Hora Pausado",1),
+              ("Fecha Cancelado",1), ("Hora Cancelado",1),
+              ("Fecha Eliminado",1), ("Hora Eliminado",1)]:
     if c in df_grid.columns:
         gob.configure_column(
             c,
-            editable=False,  # 🔒 todas no editables
+            editable=False,
             minWidth=colw.get(c,120),
             flex=fx,
             valueFormatter=(
-                date_only_fmt if c in ["Fecha Registro","Fecha inicio","Fecha Vencimiento"] else
+                date_only_fmt if c in ["Fecha Registro","Fecha inicio","Fecha Vencimiento",
+                                       "Fecha Pausado","Fecha Cancelado","Fecha Eliminado"] else
                 time_only_fmt if c in ["Hora Registro","Hora de inicio","Hora Pausado","Hora Cancelado","Hora Eliminado",
                                        "Hora Terminado","Hora de detección","Hora de corrección","Hora Vencimiento"] else
                 date_time_fmt if c in ["Fecha Terminado","Fecha de detección","Fecha de corrección"] else
@@ -2821,12 +2838,22 @@ for c, fx in [("Tarea",3), ("Tipo",1), ("Detalle",2), ("Ciclo de mejora",1), ("C
             suppressMenu=True if c in ["Fecha Registro","Hora Registro","Fecha inicio","Hora de inicio",
                                        "Fecha Vencimiento","Hora Vencimiento",
                                        "Fecha Terminado","Fecha de detección","Hora de detección",
-                                       "Fecha de corrección","Hora de corrección"] else False,
+                                       "Fecha de corrección","Hora de corrección",
+                                       "Fecha Pausado","Hora Pausado","Fecha Cancelado","Hora Cancelado",
+                                       "Fecha Eliminado","Hora Eliminado"] else False,
             filter=False if c in ["Fecha Registro","Hora Registro","Fecha inicio","Hora de inicio",
                                   "Fecha Vencimiento","Hora Vencimiento",
                                   "Fecha Terminado","Fecha de detección","Hora de detección",
-                                  "Fecha de corrección","Hora de corrección"] else None
+                                  "Fecha de corrección","Hora de corrección",
+                                  "Fecha Pausado","Hora Pausado","Fecha Cancelado","Hora Cancelado",
+                                  "Fecha Eliminado","Hora Eliminado"] else None
         )
+
+# —— Estilo gris para las 6 columnas (celdas y encabezado) —
+MUTED_CELL_STYLE = {"backgroundColor":"#ECEFF1","color":"#90A4AE"}
+for cc in ["Fecha Pausado","Hora Pausado","Fecha Cancelado","Hora Cancelado","Fecha Eliminado","Hora Eliminado"]:
+    if cc in df_grid.columns:
+        gob.configure_column(cc, headerClass="muted-col", cellStyle=MUTED_CELL_STYLE)
 
 # ==== Reglas de clase por fila (tachado/pintado si Estado = Eliminado o __DEL__ True) ====
 row_class_rules = {
@@ -2982,5 +3009,3 @@ with b_save_sheets:
 
 # cierre del wrapper de acciones
 st.markdown('</div>', unsafe_allow_html=True)
-
-
