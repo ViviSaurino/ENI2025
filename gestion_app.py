@@ -2701,7 +2701,7 @@ df_view["Fecha Vencimiento"] = df_view["Fecha Vencimiento"].apply(_to_date)
 df_view["Hora Vencimiento"]  = df_view["Hora Vencimiento"].apply(_to_hhmm)
 df_view.loc[df_view["Hora Vencimiento"] == "", "Hora Vencimiento"] = "17:00"
 
-# === ORDEN Y PRESENCIA DE COLUMNAS (AJUSTE: mover 'Tipo' al lado de 'Tarea' y ocultar 'Fecha'/'Hora') ===
+# === ORDEN Y PRESENCIA DE COLUMNAS ===
 target_cols = [
     "Id","Área","Fase","Responsable",
     "Tarea","Tipo","Detalle","Ciclo de mejora","Complejidad","Prioridad",
@@ -2715,10 +2715,10 @@ target_cols = [
     "Fecha Vencimiento","Hora Vencimiento",
     "Fecha Terminado","Hora Terminado",
     "¿Generó alerta?",
-    # “N° de alerta” y “Tipo de alerta” se mantienen fuera del grid
     "Fecha de detección","Hora de detección",
     "¿Se corrigió?","Fecha de corrección","Hora de corrección",
-    "Cumplimiento","Evaluación","Calificación"
+    "Cumplimiento","Evaluación","Calificación",
+    "__DEL_CLIENT__"  # ← bandera interna para borrar con teclado
 ]
 
 # Columnas NO visibles en el grid
@@ -2729,13 +2729,13 @@ HIDDEN_COLS = [
     "N° de alerta","Tipo de alerta",
     "Fecha","Hora",
     "Vencimiento",
-    "__ts__","__DEL__"
+    "__ts__","__DEL__","__DEL_CLIENT__"
 ]
 
 # Asegura presencia de columnas
 for c in target_cols:
     if c not in df_view.columns:
-        df_view[c] = ""
+        df_view[c] = "" if c != "__DEL_CLIENT__" else False
 
 # Duración vacía
 df_view["Duración"] = df_view["Duración"].astype(str).fillna("")
@@ -2753,7 +2753,16 @@ df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
 from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode, JsCode
 
 gob = GridOptionsBuilder.from_dataframe(df_grid)
-gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True)
+# Por defecto: NADA editable
+gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, editable=False)
+
+# Regla: solo editable si Tipo == 'Otros'
+edit_if_otros = JsCode("""
+function(p){
+  const t = String((p.data && p.data['Tipo']) || '').trim();
+  return t === 'Otros';
+}
+""")
 
 gob.configure_grid_options(
     rowSelection="multiple",
@@ -2782,9 +2791,9 @@ gob.configure_column("Id",
     headerCheckboxSelectionFilteredOnly=True,
     suppressMovable=True
 )
-gob.configure_column("Área",        editable=True,  width=160, pinned="left", suppressMovable=True)
-gob.configure_column("Fase",        editable=True,  width=140, pinned="left", suppressMovable=True)
-gob.configure_column("Responsable", editable=True,  minWidth=180, pinned="left", suppressMovable=True)
+gob.configure_column("Área",        editable=edit_if_otros,  width=160, pinned="left", suppressMovable=True)
+gob.configure_column("Fase",        editable=edit_if_otros,  width=140, pinned="left", suppressMovable=True)
+gob.configure_column("Responsable", editable=edit_if_otros,  minWidth=180, pinned="left", suppressMovable=True)
 
 # ----- Alias de encabezados -----
 gob.configure_column("Estado",            headerName="Estado actual")
@@ -2819,7 +2828,7 @@ function(p){
   else if(v==='Entregado a tiempo'){bg='#00C4B3'}
   else if(v==='Entregado con retraso'){bg='#00ACC1'}
   else if(v==='No entregado'){bg='#006064'}
-  else if(v==='En riesgo de retraso'){bg:'#0277BD'}
+  else if(v==='En riesgo de retraso'){bg='#0277BD'}
   else if(v==='Aprobada'){bg:'#8BC34A'; fg:'#0A2E00'}
   else if(v==='Desaprobada'){bg:'#FF8A80'}
   else if(v==='Pendiente de revisión'){bg:'#BDBDBD'; fg:'#2B2B2B'}
@@ -2892,7 +2901,7 @@ for c, fx in [("Tarea",3), ("Tipo",1), ("Detalle",2), ("Ciclo de mejora",1), ("C
     if c in df_grid.columns:
         gob.configure_column(
             c,
-            editable=True if c not in ["Duración"] else False,
+            editable=(False if c in ["Duración","Id"] else edit_if_otros),
             minWidth=colw.get(c,120),
             flex=fx,
             valueFormatter=(
@@ -2912,28 +2921,28 @@ for c, fx in [("Tarea",3), ("Tipo",1), ("Detalle",2), ("Ciclo de mejora",1), ("C
                                   "Fecha de corrección","Hora de corrección"] else None
         )
 
-# Prioridad con banderitas
+# Prioridad con banderitas (editable solo si Tipo=='Otros')
 if "Prioridad" in df_grid.columns:
     gob.configure_column("Prioridad",
-        editable=True, cellEditor="agSelectCellEditor",
+        editable=edit_if_otros, cellEditor="agSelectCellEditor",
         cellEditorParams={"values": ["Alta","Media","Baja"]},
         valueFormatter=flag_formatter, minWidth=colw["Prioridad"], maxWidth=220, flex=1
     )
 
-# Chips
+# Chips (editable solo si Tipo=='Otros')
 for c, vals in [("Cumplimiento", CUMPLIMIENTO),
                 ("¿Se corrigió?", SI_NO),
                 ("¿Generó alerta?", SI_NO),
                 ("Evaluación", ["Aprobada","Desaprobada","Pendiente de revisión","Observada","Cancelada","Pausada"])]:
     if c in df_grid.columns:
-        gob.configure_column(c, editable=True, cellEditor="agSelectCellEditor",
+        gob.configure_column(c, editable=edit_if_otros, cellEditor="agSelectCellEditor",
                              cellEditorParams={"values": vals},
                              cellStyle=chip_style, valueFormatter=fmt_dash,
                              minWidth=colw.get(c,120), maxWidth=260, flex=1)
 
-# Calificación con estrellas
+# Calificación con estrellas (editable solo si Tipo=='Otros')
 if "Calificación" in df_grid.columns:
-    gob.configure_column("Calificación", editable=True, valueFormatter=JsCode("""
+    gob.configure_column("Calificación", editable=edit_if_otros, valueFormatter=JsCode("""
       function(p){ let n=parseInt(p.value||0); if(isNaN(n)||n<0) n=0; if(n>5) n=5; return '★'.repeat(n)+'☆'.repeat(5-n); }
     """), minWidth=colw["Calificación"], maxWidth=140, flex=0)
 
@@ -2941,7 +2950,7 @@ if "Calificación" in df_grid.columns:
 for col in df_grid.columns:
     gob.configure_column(col, headerTooltip=col)
 
-# === Autosize + borrar con tecla Supr/Del ===
+# === Autosize + borrar con tecla Supr/Del (marca y Python elimina) ===
 autosize_on_ready = JsCode("""
 function(params){
   const all = params.columnApi.getAllDisplayedColumns();
@@ -2961,7 +2970,9 @@ function(params){
   if ((e.key === 'Delete' || e.key === 'Backspace') && !params.editing){
     const sel = params.api.getSelectedRows();
     if (sel && sel.length){
-      params.api.applyTransaction({ remove: sel });
+      // Marcar para borrado (se enviará a Python como edición)
+      const updates = sel.map(r => { const u = Object.assign({}, r); u.__DEL_CLIENT__ = true; return u; });
+      params.api.applyTransaction({ update: updates });
     }
   }
 }
@@ -2971,7 +2982,7 @@ grid_opts = gob.build()
 grid_opts["onGridReady"] = autosize_on_ready.js_code
 grid_opts["onFirstDataRendered"] = autosize_on_data.js_code
 grid_opts["onColumnEverythingChanged"] = autosize_on_data.js_code
-grid_opts["onCellKeyDown"] = delete_with_key.js_code  # ← borrar con teclado
+grid_opts["onCellKeyDown"] = delete_with_key.js_code  # ← borrar con teclado (marca)
 
 # Recordar selección entre reruns
 grid_opts["rowSelection"] = "multiple"
@@ -2996,7 +3007,7 @@ _ids_now = [str((r.get("Id") or r.get("ID") or "")).strip()
 if _ids_now:
     st.session_state["hist_sel_ids"] = _ids_now
 
-# Sincroniza ediciones y BORRADOS por Id (según data visible del grid)
+# Sincroniza ediciones y BORRADOS por Id (data visible del grid + marca __DEL_CLIENT__)
 if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
     try:
         edited = pd.DataFrame(grid["data"]).copy()
@@ -3005,15 +3016,25 @@ if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
         base = st.session_state["df_main"].copy()
         base["Id"] = base["Id"].astype(str)
 
-        # 1) BORRADOS: conserva solo los Ids que siguen en el grid
+        # 1) Borrado por marca de teclado
+        del_ids = []
+        if "__DEL_CLIENT__" in edited.columns:
+            del_ids = edited.loc[edited["__DEL_CLIENT__"] == True, "Id"].astype(str).tolist()
+            edited = edited[edited["Id"].astype(str).isin([i for i in edited["Id"].astype(str).tolist() if i not in del_ids])]
+
+        # 2) Si el grid ya no muestra filas (por operaciones del cliente), respetar keep_ids
         keep_ids = set(edited["Id"].tolist())
         base = base[base["Id"].isin(keep_ids)].copy()
 
-        # 2) EDICIONES: actualiza valores con lo que venga del grid
+        # 3) Actualizar valores con lo que venga del grid
         b_i = base.set_index("Id")
         e_i = edited.set_index("Id")
         b_i.update(e_i)  # sobrescribe con no-NA de e_i
         st.session_state["df_main"] = b_i.reset_index()
+
+        if del_ids:
+            st.success(f"Eliminadas {len(del_ids)} fila(s) con Supr/Del.")
+            st.rerun()
     except Exception:
         pass
 
@@ -3025,12 +3046,10 @@ b_del, b_xlsx, b_save_local, b_save_sheets, _spacer = st.columns(
     gap="medium"
 )
 
-# 1) Borrar seleccionados  (FIX: usa selección persistida en session_state)
+# 1) Borrar seleccionados  (usa selección persistida)
 with b_del:
     if st.button("🗑️ Borrar", use_container_width=True):
-        # 1º intenta con la selección persistida (resiste el rerun del botón)
         ids = [str(i).strip() for i in st.session_state.get("hist_sel_ids", []) if str(i).strip()]
-        # 2º fallback: intenta leer lo que venga del grid en este mismo run
         if not ids and isinstance(grid, dict):
             _sel_now = grid.get("selected_rows", []) or []
             ids = [str((r.get("Id") or r.get("ID") or "")).strip() for r in _sel_now
@@ -3048,7 +3067,7 @@ with b_del:
 with b_xlsx:
     try:
         df_xlsx = st.session_state["df_main"].copy()
-        drop_cols = [c for c in ("__DEL__", "DEL") if c in df_xlsx.columns]
+        drop_cols = [c for c in ("__DEL__", "DEL", "__DEL_CLIENT__") if c in df_xlsx.columns]
         if drop_cols:
             df_xlsx.drop(columns=drop_cols, inplace=True)
         cols_order = globals().get("COLS_XLSX", []) or target_cols[:]
@@ -3086,4 +3105,3 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
