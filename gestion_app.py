@@ -2481,9 +2481,10 @@ def _norm_si_no(x: str) -> str:
     truthy = {"sí","si","s","yes","y","true","1"}
     falsy  = {"no","n","false","0"}
     if s_low in truthy: return "Sí"
-    if s_low in falsy:  return "No"
-    # Si puso algo distinto, mantenemos por ahora (el grid lo vuelve a escribir)
-    return "Sí" if "sí" in s_low or "si" == s_low else ("No" if "no" == s_low else s)
+    if s_low in falsy or s_low == "":  # desconocido -> No
+        return "No"
+    # fallback seguro
+    return "No" if s_low not in truthy else "Sí"
 
 def _to_date(v):
     if pd.isna(v): return pd.NaT
@@ -2507,8 +2508,6 @@ def _to_hhmm(v):
     return ""
 
 def _key_tuple(df):
-    # Clave compuesta estable para fallback de borrado
-    # Usa huellas de registro + campos visibles típicos
     def _s(col):
         return df.get(col, pd.Series([""]*len(df))).astype(str).fillna("").str.strip()
     def _d(col):
@@ -2531,7 +2530,7 @@ if "¿Eliminar?" not in df_all.columns:
     else:
         df_all["¿Eliminar?"] = "No"
 
-# Normaliza robusto a "Sí"/"No" en la vista
+# Normaliza robusto a "No"/"Sí" en la vista
 df_all["¿Eliminar?"] = df_all["¿Eliminar?"].map(_norm_si_no)
 
 # --- Propaga la migración a la sesión para que persista entre reruns ---
@@ -2715,6 +2714,9 @@ from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode
 gob = GridOptionsBuilder.from_dataframe(df_grid)
 gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, editable=False)
 
+# 👉 Desactiva checkboxes de selección globalmente (solo resaltado si seleccionas)
+gob.configure_selection(selection_mode="multiple", use_checkbox=False)
+
 edit_if_otros = JsCode("""
 function(p){
   const t = String((p.data && p.data['Tipo']) || '').trim();
@@ -2725,8 +2727,7 @@ function(p){
 gob.configure_grid_options(
     rowSelection="multiple",
     rowMultiSelectWithClick=True,
-    suppressRowClickSelection=False,
-    rememberSelection=True,
+    suppressRowClickSelection=False,   # no checkboxes; selección por click (sin afectar ID)
     domLayout="normal",
     rowHeight=30,
     headerHeight=42,
@@ -2740,18 +2741,23 @@ gob.configure_grid_options(
     getRowId=JsCode("function(p){ return (p.data && (p.data.Id || p.data['Id'])) + ''; }"),
 )
 
+# Columna ¿Eliminar?: editor con "No" primero (["No","Sí"])
 gob.configure_column("¿Eliminar?",
     headerName="¿Eliminar?",
     editable=True,
     cellEditor="agSelectCellEditor",
     cellEditorParams={"values": ["No","Sí"]},
     width=110, pinned="left",
-    suppressMovable=True, filter=False
+    suppressMovable=True, filter=False,
+    checkboxSelection=False  # sin checkbox en esta columna (solo select)
 )
+
+# ID sin checkbox de selección (forzado)
 gob.configure_column("Id",
     headerName="ID",
     editable=False, width=110, pinned="left",
-    suppressMovable=True
+    suppressMovable=True,
+    checkboxSelection=False
 )
 gob.configure_column("Área",        editable=edit_if_otros,  width=160, pinned="left", suppressMovable=True)
 gob.configure_column("Fase",        editable=edit_if_otros,  width=140, pinned="left", suppressMovable=True)
@@ -2851,7 +2857,7 @@ for c, fx in [("Tarea",3), ("Tipo",1), ("Detalle",2), ("Ciclo de mejora",1), ("C
               ("¿Se corrigió?",1), ("Fecha de corrección",1), ("Hora de corrección",1),
               ("Cumplimiento",1), ("Evaluación",1), ("Calificación",0)]:
     if c in df_grid.columns:
-        if c == "¿Eliminar?":  # no pisar su config
+        if c == "¿Eliminar?":
             continue
         gob.configure_column(
             c,
@@ -3026,10 +3032,10 @@ with b_xlsx:
     except Exception as e:
         st.error(f"No pude generar Excel: {e}")
 
-# 2) Grabar (tabla local) — elimina filas marcadas con ¿Eliminar? = "Sí" (con fallback por clave)
+# 2) Grabar (tabla local) — persistir edición, eliminar y limpiar “¿Eliminar?”
 with b_save_local:
     if st.button("💾 Grabar", use_container_width=True):
-        # Fuente de verdad
+        # 2.1 Fuente de verdad (grid/última captura/base)
         if isinstance(grid, dict) and grid.get("data") is not None:
             edited = pd.DataFrame(grid["data"]).copy()
         elif st.session_state.get("_grid_historial_latest") is not None:
@@ -3039,6 +3045,7 @@ with b_save_local:
 
         base = st.session_state["df_main"].copy()
 
+        # 2.2 Migración/normalización y PERSISTENCIA antes de borrar
         if "¿Eliminar?" not in edited.columns and "🗑" in edited.columns:
             edited = edited.rename(columns={"🗑": "¿Eliminar?"})
         if "¿Eliminar?" not in base.columns and "🗑" in base.columns:
@@ -3050,8 +3057,17 @@ with b_save_local:
         if "¿Eliminar?" in edited.columns:
             edited["¿Eliminar?"] = edited["¿Eliminar?"].map(_norm_si_no)
 
-        # Candidatas para eliminación
-        cand = edited[edited.get("¿Eliminar?", "").map(_norm_si_no).eq("Sí")].copy()
+        # Merge de edición -> base (incluye ¿Eliminar?)
+        b_i = base.set_index("Id", drop=False)
+        e_i = edited.set_index("Id", drop=False)
+        b_i.update(e_i)                       # pisa con lo editado
+        base = b_i.reset_index(drop=True)
+
+        # Persiste inmediatamente la edición
+        st.session_state["df_main"] = base.copy()
+
+        # 2.3 Candidatas para eliminación desde base ya persistida
+        cand = base[base.get("¿Eliminar?", "").map(_norm_si_no).eq("Sí")].copy()
 
         removed = 0
         if not cand.empty:
@@ -3061,16 +3077,14 @@ with b_save_local:
             if any(del_ids):
                 base = base[~base["Id"].astype(str).isin([x for x in del_ids if x])].copy()
 
-            # ---- Paso 2 (fallback): si quedan candidatas sin Id o no borradas por Id, borrar por clave compuesta
-            # Recalcular cuántas faltan (comparando claves)
-            if len(base) == before:  # no se borró nada por Id
+            # ---- Paso 2: fallback por clave compuesta (si no se borró nada o hay Id vacío)
+            if len(base) == before:
                 base["_key_"] = _key_tuple(base)
                 cand["_key_"] = _key_tuple(cand)
                 keys_to_drop = set(cand["_key_"])
                 base = base[~base["_key_"].isin(keys_to_drop)].copy()
                 base.drop(columns=["_key_"], inplace=True, errors="ignore")
             else:
-                # Aun así, puede haber filas con Id vacío: intentamos también por clave para esas
                 cand_noid = cand[cand["Id"].astype(str).eq("")].copy()
                 if not cand_noid.empty:
                     base["_key_"] = _key_tuple(base)
@@ -3081,10 +3095,13 @@ with b_save_local:
 
             removed = before - len(base)
 
-        # Actualiza sesión
+        # 2.4 Limpia “¿Eliminar?” para evitar que quede activo tras el rerun
+        if "¿Eliminar?" in base.columns:
+            base["¿Eliminar?"] = base["¿Eliminar?"].map(_norm_si_no).replace("Sí", "No")
+
+        # 2.5 Actualiza sesión y graba CSV
         st.session_state["df_main"] = base.reset_index(drop=True)
 
-        # Graba columnas oficiales
         df_save = st.session_state["df_main"][COLS].copy()
         _save_local(df_save.copy())
         st.success("Datos grabados en la tabla local (CSV).")
@@ -3109,5 +3126,3 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
