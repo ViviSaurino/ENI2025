@@ -2487,33 +2487,9 @@ st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
 st.subheader("📝 Tareas recientes")
 st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
-# —— Wrapper local para blindar el grid y que no desaparezca al abrir otras secciones
-st.markdown('<div id="hist-section">', unsafe_allow_html=True)
+# --- Estilo para filas eliminadas (tachado + rojo pastel suave) ---
 st.markdown("""
 <style>
-/* Blindaje local: nada fuera de #hist-section debe ocultar/colapsar este grid */
-#hist-section{ display:block !important; visibility:visible !important; }
-
-/* Previene heights 0 en wrappers de Streamlit que contengan el grid */
-#hist-section [data-testid="stHorizontalBlock"],
-#hist-section [data-testid="column"],
-#hist-section [data-testid="stVerticalBlock"]{
-  display:block !important; visibility:visible !important; min-height:1px !important;
-}
-
-/* Contenedores de Ag-Grid siempre visibles */
-#hist-section .ag-root-wrapper,
-#hist-section .ag-root,
-#hist-section .ag-body-viewport,
-#hist-section .ag-center-cols-viewport,
-#hist-section .ag-center-cols-container,
-#hist-section .ag-body-horizontal-scroll{
-  display:block !important;
-  visibility:visible !important;
-  overflow: auto !important;
-}
-
-/* ===== Estilo fila Eliminado ===== */
 .ag-theme-balham .row-deleted .ag-cell {
   text-decoration: line-through;
   background-color: #FEE2E2 !important; /* rojo pastel */
@@ -2521,15 +2497,15 @@ st.markdown("""
   opacity: 0.95;
 }
 
-/* ===== Alineación exacta botones inferiores con filtros ===== */
+/* ===== Alineación exacta de los botones inferiores con los filtros ===== */
 :root{ --hist-pad-x: 16px; --muted-bg:#ECEFF1; --muted-fg:#90A4AE; }
 .hist-actions{
   padding-left: var(--hist-pad-x) !important;
   padding-right: var(--hist-pad-x) !important;
 }
 
-/* Encabezados gris tenue para Pausado/Cancelado/Eliminado */
-#hist-section .ag-theme-balham .ag-header-cell.muted-col .ag-header-cell-label{
+/* Encabezados gris tenue para columnas Pausado/Cancelado/Eliminado */
+.ag-theme-balham .ag-header-cell.muted-col .ag-header-cell-label{
   color: var(--muted-fg) !important;
 }
 </style>
@@ -2933,15 +2909,6 @@ grid_opts["rowSelection"] = "multiple"
 grid_opts["rowMultiSelectWithClick"] = True
 grid_opts["rememberSelection"] = True
 
-# —— CSS inyectado dentro del iframe del grid (blindaje adicional)
-custom_css_hist = {
-    ".ag-center-cols-viewport": {"overflow-x": "auto !important", "overflow-y": "auto !important"},
-    ".ag-body-horizontal-scroll": {"overflow-x": "auto !important"},
-    ".ag-root-wrapper": {"display": "block !important", "visibility": "visible !important"},
-    ".ag-root": {"visibility": "visible !important"},
-    ".ag-body-viewport": {"visibility": "visible !important"},
-}
-
 grid = AgGrid(
     df_grid, key="grid_historial", gridOptions=grid_opts, height=500,
     fit_columns_on_grid_load=False,
@@ -2950,7 +2917,6 @@ grid = AgGrid(
                  | GridUpdateMode.FILTERING_CHANGED | GridUpdateMode.SORTING_CHANGED
                  | GridUpdateMode.SELECTION_CHANGED),
     allow_unsafe_jscode=True, theme="balham",
-    custom_css=custom_css_hist,
 )
 
 # Guarda última data del grid (por si la usas en otros procesos)
@@ -2981,6 +2947,7 @@ if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
 # ---- Botones alineados EXACTAMENTE bajo "Desde | Hasta | Buscar" ----
 left_spacer = A_f + Fw_f + T_width_f  # ocupa Área + Fase + Responsable
 
+# ⬇️ Wrapper con el mismo padding lateral que el st.form de los filtros
 st.markdown('<div class="hist-actions">', unsafe_allow_html=True)
 _spacer, b_xlsx, b_save_local, b_save_sheets = st.columns([left_spacer, D_f, R_f, C_f], gap="medium")
 
@@ -3045,7 +3012,4 @@ with b_save_sheets:
         st.success(msg) if ok else st.warning(msg)
 
 # cierre del wrapper de acciones
-st.markdown('</div>', unsafe_allow_html=True)
-
-# —— Cierre del wrapper #hist-section
 st.markdown('</div>', unsafe_allow_html=True)
