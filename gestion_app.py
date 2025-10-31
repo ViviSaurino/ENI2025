@@ -1501,7 +1501,6 @@ if st.session_state["est_visible"]:
         m2 = (estado_now == "Terminado")
         m3 = (estado_now == "Pausado")
         m4 = (estado_now == "Cancelado")
-        m5 = (estado_now == "Eliminado")
 
         fecha_from_estado[m0] = fr_noini[m0]; hora_from_estado[m0] = hr_noini[m0]
         fecha_from_estado[m1] = fr_enc[m1];   hora_from_estado[m1]  = hr_enc[m1]
@@ -1529,7 +1528,7 @@ if st.session_state["est_visible"]:
         })[cols_out].copy()
 
     # ========= editores y estilo seguro (sin DOM manual) =========
-    estados_editables = ["En curso","Terminado","Pausado","Cancelado","Eliminado"]
+    estados_editables = ["En curso","Terminado","Pausado","Cancelado"]
 
     date_editor = JsCode("""
     class DateEditor{
@@ -1556,7 +1555,7 @@ if st.session_state["est_visible"]:
     estado_emoji_fmt = JsCode("""
     function(p){
       const v = String(p.value || '');
-      const M = {"En curso":"🟣 En curso","Terminado":"✅ Terminado","Pausado":"⏸️ Pausado","Cancelado":"⛔ Cancelado","Eliminado":"🗑️ Eliminado"};
+      const M = {"En curso":"🟣 En curso","Terminado":"✅ Terminado","Pausado":"⏸️ Pausado","Cancelado":"⛔ Cancelado"};
       return M[v] || v;
     }""")
 
@@ -1568,7 +1567,6 @@ if st.session_state["est_visible"]:
         "Terminado":  {bg:"#E8F5E9", fg:"#1B5E20"},
         "Pausado":    {bg:"#FFF8E1", fg:"#E65100"},
         "Cancelado":  {bg:"#FFEBEE", fg:"#B71C1C"},
-        "Eliminado":  {bg:"#ECEFF1", fg:"#263238"}
       };
       const m = S[v]; if(!m) return {};
       return {backgroundColor:m.bg, color:m.fg, fontWeight:'600', textAlign:'center', borderRadius:'12px'};
@@ -2530,6 +2528,9 @@ from datetime import datetime, time
 
 # Base completa sin filtrar para poblar combos
 df_all = st.session_state["df_main"].copy()
+# Asegura columna 🗑 en la base si no existe (default "No", sin pisar valores existentes)
+if "🗑" not in df_all.columns:
+    df_all["🗑"] = "No"
 df_view = df_all.copy()
 
 # ===== Proporciones de filtros (alineadas al resto de secciones) =====
@@ -3008,6 +3009,13 @@ grid = AgGrid(
     allow_unsafe_jscode=True, theme="balham",
 )
 
+# Guarda la última data visible del grid para usarla al grabar (captura ediciones recientes)
+try:
+    if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
+        st.session_state["_grid_historial_latest"] = pd.DataFrame(grid["data"]).copy()
+except Exception:
+    pass
+
 # --- Determinar selección via columna __SEL__ (confiable entre reruns) ---
 try:
     if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
@@ -3039,7 +3047,7 @@ if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
     except Exception:
         pass
 
-# ---- Botones (Exportar, Guardar local, Subir a Sheets) ----
+# ---- Botones (Exportar, Grabar local, Subir a Sheets) ----
 total_btn_width = (1.2 + 1.2) + (3.2 / 2)
 btn_w = total_btn_width / 3
 b_xlsx, b_save_local, b_save_sheets, _spacer = st.columns(
@@ -3071,28 +3079,37 @@ with b_xlsx:
     except Exception as e:
         st.error(f"No pude generar Excel: {e}")
 
-# 2) Guardar (tabla local) — elimina filas marcadas con 🗑 = "Sí"
+# 2) Grabar (tabla local) — elimina filas marcadas con 🗑 = "Sí" según la data más reciente del GRID
 with b_save_local:
-    if st.button("💽 Guardar", use_container_width=True):
-        # Quitar filas marcadas para borrar
-        df0 = st.session_state["df_main"].copy()
-        if "🗑" in df0.columns:
-            df0["🗑"] = df0["🗑"].fillna("No").astype(str)
-            mask_del = df0["🗑"].eq("Sí")
-            removed = int(mask_del.sum())
-            if removed:
-                df0 = df0.loc[~mask_del].copy()
-        # Normaliza la columna 🗑 a "No" en lo restante
-        if "🗑" in df0.columns:
-            df0["🗑"] = df0["🗑"].where(df0["🗑"].isin(["Sí","No"]), "No")
+    if st.button("💾 Grabar", use_container_width=True):
+        # Usa la última data del grid (captura ediciones recientes aunque no hayan pasado a df_main)
+        edited = st.session_state.get("_grid_historial_latest")
+        base = st.session_state["df_main"].copy()
+        base["Id"] = base["Id"].astype(str)
 
-        st.session_state["df_main"] = df0.reset_index(drop=True)
+        del_ids = []
+        if isinstance(edited, pd.DataFrame) and "Id" in edited.columns:
+            edited = edited.copy()
+            edited["Id"] = edited["Id"].astype(str)
+            if "🗑" in edited.columns:
+                # Acepta 'Sí' con o sin acento / mayúsculas
+                m = edited["🗑"].astype(str).str.strip().str.lower().isin(["sí","si"])
+                del_ids = edited.loc[m, "Id"].dropna().unique().tolist()
 
-        # Guardar solo columnas oficiales
+        removed = 0
+        if del_ids:
+            before = len(base)
+            base = base[~base["Id"].isin(del_ids)].copy()
+            removed = before - len(base)
+
+        # Actualiza sesión con filas removidas
+        st.session_state["df_main"] = base.reset_index(drop=True)
+
+        # Graba solo columnas oficiales
         df_save = st.session_state["df_main"][COLS].copy()
         _save_local(df_save.copy())
-        st.success("Datos guardados en la tabla local (CSV).")
-        if 'removed' in locals() and removed:
+        st.success("Datos grabados en la tabla local (CSV).")
+        if removed:
             st.info(f"Se eliminaron {removed} fila(s) marcadas con 🗑 = 'Sí'.")
         st.rerun()
 
