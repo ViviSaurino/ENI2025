@@ -20,22 +20,6 @@ if not hasattr(_stc, "components"):
 
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, JsCode, DataReturnMode
 
-# ---------- 🔐 Guardia de login (ligero; sin google_login aquí) ----------
-def _is_authed() -> bool:
-    ss = st.session_state
-    return bool(
-        ss.get("user_email")
-        or ss.get("auth_ok")
-        or (ss.get("auth_user") or {}).get("email")
-        or (ss.get("google_user") or {}).get("email")
-        or (ss.get("g_user") or {}).get("email")
-        or ss.get("email")
-    )
-
-if not _is_authed():
-    st.session_state["__waiting_login__"] = True
-    st.stop()
-# ------------------------------------------------------------------------
 
 # ---------- 🧭 Sidebar: navegación fija ----------
 with st.sidebar:
