@@ -2807,13 +2807,13 @@ function(p){
   let bg='#E0E0E0', fg='#FFFFFF';
   if (v==='No iniciado'){bg='#90A4AE'}
   else if(v==='En curso'){bg='#B388FF'}
-  else if(v==='Terminado'){bg:'#00C4B3'}
-  else if(v==='Cancelado'){bg:'#FF2D95'}
-  else if(v==='Pausado'){bg:'#7E57C2'}
-  else if(v==='Entregado a tiempo'){bg:'#00C4B3'}
-  else if(v==='Entregado con retraso'){bg:'#00ACC1'}
-  else if(v==='No entregado'){bg:'#006064'}
-  else if(v==='En riesgo de retraso'){bg:'#0277BD'}
+  else if(v==='Terminado'){bg='#00C4B3'}
+  else if(v==='Cancelado'){bg='#FF2D95'}
+  else if(v==='Pausado'){bg='#7E57C2'}
+  else if(v==='Entregado a tiempo'){bg='#00C4B3'}
+  else if(v==='Entregado con retraso'){bg='#00ACC1'}
+  else if(v==='No entregado'){bg='#006064'}
+  else if(v==='En riesgo de retraso'){bg='#0277BD'}
   else if(v==='Aprobada'){bg:'#8BC34A'; fg:'#0A2E00'}
   else if(v==='Desaprobada'){bg:'#FF8A80'}
   else if(v==='Pendiente de revisión'){bg:'#BDBDBD'; fg:'#2B2B2B'}
@@ -2991,12 +2991,16 @@ b_del, b_xlsx, b_save_local, b_save_sheets, _spacer = st.columns(
     gap="medium"
 )
 
-# 1) Borrar seleccionados
+# 1) Borrar seleccionados  (FIX: usa selección persistida en session_state)
 with b_del:
     if st.button("🗑️ Borrar", use_container_width=True):
-        sel_rows_now = grid.get("selected_rows", []) if isinstance(grid, dict) else []
-        ids = [str((r.get("Id") or r.get("ID") or "")).strip() for r in sel_rows_now
-               if str((r.get("Id") or r.get("ID") or "")).strip()]
+        # 1º intenta con la selección persistida (resiste el rerun del botón)
+        ids = [str(i).strip() for i in st.session_state.get("hist_sel_ids", []) if str(i).strip()]
+        # 2º fallback: intenta leer lo que venga del grid en este mismo run
+        if not ids and isinstance(grid, dict):
+            _sel_now = grid.get("selected_rows", []) or []
+            ids = [str((r.get("Id") or r.get("ID") or "")).strip() for r in _sel_now
+                   if str((r.get("Id") or r.get("ID") or "")).strip()]
         if ids:
             df0 = st.session_state["df_main"].copy()
             st.session_state["df_main"] = df0[~df0["Id"].astype(str).isin(ids)].copy()
@@ -3048,5 +3052,3 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
