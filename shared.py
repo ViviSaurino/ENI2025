@@ -171,3 +171,317 @@ def save_local(csv_path: str = "data/tareas.csv") -> bool:
         return True
     except Exception:
         return False
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ================== Utilidades de fecha/hora ==================
+from datetime import datetime, date, time
+
+# TZ robusta: usa pytz si está, si no zoneinfo
+try:
+    import pytz
+    LIMA_TZ = pytz.timezone("America/Lima")
+except Exception:
+    try:
+        from zoneinfo import ZoneInfo
+        LIMA_TZ = ZoneInfo("America/Lima")
+    except Exception:
+        LIMA_TZ = None  # fallback sin TZ
+
+def now_lima_trimmed():
+    """Hora actual en Lima sin segundos/microsegundos."""
+    now = datetime.now()
+    if LIMA_TZ:
+        try:
+            # Si es pytz, localize; si es ZoneInfo, replace tzinfo
+            if hasattr(LIMA_TZ, "localize"):
+                now = LIMA_TZ.localize(now)
+            else:
+                now = now.replace(tzinfo=LIMA_TZ)
+        except Exception:
+            pass
+    return now.replace(second=0, microsecond=0)
+
+def combine_dt(d, t):
+    """
+    Une fecha (date|str) y hora (time|str 'HH:mm') en pd.Timestamp.
+    Si falta fecha -> NaT. Si falta hora -> 00:00.
+    """
+    if d in (None, "", pd.NaT):
+        return pd.NaT
+
+    if isinstance(d, str):
+        d_parsed = pd.to_datetime(d, errors="coerce")
+        if pd.isna(d_parsed):
+            return pd.NaT
+        d = d_parsed.date()
+    elif isinstance(d, pd.Timestamp):
+        d = d.date()
+    elif isinstance(d, date):
+        pass
+    else:
+        return pd.NaT
+
+    if t in (None, "", "HH:mm", pd.NaT):
+        try:
+            return pd.Timestamp(datetime.combine(d, time(0, 0)))
+        except Exception:
+            return pd.NaT
+
+    if isinstance(t, str):
+        try:
+            hh, mm = t.strip().split(":")
+            t = time(int(hh), int(mm))
+        except Exception:
+            return pd.NaT
+    elif isinstance(t, pd.Timestamp):
+        t = time(t.hour, t.minute, t.second)
+    elif isinstance(t, time):
+        pass
+    else:
+        return pd.NaT
+
+    try:
+        return pd.Timestamp(datetime.combine(d, t))
+    except Exception:
+        return pd.NaT
+
+# ===== Hora auto al elegir fecha (usa zona Lima) =====
+def _auto_time_on_date():
+    if st.session_state.get("fi_d"):
+        st.session_state["fi_t"] = now_lima_trimmed().time()
+
+# ================== Utilidad: fila en blanco ==================
+def blank_row():
+    """
+    Devuelve un diccionario 'fila en blanco' que respeta el orden de columnas.
+    - Si existe COLS (lista de columnas objetivo), la usa.
+    - Si hay df_main en session_state, usa sus columnas actuales.
+    - En último caso, usa un conjunto mínimo seguro de columnas.
+    """
+    try:
+        if "COLS" in globals() and COLS:
+            cols = list(COLS)
+        elif "df_main" in st.session_state and isinstance(st.session_state["df_main"], pd.DataFrame) and not st.session_state["df_main"].empty:
+            cols = list(st.session_state["df_main"].columns)
+        else:
+            cols = [
+                "Área", "Id", "Tarea", "Tipo", "Responsable", "Fase", "Estado",
+                "Fecha inicio", "Ciclo de mejora", "Detalle"
+            ]
+
+        row = {c: None for c in cols}
+        if "__DEL__" in row:
+            row["__DEL__"] = False
+        return row
+
+    except Exception:
+        return {
+            "Área": None, "Id": None, "Tarea": None, "Tipo": None, "Responsable": None,
+            "Fase": None, "Estado": None, "Fecha inicio": None, "Ciclo de mejora": None,
+            "Detalle": None
+        }
+
+# ======= Utilidades de tablas (Prioridad / Evaluación) =======
+# (estos imports duplicados no hacen daño; los mantengo tal cual)
+import streamlit as st
+from st_aggrid import GridOptionsBuilder
+# from auth_google import google_login, logout  # ya gestionado arriba
+
+# ===== Ajuste 1: Constantes y fallbacks (deben estar antes del formulario) =====
+AREAS_OPC = st.session_state.get(
+    "AREAS_OPC",
+    ["Jefatura", "Gestión", "Metodología", "Base de datos", "Capacitación", "Monitoreo", "Consistencia"]
+)
+ESTADO = ["No iniciado", "En curso"]
+CUMPLIMIENTO = ["Entregado a tiempo", "Entregado con retraso", "No entregado", "En riesgo de retraso"]
+SI_NO = ["Sí", "No"]
+
+# ===== Ajuste 3: Reglas de anchos (igualar columnas) =====
+PILL_W_AREA  = 168  # píldora "Área"
+PILL_W_RESP  = 220  # píldora "Responsable"
+PILL_W_HASTA = 220  # píldora "Hasta"
+PILL_W_TAREA = PILL_W_HASTA
+
+ALIGN_FIXES = {
+    "Id":          10,
+    "Área":        10,
+    "Responsable": 10,
+    "Tarea":       10,
+    "Prioridad":   10,
+    "Evaluación":  10,
+    "Desde":       10,
+}
+
+COL_W_ID         = PILL_W_AREA
+COL_W_AREA       = PILL_W_RESP
+COL_W_DESDE      = PILL_W_RESP
+COL_W_TAREA      = PILL_W_TAREA
+COL_W_PRIORIDAD  = COL_W_TAREA + COL_W_ID
+COL_W_EVALUACION = COL_W_TAREA + COL_W_ID
+
+COLUMN_WIDTHS = {
+    "Id":          COL_W_ID        + ALIGN_FIXES.get("Id", 0),
+    "Área":        COL_W_AREA      + ALIGN_FIXES.get("Área", 0),
+    "Responsable": PILL_W_RESP     + ALIGN_FIXES.get("Responsable", 0),
+    "Tarea":       COL_W_TAREA     + ALIGN_FIXES.get("Tarea", 0),
+    "Prioridad":   COL_W_PRIORIDAD + ALIGN_FIXES.get("Prioridad", 0),
+    "Evaluación":  COL_W_EVALUACION+ ALIGN_FIXES.get("Evaluación", 0),
+    "Desde":       COL_W_DESDE     + ALIGN_FIXES.get("Desde", 0),
+}
+
+# ===== IDs por Área (normalizado a minúsculas) =====
+AREA_PREFIX = {
+    "jefatura":      "JF",
+    "gestión":       "GE",
+    "metodología":   "MT",
+    "base de datos": "BD",
+    "monitoreo":     "MO",
+    "capacitación":  "CA",
+    "consistencia":  "CO",
+}
+
+def next_id_area(df, area: str) -> str:
+    import pandas as pd
+    area_key = str(area).strip().lower()
+    pref = AREA_PREFIX.get(area_key, "OT")
+    serie_ids = df.get("Id", pd.Series([], dtype=str)).astype(str)
+    nums = (serie_ids.str.extract(rf"^{pref}(\d+)$")[0]).dropna()
+    try:
+        mx = nums.astype(int).max()
+        nxt = int(mx) + 1 if pd.notna(mx) else 1
+    except Exception:
+        nxt = 1
+    return f"{pref}{nxt}"
+
+def _clean_df_for_grid(df):
+    if df.index.name is not None:
+        df.index.name = None
+    return df.reset_index(drop=True).copy()
+
+def _grid_options_prioridad(df):
+    gob = GridOptionsBuilder.from_dataframe(df, enableRowGroup=False, enableValue=False, enablePivot=False)
+    gob.configure_grid_options(
+        suppressMovableColumns=True,
+        domLayout="normal",
+        ensureDomOrder=True,
+        rowHeight=38,
+        headerHeight=42
+    )
+    gob.configure_column("Id",            width=COLUMN_WIDTHS["Id"],          editable=False)
+    gob.configure_column("Área",          width=COLUMN_WIDTHS["Área"],        editable=False)
+    gob.configure_column("Responsable",   width=COLUMN_WIDTHS["Responsable"], editable=False)
+    if "Desde" in df.columns:
+        gob.configure_column("Desde",     width=COLUMN_WIDTHS["Desde"],       editable=False)
+    gob.configure_column("Tarea",         width=COLUMN_WIDTHS["Tarea"],       editable=False)
+    gob.configure_column(
+        "Prioridad",
+        width=COLUMN_WIDTHS["Prioridad"],
+        editable=True,
+        cellEditor="agSelectCellEditor",
+        cellEditorParams={"values": ["Urgente", "Alta", "Media", "Baja"]}
+    )
+    gob.configure_grid_options(suppressColumnVirtualisation=False)
+    return gob.build()
+
+def _grid_options_evaluacion(df):
+    gob = GridOptionsBuilder.from_dataframe(df, enableRowGroup=False, enableValue=False, enablePivot=False)
+    gob.configure_grid_options(
+        suppressMovableColumns=True,
+        domLayout="normal",
+        ensureDomOrder=True,
+        rowHeight=38,
+        headerHeight=42
+    )
+    gob.configure_column("Id",           width=COLUMN_WIDTHS["Id"],          editable=False)
+    gob.configure_column("Área",         width=COLUMN_WIDTHS["Área"],        editable=False)
+    gob.configure_column("Responsable",  width=COLUMN_WIDTHS["Responsable"], editable=False)
+    if "Desde" in df.columns:
+        gob.configure_column("Desde",    width=COLUMN_WIDTHS["Desde"],       editable=False)
+    gob.configure_column("Tarea",        width=COLUMN_WIDTHS["Tarea"],       editable=False)
+    gob.configure_column(
+        "Evaluación",
+        width=COLUMN_WIDTHS["Evaluación"],
+        editable=True,
+        cellEditor="agSelectCellEditor",
+        cellEditorParams={"values": [5,4,3,2,1]}
+    )
+    gob.configure_grid_options(suppressColumnVirtualisation=False)
+    return gob.build()
+
+# --- allow-list (puedes seguir usándolo desde la página) ---
+allowed_emails  = st.secrets.get("auth", {}).get("allowed_emails", [])
+allowed_domains = st.secrets.get("auth", {}).get("allowed_domains", [])
+
+# ========= Utilitario para exportar a Excel (auto-engine) =========
+def export_excel(df, filename: str = "ENI2025_tareas.xlsx", sheet_name: str = "Tareas", **kwargs):
+    """
+    Devuelve un BytesIO con el .xlsx. Usa xlsxwriter si está instalado;
+    si no, cae a openpyxl sin que tengas que cambiar nada en el resto del código.
+    Acepta 'sheet' como alias de 'sheet_name'.
+    """
+    from io import BytesIO
+    import pandas as pd
+
+    if "sheet" in kwargs and not sheet_name:
+        sheet_name = kwargs.pop("sheet")
+    else:
+        kwargs.pop("sheet", None)
+
+    buf = BytesIO()
+
+    engine = None
+    try:
+        import xlsxwriter  # noqa: F401
+        engine = "xlsxwriter"
+    except Exception:
+        try:
+            import openpyxl  # noqa: F401
+            engine = "openpyxl"
+        except Exception:
+            raise ImportError("No hay motor para Excel. Instala 'xlsxwriter' o 'openpyxl'.")
+
+    with pd.ExcelWriter(buf, engine=engine) as xw:
+        sheet = sheet_name or "Tareas"
+        (df if isinstance(df, pd.DataFrame) else pd.DataFrame(df)).to_excel(
+            xw, sheet_name=sheet, index=False
+        )
+        try:
+            if engine == "xlsxwriter":
+                ws = xw.sheets[sheet]
+                for i, col in enumerate(df.columns):
+                    try:
+                        maxlen = int(pd.Series(df[col]).astype(str).map(len).max())
+                        maxlen = max(10, min(60, maxlen + 2))
+                    except Exception:
+                        maxlen = 12
+                    ws.set_column(i, i, maxlen)
+        except Exception:
+            pass
+
+    buf.seek(0)
+    return buf
