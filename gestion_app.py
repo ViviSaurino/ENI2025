@@ -50,14 +50,31 @@ if not st.session_state.get("_routed_to_gestion_tareas", False):
             "Asegúrate de que exista `pages/02_gestion_tareas.py`."
         )
 
-# --- Sidebar (agrega navegación fija + caja de usuario) ---
+# ---------- Helper seguro para enlaces de páginas ----------
+def safe_link(target: str, label: str, icon: str | None = None):
+    """
+    Intenta st.page_link; si todavía no está registrada la página,
+    usa un botón que hace st.switch_page() sin romper la app.
+    """
+    try:
+        st.page_link(target, label=label, icon=icon)
+    except Exception:
+        if st.button(f"{icon or ''} {label}".strip(), use_container_width=True):
+            for t in (target, "02_gestion_tareas", "Gestión de tareas", "Gestion de tareas"):
+                try:
+                    st.switch_page(t)
+                    break
+                except Exception:
+                    continue
+
+# --- Sidebar (navegación fija + caja de usuario) ---
 with st.sidebar:
     st.header("Inicio")
 
-    # 🔗 Navegación fija entre páginas
-    st.page_link("gestion_app.py",               label="Inicio",             icon="🏠")
-    st.page_link("pages/02_gestion_tareas.py",   label="Gestión de tareas",  icon="🗂️")
-    st.page_link("pages/03_kanban.py",           label="Kanban",             icon="🧩")
+    # 🔗 Navegación fija entre páginas (segura)
+    safe_link("gestion_app.py",               "Inicio",            "🏠")
+    safe_link("pages/02_gestion_tareas.py",   "Gestión de tareas", "🗂️")
+    safe_link("pages/03_kanban.py",           "Kanban",            "🧩")
 
     st.divider()
     st.markdown(f"**{user.get('name','')}**  \n{user.get('email','')}")
@@ -73,5 +90,5 @@ st.info(
     "Redirigiendo a **Gestión de tareas**… "
     "Si no ocurre automáticamente, puedes entrar desde aquí:"
 )
-# Enlace directo por si falla la redirección automática
-st.page_link("pages/02_gestion_tareas.py", label="Ir a Gestión de tareas", icon="🗂️")
+# Enlace directo por si falla la redirección automática (seguro)
+safe_link("pages/02_gestion_tareas.py", "Gestión de tareas", "🗂️")
