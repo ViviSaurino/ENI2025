@@ -13,7 +13,6 @@ def _pages_dir() -> str | None:
     for d in ("pages", "Pages", "PAGES"):
         if os.path.isdir(d):
             return d
-    # búsqueda laxa
     for d in os.listdir("."):
         if os.path.isdir(d) and d.lower() == "pages":
             return d
@@ -24,7 +23,7 @@ def _resolve(cands: list[str]) -> str | None:
     if not pdir:
         return None
     norm_map = {_norm(f"{pdir}/{f}"): f"{pdir}/{f}" for f in os.listdir(pdir) if f.endswith(".py")}
-    # matches exactos por candidatos
+    # matches por candidatos
     for c in cands:
         k = _norm(c if c.startswith(pdir) else f"{pdir}/{c}")
         if k in norm_map:
@@ -69,16 +68,16 @@ allowed_domains = auth_cfg.get("allowed_domains", []) or []
 if not allowed_emails and not allowed_domains:
     st.caption("⚠️ Modo abierto: sin filtros en `st.secrets['auth']`.")
 
-# --- Login Google ---
+# --- Login Google (SIN redirección aquí para evitar bucles) ---
 user = google_login(
     allowed_emails=allowed_emails if allowed_emails else None,
     allowed_domains=allowed_domains if allowed_domains else None,
-    redirect_page="gestion_app.py"
+    redirect_page=None,   # ⬅️ clave para eliminar el bucle
 )
 if not user:
     st.stop()
 
-# --- Redirección a Gestión de tareas (una vez) ---
+# --- Redirección a Gestión de tareas (una sola vez por sesión) ---
 def _try_switch_page() -> bool:
     if GT_PAGE:
         try:
