@@ -34,7 +34,6 @@ if not user:
 # --- Sidebar FIJO y coherente ---
 with st.sidebar:
     st.header("Secciones")
-    st.page_link("gestion_app.py",             label="Inicio",            icon="🏠")
     st.page_link("pages/02_gestion_tareas.py", label="Gestión de tareas", icon="📁")
     st.page_link("pages/03_kanban.py",         label="Kanban",            icon="🧩")
     st.divider()
