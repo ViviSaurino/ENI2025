@@ -2804,7 +2804,7 @@ gob.configure_column("Responsable", editable=True,  minWidth=180, pinned="left",
 gob.configure_column("Estado",              headerName="Estado actual")
 gob.configure_column("Fecha Vencimiento",   headerName="Fecha límite")
 gob.configure_column("Fecha inicio",        headerName="Fecha de inicio")
-gob.configure_column("Fecha fin",           headerName="Fecha Terminado")
+gob.configure_column("Fecha fin",           headerName="Fecha fin")
 
 # ----- Ocultas en GRID -----
 for ocultar in HIDDEN_COLS + ["Fecha Pausado","Hora Pausado","Fecha Cancelado","Hora Cancelado","Fecha Eliminado","Hora Eliminado"]:
@@ -3068,3 +3068,4 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
+
