@@ -2481,9 +2481,8 @@ def _norm_si_no(x: str) -> str:
     truthy = {"sí","si","s","yes","y","true","1"}
     falsy  = {"no","n","false","0"}
     if s_low in truthy: return "Sí"
-    if s_low in falsy or s_low == "":  # desconocido -> No
+    if s_low in falsy or s_low == "":
         return "No"
-    # fallback seguro
     return "No" if s_low not in truthy else "Sí"
 
 def _to_date(v):
@@ -2506,19 +2505,6 @@ def _to_hhmm(v):
     except Exception:
         pass
     return ""
-
-def _key_tuple(df):
-    def _s(col):
-        return df.get(col, pd.Series([""]*len(df))).astype(str).fillna("").str.strip()
-    def _d(col):
-        return pd.to_datetime(df.get(col), errors="coerce").dt.strftime("%Y-%m-%d").fillna("")
-    def _t(col):
-        return _s(col).apply(_to_hhmm)
-    return list(zip(
-        _s("Área"), _s("Fase"), _s("Responsable"),
-        _s("Tarea"), _s("Tipo"), _s("Detalle"),
-        _d("Fecha Registro"), _t("Hora Registro")
-    ))
 
 # -------- Base completa para combos --------
 df_all = st.session_state["df_main"].copy()
@@ -2727,7 +2713,7 @@ function(p){
 gob.configure_grid_options(
     rowSelection="multiple",
     rowMultiSelectWithClick=True,
-    suppressRowClickSelection=False,   # no checkboxes; selección por click (sin afectar ID)
+    suppressRowClickSelection=False,
     domLayout="normal",
     rowHeight=30,
     headerHeight=42,
@@ -2749,7 +2735,7 @@ gob.configure_column("¿Eliminar?",
     cellEditorParams={"values": ["No","Sí"]},
     width=110, pinned="left",
     suppressMovable=True, filter=False,
-    checkboxSelection=False  # sin checkbox en esta columna (solo select)
+    checkboxSelection=False
 )
 
 # ID sin checkbox de selección (forzado)
@@ -2954,14 +2940,21 @@ grid = AgGrid(
     allow_unsafe_jscode=True, theme="balham",
 )
 
-# Guarda última data visible
+# --- Captura última data visible del grid (y los IDs a borrar) ---
 try:
     if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
-        st.session_state["_grid_historial_latest"] = pd.DataFrame(grid["data"]).copy()
+        _latest = pd.DataFrame(grid["data"]).copy()
+        st.session_state["_grid_historial_latest"] = _latest.copy()
+        # Guarda los Ids marcados con "Sí" para borrarlos en el botón
+        if "¿Eliminar?" in _latest.columns and "Id" in _latest.columns:
+            st.session_state["_hist_del_ids"] = (
+                _latest.loc[_latest["¿Eliminar?"].map(_norm_si_no).eq("Sí"), "Id"]
+                .astype(str).dropna().unique().tolist()
+            )
 except Exception:
     pass
 
-# Selección via __SEL__
+# --- Determinar selección via __SEL__ (opcional) ---
 try:
     if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
         _gdf = pd.DataFrame(grid["data"])
@@ -2998,7 +2991,7 @@ if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
     except Exception:
         pass
 
-# ---- Botones ----
+# ---- Botones (Exportar, Grabar local, Subir a Sheets) ----
 total_btn_width = (1.2 + 1.2) + (3.2 / 2)
 btn_w = total_btn_width / 3
 b_xlsx, b_save_local, b_save_sheets, _spacer = st.columns(
@@ -3006,7 +2999,7 @@ b_xlsx, b_save_local, b_save_sheets, _spacer = st.columns(
     gap="medium"
 )
 
-# 1) Exportar Excel
+# 1) Exportar Excel (respeta orden oficial)
 with b_xlsx:
     try:
         df_xlsx = st.session_state["df_main"].copy()
@@ -3032,88 +3025,39 @@ with b_xlsx:
     except Exception as e:
         st.error(f"No pude generar Excel: {e}")
 
-# 2) Grabar (tabla local) — persistir edición, eliminar y limpiar “¿Eliminar?”
+# 2) Grabar (tabla local) — elimina filas marcadas con ¿Eliminar? = "Sí" usando IDs capturados
 with b_save_local:
     if st.button("💾 Grabar", use_container_width=True):
-        # 2.1 Fuente de verdad (grid/última captura/base)
-        if isinstance(grid, dict) and grid.get("data") is not None:
-            edited = pd.DataFrame(grid["data"]).copy()
-        elif st.session_state.get("_grid_historial_latest") is not None:
-            edited = st.session_state["_grid_historial_latest"].copy()
-        else:
-            edited = st.session_state["df_main"].copy()
-
         base = st.session_state["df_main"].copy()
+        base["Id"] = base["Id"].astype(str)
 
-        # 2.2 Migración/normalización y PERSISTENCIA antes de borrar
-        if "¿Eliminar?" not in edited.columns and "🗑" in edited.columns:
-            edited = edited.rename(columns={"🗑": "¿Eliminar?"})
-        if "¿Eliminar?" not in base.columns and "🗑" in base.columns:
-            base = base.rename(columns={"🗑": "¿Eliminar?"})
-
-        edited["Id"] = edited.get("Id", "").astype(str)
-        base["Id"]   = base.get("Id", "").astype(str)
-
-        if "¿Eliminar?" in edited.columns:
-            edited["¿Eliminar?"] = edited["¿Eliminar?"].map(_norm_si_no)
-
-        # Merge de edición -> base (incluye ¿Eliminar?)
-        b_i = base.set_index("Id", drop=False)
-        e_i = edited.set_index("Id", drop=False)
-        b_i.update(e_i)                       # pisa con lo editado
-        base = b_i.reset_index(drop=True)
-
-        # Persiste inmediatamente la edición
-        st.session_state["df_main"] = base.copy()
-
-        # 2.3 Candidatas para eliminación desde base ya persistida
-        cand = base[base.get("¿Eliminar?", "").map(_norm_si_no).eq("Sí")].copy()
+        del_ids = st.session_state.get("_hist_del_ids", []) or []
+        del_ids = [str(x) for x in del_ids if str(x).strip() != ""]
 
         removed = 0
-        if not cand.empty:
-            # ---- Paso 1: borrar por Id
-            del_ids = cand["Id"].fillna("").astype(str).tolist()
+        if del_ids:
             before = len(base)
-            if any(del_ids):
-                base = base[~base["Id"].astype(str).isin([x for x in del_ids if x])].copy()
-
-            # ---- Paso 2: fallback por clave compuesta (si no se borró nada o hay Id vacío)
-            if len(base) == before:
-                base["_key_"] = _key_tuple(base)
-                cand["_key_"] = _key_tuple(cand)
-                keys_to_drop = set(cand["_key_"])
-                base = base[~base["_key_"].isin(keys_to_drop)].copy()
-                base.drop(columns=["_key_"], inplace=True, errors="ignore")
-            else:
-                cand_noid = cand[cand["Id"].astype(str).eq("")].copy()
-                if not cand_noid.empty:
-                    base["_key_"] = _key_tuple(base)
-                    cand_noid["_key_"] = _key_tuple(cand_noid)
-                    keys_to_drop = set(cand_noid["_key_"])
-                    base = base[~base["_key_"].isin(keys_to_drop)].copy()
-                    base.drop(columns=["_key_"], inplace=True, errors="ignore")
-
+            base = base[~base["Id"].isin(del_ids)].copy()
             removed = before - len(base)
 
-        # 2.4 Limpia “¿Eliminar?” para evitar que quede activo tras el rerun
-        if "¿Eliminar?" in base.columns:
-            base["¿Eliminar?"] = base["¿Eliminar?"].map(_norm_si_no).replace("Sí", "No")
+        # 🔎 Si no se borró nada, muestra una alerta para revisar el ID
+        if not del_ids:
+            st.warning("No hay filas marcadas con 'Sí' en ¿Eliminar? (o no se capturó la edición).")
+        elif removed == 0:
+            st.warning("No se encontró coincidencia para borrar por ID. Revisa el ID al costado de '¿Eliminar?'.")
 
-        # 2.5 Actualiza sesión y graba CSV
+        # Actualiza sesión y graba CSV
         st.session_state["df_main"] = base.reset_index(drop=True)
-
         df_save = st.session_state["df_main"][COLS].copy()
         _save_local(df_save.copy())
+
+        # Nota: ya no reseteamos '¿Eliminar?' a 'No' para las que quedan
         st.success("Datos grabados en la tabla local (CSV).")
         if removed:
             st.info(f"Se eliminaron {removed} fila(s) marcadas para borrar.")
-        elif cand.empty:
-            st.warning("No hay filas marcadas con 'Sí' en ¿Eliminar?.")
-        else:
-            st.warning("No se encontró coincidencia para borrar (revisa Id o Fecha/Hora de registro).")
         st.rerun()
 
-# 3) Subir a Sheets
+# 3) Subir a Sheets (respeta orden oficial)
 with b_save_sheets:
     if st.button("📤 Subir a Sheets", use_container_width=True):
         df = st.session_state["df_main"].copy()
