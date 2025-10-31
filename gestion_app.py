@@ -2469,14 +2469,14 @@ st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
 st.subheader("📝 Tareas recientes")
 st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
-# --- Fila tachada para eliminadas (soft-delete visual) ---
+# --- Estilo visual para eliminadas (tachado + rojo pastel muy suave) ---
 st.markdown("""
 <style>
 .ag-theme-balham .row-deleted .ag-cell {
   text-decoration: line-through;
-  color: #6b7280 !important;
-  background-color: #f3f4f6 !important;
-  opacity: 0.85;
+  background-color: #FDE7E9 !important;  /* rojo pastel suave */
+  color: #6B7280 !important;             /* gris para texto */
+  opacity: 0.95;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -2497,14 +2497,14 @@ if "¿Eliminar?" not in df_all.columns:
 # Normalizador robusto Sí/No
 def _norm_si_no(x: str) -> str:
     s = str(x or "").strip()
-    s = s.replace("Ã­", "í")
+    s = s.replace("Ã­", "í")  # por si acaso
     sl = s.lower()
     if sl in {"sí","si","s","yes","y","true","1"}: return "Sí"
     return "No"
 
 df_all["¿Eliminar?"] = df_all["¿Eliminar?"].map(_norm_si_no)
 
-# Propaga migración/normalización a la sesión
+# --- Propaga la migración/normalización a la sesión ---
 try:
     _dfm = st.session_state["df_main"].copy()
     if "🗑" in _dfm.columns and "¿Eliminar?" not in _dfm.columns:
@@ -2550,7 +2550,7 @@ with st.form("hist_filtros_v1", clear_on_submit=False):
         st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
         hist_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
-# Toggle mostrar/ocultar eliminadas
+# Mostrar/ocultar eliminadas (soft-delete)
 show_deleted = st.toggle("Mostrar eliminadas (tachadas)", value=True, key="hist_show_deleted")
 
 # ---- Aplicar filtros sobre df_view SOLO si se presiona Buscar ----
@@ -2571,7 +2571,7 @@ if hist_do_buscar:
 if not show_deleted and "¿Eliminar?" in df_view.columns:
     df_view = df_view[df_view["¿Eliminar?"].map(_norm_si_no) != "Sí"]
 
-# ===== ORDENAR POR RECIENTES =====
+# ===== ORDENAR POR RECIENTES (fallback a Fecha inicio) =====
 for c in ["Fecha estado modificado", "Fecha estado actual", "Fecha inicio"]:
     if c not in df_view.columns:
         df_view[c] = pd.NaT
@@ -2661,7 +2661,7 @@ if "Estado" in df_view.columns:
     df_view.loc[need_fin_dt, "Fecha Terminado"]      = _mod[need_fin_dt]
     df_view.loc[need_fin_tm, "Hora Terminado"] = _hmod.where(_hmod != "", _mod.dt.strftime("%H:%M"))[need_fin_tm]
 
-# 3.b) VENCIMIENTO
+# 3.b) VENCIMIENTO — separar FECHA y HORA (default hora 17:00)
 if "Fecha Vencimiento" not in df_view.columns: df_view["Fecha Vencimiento"] = pd.NaT
 if "Hora Vencimiento" not in df_view.columns:  df_view["Hora Vencimiento"]  = ""
 
@@ -2678,7 +2678,7 @@ df_view["Fecha Vencimiento"] = df_view["Fecha Vencimiento"].apply(_to_date)
 df_view["Hora Vencimiento"]  = df_view["Hora Vencimiento"].apply(_to_hhmm)
 df_view.loc[df_view["Hora Vencimiento"] == "", "Hora Vencimiento"] = "17:00"
 
-# === ORDEN Y PRESENCIA DE COLUMNAS ===
+# === ORDEN Y PRESENCIA DE COLUMNAS (agrega '¿Eliminar?' al inicio) ===
 target_cols = [
     "¿Eliminar?","Id","Área","Fase","Responsable",
     "Tarea","Tipo","Detalle","Ciclo de mejora","Complejidad","Prioridad",
@@ -2732,10 +2732,10 @@ from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode
 gob = GridOptionsBuilder.from_dataframe(df_grid)
 gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, editable=False)
 
-# Desactiva checkbox en ID; usamos select en ¿Eliminar?
+# Desactivar checkbox en ID; usamos solo el select de ¿Eliminar?
 gob.configure_selection(selection_mode="multiple", use_checkbox=False)
 
-# Regla: solo editable si Tipo == 'Otros' (para el resto)
+# Regla: solo editable si Tipo == 'Otros' (para el resto de columnas)
 edit_if_otros = JsCode("""
 function(p){
   const t = String((p.data && p.data['Tipo']) || '').trim();
@@ -2760,7 +2760,7 @@ gob.configure_grid_options(
     getRowId=JsCode("function(p){ return (p.data && (p.data.Id || p.data['Id'])) + ''; }"),
 )
 
-# ¿Eliminar? con ["No","Sí"] y valueSetter que también setea __DEL_CLIENT__
+# ¿Eliminar? con ["No","Sí"] y valueSetter + onCellValueChanged que setean __DEL_CLIENT__
 gob.configure_column(
     "¿Eliminar?",
     headerName="¿Eliminar?",
@@ -2801,7 +2801,7 @@ for ocultar in HIDDEN_COLS + ["Fecha Pausado","Hora Pausado","Fecha Cancelado","
     if ocultar in df_view.columns:
         gob.configure_column(ocultar, hide=True, suppressMenu=True, filter=False)
 
-# ----- Formatters -----
+# ----- Formatters & estilos -----
 flag_formatter = JsCode("""
 function(p){
   const v=String(p.value||'');
@@ -2893,7 +2893,7 @@ for c, fx in [("Tarea",3), ("Tipo",1), ("Detalle",2), ("Ciclo de mejora",1), ("C
               ("¿Se corrigió?",1), ("Fecha de corrección",1), ("Hora de corrección",1),
               ("Cumplimiento",1), ("Evaluación",1), ("Calificación",0)]:
     if c in df_grid.columns:
-        if c == "¿Eliminar?":  # ⛔️ NO reconfigurar esta (ya tiene editor + valueSetter)
+        if c == "¿Eliminar?":  # ya configurada con editor/normalizador
             continue
         gob.configure_column(
             c,
@@ -2922,7 +2922,9 @@ row_class_rules = {
     "row-deleted": JsCode("""
         function(params){
             var v = String((params.data && params.data['¿Eliminar?']) || '').toLowerCase().trim();
-            return (v === 'sí' || v === 'si');
+            var flag = (v === 'sí' || v === 'si');
+            if (!flag && params.data && params.data['__DEL_CLIENT__']===true) flag = true;
+            return flag;
         }
     """).js_code
 }
@@ -2956,12 +2958,26 @@ function(params){
 }
 """)
 
+# Captura inmediata del cambio en ¿Eliminar?
+on_cell_changed = JsCode("""
+function(e){
+  if(e.colDef && e.colDef.field === '¿Eliminar?'){
+    var v = String(e.newValue||'').toLowerCase().trim();
+    var yes = (v==='sí'||v==='si'||v==='s'||v==='yes'||v==='y'||v==='true'||v==='1');
+    e.data['¿Eliminar?'] = yes ? 'Sí' : 'No';
+    e.data['__DEL_CLIENT__'] = !!yes;
+    e.api.applyTransaction({update:[e.data]});
+  }
+}
+""")
+
 grid_opts = gob.build()
 grid_opts["rowClassRules"] = row_class_rules
 grid_opts["onGridReady"] = autosize_on_ready.js_code
 grid_opts["onFirstDataRendered"] = autosize_on_data.js_code
 grid_opts["onColumnEverythingChanged"] = autosize_on_data.js_code
 grid_opts["onSelectionChanged"] = sync_selection.js_code
+grid_opts["onCellValueChanged"] = on_cell_changed.js_code
 grid_opts["rowSelection"] = "multiple"
 grid_opts["rowMultiSelectWithClick"] = True
 grid_opts["rememberSelection"] = True
@@ -2976,15 +2992,14 @@ grid = AgGrid(
     allow_unsafe_jscode=True, theme="balham",
 )
 
-# Guarda última data del grid (incluye __DEL_CLIENT__)
+# Guarda la última data visible del grid para usarla al grabar
 try:
     if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
-        _latest = pd.DataFrame(grid["data"]).copy()
-        st.session_state["_grid_historial_latest"] = _latest.copy()
+        st.session_state["_grid_historial_latest"] = pd.DataFrame(grid["data"]).copy()
 except Exception:
     pass
 
-# --- Sincroniza SOLO EDICIONES (persistiendo ¿Eliminar? y __DEL_CLIENT__) ---
+# --- Sincroniza SOLO EDICIONES (incluye ¿Eliminar? y __DEL_CLIENT__) ---
 if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
     try:
         edited = pd.DataFrame(grid["data"]).copy()
@@ -3044,29 +3059,44 @@ with b_xlsx:
     except Exception as e:
         st.error(f"No pude generar Excel: {e}")
 
-# 2) Grabar (tabla local) — SOFT-DELETE: marca __DEL__=True cuando __DEL_CLIENT__ es True
+# 2) Grabar (tabla local) — SOFT-DELETE (marca __DEL__ y tacha)
 with b_save_local:
     if st.button("💾 Grabar", use_container_width=True):
+        # Preferir la última captura del grid; fallback al df_main
+        if st.session_state.get("_grid_historial_latest") is not None:
+            source = st.session_state["_grid_historial_latest"].copy()
+        else:
+            source = st.session_state["df_main"].copy()
+
+        source["Id"] = source["Id"].astype(str)
+        if "¿Eliminar?" in source.columns:
+            source["¿Eliminar?"] = source["¿Eliminar?"].map(_norm_si_no)
+        if "__DEL_CLIENT__" not in source.columns:
+            source["__DEL_CLIENT__"] = False
+
         base = st.session_state["df_main"].copy()
         base["Id"] = base["Id"].astype(str)
         if "__DEL__" not in base.columns:
             base["__DEL__"] = False
-        if "__DEL_CLIENT__" not in base.columns:
-            base["__DEL_CLIENT__"] = False
 
-        # Preferir bandera booleana del cliente; fallback al texto
-        del_mask = base["__DEL_CLIENT__"].astype(bool)
-        if "¿Eliminar?" in base.columns:
-            del_mask = del_mask | base["¿Eliminar?"].map(_norm_si_no).eq("Sí")
+        # Filas marcadas 'Sí' (o flag booleano)
+        mask_del = source["__DEL_CLIENT__"].astype(bool)
+        if "¿Eliminar?" in source.columns:
+            mask_del = mask_del | source["¿Eliminar?"].eq("Sí")
 
-        removed_n = del_mask.sum()
+        ids_del = set(source.loc[mask_del, "Id"].astype(str).tolist())
+        removed_n = len(ids_del)
+
         if removed_n:
             now = pd.Timestamp.now()
-            base.loc[del_mask, "__DEL__"] = True
+            base.loc[base["Id"].astype(str).isin(ids_del), "__DEL__"] = True
             if "Fecha Eliminado" in base.columns:
-                base.loc[del_mask, "Fecha Eliminado"] = now.normalize()
+                base.loc[base["Id"].astype(str).isin(ids_del), "Fecha Eliminado"] = now.normalize()
             if "Hora Eliminado" in base.columns:
-                base.loc[del_mask, "Hora Eliminado"] = now.strftime("%H:%M")
+                base.loc[base["Id"].astype(str).isin(ids_del), "Hora Eliminado"] = now.strftime("%H:%M")
+            # Reflejar también el texto ¿Eliminar?
+            if "¿Eliminar?" in base.columns:
+                base.loc[base["Id"].astype(str).isin(ids_del), "¿Eliminar?"] = "Sí"
 
         st.session_state["df_main"] = base.reset_index(drop=True)
 
@@ -3075,7 +3105,7 @@ with b_save_local:
         _save_local(df_save.copy())
 
         if removed_n:
-            st.info(f"Se marcaron {int(removed_n)} fila(s) como eliminadas (tachadas).")
+            st.info(f"Se marcaron {removed_n} fila(s) como eliminadas (tachadas).")
         else:
             st.warning("No hay filas con 'Sí' en ¿Eliminar? (o la edición no se confirmó).")
         st.success("Datos grabados en la tabla local (CSV).")
@@ -3093,5 +3123,3 @@ with b_save_sheets:
         _save_local(df.copy())
         ok, msg = _write_sheet_tab(df.copy())
         st.success(msg) if ok else st.warning(msg)
-
-
