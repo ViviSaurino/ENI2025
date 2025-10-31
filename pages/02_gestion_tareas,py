@@ -7,9 +7,9 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-# ❌ [QUITADO] set_page_config — ahora va en pages/01_Gestion.py
+# ❌ set_page_config NO aquí (lo pone la página wrapper)
 
-# 🔐 Puedes seguir importando utilidades de auth si las usas en funciones
+# Puedes seguir importando utilidades (logout, etc.) si luego las usas
 from auth_google import google_login, logout
 
 # Parche compatibilidad Streamlit 1.50 + st-aggrid
@@ -20,8 +20,7 @@ if not hasattr(_stc, "components"):
 
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, JsCode, DataReturnMode
 
-# ---------- 🔐 Guardia de login (al inicio) ----------
-# ✅ Sin llamar a google_login aquí (evita doble login/conflictos).
+# ---------- 🔐 Guardia de login (ligero; sin google_login aquí) ----------
 def _is_authed() -> bool:
     ss = st.session_state
     return bool(
@@ -36,13 +35,14 @@ def _is_authed() -> bool:
 if not _is_authed():
     st.session_state["__waiting_login__"] = True
     st.stop()
-# -----------------------------------------------------
+# ------------------------------------------------------------------------
 
 # ---------- 🧭 Sidebar: navegación fija ----------
 with st.sidebar:
-    st.page_link("gestion_app.py",                 label="Inicio",            icon="🏠")
-    st.page_link("pages/02_gestion_tareas.py",     label="Gestión de tareas", icon="🗂️")
-    st.page_link("pages/03_kanban.py",             label="Kanban",            icon="🧩")
+    st.page_link("gestion_app.py",             label="Inicio",             icon="🏠")
+    st.page_link("pages/02_gestion_tareas.py", label="Gestión de tareas",  icon="🗂️")
+    st.page_link("pages/03_kanban.py",         label="Kanban",             icon="🧩")
+# ------------------------------------------------------------------------
 
 
 
