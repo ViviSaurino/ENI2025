@@ -24,12 +24,30 @@ if not user:
 # Requiere que exista: pages/02_gestion_tareas.py
 if not st.session_state.get("_routed_to_gestion_tareas", False):
     st.session_state["_routed_to_gestion_tareas"] = True
-    try:
-        st.switch_page("pages/02_gestion_tareas.py")
-    except Exception:
+
+    # Intentos robustos (algunas instalaciones resuelven por nombre, otras por ruta)
+    _targets = (
+        "pages/02_gestion_tareas.py",
+        "02_gestion_tareas",
+        "02 gestion tareas",
+        "Gestión de tareas",
+        "Gestion de tareas",
+    )
+    _switched = False
+    for t in _targets:
+        try:
+            st.switch_page(t)
+            _switched = True
+            break
+        except Exception:
+            pass
+
+    if not _switched:
+        # Si no pudo, limpiamos la bandera para reintentar en el siguiente run
+        st.session_state.pop("_routed_to_gestion_tareas", None)
         st.warning(
-            "No pude redirigirte a **Gestión de tareas**. "
-            "Asegúrate de que el archivo exista como `pages/02_gestion_tareas.py`."
+            "No pude redirigirte automáticamente a **Gestión de tareas**. "
+            "Asegúrate de que exista `pages/02_gestion_tareas.py`."
         )
 
 # --- Sidebar mínimo (sin page_link para evitar duplicados) ---
@@ -46,5 +64,7 @@ with st.sidebar:
 # --- Contenido fallback (solo se ve si no pudo redirigir) ---
 st.info(
     "Redirigiendo a **Gestión de tareas**… "
-    "Si no ocurre automáticamente, selecciona *Gestión de tareas* en el menú lateral."
+    "Si no ocurre automáticamente, puedes entrar desde aquí:"
 )
+# Enlace directo por si falla la redirección automática
+st.page_link("pages/02_gestion_tareas.py", label="Ir a Gestión de tareas", icon="🗂️")
