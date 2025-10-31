@@ -2487,6 +2487,27 @@ st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
 st.subheader("📝 Tareas recientes")
 st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
+# —— Wrapper local para blindar el grid y que no desaparezca al abrir otras secciones
+st.markdown('<div id="hist-section">', unsafe_allow_html=True)
+st.markdown("""
+<style>
+/* Blindaje local: nada fuera de #hist-section debe ocultar/colapsar este grid */
+#hist-section .ag-center-cols-viewport,
+#hist-section .ag-body-horizontal-scroll{
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  visibility: visible !important;
+}
+#hist-section .ag-root-wrapper,
+#hist-section .ag-root,
+#hist-section .ag-body-viewport,
+#hist-section .ag-center-cols-container{
+  display: block !important;
+  visibility: visible !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # --- Estilo para filas eliminadas (tachado + rojo pastel suave) ---
 st.markdown("""
 <style>
@@ -2917,6 +2938,15 @@ grid_opts["rowSelection"] = "multiple"
 grid_opts["rowMultiSelectWithClick"] = True
 grid_opts["rememberSelection"] = True
 
+# —— CSS inyectado dentro del iframe del grid (blindaje adicional)
+custom_css_hist = {
+    ".ag-center-cols-viewport": {"overflow-x": "auto !important", "overflow-y": "auto !important"},
+    ".ag-body-horizontal-scroll": {"overflow-x": "auto !important"},
+    ".ag-root-wrapper": {"display": "block !important", "visibility": "visible !important"},
+    ".ag-root": {"visibility": "visible !important"},
+    ".ag-body-viewport": {"visibility": "visible !important"},
+}
+
 grid = AgGrid(
     df_grid, key="grid_historial", gridOptions=grid_opts, height=500,
     fit_columns_on_grid_load=False,
@@ -2925,6 +2955,7 @@ grid = AgGrid(
                  | GridUpdateMode.FILTERING_CHANGED | GridUpdateMode.SORTING_CHANGED
                  | GridUpdateMode.SELECTION_CHANGED),
     allow_unsafe_jscode=True, theme="balham",
+    custom_css=custom_css_hist,  # <<— blindaje
 )
 
 # Guarda última data del grid (por si la usas en otros procesos)
@@ -3022,3 +3053,5 @@ with b_save_sheets:
 # cierre del wrapper de acciones
 st.markdown('</div>', unsafe_allow_html=True)
 
+# —— Cierre del wrapper #hist-section
+st.markdown('</div>', unsafe_allow_html=True)
