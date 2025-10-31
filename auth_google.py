@@ -28,22 +28,61 @@ def _set_query_params(**kwargs):
         st.experimental_set_query_params(**kwargs)
 
 # -------------------- secrets --------------------
+def _pick_redirect(redirects: list[str], active: str) -> str:
+    """
+    Elige el redirect según secrets["active"]:
+     - 'cloud': primer redirect que NO sea localhost
+     - 'local': primer redirect que SÍ sea localhost
+    Si no hay match, cae al primero disponible o a http://localhost:8501
+    """
+    redirects = redirects or []
+    if active == "cloud":
+        for u in redirects:
+            if "localhost" not in (u or "").lower():
+                return u
+    else:
+        for u in redirects:
+            if "localhost" in (u or "").lower():
+                return u
+    return redirects[0] if redirects else "http://localhost:8501"
+
 def _get_oauth_cfg():
     cfg = st.secrets.get("oauth_client", {})
+    active_env = st.secrets.get("active", "cloud")  # 'cloud' | 'local'
+
+    cid = cfg.get("client_id", "")
+    csec = cfg.get("client_secret", "")
+    auth_uri = cfg.get("auth_uri", "https://accounts.google.com/o/oauth2/v2/auth")
+    token_uri = cfg.get("token_uri", "https://oauth2.googleapis.com/token")
+    redirects = cfg.get("redirect_uris") or []
+    redirect_uri = _pick_redirect(redirects, active_env)
+
     return {
-        "client_id": cfg.get("client_id", ""),
-        "client_secret": cfg.get("client_secret", ""),
-        "auth_uri": cfg.get("auth_uri", "https://accounts.google.com/o/oauth2/v2/auth"),
-        "token_uri": cfg.get("token_uri", "https://oauth2.googleapis.com/token"),
-        "redirect_uri": (cfg.get("redirect_uris") or ["http://localhost:8501"])[0],
+        "client_id": cid,
+        "client_secret": csec,
+        "auth_uri": auth_uri,
+        "token_uri": token_uri,
+        "redirect_uri": redirect_uri,
+        "_has_creds": bool(cid and csec and redirects),
+        "_active": active_env,
     }
 
 def _is_allowed(email: str, allowed_emails, allowed_domains) -> bool:
+    """
+    Modo abierto: si NO hay filtros configurados (ningún email ni dominio), permite el acceso.
+    Si hay filtros, exige match por email exacto o dominio.
+    """
+    if not (allowed_emails or allowed_domains):
+        return True
+
     email = (email or "").lower().strip()
-    if email in {e.lower().strip() for e in (allowed_emails or [])}:
+    allow_emails = {e.lower().strip() for e in (allowed_emails or [])}
+    allow_domains = {d.lower().strip() for d in (allowed_domains or [])}
+
+    if email in allow_emails:
         return True
     dom = email.split("@")[-1] if "@" in email else ""
-    return dom in {d.lower().strip() for d in (allowed_domains or [])}
+    return dom in allow_domains
 
 # -------------------- assets helpers ---------------------
 def _b64(path: str, mime: str) -> str | None:
@@ -72,6 +111,7 @@ def google_login(
 ):
     login_ph = st.empty()
 
+    # Si ya hay usuario y pasa filtros, devolvemos directo
     u = st.session_state.get("user")
     if u and _is_allowed(u.get("email"), allowed_emails, allowed_domains):
         login_ph.empty()
@@ -82,14 +122,27 @@ def google_login(
 
     with login_ph.container():
         cfg = _get_oauth_cfg()
-        oauth2 = OAuth2Component(
-            client_id=cfg["client_id"],
-            client_secret=cfg["client_secret"],
-            authorize_endpoint=cfg["auth_uri"],
-            token_endpoint=cfg["token_uri"],
-        )
 
-        # ====== CSS ======
+        # ⚠️ Ayuda inmediata si faltan credenciales para OAuth
+        if not cfg["_has_creds"]:
+            st.error(
+                "No encontré credenciales de Google OAuth en `st.secrets['oauth_client']`.\n\n"
+                "Agrega `client_id`, `client_secret` y `redirect_uris` (debe coincidir EXACTO con tu URL desplegada)."
+            )
+            # Renderizamos igual la UI para que puedas ver el hero/estilos en local
+
+        try:
+            oauth2 = OAuth2Component(
+                client_id=cfg["client_id"],
+                client_secret=cfg["client_secret"],
+                authorize_endpoint=cfg["auth_uri"],
+                token_endpoint=cfg["token_uri"],
+            )
+        except Exception as e:
+            st.error(f"No pude inicializar OAuth2Component: {e}")
+            return None
+
+        # ====== CSS (se conserva tu diseño) ======
         st.markdown(f"""
             <style>
             html, body {{ height:100%; overflow:hidden; }}
@@ -100,7 +153,6 @@ def google_login(
             [data-testid="stAppViewContainer"]{{ height:100vh; overflow:hidden; }}
             [data-testid="stMain"]{{ height:100%; padding-top:0 !important; padding-bottom:0 !important; }}
 
-            /* 👉 Centrado vertical y horizontal del bloque principal */
             .block-container{{
               height:100vh;
               max-width:800px;
@@ -108,28 +160,26 @@ def google_login(
               margin:0 auto !important;
               display:flex;
               flex-direction:column;
-              justify-content:center;   /* centro vertical */
-              transform: translateY(0.3vh); /* ⬅️ BAJA TODO EL BLOQUE (ajusta a gusto) */
+              justify-content:center;
+              transform: translateY(0.3vh);
             }}
             [data-testid="stHorizontalBlock"]{{
               height:100%;
               display:flex;
-              align-items:center;       /* alinea verticalmente las dos columnas */
-              gap: 1px !important;      /* ⬅️ separación entre columnas */
+              align-items:center;
+              gap: 1px !important;
             }}
 
-            /* 👇 Control maestro del ancho (VENIDOS + píldora + botón) y separaciones */
             :root{{
-              --left-w: {LEFT_W}px;   /* Mantener igual que LEFT_W arriba */
-              --title-max: 80.9px;     /* límite superior del tamaño del título */
+              --left-w: {LEFT_W}px;
+              --title-max: 80.9px;
               --media-max: 1000px;
-              --stack-gap: 10px;      /* separación entre píldora y botón */
-              --title-bottom: 10px;   /* separación bajo el título */
+              --stack-gap: 10px;
+              --title-bottom: 10px;
             }}
 
             .left{{ width:var(--left-w); max-width:100%; }}
 
-            /* ===== TÍTULO AJUSTADO AL ANCHO ===== */
             .title{{
               width:var(--left-w);
               max-width:var(--left-w);
@@ -142,7 +192,6 @@ def google_login(
             }}
             .title .line{{ display:block; width:100%; word-break:break-word; overflow-wrap:anywhere; }}
 
-            /* Contenedor de píldora + botón, con gap cortito */
             .cta{{
               width:var(--left-w) !important;
               max-width:var(--left-w) !important;
@@ -159,7 +208,6 @@ def google_login(
               margin:0; box-sizing:border-box;
             }}
 
-            /* Fuerza el widget de BOTÓN al mismo ancho */
             .left .row-widget.stButton{{ 
               width:var(--left-w) !important;
               max-width:var(--left-w) !important;
@@ -177,7 +225,6 @@ def google_login(
               background-image:none !important;
             }}
 
-            /* ===================== ANTI-ROJO: overrides globales ===================== */
             [data-baseweb="button"]:hover,
             [data-baseweb="button"]:focus,
             [data-baseweb="button"]:active {{
@@ -214,16 +261,6 @@ def google_login(
               box-shadow:0 0 0 3px rgba(96,165,250,.35) !important, 0 8px 22px rgba(96,165,250,.25) !important;
             }}
 
-            [data-testid="baseButton-secondary"] button:hover,
-            [data-testid="baseButton-secondary"] button:focus,
-            [data-testid="baseButton-secondary"] button:active {{
-              background:#60A5FA !important;
-              border-color:#60A5FA !important;
-              color:#ffffff !important;
-              background-image:none !important;
-              box-shadow:0 0 0 3px rgba(96,165,250,.35) !important, 0 8px 22px rgba(96,165,250,.25) !important;
-            }}
-
             :root{{
               --primary-color:#60A5FA !important;
               --accent-color:#60A5FA !important;
@@ -233,9 +270,7 @@ def google_login(
               --button-secondary-pressed-bg:#60A5FA !important;
               --button-secondary-pressed-border:#60A5FA !important;
             }}
-            /* =================== FIN ANTI-ROJO =================== */
 
-            /* Columna derecha: media centrada y con altura contenida */
             .right{{ display:flex; justify-content:center; }}
             .hero-media{{
               display:block; width:auto;
@@ -277,13 +312,14 @@ def google_login(
             st.markdown(f'<div style="width:{LEFT_W}px !important;">', unsafe_allow_html=True)
 
             result = None
+            # Compatibilidad con distintas versiones del componente (scopes/scope y redirect_uri/redirect_to)
             try:
                 result = oauth2.authorize_button(
                     name="Continuar con Google",
                     icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                     pkce="S256",
                     use_container_width=False,
-                    scopes=["openid","email","profile"],
+                    scopes=["openid", "email", "profile"],
                     redirect_uri=cfg["redirect_uri"],
                 )
             except TypeError:
@@ -303,7 +339,7 @@ def google_login(
                             icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                             pkce="S256",
                             use_container_width=False,
-                            scopes=["openid","email","profile"],
+                            scopes=["openid", "email", "profile"],
                             redirect_to=cfg["redirect_uri"],
                         )
                     except TypeError:
@@ -325,7 +361,7 @@ def google_login(
                                 scope="openid email profile",
                             )
 
-            # ====== ⬇️ Bloque agregado: forzar hover/focus/active a CELESTE (#60A5FA) ⬇️
+            # Forzar hover/focus/active a celeste
             st.markdown("""
 <style id="force-google-hover">
 .left :is(button, [data-baseweb="button"], [role="button"], a.button, a[role="button"]) {
@@ -344,7 +380,6 @@ def google_login(
 }
 </style>
 """, unsafe_allow_html=True)
-            # ====== ⬆️ FIN bloque agregado ⬆️
 
             st.markdown('</div>', unsafe_allow_html=True)  # wrapper del botón
             st.markdown('</div>', unsafe_allow_html=True)  # .cta
@@ -363,6 +398,14 @@ def google_login(
                 st.markdown(f'<img class="hero-media" src="{fallback}" alt="ENI 2025">', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
+        # --- Si Google devolvió error en el callback, lo mostramos (debug útil) ---
+        qp = _get_query_params()
+        if "error" in qp:
+            err = qp.get("error")
+            desc = qp.get("error_description", "")
+            st.error(f"Error de Google OAuth: {err}\n\n{desc}")
+
+    # Hasta aquí, si no se ha hecho click, no hay resultado
     if not result:
         return None
 
@@ -375,16 +418,16 @@ def google_login(
     id_token = token.get("id_token", "") if isinstance(token, dict) else ""
     access_token = token.get("access_token", "") if isinstance(token, dict) else ""
 
-    user = {"email":"", "name":"", "picture":""}
+    user = {"email": "", "name": "", "picture": ""}
 
     if id_token:
         try:
             import jwt
             info = jwt.decode(id_token, options={"verify_signature": False})
             user.update(
-                email=info.get("email",""),
-                name=info.get("name", info.get("email","")),
-                picture=info.get("picture",""),
+                email=info.get("email", ""),
+                name=info.get("name", info.get("email", "")),
+                picture=info.get("picture", ""),
             )
         except Exception:
             pass
@@ -401,12 +444,13 @@ def google_login(
                 ui = r.json()
                 user.update(
                     email=ui.get("email", user["email"]),
-                    name=ui.get("name", user["name"] or ui.get("email","")),
+                    name=ui.get("name", user["name"] or ui.get("email", "")),
                     picture=ui.get("picture", user["picture"]),
                 )
         except Exception:
             pass
 
+    # ✅ Filtro de acceso con modo abierto si no hay filtros
     if not _is_allowed(user.get("email"), allowed_emails, allowed_domains):
         st.error("Tu cuenta no está autorizada. Consulta con el administrador.")
         return None
