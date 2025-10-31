@@ -7,10 +7,10 @@ from auth_google import google_login, logout
 st.set_page_config(
     page_title="Gestión — ENI2025",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",   # ← expandido para ver las 3 secciones
 )
 
-# Oculta la navegación nativa de páginas
+# Oculta la navegación nativa de páginas (usamos nuestro menú con page_link)
 st.markdown("""
 <style>
 [data-testid="stSidebarNav"] { display: none !important; }
@@ -22,26 +22,24 @@ auth_cfg = st.secrets.get("auth", {})
 allowed_emails  = auth_cfg.get("allowed_emails", []) or []
 allowed_domains = auth_cfg.get("allowed_domains", []) or []
 
-# Aviso útil si no configuraste filtros (evita que te "cierre la puerta" en local)
+# Aviso útil si no configuraste filtros (modo abierto)
 if not allowed_emails and not allowed_domains:
     st.caption("⚠️ No hay filtros de acceso en `st.secrets['auth']`. Cualquier cuenta podrá iniciar sesión (modo abierto).")
 
 # --- Login Google ---
-# Sugerido: usar redirect_page explícito al archivo actual (estable en multi-page)
+# ⚠️ IMPORTANTE: no pasar redirect_page aquí para NO cortar el render con st.stop()
 user = google_login(
     allowed_emails=allowed_emails if allowed_emails else None,
     allowed_domains=allowed_domains if allowed_domains else None,
-    redirect_page="gestion_app.py"
+    redirect_page=None
 )
-
-# Si aún no hay usuario, detenemos el render (el componente de login se muestra igual)
 if not user:
     st.stop()
 
-# --- Redirección a Gestión de tareas (una sola vez, y solo si realmente cambia de página) ---
-def _try_switch_page():
+# --- Redirección a Gestión de tareas (una sola vez por sesión) ---
+def _try_switch_page() -> bool:
     targets = (
-        "pages/02_gestion_tareas.py",  # nombre de archivo exacto
+        "pages/02_gestion_tareas.py",  # ruta exacta del archivo
         "02_gestion_tareas",           # slug alterno
         "02 gestion tareas",           # texto alterno
         "Gestión de tareas",           # título visible alterno
@@ -57,15 +55,13 @@ def _try_switch_page():
 
 if not st.session_state.get("_routed_to_gestion_tareas", False):
     if _try_switch_page():
-        # Solo marcamos el flag si la redirección NO lanzó excepción
         st.session_state["_routed_to_gestion_tareas"] = True
     else:
-        # Si no se pudo redirigir, lo informamos y dejamos el menú lateral operativo
         st.info("No pude redirigirte automáticamente. Usa el menú lateral 👉 **Gestión de tareas**.")
 
 # --- Sidebar: navegación fija + usuario ---
 with st.sidebar:
-    st.header("Inicio")
+    st.header("Secciones")
     st.page_link("gestion_app.py",             label="Inicio",             icon="🏠")
     st.page_link("pages/02_gestion_tareas.py", label="Gestión de tareas",  icon="🗂️")
     st.page_link("pages/03_kanban.py",         label="Kanban",             icon="🧩")
