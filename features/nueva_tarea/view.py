@@ -82,8 +82,8 @@ def render(user: dict | None = None):
         padding:10px 12px; border-radius:10px; font-size:0.92rem;
       }
 
-      /* Alinear y bajar un poco el botón Agregar */
-      #nt-card .btn-agregar{ margin-top:32px; }
+      /* Alinear y bajar un poco más el botón Agregar */
+      #nt-card .btn-agregar{ margin-top:44px; }
       #nt-card .btn-agregar .stButton>button{
         min-height:38px !important; height:38px !important; border-radius:10px !important;
       }
@@ -103,12 +103,11 @@ def render(user: dict | None = None):
     with c_pill:
         st.markdown('<div class="nt-pill"><span>📝 Nueva tarea</span></div>', unsafe_allow_html=True)
 
-    # —— pequeño espacio entre la píldora y la franja de ayuda
-    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+    # —— más espacio entre la píldora y la franja de ayuda
+    st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
 
     # ---------- Sección principal ----------
     if st.session_state.get("nt_visible", True):
-        # ===== Texto de ayuda (sin la nota adicional)
         st.markdown("""
         <div class="help-strip">
           ✳️ Completa los campos obligatorios → pulsa <b>➕ Agregar</b> → revisa en <b>🕑 Tareas recientes</b> y confirma con <b>💾 Guardar cambios</b>.
@@ -119,7 +118,7 @@ def render(user: dict | None = None):
 
         submitted = False
 
-        with st.container(border=True):
+        with st.container(border=True, key="nt-card"):
             st.markdown('<span id="nt-card-sentinel"></span>', unsafe_allow_html=True)
 
             # ---------- FILA 1 ----------
@@ -128,17 +127,14 @@ def render(user: dict | None = None):
             FASES = ["Capacitación","Post-capacitación","Pre-consistencia","Consistencia","Operación de campo"]
             fase = r1c2.selectbox("Fase", options=FASES, index=None, placeholder="Selecciona una fase", key="nt_fase")
             tarea = r1c3.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
-            detalle = r1c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle")
-            resp = r1c5.text_input("Responsable", placeholder="Nombre", key="nt_resp")
+            r1c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle")
+            r1c5.text_input("Responsable", placeholder="Nombre", key="nt_resp")
             ciclo_mejora = r1c6.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
 
             # ---------- FILA 2 ----------
             c2_1, c2_2, c2_3, c2_4, c2_5, c2_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
             c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría", key="nt_tipo")
             c2_2.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
-            estado = "No iniciado"
-
-            # Fecha / Hora
             if st.session_state.get("fi_d", "___MISSING___") is None: st.session_state.pop("fi_d")
             if st.session_state.get("fi_t", "___MISSING___") is None: st.session_state.pop("fi_t")
             c2_3.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
@@ -150,14 +146,13 @@ def render(user: dict | None = None):
                 except Exception: _t_txt = str(_t)
             c2_4.text_input("Hora (auto)", value=_t_txt, disabled=True, help="Se asigna al elegir la fecha", key="fi_t_view")
 
-            # ID preview
             _df_tmp = st.session_state.get("df_main", pd.DataFrame()).copy() if "df_main" in st.session_state else pd.DataFrame()
-            prefix = make_id_prefix(st.session_state.get("nt_area", area), st.session_state.get("nt_resp", resp))
+            prefix = make_id_prefix(st.session_state.get("nt_area", area), st.session_state.get("nt_resp", ""))
             id_preview = (next_id_by_person(_df_tmp, st.session_state.get("nt_area", area),
-                           st.session_state.get("nt_resp", resp)) if st.session_state.get("fi_d") else f"{prefix}_")
+                           st.session_state.get("nt_resp", "")) if st.session_state.get("fi_d") else f"{prefix}_")
             c2_5.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
 
-            # Botón Agregar (alineado y un poco más abajo)
+            # Botón Agregar (más abajo)
             with c2_6:
                 st.markdown('<div class="btn-agregar">', unsafe_allow_html=True)
                 submitted = st.button("➕ Agregar", use_container_width=True, key="btn_agregar")
