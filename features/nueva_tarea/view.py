@@ -82,8 +82,8 @@ def render(user: dict | None = None):
         padding:10px 12px; border-radius:10px; font-size:0.92rem;
       }
 
-      /* Bajar un poco más el botón Agregar dentro del card */
-      #nt-card .btn-agregar{ margin-top:44px; }
+      /* Bajar más el botón Agregar dentro del card */
+      #nt-card .btn-agregar{ margin-top:64px; }
       #nt-card .btn-agregar .stButton>button{
         min-height:38px !important; height:38px !important; border-radius:10px !important;
       }
@@ -103,8 +103,8 @@ def render(user: dict | None = None):
     with c_pill:
         st.markdown('<div class="nt-pill"><span>📝 Nueva tarea</span></div>', unsafe_allow_html=True)
 
-    # — más espacio entre la píldora y la franja de ayuda
-    st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
+    # — más espacio entre la píldora y la franja de ayuda (36px)
+    st.markdown("<div style='height:36px'></div>", unsafe_allow_html=True)
 
     # ---------- Sección principal ----------
     if st.session_state.get("nt_visible", True):
@@ -118,7 +118,7 @@ def render(user: dict | None = None):
 
         submitted = False
 
-        # 👇 Envoltorio con id="nt-card" para apuntar el CSS (container sin key)
+        # Envoltorio con id="nt-card" para apuntar el CSS (container sin key)
         st.markdown('<div id="nt-card">', unsafe_allow_html=True)
         with st.container(border=True):
             st.markdown('<span id="nt-card-sentinel"></span>', unsafe_allow_html=True)
