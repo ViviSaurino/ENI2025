@@ -66,9 +66,9 @@ def render(user: dict | None = None):
         width:100% !important; max-width:none !important;
       }
 
-      /* Píldora celeste (igual a tu modelo), ancho completo de su columna */
+      /* Píldora celeste con menos curvatura */
       .nt-pill{
-        width:100%; height:38px; border-radius:999px;
+        width:100%; height:38px; border-radius:12px;
         display:flex; align-items:center; justify-content:center;
         background:#A7C8F0; color:#ffffff; font-weight:700;
         box-shadow:0 6px 14px rgba(167,200,240,.35);
@@ -82,8 +82,8 @@ def render(user: dict | None = None):
         padding:10px 12px; border-radius:10px; font-size:0.92rem;
       }
 
-      /* Alinear botón Agregar con la fila de inputs */
-      #nt-card .btn-agregar{ margin-top:24px; }
+      /* Alinear y bajar un poco el botón Agregar */
+      #nt-card .btn-agregar{ margin-top:32px; }
       #nt-card .btn-agregar .stButton>button{
         min-height:38px !important; height:38px !important; border-radius:10px !important;
       }
@@ -108,11 +108,10 @@ def render(user: dict | None = None):
 
     # ---------- Sección principal ----------
     if st.session_state.get("nt_visible", True):
-        # ===== Texto elegido por ti (con nota de que en Tareas recientes no se edita)
+        # ===== Texto de ayuda (sin la nota adicional)
         st.markdown("""
         <div class="help-strip">
           ✳️ Completa los campos obligatorios → pulsa <b>➕ Agregar</b> → revisa en <b>🕑 Tareas recientes</b> y confirma con <b>💾 Guardar cambios</b>.
-          <br><i>(En <b>Tareas recientes</b> no se edita nada; es solo para revisión/confirmación.)</i>
         </div>
         """, unsafe_allow_html=True)
 
@@ -158,7 +157,7 @@ def render(user: dict | None = None):
                            st.session_state.get("nt_resp", resp)) if st.session_state.get("fi_d") else f"{prefix}_")
             c2_5.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
 
-            # Botón Agregar (alineado)
+            # Botón Agregar (alineado y un poco más abajo)
             with c2_6:
                 st.markdown('<div class="btn-agregar">', unsafe_allow_html=True)
                 submitted = st.button("➕ Agregar", use_container_width=True, key="btn_agregar")
