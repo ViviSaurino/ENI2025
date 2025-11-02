@@ -1,22 +1,32 @@
 # auth_google.py
+# Autenticación Google OAuth2 para ENI2025 (portada + hero + botón)
+# - Lee client_id/secret/redirect_uris de st.secrets["oauth_client"]
+# - Elige redirect por st.secrets["active"] ('cloud' o 'local')
+# - Permisos: st.secrets["auth"].allowed_emails / allowed_domains
+# - Setea st.session_state["user"], ["user_email"], ["auth_ok"]
+
+from __future__ import annotations
 import base64
+import os
+import jwt
+import requests
 import streamlit as st
 from streamlit_oauth import OAuth2Component
 
-# ========== Configuración de ancho maestro (un único lugar) ==========
-LEFT_W = 320  # px -> ancho de VENIDOS + píldora + botón (mantener igual que --left-w)
+# ========== Config de layout ==========
+LEFT_W = 320  # píxeles: ancho de título/píldora/botón en la portada
 
-# ================== Utilidades ==================
+# ================== Utilidades base ==================
 def _safe_rerun():
     if hasattr(st, "rerun"):
         st.rerun()
     elif hasattr(st, "experimental_rerun"):
         st.experimental_rerun()
 
-def _get_query_params():
+def _get_query_params() -> dict:
     if hasattr(st, "query_params"):
         return dict(st.query_params)
-    elif hasattr(st, "experimental_get_query_params"):
+    if hasattr(st, "experimental_get_query_params"):
         return st.experimental_get_query_params()
     return {}
 
@@ -27,13 +37,18 @@ def _set_query_params(**kwargs):
     elif hasattr(st, "experimental_set_query_params"):
         st.experimental_set_query_params(**kwargs)
 
-# -------------------- secrets --------------------
+def _clear_oauth_params():
+    # Evita “rebote” tras login limpiando parámetros del callback
+    qp = _get_query_params()
+    for k in ("code", "state", "scope", "authuser", "prompt"):
+        qp.pop(k, None)
+    _set_query_params(**qp)
+
+# -------------------- secrets / OAuth cfg --------------------
 def _pick_redirect(redirects: list[str], active: str) -> str:
     """
-    Elige el redirect según secrets["active"]:
-     - 'cloud': primer redirect que NO sea localhost
-     - 'local': primer redirect que SÍ sea localhost
-    Si no hay match, cae al primero disponible o a http://localhost:8501
+    - 'cloud': primer redirect que NO sea localhost
+    - 'local': primer redirect que SÍ sea localhost
     """
     redirects = redirects or []
     if active == "cloud":
@@ -48,7 +63,7 @@ def _pick_redirect(redirects: list[str], active: str) -> str:
 
 def _get_oauth_cfg():
     cfg = st.secrets.get("oauth_client", {})
-    active_env = st.secrets.get("active", "cloud")  # 'cloud' | 'local'
+    active_env = st.secrets.get("active", "cloud")
 
     cid = cfg.get("client_id", "")
     csec = cfg.get("client_secret", "")
@@ -67,24 +82,29 @@ def _get_oauth_cfg():
         "_active": active_env,
     }
 
+def _get_allowed_from_secrets():
+    auth = st.secrets.get("auth", {})
+    return auth.get("allowed_emails", []), auth.get("allowed_domains", [])
+
+# -------------------- permisos --------------------
 def _is_allowed(email: str, allowed_emails, allowed_domains) -> bool:
     """
-    Modo abierto: si NO hay filtros configurados (ningún email ni dominio), permite el acceso.
-    Si hay filtros, exige match por email exacto o dominio.
+    Si NO hay filtros configurados (listas vacías), el modo es ABIERTO -> permite acceso.
+    Si hay filtros, requiere match por email exacto o dominio.
     """
-    if not (allowed_emails or allowed_domains):
+    allow_emails = {str(e).lower().strip() for e in (allowed_emails or [])}
+    allow_domains = {str(d).lower().strip() for d in (allowed_domains or [])}
+
+    if not allow_emails and not allow_domains:
         return True
 
     email = (email or "").lower().strip()
-    allow_emails = {e.lower().strip() for e in (allowed_emails or [])}
-    allow_domains = {d.lower().strip() for d in (allowed_domains or [])}
-
     if email in allow_emails:
         return True
     dom = email.split("@")[-1] if "@" in email else ""
     return dom in allow_domains
 
-# -------------------- assets helpers ---------------------
+# -------------------- assets (hero/img) --------------------
 def _b64(path: str, mime: str) -> str | None:
     try:
         with open(path, "rb") as f:
@@ -95,7 +115,7 @@ def _b64(path: str, mime: str) -> str | None:
 def _img(path: str) -> str | None:   return _b64(path, "image/png")
 def _video(path: str) -> str | None: return _b64(path, "video/mp4")
 
-# -------------------- navigation helper --------------------
+# -------------------- navegación --------------------
 def _switch_page(target: str):
     if hasattr(st, "switch_page"):
         st.switch_page(target)
@@ -109,227 +129,121 @@ def google_login(
     allowed_domains=None,
     redirect_page: str | None = None,
 ):
-    login_ph = st.empty()
+    """
+    Renderiza la portada (hero + botón Google). Si el usuario inicia sesión y
+    está autorizado, fija st.session_state["user"], ["user_email"], ["auth_ok"].
+    """
+    # Si no llegan listas, léelas de secrets
+    if allowed_emails is None or allowed_domains is None:
+        se_emails, se_domains = _get_allowed_from_secrets()
+        if allowed_emails is None:
+            allowed_emails = se_emails
+        if allowed_domains is None:
+            allowed_domains = se_domains
 
-    # Si ya hay usuario y pasa filtros, devolvemos directo
+    # Sesión ya válida
     u = st.session_state.get("user")
     if u and _is_allowed(u.get("email"), allowed_emails, allowed_domains):
-        login_ph.empty()
+        st.session_state["user_email"] = u.get("email", "")
+        st.session_state["auth_ok"] = True
         if redirect_page:
             _switch_page(redirect_page)
             st.stop()
         return u
 
-    with login_ph.container():
-        cfg = _get_oauth_cfg()
+    # -------------- UI / portada --------------
+    cfg = _get_oauth_cfg()
 
-        # ⚠️ Ayuda inmediata si faltan credenciales para OAuth
+    # CSS de portada (tu estilo)
+    st.markdown(f"""
+    <style>
+      html, body {{ height:100%; overflow:hidden; }}
+      header[data-testid="stHeader"]{{ height:0; min-height:0; visibility:hidden; }}
+      footer, .stDeployButton,
+      .viewerBadge_container__1QSob, .styles_viewerBadge__1yB5_, .viewerBadge_link__1S137 {{ display:none !important; }}
+
+      [data-testid="stAppViewContainer"]{{ height:100vh; overflow:hidden; }}
+      [data-testid="stMain"]{{ height:100%; padding-top:0 !important; padding-bottom:0 !important; }}
+
+      .block-container{{
+        height:100vh; max-width:980px; padding:0 16px !important; margin:0 auto !important;
+        display:flex; flex-direction:column; justify-content:center;
+      }}
+      [data-testid="stHorizontalBlock"]{{ height:100%; display:flex; align-items:center; gap: 8px !important; }}
+
+      :root{{ --left-w:{LEFT_W}px; --title-max:81px; --media-max:1000px; --stack-gap:10px; --title-bottom:10px; }}
+      .left{{ width:var(--left-w); max-width:100%; }}
+
+      .title{{
+        width:var(--left-w); max-width:var(--left-w);
+        font-weight:930; color:#B38BE3; line-height:.92; letter-spacing:.10px;
+        font-size: clamp(40px, calc(var(--left-w) * 0.38), var(--title-max)) !important;
+        margin:0 0 var(--title-bottom) 0;
+      }}
+      .title .line{{ display:block; width:100%; word-break:break-word; overflow-wrap:anywhere; }}
+
+      .cta{{ width:var(--left-w); display:flex; flex-direction:column; gap:var(--stack-gap); }}
+      .pill{{
+        width:var(--left-w); height:46px; display:flex; align-items:center; justify-content:center;
+        border-radius:12px; background:#EEF2FF; border:1px solid #DBE4FF;
+        color:#2B4C7E; font-weight:800; letter-spacing:.2px; font-size:16px;
+      }}
+
+      .left .stButton > button{{
+        width:var(--left-w); height:48px; border-radius:12px !important;
+        border:1px solid #D5DBEF !important; background:#fff !important; font-size:15px !important;
+      }}
+      .left :is(button,[data-baseweb="button"]):hover,
+      .left :is(button,[data-baseweb="button"]):focus,
+      .left :is(button,[data-baseweb="button"]):active {{
+        background:#60A5FA !important; border-color:#60A5FA !important; color:#fff !important;
+        box-shadow:0 0 0 3px rgba(96,165,250,.35) !important, 0 8px 22px rgba(96,165,250,.25) !important;
+      }}
+
+      .right{{ display:flex; justify-content:center; }}
+      .hero-media{{ display:block; max-width:min(var(--media-max), 45vw); max-height:60vh; height:auto; object-fit:contain; }}
+      @media (max-width:980px){{
+        .left{{ width:min(86vw, var(--left-w)); }}
+        .title{{ width:min(86vw, var(--left-w)); font-size:clamp(32px, calc(var(--left-w) * 0.38), var(--title-max)) !important; }}
+        .cta, .pill, .left .stButton>button{{ width:min(86vw, var(--left-w)) !important; }}
+        .hero-media{{ max-width:min(86vw, var(--media-max)); max-height:40vh; }}
+      }}
+    </style>
+    """, unsafe_allow_html=True)
+
+    col_left, col_right = st.columns([6, 6], gap="small")
+
+    with col_left:
+        st.markdown('<div class="left">', unsafe_allow_html=True)
+        st.markdown('<div class="title"><span class="line">BIEN</span><span class="line">VENIDOS</span></div>', unsafe_allow_html=True)
+        st.markdown('<div class="cta">', unsafe_allow_html=True)
+        st.markdown(f'<div class="pill">GESTIÓN DE TAREAS ENI 2025</div>', unsafe_allow_html=True)
+
+        # Botón OAuth
+        result = None
         if not cfg["_has_creds"]:
-            st.error(
-                "No encontré credenciales de Google OAuth en `st.secrets['oauth_client']`.\n\n"
-                "Agrega `client_id`, `client_secret` y `redirect_uris` (debe coincidir EXACTO con tu URL desplegada)."
-            )
-            # Renderizamos igual la UI para que puedas ver el hero/estilos en local
-
-        try:
-            oauth2 = OAuth2Component(
-                client_id=cfg["client_id"],
-                client_secret=cfg["client_secret"],
-                authorize_endpoint=cfg["auth_uri"],
-                token_endpoint=cfg["token_uri"],
-            )
-        except Exception as e:
-            st.error(f"No pude inicializar OAuth2Component: {e}")
-            return None
-
-        # ====== CSS (se conserva tu diseño) ======
-        st.markdown(f"""
-            <style>
-            html, body {{ height:100%; overflow:hidden; }}
-            header[data-testid="stHeader"]{{ height:0; min-height:0; visibility:hidden; }}
-            footer, .stDeployButton,
-            .viewerBadge_container__1QSob, .styles_viewerBadge__1yB5_, .viewerBadge_link__1S137 {{ display:none !important; }}
-
-            [data-testid="stAppViewContainer"]{{ height:100vh; overflow:hidden; }}
-            [data-testid="stMain"]{{ height:100%; padding-top:0 !important; padding-bottom:0 !important; }}
-
-            .block-container{{
-              height:100vh;
-              max-width:800px;
-              padding:0 16px !important;
-              margin:0 auto !important;
-              display:flex;
-              flex-direction:column;
-              justify-content:center;
-              transform: translateY(0.3vh);
-            }}
-            [data-testid="stHorizontalBlock"]{{
-              height:100%;
-              display:flex;
-              align-items:center;
-              gap: 1px !important;
-            }}
-
-            :root{{
-              --left-w: {LEFT_W}px;
-              --title-max: 80.9px;
-              --media-max: 1000px;
-              --stack-gap: 10px;
-              --title-bottom: 10px;
-            }}
-
-            .left{{ width:var(--left-w); max-width:100%; }}
-
-            .title{{
-              width:var(--left-w);
-              max-width:var(--left-w);
-              display:block;
-              font-weight:930; color:#B38BE3;
-              line-height:.92; letter-spacing:.10px;
-              font-size: clamp(40px, calc(var(--left-w) * 0.38), var(--title-max)) !important;
-              margin:0 0 var(--title-bottom) 0;
-              box-sizing:border-box;
-            }}
-            .title .line{{ display:block; width:100%; word-break:break-word; overflow-wrap:anywhere; }}
-
-            .cta{{
-              width:var(--left-w) !important;
-              max-width:var(--left-w) !important;
-              display:flex;
-              flex-direction:column;
-              gap:var(--stack-gap);
-            }}
-
-            .pill{{
-              width:var(--left-w) !important; max-width:var(--left-w) !important;
-              height:46px; display:flex; align-items:center; justify-content:center;
-              border-radius:12px; background:#EEF2FF; border:1px solid #DBE4FF;
-              color:#2B4C7E; font-weight:800; letter-spacing:.2px; font-size:16px;
-              margin:0; box-sizing:border-box;
-            }}
-
-            .left .row-widget.stButton{{ 
-              width:var(--left-w) !important;
-              max-width:var(--left-w) !important;
-              align-self:flex-start !important;
-              padding:0 !important; margin:0 !important; box-sizing:border-box !important;
-            }}
-            .left .row-widget.stButton > div{{ 
-              width:100% !important; max-width:100% !important; padding:0 !important; margin:0 !important;
-              display:block !important; box-sizing:border-box !important;
-            }}
-            .left .row-widget.stButton > div > button{{
-              width:100% !important; min-width:0 !important; height:48px !important;
-              border-radius:12px !important; border:1px solid #D5DBEF !important; background:#fff !important;
-              font-size:15px !important; box-sizing:border-box !important; padding:0 .95rem !important;
-              background-image:none !important;
-            }}
-
-            [data-baseweb="button"]:hover,
-            [data-baseweb="button"]:focus,
-            [data-baseweb="button"]:active {{
-              background:#60A5FA !important;
-              border-color:#60A5FA !important;
-              color:#ffffff !important;
-              background-image:none !important;
-              outline:none !important;
-              box-shadow:0 0 0 3px rgba(96,165,250,.35) !important, 0 8px 22px rgba(96,165,250,.25) !important;
-            }}
-
-            button:hover,
-            button:focus,
-            button:active {{
-              background:#60A5FA !important;
-              border-color:#60A5FA !important;
-              color:#ffffff !important;
-              background-image:none !important;
-              outline:none !important;
-              box-shadow:0 0 0 3px rgba(96,165,250,.35) !important, 0 8px 22px rgba(96,165,250,.25) !important;
-            }}
-
-            .left .stButton > button:hover,
-            .left .stButton > button:focus,
-            .left .stButton > button:active,
-            .left .row-widget.stButton > div > button:hover,
-            .left .row-widget.stButton > div > button:focus,
-            .left .row-widget.stButton > div > button:active {{
-              background:#60A5FA !important;
-              border-color:#60A5FA !important;
-              color:#ffffff !important;
-              background-image:none !important;
-              outline:none !important;
-              box-shadow:0 0 0 3px rgba(96,165,250,.35) !important, 0 8px 22px rgba(96,165,250,.25) !important;
-            }}
-
-            :root{{
-              --primary-color:#60A5FA !important;
-              --accent-color:#60A5FA !important;
-              --brand-color:#60A5FA !important;
-              --button-secondary-hover-bg:#60A5FA !important;
-              --button-secondary-hover-border:#60A5FA !important;
-              --button-secondary-pressed-bg:#60A5FA !important;
-              --button-secondary-pressed-border:#60A5FA !important;
-            }}
-
-            .right{{ display:flex; justify-content:center; }}
-            .hero-media{{
-              display:block; width:auto;
-              max-width:min(var(--media-max), 45vw);
-              max-height:60vh; height:auto; object-fit:contain;
-            }}
-
-            @media (max-width:980px){{
-              .left{{ width:min(86vw, var(--left-w)); }}
-              .title{{ width:min(86vw, var(--left-w)); font-size:clamp(32px, calc(var(--left-w) * 0.38), var(--title-max)) !important; }}
-              .cta, .pill, .left .row-widget.stButton{{ width:min(86vw, var(--left-w)) !important; max-width:min(86vw, var(--left-w)) !important; }}
-              .hero-media{{ max-width:min(86vw, var(--media-max)); max-height:40vh; }}
-            }}
-            </style>
-        """, unsafe_allow_html=True)
-
-        # --------- Layout: 2 columnas ----------
-        col_left, col_right = st.columns([6, 6], gap="small")
-
-        with col_left:
-            st.markdown('<div class="left">', unsafe_allow_html=True)
-
-            # Título
-            st.markdown(
-                '<div class="title"><span class="line">BIEN</span><span class="line">VENIDOS</span></div>',
-                unsafe_allow_html=True
-            )
-
-            # Contenedor común (mismo ancho y con gap corto)
-            st.markdown('<div class="cta">', unsafe_allow_html=True)
-
-            # PÍLDORA
-            st.markdown(
-                f'<div class="pill" style="width:{LEFT_W}px !important;">GESTIÓN DE TAREAS ENI 2025</div>',
-                unsafe_allow_html=True
-            )
-
-            # Botón
-            st.markdown(f'<div style="width:{LEFT_W}px !important;">', unsafe_allow_html=True)
-
-            result = None
-            # Compatibilidad con distintas versiones del componente (scopes/scope y redirect_uri/redirect_to)
+            st.error("Faltan credenciales en `st.secrets['oauth_client']` (client_id, client_secret, redirect_uris).")
+        else:
             try:
-                result = oauth2.authorize_button(
-                    name="Continuar con Google",
-                    icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
-                    pkce="S256",
-                    use_container_width=False,
-                    scopes=["openid", "email", "profile"],
-                    redirect_uri=cfg["redirect_uri"],
+                oauth2 = OAuth2Component(
+                    client_id=cfg["client_id"],
+                    client_secret=cfg["client_secret"],
+                    authorize_endpoint=cfg["auth_uri"],
+                    token_endpoint=cfg["token_uri"],
                 )
-            except TypeError:
+            except Exception as e:
+                st.error(f"No pude inicializar OAuth2Component: {e}")
+                oauth2 = None
+
+            if oauth2:
+                # compat scopes/scope + redirect_uri/redirect_to
                 try:
                     result = oauth2.authorize_button(
                         name="Continuar con Google",
                         icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                         pkce="S256",
                         use_container_width=False,
-                        scope="openid email profile",
+                        scopes=["openid", "email", "profile"],
                         redirect_uri=cfg["redirect_uri"],
                     )
                 except TypeError:
@@ -339,77 +253,41 @@ def google_login(
                             icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
                             pkce="S256",
                             use_container_width=False,
-                            scopes=["openid", "email", "profile"],
-                            redirect_to=cfg["redirect_uri"],
+                            scope="openid email profile",
+                            redirect_uri=cfg["redirect_uri"],
                         )
                     except TypeError:
-                        try:
-                            result = oauth2.authorize_button(
-                                name="Continuar con Google",
-                                icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
-                                pkce="S256",
-                                use_container_width=False,
-                                scope="openid email profile",
-                                redirect_to=cfg["redirect_uri"],
-                            )
-                        except TypeError:
-                            result = oauth2.authorize_button(
-                                name="Continuar con Google",
-                                icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
-                                pkce="S256",
-                                use_container_width=False,
-                                scope="openid email profile",
-                            )
+                        result = oauth2.authorize_button(
+                            name="Continuar con Google",
+                            icon="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg",
+                            pkce="S256",
+                            use_container_width=False,
+                            scope="openid email profile",
+                            redirect_to=cfg["redirect_uri"],
+                        )
 
-            # Forzar hover/focus/active a celeste
-            st.markdown("""
-<style id="force-google-hover">
-.left :is(button, [data-baseweb="button"], [role="button"], a.button, a[role="button"]) {
-  transition: background-color .12s ease, box-shadow .12s ease, border-color .12s ease !important;
-  background-image: none !important;
-}
-.left :is(button, [data-baseweb="button"], [role="button"], a.button, a[role="button"]):hover,
-.left :is(button, [data-baseweb="button"], [role="button"], a.button, a[role="button"]):focus,
-.left :is(button, [data-baseweb="button"], [role="button"], a.button, a[role="button"]):active {
-  background: #60A5FA !important;
-  border-color: #60A5FA !important;
-  color: #FFFFFF !important;
-  outline: none !important;
-  background-image: none !important;
-  box-shadow: 0 0 0 3px rgba(96,165,250,.35) !important, 0 8px 22px rgba(96,165,250,.25) !important;
-}
-</style>
-""", unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)  # .cta
+        st.markdown('</div>', unsafe_allow_html=True)  # .left
 
-            st.markdown('</div>', unsafe_allow_html=True)  # wrapper del botón
-            st.markdown('</div>', unsafe_allow_html=True)  # .cta
-            st.markdown('</div>', unsafe_allow_html=True)  # .left
+    with col_right:
+        st.markdown('<div class="right">', unsafe_allow_html=True)
+        # Hero: prioriza MP4 -> PNG -> fallback remoto
+        vid = _video("assets/hero.mp4")
+        img = _img("assets/hero.png")
+        fallback = "https://raw.githubusercontent.com/filipedeschamps/tabnews.com.br/main/public/apple-touch-icon.png"
+        if vid:
+            st.markdown(f'<video class="hero-media" src="{vid}" autoplay loop muted playsinline></video>', unsafe_allow_html=True)
+        elif img:
+            st.markdown(f'<img class="hero-media" src="{img}" alt="ENI 2025">', unsafe_allow_html=True)
+        else:
+            st.markdown(f'<img class="hero-media" src="{fallback}" alt="ENI 2025">', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        with col_right:
-            st.markdown('<div class="right">', unsafe_allow_html=True)
-            vid = _video("assets/hero.mp4")
-            img = _img("assets/hero.png")
-            fallback = "https://raw.githubusercontent.com/filipedeschamps/tabnews.com.br/main/public/apple-touch-icon.png"
-            if vid:
-                st.markdown(f'<video class="hero-media" src="{vid}" autoplay loop muted playsinline></video>', unsafe_allow_html=True)
-            elif img:
-                st.markdown(f'<img class="hero-media" src="{img}" alt="ENI 2025">', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<img class="hero-media" src="{fallback}" alt="ENI 2025">', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        # --- Si Google devolvió error en el callback, lo mostramos (debug útil) ---
-        qp = _get_query_params()
-        if "error" in qp:
-            err = qp.get("error")
-            desc = qp.get("error_description", "")
-            st.error(f"Error de Google OAuth: {err}\n\n{desc}")
-
-    # Hasta aquí, si no se ha hecho click, no hay resultado
+    # Si no hay resultado aún (no clic), salimos
     if not result:
         return None
 
-    # ---------- Procesa token ----------
+    # ---------- Procesar token ----------
     token = result.get("token") if isinstance(result, dict) else result
     if not token:
         st.error("No se recibió el token de Google. Intenta nuevamente.")
@@ -422,7 +300,6 @@ def google_login(
 
     if id_token:
         try:
-            import jwt
             info = jwt.decode(id_token, options={"verify_signature": False})
             user.update(
                 email=info.get("email", ""),
@@ -434,7 +311,6 @@ def google_login(
 
     if access_token and not user["email"]:
         try:
-            import requests
             r = requests.get(
                 "https://openidconnect.googleapis.com/v1/userinfo",
                 headers={"Authorization": f"Bearer {access_token}"},
@@ -450,14 +326,17 @@ def google_login(
         except Exception:
             pass
 
-    # ✅ Filtro de acceso con modo abierto si no hay filtros
+    # Permisos
     if not _is_allowed(user.get("email"), allowed_emails, allowed_domains):
         st.error("Tu cuenta no está autorizada. Consulta con el administrador.")
         return None
 
+    # Estado de sesión compatible con gestion_app.py
     st.session_state["user"] = user
+    st.session_state["user_email"] = user.get("email", "")
+    st.session_state["auth_ok"] = True
 
-    login_ph.empty()
+    _clear_oauth_params()
     if redirect_page:
         _switch_page(redirect_page)
         st.stop()
@@ -468,5 +347,8 @@ def google_login(
 
 
 def logout():
-    st.session_state.pop("user", None)
+    # Limpieza agresiva de claves para evitar residuos
+    for k in ("user", "user_email", "auth_ok", "auth_user", "google_user", "g_user", "email"):
+        st.session_state.pop(k, None)
+    _clear_oauth_params()
     _safe_rerun()
