@@ -89,11 +89,15 @@ def _call_view(mod_path: str, candidates: tuple[str, ...], **kwargs):
 # ---------- Vista principal: arma las 6 secciones en pestañas ----------
 def render_all(user: dict | None = None):
     email = (user or {}).get("email") or st.session_state.get("user_email", "")
-    st.subheader("🗂️ Gestión – ENI 2025")
+
+    # ⛔ Se elimina el subtítulo duplicado:
+    # st.subheader("🗂️ Gestión – ENI 2025")
+
     if email:
         st.caption(f"Sesión: {email}")
 
-    st.info("La vista principal está lista para conectar tus tablas, filtros y gráficos.")
+    # ⛔ Se elimina el banner azul informativo:
+    # st.info("La vista principal está lista para conectar tus tablas, filtros y gráficos.")
 
     tabs = st.tabs([
         "➕ Nueva tarea",
