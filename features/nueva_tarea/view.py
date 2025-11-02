@@ -7,72 +7,54 @@ import streamlit as st
 # ====== utilidades (con fallbacks seguros) ======
 try:
     from shared import (
-        blank_row,
-        next_id_by_person,
-        make_id_prefix,
-        COLS,
-        SECTION_GAP,
-        _auto_time_on_date,
+        blank_row, next_id_by_person, make_id_prefix,
+        COLS, SECTION_GAP, _auto_time_on_date,
     )
 except Exception:
     from datetime import datetime
     import re
-
     def blank_row() -> dict: return {}
-
     def _clean3(s: str) -> str:
         s = (s or "").strip().upper()
         s = re.sub(r"[^A-Z0-9\s]+", "", s)
         return re.sub(r"\s+", "", s)[:3]
-
     def make_id_prefix(area: str, resp: str) -> str:
         a3 = _clean3(area)
         r = (resp or "").strip().upper()
-        r_first = r.split()[0] if r.split() else r
-        r3 = _clean3(r_first)
-        if not a3 and not r3: return "GEN"
-        return (a3 or "GEN") + (r3 or "")
-
+        r3 = _clean3(r.split()[0] if r.split() else r)
+        return (a3 or "GEN") + (r3 or "") or "GEN"
     def next_id_by_person(df: pd.DataFrame, area: str, resp: str) -> str:
         prefix = make_id_prefix(area, resp)
-        n = len(df.index) + 1
-        return f"{prefix}_{n}"
-
+        return f"{prefix}_{len(df.index)+1}"
     COLS = None
     SECTION_GAP = 30
-
     def _auto_time_on_date():
         now = datetime.now().replace(second=0, microsecond=0)
         st.session_state["fi_t"] = now.time()
-
 # ==========================================================================
 
 def render(user: dict | None = None):
     """Vista: ➕ Nueva tarea"""
 
-    # ===== Estilos locales =====
+    # ===== Estilos =====
     st.markdown("""
     <style>
       :root{ --pill-h:38px; --pill-r:999px; }
 
-      /* === PÍLDORA NUEVA TAREA (estilo igual a “Editar estado”) ===
-         Usamos un sentinel para apuntar SOLO a este bloque. */
-      div[data-testid="stVerticalBlock"]:has(> #nt-pill-sentinel) .stButton > button{
-        width:100% !important;                 /* ocupa el ancho de la columna Área   */
-        background:#93C5FD !important;         /* azul sólido                         */
-        border:1px solid #93C5FD !important;
-        color:#ffffff !important;              /* texto blanco                        */
+      /* PÍLDORA: estilo como “Editar estado”, y ocupando el ancho de la columna Área */
+      div:has(#nt-pill-sentinel) button,
+      div[data-testid="stVerticalBlock"]:has(#nt-pill-sentinel) button{
+        width:100% !important;
+        background:#A7C8F0 !important;     /* azul suave similar al de 'Editar estado' */
+        border:1px solid #A7C8F0 !important;
+        color:#ffffff !important;
         font-weight:700;
         border-radius:var(--pill-r) !important;
         min-height:var(--pill-h) !important; height:var(--pill-h) !important; line-height:var(--pill-h) !important;
-        box-shadow:none !important;
+        box-shadow:0 6px 14px rgba(167,200,240,.35) !important;
       }
-      div[data-testid="stVerticalBlock"]:has(> #nt-pill-sentinel) .stButton > button:hover{
-        filter:brightness(0.97);
-      }
-      div[data-testid="stVerticalBlock"]:has(> #nt-pill-sentinel) .stButton > button:focus{
-        outline:2px solid #60A5FA !important; outline-offset:1px;
-      }
+      div:has(#nt-pill-sentinel) button:hover{ filter:brightness(0.97); }
+      div:has(#nt-pill-sentinel) button:focus{ outline:2px solid #6EA7EB !important; outline-offset:1px; }
 
       /* Inputs 100% dentro del card de esta sección */
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
@@ -80,11 +62,11 @@ def render(user: dict | None = None):
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput,
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput,
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea{ width:100% !important; }
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput > div,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox > div,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput > div,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput > div,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea > div{
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput>div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox>div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput>div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput>div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea>div{
         width:100% !important; max-width:none !important;
       }
 
@@ -95,8 +77,8 @@ def render(user: dict | None = None):
       }
 
       /* Alinear botón Agregar con la fila de inputs */
-      #nt-card .btn-agregar{ margin-top:24px; }  /* ajusta 22/26 si ves 1–2 px de diferencia */
-      #nt-card .btn-agregar .stButton > button{
+      #nt-card .btn-agregar{ margin-top:24px; } /* ajusta 22/26 si necesitas 1–2 px */
+      #nt-card .btn-agregar .stButton>button{
         min-height:38px !important; height:38px !important; border-radius:10px !important;
       }
     </style>
@@ -107,10 +89,9 @@ def render(user: dict | None = None):
         globals()["AREAS_OPC"] = [
             "Jefatura","Gestión","Metodología","Base de datos","Capacitación","Monitoreo","Consistencia"
         ]
-
     st.session_state.setdefault("nt_visible", True)
 
-    # ---------- Píldora alineada con el ancho de “Área” ----------
+    # ---------- Píldora con el mismo ancho que “Área” ----------
     A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
     c_pill, _, _, _, _, _ = st.columns([A, Fw, T, D, R, C], gap="medium")
     with c_pill:
@@ -126,15 +107,13 @@ def render(user: dict | None = None):
           ✳️ Completa: <strong>Área, Fase, Tarea, Responsable y Fecha</strong>. La hora es automática.
         </div>
         """, unsafe_allow_html=True)
-
         st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
 
         submitted = False
-
         with st.container(border=True):
             st.markdown('<span id="nt-card-sentinel"></span>', unsafe_allow_html=True)
 
-            # Proporciones de columnas (mismas que arriba)
+            # Proporciones de columnas
             A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
             # ---------- FILA 1 ----------
@@ -149,7 +128,7 @@ def render(user: dict | None = None):
 
             # ---------- FILA 2 ----------
             c2_1, c2_2, c2_3, c2_4, c2_5, c2_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
-            tipo = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría", key="nt_tipo")
+            c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría", key="nt_tipo")
             c2_2.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
             estado = "No iniciado"
 
@@ -168,10 +147,8 @@ def render(user: dict | None = None):
             # ID preview
             _df_tmp = st.session_state.get("df_main", pd.DataFrame()).copy() if "df_main" in st.session_state else pd.DataFrame()
             prefix = make_id_prefix(st.session_state.get("nt_area", area), st.session_state.get("nt_resp", resp))
-            if st.session_state.get("fi_d"):
-                id_preview = next_id_by_person(_df_tmp, st.session_state.get("nt_area", area), st.session_state.get("nt_resp", resp))
-            else:
-                id_preview = f"{prefix}_" if prefix else ""
+            id_preview = (next_id_by_person(_df_tmp, st.session_state.get("nt_area", area),
+                           st.session_state.get("nt_resp", resp)) if st.session_state.get("fi_d") else f"{prefix}_")
             c2_5.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
 
             # Botón Agregar (alineado)
@@ -180,9 +157,7 @@ def render(user: dict | None = None):
                 submitted = st.button("➕ Agregar", use_container_width=True, key="btn_agregar")
                 st.markdown('</div>', unsafe_allow_html=True)
 
-        st.markdown("</div>", unsafe_allow_html=True)  # cierra #nt-section
-
-        # ---------- Guardado ----------
+        # Guardado
         if submitted:
             try:
                 df = st.session_state.get("df_main", pd.DataFrame()).copy()
@@ -195,13 +170,11 @@ def render(user: dict | None = None):
                     elif "DEL" in df_out.columns:
                         df_out = df_out.rename(columns={"DEL": "__DEL__"})
                     df_out = df_out.loc[:, ~pd.Index(df_out.columns).duplicated()].copy()
-                    if not df_out.index.is_unique:
-                        df_out = df_out.reset_index(drop=True)
+                    if not df_out.index.is_unique: df_out = df_out.reset_index(drop=True)
                     if target_cols:
                         target = list(dict.fromkeys(list(target_cols)))
                         for c in target:
-                            if c not in df_out.columns:
-                                df_out[c] = None
+                            if c not in df_out.columns: df_out[c] = None
                         ordered = [c for c in target] + [c for c in df_out.columns if c not in target]
                         df_out = df_out.loc[:, ordered].copy()
                     return df_out
@@ -210,10 +183,8 @@ def render(user: dict | None = None):
 
                 reg_fecha = st.session_state.get("fi_d")
                 reg_hora_obj = st.session_state.get("fi_t")
-                try:
-                    reg_hora_txt = reg_hora_obj.strftime("%H:%M") if reg_hora_obj is not None else ""
-                except Exception:
-                    reg_hora_txt = str(reg_hora_obj) if reg_hora_obj is not None else ""
+                try: reg_hora_txt = reg_hora_obj.strftime("%H:%M") if reg_hora_obj is not None else ""
+                except Exception: reg_hora_txt = str(reg_hora_obj) if reg_hora_obj is not None else ""
 
                 new = blank_row()
                 new.update({
