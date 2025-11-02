@@ -49,9 +49,10 @@ except Exception:
 def render(user: dict | None = None):
     """Vista: ➕ Nueva tarea"""
 
-    # ===== CSS mínimo para esta sección (inputs al 100% y alineación de Agregar) =====
+    # ===== CSS mínimo: inputs 100%, pill celeste y alineación de Agregar =====
     st.markdown("""
     <style>
+      /* Inputs al 100% solo dentro de este card */
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox,
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput,
@@ -64,10 +65,24 @@ def render(user: dict | None = None):
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea>div{
         width:100% !important; max-width:none !important;
       }
+
+      /* Píldora celeste (igual a tu modelo), ancho completo de su columna */
+      .nt-pill{
+        width:100%; height:38px; border-radius:999px;
+        display:flex; align-items:center; justify-content:center;
+        background:#A7C8F0; color:#ffffff; font-weight:700;
+        box-shadow:0 6px 14px rgba(167,200,240,.35);
+        user-select:none;
+      }
+      .nt-pill span{ display:inline-flex; gap:8px; align-items:center; }
+
+      /* Tira de ayuda */
       .help-strip{
         background:#F3F8FF; border:1px dashed #BDD7FF; color:#0B3B76;
         padding:10px 12px; border-radius:10px; font-size:0.92rem;
       }
+
+      /* Alinear botón Agregar con la fila de inputs */
       #nt-card .btn-agregar{ margin-top:24px; }
       #nt-card .btn-agregar .stButton>button{
         min-height:38px !important; height:38px !important; border-radius:10px !important;
@@ -82,12 +97,11 @@ def render(user: dict | None = None):
         ]
     st.session_state.setdefault("nt_visible", True)
 
-    # ---------- Píldora con el ancho de la columna “Área” ----------
+    # ---------- Píldora (no interactiva) con el ancho de la columna “Área” ----------
     A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
     c_pill, _, _, _, _, _ = st.columns([A, Fw, T, D, R, C], gap="medium")
     with c_pill:
-        # 👉 El estilo CELESTE se asegura con type="primary"
-        st.button("📝 Nueva tarea", key="nt_pill", use_container_width=True, type="primary")
+        st.markdown('<div class="nt-pill"><span>📝 Nueva tarea</span></div>', unsafe_allow_html=True)
 
     # ---------- Sección principal ----------
     if st.session_state.get("nt_visible", True):
@@ -104,7 +118,7 @@ def render(user: dict | None = None):
         with st.container(border=True):
             st.markdown('<span id="nt-card-sentinel"></span>', unsafe_allow_html=True)
 
-            # ---------- FILA 1 ----------
+            # Proporciones de la fila
             r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
             area = r1c1.selectbox("Área", options=AREAS_OPC, index=0, key="nt_area")
             FASES = ["Capacitación","Post-capacitación","Pre-consistencia","Consistencia","Operación de campo"]
