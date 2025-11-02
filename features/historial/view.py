@@ -17,8 +17,8 @@ st.markdown("""
 /* ===== Alineación exacta de los botones inferiores con los filtros ===== */
 :root{
   --hist-pad-x: 16px;        /* padding lateral del contenedor de botones */
-  --hist-border-w: 0px;      /* grosor de línea superior; pon 1px o 2px si quieres una línea visible */
-  --hist-border-c: #EF4444;  /* color de la línea (roja). Cambia si deseas otro color */
+  --hist-border-w: 2px;      /* grosor de línea superior (visible en rojo) */
+  --hist-border-c: #EF4444;  /* color de la línea (roja) */
 }
 .hist-actions{
   padding-left: var(--hist-pad-x) !important;
@@ -41,9 +41,8 @@ from datetime import datetime, time
 df_all = st.session_state["df_main"].copy()
 
 # ===== Proporciones de filtros =====
-A_f, Fw_f, T_width_f, D_f, R_f, C_f = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
-# ⬇️ Para reducir el ancho de los 3 botones de abajo, ajusta estos tres (D_f, R_f, C_f).
-#    Ejemplo: D_f=1.6, R_f=1.4, C_f=1.2
+# ⬇️ Ajuste de anchos (incluye reducción de los 3 botones inferiores)
+A_f, Fw_f, T_width_f, D_f, R_f, C_f = 1.80, 2.10, 3.00, 1.60, 1.40, 1.20
 
 # ===== FILA DE 5 FILTROS + Buscar =====
 with st.form("hist_filtros_v1", clear_on_submit=False):
