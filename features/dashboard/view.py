@@ -1,112 +1,99 @@
-# features/sections.py
+# features/dashboard/view.py
+import os
 import streamlit as st
-import pandas as pd
 
-# ====== Importar sub-vistas con fallbacks seguros ======
-def _stub(msg):
-    def _inner():
-        st.warning(msg)
-    return _inner
+LILAC = "#B38BE3"
+LILAC_50 = "#F6EEFF"
 
-try:
-    from features.nueva_tarea.view import render as render_nueva_tarea
-except Exception:
-    render_nueva_tarea = _stub("Crea `features/nueva_tarea/view.py` con `render()` para la sección **Nueva tarea**.")
+def _find_anim():
+    """Devuelve (tipo, ruta) para la animación disponible en /assets."""
+    candidates = [
+        ("video", "assets/welcome_anim.webm"),
+        ("video", "assets/welcome_anim.mp4"),
+        ("gif",   "assets/welcome_anim.gif"),
+    ]
+    for kind, path in candidates:
+        if os.path.exists(path):
+            return kind, path
+    return None, None
 
-try:
-    from features.editar_tarea.view import render as render_editar_tarea
-except Exception:
-    render_editar_tarea = _stub("Crea `features/editar_tarea/view.py` con `render()` para **Editar estado**.")
+def render_bienvenida(on_login=None, user: dict | None = None):
+    # ---- CSS específico de la portada lila ----
+    st.markdown(f"""
+    <style>
+      .welcome-hero {{
+        background: linear-gradient(180deg, {LILAC_50} 0%, #fff 64%);
+        border: 1px solid #ECE6FF;
+        border-radius: 18px;
+        padding: 22px 28px;
+        box-shadow: 0 10px 26px rgba(179,139,227,.18);
+      }}
+      .welcome-title {{
+        font-size: 42px; line-height: 1.1; font-weight: 800; margin: 0 0 6px 0;
+        color: #2B2730;
+      }}
+      .welcome-sub {{
+        font-size: 16px; color: #4B4B57; margin-bottom: 14px;
+      }}
+      .welcome-cta .stButton > button {{
+        width: 100%;
+        height: 44px;
+        border-radius: 10px;
+        border: 2px solid {LILAC};
+        background: white;
+        color: {LILAC};
+        font-weight: 700;
+        transition: all .15s ease;
+      }}
+      .welcome-cta .stButton > button:hover {{
+        background: {LILAC};
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(179,139,227,.35);
+      }}
+      .anim-wrap {{
+        display: flex; align-items: center; justify-content: center;
+      }}
+      .anim-wrap video {{ width: 100%; border-radius: 14px; }}
+      .anim-wrap img   {{ width: 100%; border-radius: 14px; }}
+    </style>
+    """, unsafe_allow_html=True)
 
-try:
-    from features.nueva_alerta.view import render as render_nueva_alerta
-except Exception:
-    render_nueva_alerta = _stub("Crea `features/nueva_alerta/view.py` con `render()` para **Nueva alerta**.")
-
-try:
-    from features.prioridad.view import render as render_prioridad
-except Exception:
-    render_prioridad = _stub("Crea `features/prioridad/view.py` con `render()` para **Prioridad**.")
-
-try:
-    from features.evaluacion.view import render as render_evaluacion
-except Exception:
-    render_evaluacion = _stub("Crea `features/evaluacion/view.py` con `render()` para **Evaluación**.")
-
-# Historial (opcional): si no tienes módulo, mostramos df_main directamente
-try:
-    from features.historial.view import render as render_historial
-except Exception:
-    def render_historial():
-        st.subheader("📝 Tareas recientes")
-        df = st.session_state.get("df_main", pd.DataFrame([])).copy()
-        if "__DEL__" in df.columns:
-            df = df.drop(columns="__DEL__")
-        st.dataframe(df, use_container_width=True, height=380)
-
-# ====== Helpers UI (toggle + píldoras) ======
-def _chev(is_open: bool) -> str:
-    return "▾" if is_open else "▸"
-
-def _section(title: str, key_flag: str, pill_class: str):
-    st.markdown(f'<div class="topbar" id="ntbar">', unsafe_allow_html=True)
-    c1, c2 = st.columns([0.03, 0.97], gap="small")
-    with c1:
-        def _flip():
-            st.session_state[key_flag] = not st.session_state.get(key_flag, True)
-        st.button(_chev(st.session_state.get(key_flag, True)), key=f"tgl_{key_flag}", help="Mostrar/ocultar", on_click=_flip)
-    with c2:
-        st.markdown(f'<div class="{pill_class}">{title}</div>', unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
-
-# ====== Estado inicial de visibilidad (una sola vez) ======
-if "_ui_bootstrap" not in st.session_state:
-    st.session_state["nt_visible"]  = True   # Nueva tarea
-    st.session_state["ux_visible"]  = True   # Editar estado
-    st.session_state["na_visible"]  = True   # Nueva alerta
-    st.session_state["pri_visible"] = False  # Prioridad
-    st.session_state["eva_visible"] = False  # Evaluación
-    st.session_state["_ui_bootstrap"] = True
-
-# ====== Renderizador maestro ======
-def render_all():
-    # Título principal de la app (post-login)
-    st.title("📂 Gestión - ENI 2025")
-
-    # 1) Nueva tarea
-    _section("📝  Nueva tarea", "nt_visible", "form-title")
-    if st.session_state["nt_visible"]:
-        st.markdown('<div class="form-card">', unsafe_allow_html=True)
-        render_nueva_tarea()
+    # ---- Layout de la portada ----
+    st.markdown('<div class="welcome-hero">', unsafe_allow_html=True)
+    c_text, c_anim = st.columns([1.05, 0.95])
+    with c_text:
+        st.markdown('<div class="welcome-title">👋 Bienvenidos — ENI2025</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="welcome-sub">Esta es la plataforma unificada de <b>Gestión — ENI2025</b>. '
+            'Inicia sesión con tu correo autorizado para gestionar tareas, prioridades, evaluaciones y más.</div>',
+            unsafe_allow_html=True
+        )
+        st.markdown('<div class="welcome-cta">', unsafe_allow_html=True)
+        if st.button("Iniciar sesión con Google", use_container_width=True, key="welcome_login"):
+            try:
+                if callable(on_login):
+                    on_login()
+                st.rerun()
+            except Exception as e:
+                st.error(f"No se pudo iniciar sesión: {e}")
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # 2) Editar estado
-    _section("✏️  Editar estado", "ux_visible", "form-title-ux")
-    if st.session_state["ux_visible"]:
-        st.markdown('<div class="form-card">', unsafe_allow_html=True)
-        render_editar_tarea()
+    with c_anim:
+        kind, path = _find_anim()
+        st.markdown('<div class="anim-wrap">', unsafe_allow_html=True)
+        if kind == "video":
+            # autoplay, loop, muted, playsinline para que saluden sin sentir el corte
+            st.markdown(
+                f"""
+                <video src="{path}" autoplay loop muted playsinline></video>
+                """,
+                unsafe_allow_html=True
+            )
+        elif kind == "gif":
+            st.image(path)
+        else:
+            st.caption("💡 Coloca tu animación en `assets/welcome_anim.webm` (o .mp4 / .gif).")
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # 3) Nueva alerta
-    _section("🚨  Nueva alerta", "na_visible", "form-title-na")
-    if st.session_state["na_visible"]:
-        st.markdown('<div class="form-card">', unsafe_allow_html=True)
-        render_nueva_alerta()
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # 4) Prioridad (grid)
-    _section("🧭  Prioridad", "pri_visible", "form-title-pri")
-    if st.session_state["pri_visible"]:
-        st.markdown('<div class="form-card" id="prior-grid">', unsafe_allow_html=True)
-        render_prioridad()
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # 5) Evaluación (grid)
-    _section("📊  Evaluación", "eva_visible", "form-title-eval")
-    if st.session_state["eva_visible"]:
-        st.markdown('<div class="form-card" id="eval-grid">', unsafe_allow_html=True)
-        render_evaluacion()
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # 6) Historial / Tareas recientes
-    render_historial()
+    st.markdown('</div>', unsafe_allow_html=True)
