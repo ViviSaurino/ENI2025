@@ -55,19 +55,22 @@ def render(user: dict | None = None):
     <style>
       :root{ --pill-h:38px; --pill-r:999px; }
 
-      /* Píldora azul sólida (como las acciones), ancho 100% de su columna */
-      #nt_pill_wrap .stButton > button{
-        width:100% !important;
-        background:#93C5FD !important;        /* azul sólido */
+      /* === PÍLDORA NUEVA TAREA (estilo igual a “Editar estado”) ===
+         Usamos un sentinel para apuntar SOLO a este bloque. */
+      div[data-testid="stVerticalBlock"]:has(> #nt-pill-sentinel) .stButton > button{
+        width:100% !important;                 /* ocupa el ancho de la columna Área   */
+        background:#93C5FD !important;         /* azul sólido                         */
         border:1px solid #93C5FD !important;
-        color:#ffffff !important;
+        color:#ffffff !important;              /* texto blanco                        */
         font-weight:700;
         border-radius:var(--pill-r) !important;
         min-height:var(--pill-h) !important; height:var(--pill-h) !important; line-height:var(--pill-h) !important;
         box-shadow:none !important;
       }
-      #nt_pill_wrap .stButton > button:hover{ filter:brightness(0.97); }
-      #nt_pill_wrap .stButton > button:focus{
+      div[data-testid="stVerticalBlock"]:has(> #nt-pill-sentinel) .stButton > button:hover{
+        filter:brightness(0.97);
+      }
+      div[data-testid="stVerticalBlock"]:has(> #nt-pill-sentinel) .stButton > button:focus{
         outline:2px solid #60A5FA !important; outline-offset:1px;
       }
 
@@ -92,7 +95,7 @@ def render(user: dict | None = None):
       }
 
       /* Alinear botón Agregar con la fila de inputs */
-      #nt-card .btn-agregar{ margin-top:24px; }   /* si ves 1–2px, prueba 22/26 */
+      #nt-card .btn-agregar{ margin-top:24px; }  /* ajusta 22/26 si ves 1–2 px de diferencia */
       #nt-card .btn-agregar .stButton > button{
         min-height:38px !important; height:38px !important; border-radius:10px !important;
       }
@@ -107,14 +110,12 @@ def render(user: dict | None = None):
 
     st.session_state.setdefault("nt_visible", True)
 
-    # ---------- Píldora alineada a la izquierda con el ancho de “Área” ----------
-    # Usamos la MISMA grilla que el formulario para asegurar la anchura.
+    # ---------- Píldora alineada con el ancho de “Área” ----------
     A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
     c_pill, _, _, _, _, _ = st.columns([A, Fw, T, D, R, C], gap="medium")
     with c_pill:
-        st.markdown('<div id="nt_pill_wrap">', unsafe_allow_html=True)
+        st.markdown('<span id="nt-pill-sentinel"></span>', unsafe_allow_html=True)
         st.button("📝 Nueva tarea", key="nt_pill")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     # ---------- Sección principal ----------
     if st.session_state.get("nt_visible", True):
