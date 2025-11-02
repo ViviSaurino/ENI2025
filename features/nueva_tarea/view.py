@@ -49,26 +49,24 @@ except Exception:
 def render(user: dict | None = None):
     """Vista: ➕ Nueva tarea"""
 
-    # ===== Estilos SOLO para esta sección =====
+    # ===== CSS: SOLO para esta sección =====
     st.markdown("""
     <style>
       :root{ --pill-h:38px; --pill-r:999px; }
 
-      /* ===== PÍLDORA “Nueva tarea” SOLO en su columna =====
-         Seleccionamos la COLUMNA que contiene el ancla #ntpill-anchor
-         y dentro de esa columna, estilizamos el botón. */
-      div[data-testid="column"]:has(> #ntpill-anchor) .stButton > button{
-        width:100% !important;                 /* ancho de la columna Área */
-        background:#A7C8F0 !important;         /* celeste del modelo */
+      /* === PÍLDORA celeste SOLO para la columna que contiene #ntpill-anchor === */
+      div[data-testid="column"]:has(#ntpill-anchor) .stButton > button{
+        width:100% !important;
+        background:#A7C8F0 !important;       /* celeste modelo */
         border:1px solid #A7C8F0 !important;
-        color:#ffffff !important;              /* texto blanco */
+        color:#ffffff !important;
         font-weight:700;
         border-radius:var(--pill-r) !important;
         min-height:var(--pill-h) !important; height:var(--pill-h) !important; line-height:var(--pill-h) !important;
         box-shadow:0 6px 14px rgba(167,200,240,.35) !important;
       }
-      div[data-testid="column"]:has(> #ntpill-anchor) .stButton > button:hover{ filter:brightness(0.97); }
-      div[data-testid="column"]:has(> #ntpill-anchor) .stButton > button:focus{ outline:2px solid #6EA7EB !important; outline-offset:1px; }
+      div[data-testid="column"]:has(#ntpill-anchor) .stButton > button:hover{ filter:brightness(0.97); }
+      div[data-testid="column"]:has(#ntpill-anchor) .stButton > button:focus{ outline:2px solid #6EA7EB !important; outline-offset:1px; }
 
       /* Inputs 100% dentro del card de esta sección */
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
@@ -91,7 +89,7 @@ def render(user: dict | None = None):
       }
 
       /* Alinear botón Agregar con la fila de inputs */
-      #nt-card .btn-agregar{ margin-top:24px; }
+      #nt-card .btn-agregar{ margin-top:24px; }  /* ajusta 22–26px si ves un desfase mínimo */
       #nt-card .btn-agregar .stButton>button{
         min-height:38px !important; height:38px !important; border-radius:10px !important;
       }
@@ -105,18 +103,16 @@ def render(user: dict | None = None):
         ]
     st.session_state.setdefault("nt_visible", True)
 
-    # ---------- Píldora con el mismo ancho que “Área” ----------
+    # ---------- Píldora alineada al ancho de “Área” ----------
     A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
     c_pill, _, _, _, _, _ = st.columns([A, Fw, T, D, R, C], gap="medium")
     with c_pill:
-        # Ancla para el selector :has() a nivel de COLUMNA
+        # Ancla para el selector :has() (idéntica lógica a tu ejemplo de nueva_alerta)
         st.markdown('<div id="ntpill-anchor"></div>', unsafe_allow_html=True)
         st.button("📝 Nueva tarea", key="nt_pill")
 
     # ---------- Sección principal ----------
     if st.session_state.get("nt_visible", True):
-        st.markdown('<div id="nt-section">', unsafe_allow_html=True)
-
         st.markdown("""
         <div class="help-strip">
           ✳️ Completa: <strong>Área, Fase, Tarea, Responsable y Fecha</strong>. La hora es automática.
@@ -129,9 +125,6 @@ def render(user: dict | None = None):
 
         with st.container(border=True):
             st.markdown('<span id="nt-card-sentinel"></span>', unsafe_allow_html=True)
-
-            # Proporciones
-            A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
             # ---------- FILA 1 ----------
             r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
@@ -235,6 +228,6 @@ def render(user: dict | None = None):
 
     # Separación vertical
     st.markdown(
-        f"<div style='height:{SECTION_GAP if 'SECTION_GAP' in globals() else 30}px;'></div>",
+        f"<div style='height:{SECTION_GAP if "SECTION_GAP" in globals() else 30}px;'></div>",
         unsafe_allow_html=True,
     )
