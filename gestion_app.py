@@ -19,9 +19,7 @@ except Exception:
             st.session_state.pop(k, None)
 
 # ---- Utilidades compartidas ----
-from shared import (
-    patch_streamlit_aggrid, inject_global_css, ensure_df_main,
-)
+from shared import patch_streamlit_aggrid, inject_global_css, ensure_df_main
 
 # ---- Portada lila (bienvenida + animación hero) ----
 from features.dashboard.view import render_bienvenida
@@ -41,37 +39,63 @@ inject_global_css()
 # ============ Autenticación ============
 def _current_email() -> str | None:
     ss = st.session_state
-    if ss.get("user_email"): return ss["user_email"]
-    if ss.get("email"): return ss["email"]
-    for k in ("auth_user","google_user","g_user"):
-        v = ss.get(k)
-        if isinstance(v, dict) and v.get("email"):
-            return v["email"]
+
+    # candidatos directos
+    for key in ("user_email", "email"):
+        if ss.get(key):
+            return ss[key]
+
+    # adentro de dicts comunes
+    for objk in ("auth_user", "google_user", "g_user"):
+        obj = ss.get(objk) or {}
+        for ek in ("email", "mail"):
+            v = obj.get(ek)
+            if v:
+                return v
+        # algunas libs guardan lista de emails
+        emails = obj.get("emails") or obj.get("Emails")
+        if isinstance(emails, (list, tuple)) and emails:
+            return emails[0]
+
+    # fallback: si activaste modo dev
+    if ss.get("auth_ok") and ss.get("user_email"):
+        return ss["user_email"]
+
     return None
 
 def _allowed(email: str | None) -> bool:
     conf = st.secrets.get("auth", {})
-    allowed_emails  = set(conf.get("allowed_emails", []))
-    allowed_domains = set(conf.get("allowed_domains", []))
+    # Para desarrollo: si pones dev_bypass=true, entra cualquiera
+    if conf.get("dev_bypass", False):
+        return True
+
+    allowed_emails  = set(map(str.lower, conf.get("allowed_emails", [])))
+    allowed_domains = set(map(str.lower, conf.get("allowed_domains", [])))
+
+    # Si no hay reglas, permitir
+    if not allowed_emails and not allowed_domains:
+        return True
+
     if not email:
         return False
-    if email in allowed_emails:
+
+    e = email.lower()
+    if e in allowed_emails:
         return True
+
     try:
-        dom = email.split("@", 1)[1].lower()
+        dom = e.split("@", 1)[1]
     except Exception:
         dom = ""
-    if dom and dom in allowed_domains:
-        return True
-    # si no hay restricciones configuradas, permitir
-    return (not allowed_emails and not allowed_domains)
+
+    return dom in allowed_domains
 
 def _show_welcome_and_stop():
     # Portada lila + animación hero + botón Google
     render_bienvenida(on_login=google_login)
     st.stop()
 
-# ---- Gate: si no hay sesión válida, mostrar portada lila ----
+# ---------- Gate: si no hay sesión válida, mostrar portada lila ----------
 email = _current_email()
 if not _allowed(email):
     _show_welcome_and_stop()
@@ -97,7 +121,6 @@ st.title("📂 Gestión - ENI 2025")
 # Carga de la vista principal (tareas)
 _loaded = False
 try:
-    # si tu vista principal vive aquí:
     from features.tareas.sections import render as render_main
     render_main()
     _loaded = True
