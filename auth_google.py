@@ -47,19 +47,28 @@ def _clear_oauth_params():
 # -------------------- secrets / OAuth cfg --------------------
 def _pick_redirect(redirects: list[str], active: str) -> str:
     """
-    - 'cloud': primer redirect que NO sea localhost
-    - 'local': primer redirect que SÍ sea localhost
+    Elige el redirect según 'active' ('cloud'|'local'), pero permite
+    forzarlo por query param: ?env=cloud | ?env=local (también ?mode=...).
+    Por defecto prioriza cloud si no hay override.
     """
+    # Posible override vía URL
+    qp = _get_query_params()
+    override = None
+    for k in ("env", "ENV", "mode"):
+        v = qp.get(k)
+        if isinstance(v, list):
+            v = v[0] if v else None
+        if v:
+            override = str(v).lower().strip()
+
+    pref = (override or active or "cloud").lower()
+
     redirects = redirects or []
-    if active == "cloud":
-        for u in redirects:
-            if "localhost" not in (u or "").lower():
-                return u
-    else:
-        for u in redirects:
-            if "localhost" in (u or "").lower():
-                return u
-    return redirects[0] if redirects else "http://localhost:8501"
+    cloud = next((u for u in redirects if "localhost" not in (u or "").lower()), None)
+    local = next((u for u in redirects if "localhost"     in (u or "").lower()), None)
+
+    # Si piden cloud => cloud; si piden local => local; luego fallbacks seguros
+    return (cloud if pref == "cloud" else local) or cloud or local or "http://localhost:8501"
 
 def _get_oauth_cfg():
     cfg = st.secrets.get("oauth_client", {})
