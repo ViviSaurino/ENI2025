@@ -9,7 +9,7 @@ import pandas as pd
 try:
     from auth_google import google_login, logout
 except Exception:
-    # Fallback de desarrollo (sin Google)
+    # Fallback de desarrollo
     def google_login():
         st.session_state["auth_ok"] = True
         st.session_state["user_email"] = st.session_state.get("user_email", "dev@example.com")
@@ -19,60 +19,64 @@ except Exception:
             st.session_state.pop(k, None)
 
 # ---- Utilidades compartidas ----
-from shared import patch_streamlit_aggrid, inject_global_css, ensure_df_main
+from shared import (
+    patch_streamlit_aggrid, inject_global_css, ensure_df_main,
+)
+
+# ---- Portada lila (bienvenida + animación hero) ----
+from features.dashboard.view import render_bienvenida
 
 # ============ Config de página ============
 st.set_page_config(
     page_title="Gestión — ENI2025",
     page_icon="📂",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"  # colapsada en portada
 )
 
 # ============ Parches/estilos globales ============
 patch_streamlit_aggrid()
 inject_global_css()
 
-# ============ Helpers de autenticación ============
+# ============ Autenticación ============
 def _current_email() -> str | None:
     ss = st.session_state
-    for k in ("user_email","email"):
-        if ss.get(k):
-            return ss[k]
+    if ss.get("user_email"): return ss["user_email"]
+    if ss.get("email"): return ss["email"]
     for k in ("auth_user","google_user","g_user"):
-        if isinstance(ss.get(k), dict) and ss[k].get("email"):
-            return ss[k]["email"]
+        v = ss.get(k)
+        if isinstance(v, dict) and v.get("email"):
+            return v["email"]
     return None
 
 def _allowed(email: str | None) -> bool:
-    if not email:
-        return False
     conf = st.secrets.get("auth", {})
     allowed_emails  = set(conf.get("allowed_emails", []))
     allowed_domains = set(conf.get("allowed_domains", []))
+    if not email:
+        return False
     if email in allowed_emails:
         return True
     try:
-        domain = email.split("@", 1)[1].lower()
-        if domain in allowed_domains:
-            return True
+        dom = email.split("@", 1)[1].lower()
     except Exception:
-        pass
-    # Si no configuras listas en secrets, se permite el acceso
+        dom = ""
+    if dom and dom in allowed_domains:
+        return True
+    # si no hay restricciones configuradas, permitir
     return (not allowed_emails and not allowed_domains)
 
-# ============ Vistas ============
-from features.dashboard.view import render_bienvenida
-from features.sections import render_all
-
-# ============ Ruteo: Bienvenida (pre-login) vs App (post-login) ============
-email = _current_email()
-if not (email and _allowed(email)):
-    # Pantalla de bienvenida LILA + botón de login + animación
+def _show_welcome_and_stop():
+    # Portada lila + animación hero + botón Google
     render_bienvenida(on_login=google_login)
     st.stop()
 
-# ====== Sidebar (ya logueado) ======
+# ---- Gate: si no hay sesión válida, mostrar portada lila ----
+email = _current_email()
+if not _allowed(email):
+    _show_welcome_and_stop()
+
+# ============ Sidebar (solo autenticado) ============
 with st.sidebar:
     st.header("Secciones")
     st.caption("App unificada (sin *pages*).")
@@ -84,8 +88,21 @@ with st.sidebar:
         finally:
             st.rerun()
 
-# ====== Datos base en memoria ======
-ensure_df_main()  # crea/carga st.session_state["df_main"]
+# ============ Bootstrap de datos ============
+ensure_df_main()  # st.session_state["df_main"]
 
-# ====== Render de TODAS las secciones ======
-render_all()
+# ============ UI principal ============
+st.title("📂 Gestión - ENI 2025")
+
+# Carga de la vista principal (tareas)
+_loaded = False
+try:
+    # si tu vista principal vive aquí:
+    from features.tareas.sections import render as render_main
+    render_main()
+    _loaded = True
+except Exception:
+    pass
+
+if not _loaded:
+    st.info("Carga aquí tu vista principal (por ejemplo, `features/tareas/sections.py:render()`).")
