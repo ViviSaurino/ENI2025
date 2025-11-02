@@ -49,26 +49,9 @@ except Exception:
 def render(user: dict | None = None):
     """Vista: ➕ Nueva tarea"""
 
-    # ===== CSS: SOLO para esta sección =====
+    # ===== CSS mínimo para esta sección (inputs al 100% y alineación de Agregar) =====
     st.markdown("""
     <style>
-      :root{ --pill-h:38px; --pill-r:999px; }
-
-      /* === PÍLDORA celeste SOLO para la columna que contiene #ntpill-anchor === */
-      div[data-testid="column"]:has(#ntpill-anchor) .stButton > button{
-        width:100% !important;
-        background:#A7C8F0 !important;       /* celeste modelo */
-        border:1px solid #A7C8F0 !important;
-        color:#ffffff !important;
-        font-weight:700;
-        border-radius:var(--pill-r) !important;
-        min-height:var(--pill-h) !important; height:var(--pill-h) !important; line-height:var(--pill-h) !important;
-        box-shadow:0 6px 14px rgba(167,200,240,.35) !important;
-      }
-      div[data-testid="column"]:has(#ntpill-anchor) .stButton > button:hover{ filter:brightness(0.97); }
-      div[data-testid="column"]:has(#ntpill-anchor) .stButton > button:focus{ outline:2px solid #6EA7EB !important; outline-offset:1px; }
-
-      /* Inputs 100% dentro del card de esta sección */
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox,
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput,
@@ -81,15 +64,11 @@ def render(user: dict | None = None):
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea>div{
         width:100% !important; max-width:none !important;
       }
-
-      /* Tira de ayuda */
       .help-strip{
         background:#F3F8FF; border:1px dashed #BDD7FF; color:#0B3B76;
         padding:10px 12px; border-radius:10px; font-size:0.92rem;
       }
-
-      /* Alinear botón Agregar con la fila de inputs */
-      #nt-card .btn-agregar{ margin-top:24px; }  /* ajusta 22–26px si ves un desfase mínimo */
+      #nt-card .btn-agregar{ margin-top:24px; }
       #nt-card .btn-agregar .stButton>button{
         min-height:38px !important; height:38px !important; border-radius:10px !important;
       }
@@ -103,13 +82,12 @@ def render(user: dict | None = None):
         ]
     st.session_state.setdefault("nt_visible", True)
 
-    # ---------- Píldora alineada al ancho de “Área” ----------
+    # ---------- Píldora con el ancho de la columna “Área” ----------
     A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
     c_pill, _, _, _, _, _ = st.columns([A, Fw, T, D, R, C], gap="medium")
     with c_pill:
-        # Ancla para el selector :has() (idéntica lógica a tu ejemplo de nueva_alerta)
-        st.markdown('<div id="ntpill-anchor"></div>', unsafe_allow_html=True)
-        st.button("📝 Nueva tarea", key="nt_pill")
+        # 👉 El estilo CELESTE se asegura con type="primary"
+        st.button("📝 Nueva tarea", key="nt_pill", use_container_width=True, type="primary")
 
     # ---------- Sección principal ----------
     if st.session_state.get("nt_visible", True):
@@ -227,7 +205,5 @@ def render(user: dict | None = None):
                 st.error(f"No pude guardar la nueva tarea: {e}")
 
     # Separación vertical
-    st.markdown(
-        f"<div style='height:{SECTION_GAP if "SECTION_GAP" in globals() else 30}px;'></div>",
-        unsafe_allow_html=True,
-    )
+    gap = SECTION_GAP if 'SECTION_GAP' in globals() else 30
+    st.markdown(f"<div style='height:{gap}px;'></div>", unsafe_allow_html=True)
