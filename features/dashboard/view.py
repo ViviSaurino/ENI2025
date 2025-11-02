@@ -4,13 +4,24 @@ import streamlit as st
 
 # ---------- Util: localizar la animación del héroe ----------
 def _find_hero_asset() -> str | None:
-    candidates = ("hero.webm", "hero.mp4", "hero.gif",
-                  "welcome_anim.webm", "welcome_anim.mp4", "welcome_anim.gif")
+    candidates = (
+        "hero.webm", "hero.mp4", "hero.gif",
+        "welcome_anim.webm", "welcome_anim.mp4", "welcome_anim.gif"
+    )
     for name in candidates:
         p = os.path.join("assets", name)
         if os.path.exists(p):
             return p
     return None
+
+def _has_session(user=None) -> bool:
+    """Devuelve True si hay sesión válida (por dict, string o session_state)."""
+    if isinstance(user, dict):
+        return bool(user.get("email"))
+    if isinstance(user, str):
+        return bool(user)
+    # Fallback a session_state
+    return bool(st.session_state.get("auth_ok")) or bool(st.session_state.get("user_email"))
 
 # ---------- Vista: Portada / Bienvenida ----------
 def render_bienvenida(on_login=None):
@@ -74,3 +85,34 @@ def render_bienvenida(on_login=None):
         st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
+
+
+# ---------- Punto de entrada para gestion_app.py ----------
+def render_all(user=None, on_login=None):
+    """
+    Punto de entrada de la vista 'Gestión — ENI 2025'.
+    - Si no hay sesión, muestra la portada de bienvenida.
+    - Si hay sesión, muestra la vista principal (placeholder listo para reemplazar).
+    """
+    if not _has_session(user):
+        render_bienvenida(on_login=on_login)
+        return
+
+    # Vista principal (placeholder, reemplaza con tu UI real)
+    email = ""
+    if isinstance(user, dict):
+        email = user.get("email", "")
+    elif isinstance(user, str):
+        email = user
+    else:
+        email = st.session_state.get("user_email", "")
+
+    st.markdown("## 📋 Gestión – ENI 2025")
+    if email:
+        st.caption(f"Sesión: {email}")
+
+    st.info("La vista principal está lista para conectar tus tablas, filtros y gráficos.")
+    st.write(
+        "💡 Reemplaza este placeholder con las secciones del dashboard "
+        "(tareas, prioridades, evaluaciones, historial, etc.)."
+    )
