@@ -18,14 +18,31 @@ try:
 except Exception:
     # Fallbacks mínimos para no romper durante el acople
     from datetime import datetime
+    import re
 
     def blank_row() -> dict:
         return {}
 
+    def _clean3(s: str) -> str:
+        """Toma solo A-Z0-9 y devuelve hasta 3 caracteres."""
+        s = (s or "").strip().upper()
+        s = re.sub(r"[^A-Z0-9\s]+", "", s)
+        return re.sub(r"\s+", "", s)[:3]
+
     def make_id_prefix(area: str, resp: str) -> str:
-        a = (area or "").strip().upper().replace(" ", "")[:3]
-        r = (resp or "").strip().upper().split()[0][:3]
-        return (a + r) or "ID"
+        """
+        Prefijo robusto:
+        - Si 'resp' está vacío o con espacios, no revienta.
+        - Limpia caracteres no alfanuméricos.
+        - Devuelve al menos 'GEN' si no hay nada.
+        """
+        a3 = _clean3(area)
+        r = (resp or "").strip().upper()
+        r_first = r.split()[0] if r.split() else r
+        r3 = _clean3(r_first)
+        if not a3 and not r3:
+            return "GEN"
+        return (a3 or "GEN") + (r3 or "")
 
     def next_id_by_person(df: pd.DataFrame, area: str, resp: str) -> str:
         prefix = make_id_prefix(area, resp)
@@ -49,6 +66,77 @@ def render(user: dict | None = None):
     (Lógica intacta; solo se encapsuló en una función pública)
     """
 
+    # ================== Estilos locales ==================
+    st.markdown(
+        """
+        <style>
+        :root{
+          --pill-h: 38px;           /* altura estándar para toggle y "píldora" */
+          --pill-r: 999px;          /* radio para pastillas redondeadas */
+        }
+
+        /* 1) Ocultar el sub-título duplicado solo cuando esta sección está en la página */
+        .block-container:has(#ntbar) h2:first-of-type{
+          display: none !important;
+        }
+
+        /* 2) Barra superior unificada: toggle + "píldora" en una misma línea */
+        .topbar-nt{
+          display: flex;
+          align-items: center;      /* misma altura visual */
+          gap: 12px;
+          margin: 6px 0 10px 0;
+        }
+        .topbar-nt .toggle-icon .stButton > button{
+          height: var(--pill-h) !important;
+          line-height: var(--pill-h) !important;
+          padding: 0 12px !important;
+          border-radius: var(--pill-r) !important;
+        }
+        /* La "píldora" de título (Nueva tarea) */
+        .topbar-nt .form-title{
+          display: inline-flex;
+          align-items: center;
+          height: var(--pill-h);
+          line-height: var(--pill-h);
+          padding: 0 14px;
+          border-radius: var(--pill-r);
+          background: var(--blue-pill-bg, #EAF2FF);
+          border: 1px solid var(--blue-pill-bd, #BFDBFE);
+          color: var(--blue-pill-fg, #0B3B76);
+          font-weight: 600;
+        }
+
+        /* Inputs al 100% dentro del card de esta sección */
+        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
+        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox,
+        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput,
+        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput,
+        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea{
+          width:100% !important;
+        }
+        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput > div,
+        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox > div,
+        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput > div,
+        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput > div,
+        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea > div{
+          width:100% !important; max-width:none !important;
+        }
+        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) [data-testid="stDateInput"] input,
+        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) [data-testid^="stTimeInput"] input{
+          width:100% !important;
+        }
+
+        /* Tira de ayuda bajo la barra */
+        .help-strip{
+          background:#F3F8FF; border:1px dashed #BDD7FF; color:#0B3B76;
+          padding:10px 12px; border-radius:10px; font-size:0.92rem;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
     # ================== Formulario (misma malla + hora inmediata) ==================
 
     # Fallback suave si aún no existe (no altera nada cuando ya viene del módulo principal)
@@ -66,9 +154,9 @@ def render(user: dict | None = None):
     st.session_state.setdefault("nt_visible", True)
     chev = "▾" if st.session_state.get("nt_visible", True) else "▸"
 
-    # ---------- Barra superior ----------
-    st.markdown('<div id="ntbar" class="topbar">', unsafe_allow_html=True)
-    c_toggle, c_pill = st.columns([0.028, 0.965], gap="medium")
+    # ---------- Barra superior (alineada) ----------
+    st.markdown('<div id="ntbar" class="topbar-nt">', unsafe_allow_html=True)
+    c_toggle, c_pill = st.columns([0.06, 0.94], gap="small")
     with c_toggle:
         st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
 
@@ -79,7 +167,7 @@ def render(user: dict | None = None):
         st.markdown("</div>", unsafe_allow_html=True)
     with c_pill:
         st.markdown(
-            '<div class="form-title">&nbsp;&nbsp;📝&nbsp;&nbsp;Nueva tarea</div>',
+            '<div class="form-title">📝&nbsp;&nbsp;Nueva tarea</div>',
             unsafe_allow_html=True,
         )
     st.markdown("</div>", unsafe_allow_html=True)
@@ -92,10 +180,10 @@ def render(user: dict | None = None):
         # ===== Indicaciones cortas (debajo de la píldora) =====
         st.markdown(
             """
-        <div class="help-strip">
-          ✳️ Completa: <strong>Área, Fase, Tarea, Responsable y Fecha</strong>. La hora es automática.
-        </div>
-        """,
+            <div class="help-strip">
+              ✳️ Completa: <strong>Área, Fase, Tarea, Responsable y Fecha</strong>. La hora es automática.
+            </div>
+            """,
             unsafe_allow_html=True,
         )
 
@@ -108,33 +196,6 @@ def render(user: dict | None = None):
         with st.container(border=True):
             # Sentinel para limitar estilos SOLO a este card
             st.markdown('<span id="nt-card-sentinel"></span>', unsafe_allow_html=True)
-
-            # CSS mínimo SOLO para inputs al 100% dentro de este card
-            st.markdown(
-                """
-            <style>
-              div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
-              div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox,
-              div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput,
-              div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput,
-              div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea{
-                width:100% !important;
-              }
-              div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput > div,
-              div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox > div,
-              div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput > div,
-              div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput > div,
-              div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea > div{
-                width:100% !important; max-width:none !important;
-              }
-              div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) [data-testid="stDateInput"] input,
-              div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) [data-testid^="stTimeInput"] input{
-                width:100% !important;
-              }
-            </style>
-            """,
-                unsafe_allow_html=True,
-            )
 
             # Proporciones (tus originales)
             A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
