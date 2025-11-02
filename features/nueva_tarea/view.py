@@ -3,9 +3,8 @@ from __future__ import annotations
 import os
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
 
-# ====== utilidades que ya tienes en shared; con fallbacks seguros ======
+# ====== utilidades (con fallbacks seguros) ======
 try:
     from shared import (
         blank_row,
@@ -19,21 +18,19 @@ except Exception:
     from datetime import datetime
     import re
 
-    def blank_row() -> dict:
-        return {}
+    def blank_row() -> dict: return {}
 
     def _clean3(s: str) -> str:
         s = (s or "").strip().upper()
-        s = re.sub(r"[^A-Z0-9\s]+", "", s)
-        return re.sub(r"\s+", "", s)[:3]
+        s = re.sub(r"[^A-Z0-9\\s]+", "", s)
+        return re.sub(r"\\s+", "", s)[:3]
 
     def make_id_prefix(area: str, resp: str) -> str:
         a3 = _clean3(area)
         r = (resp or "").strip().upper()
         r_first = r.split()[0] if r.split() else r
         r3 = _clean3(r_first)
-        if not a3 and not r3:
-            return "GEN"
+        if not a3 and not r3: return "GEN"
         return (a3 or "GEN") + (r3 or "")
 
     def next_id_by_person(df: pd.DataFrame, area: str, resp: str) -> str:
@@ -50,161 +47,84 @@ except Exception:
 
 # ==========================================================================
 
+# 👇 Toggle reutilizable para dibujarlo en la fila de píldoras del dashboard
+def render_toggle():
+    st.session_state.setdefault("nt_visible", True)
+    chev = "▾" if st.session_state.get("nt_visible", True) else "▸"
+    def _toggle_nt():
+        st.session_state["nt_visible"] = not st.session_state.get("nt_visible", True)
+    st.button(chev, key="nt_toggle_icon", help="Mostrar/ocultar sección", on_click=_toggle_nt)
 
 def render(user: dict | None = None):
     """Vista: ➕ Nueva tarea"""
 
-    # ================== CSS local ==================
-    st.markdown(
-        """
-        <style>
-        :root{
-          --pill-h: 38px;
-          --pill-r: 999px;
-        }
+    # ===== Estilos locales (sin JS) =====
+    st.markdown("""
+    <style>
+      :root{ --pill-h:38px; --pill-r:999px; }
 
-        /* --- Barra superior: toggle + píldora local --- */
-        #ntbar{
-          display:flex; align-items:center; gap:12px;
-          margin: 10px 0 6px 0;
-        }
-        #ntbar .stButton > button{
-          min-height: var(--pill-h) !important;
-          height: var(--pill-h) !important;
-          line-height: var(--pill-h) !important;
-          padding: 0 14px !important;
-          border-radius: var(--pill-r) !important;
-        }
+      /* Píldora azul "Nueva tarea" (look igual al set) */
+      #nt_pill_wrap .stButton>button{
+        background:#EAF2FF !important; border:1px solid #BFDBFE !important;
+        color:#0B3B76 !important; font-weight:600; border-radius:var(--pill-r) !important;
+        min-height:var(--pill-h) !important; height:var(--pill-h) !important; line-height:var(--pill-h)!important;
+        padding:0 16px !important; box-shadow:none !important;
+      }
+      #nt_pill_wrap .stButton>button:hover{ filter:brightness(0.98); }
 
-        /* PÍLDORA local con look igual al set azul (como "Editar estado") */
-        #nt_pill_wrap .stButton > button{
-          background:#EAF2FF !important;               /* azul suave */
-          border:1px solid #BFDBFE !important;         /* borde azul */
-          color:#0B3B76 !important;                    /* texto azul intenso */
-          font-weight:600;
-          border-radius: var(--pill-r) !important;
-          box-shadow:none !important;
-          min-height: var(--pill-h) !important;
-          height: var(--pill-h) !important;
-          line-height: var(--pill-h) !important;
-          padding:0 16px !important;
-        }
-        #nt_pill_wrap .stButton > button:hover{
-          filter:brightness(0.98);
-        }
-        #nt_pill_wrap .stButton > button:focus{
-          outline:2px solid #93C5FD !important;
-          outline-offset:1px;
-        }
+      /* Inputs 100% dentro del card de esta sección */
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea{ width:100% !important; }
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput>div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox>div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput>div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput>div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea>div{
+        width:100% !important; max-width:none !important;
+      }
 
-        /* Inputs full width dentro del card */
-        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
-        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox,
-        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput,
-        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput,
-        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea{ width:100% !important; }
-        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput > div,
-        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox > div,
-        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput > div,
-        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput > div,
-        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea > div{
-          width:100% !important; max-width:none !important;
-        }
-        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) [data-testid="stDateInput"] input,
-        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) [data-testid^="stTimeInput"] input{ width:100% !important; }
+      /* Tira de ayuda */
+      .help-strip{
+        background:#F3F8FF; border:1px dashed #BDD7FF; color:#0B3B76;
+        padding:10px 12px; border-radius:10px; font-size:0.92rem;
+      }
 
-        /* Tira de ayuda */
-        .help-strip{
-          background:#F3F8FF; border:1px dashed #BDD7FF; color:#0B3B76;
-          padding:10px 12px; border-radius:10px; font-size:0.92rem;
-        }
+      /* Alinear botón Agregar con la fila de campos */
+      #nt-card .btn-agregar{ margin-top:26px; } /* ajusta 24–30 si ves 1–2px de diferencia */
+      #nt-card .btn-agregar .stButton>button{
+        min-height:38px !important; height:38px !important; border-radius:10px !important;
+      }
+    </style>
+    """, unsafe_allow_html=True)
 
-        /* Alineación del botón Agregar con la fila de campos */
-        #nt-card .btn-agregar{ margin-top:26px; } /* si lo ves 2-3px bajo, cambia a 24 */
-        #nt-card .btn-agregar .stButton > button{
-          min-height:38px !important; height:38px !important; border-radius:10px !important;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # ========== JS robusto: oculta subtítulo duplicado y el banner azul ==========
-    components.html(
-        """
-        <script>
-        (function(){
-          function norm(t){ return (t||'').replace(/\\s+/g,' ').trim(); }
-          function hideDupSubtitle(){
-            const nodes = Array.from(document.querySelectorAll(
-              ".block-container h2, .block-container h3, .block-container .stMarkdown p"
-            ));
-            for(const el of nodes){
-              const tx = norm(el.textContent);
-              // Cubre variantes con o sin emoji, con guion - o en dash – (u otros espacios)
-              if ((/Gest(i|í)on/i.test(tx)) && (/ENI\\s*2025/i.test(tx)) && tx.length <= 40){
-                // No tocar el H1 grande; este selector ya se restringe a h2/h3/p
-                el.style.display = "none";
-              }
-            }
-          }
-          function hideTopBlueBanner(){
-            const alerts = Array.from(document.querySelectorAll("[data-testid='stAlert']"));
-            if(!alerts.length) return;
-            // Oculta el primer alert (el más arriba en la página)
-            let best = null, top = Infinity;
-            alerts.forEach(el => {
-              const r = el.getBoundingClientRect();
-              if(r.top < top){ top = r.top; best = el; }
-            });
-            if(best) best.style.display = "none";
-          }
-          function tick(){ hideDupSubtitle(); hideTopBlueBanner(); }
-          tick(); setTimeout(tick, 200); setTimeout(tick, 800);
-          const id = setInterval(tick, 1500);
-          setTimeout(()=>clearInterval(id), 60000);
-        })();
-        </script>
-        """,
-        height=0, width=0
-    )
-    # ============================================================================
-
-    # ================== Formulario ==================
+    # ===== Datos auxiliares =====
     if "AREAS_OPC" not in globals():
-        globals()["AREAS_OPC"] = [
-            "Jefatura", "Gestión", "Metodología", "Base de datos",
-            "Capacitación", "Monitoreo", "Consistencia",
-        ]
+        globals()["AREAS_OPC"] = ["Jefatura","Gestión","Metodología","Base de datos","Capacitación","Monitoreo","Consistencia"]
 
     st.session_state.setdefault("nt_visible", True)
-    chev = "▾" if st.session_state.get("nt_visible", True) else "▸"
 
-    # ---------- Barra superior: toggle + PÍLDORA local ----------
+    # ---------- Barra local: píldora "Nueva tarea" (se mantiene para contexto) ----------
     st.markdown('<div id="ntbar">', unsafe_allow_html=True)
-    c_toggle, c_pill = st.columns([0.06, 0.94], gap="small")
-    with c_toggle:
-        def _toggle_nt():
-            st.session_state["nt_visible"] = not st.session_state.get("nt_visible", True)
-        st.button(chev, key="nt_toggle_icon", help="Mostrar/ocultar", on_click=_toggle_nt)
+    _, c_pill = st.columns([0.06, 0.94], gap="small")
     with c_pill:
         st.markdown('<div id="nt_pill_wrap">', unsafe_allow_html=True)
         st.button("📝 Nueva tarea", key="nt_pill", use_container_width=False)
         st.markdown("</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
-    # ------------------------------------------------------------
 
+    # ---------- Sección principal ----------
     if st.session_state.get("nt_visible", True):
         st.markdown('<div id="nt-section">', unsafe_allow_html=True)
 
-        st.markdown(
-            """
-            <div class="help-strip">
-              ✳️ Completa: <strong>Área, Fase, Tarea, Responsable y Fecha</strong>. La hora es automática.
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        st.markdown("""
+        <div class="help-strip">
+          ✳️ Completa: <strong>Área, Fase, Tarea, Responsable y Fecha</strong>. La hora es automática.
+        </div>
+        """, unsafe_allow_html=True)
+
         st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
 
         submitted = False
@@ -226,27 +146,20 @@ def render(user: dict | None = None):
 
             # ---------- FILA 2 ----------
             c2_1, c2_2, c2_3, c2_4, c2_5, c2_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
-            tipo = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría", key="nt_tipo")
-
-            with c2_2:
-                st.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
+            c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría", key="nt_tipo")
+            c2_2.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
             estado = "No iniciado"
 
-            # Fecha / hora
-            if st.session_state.get("fi_d", "___MISSING___") is None:
-                st.session_state.pop("fi_d")
-            if st.session_state.get("fi_t", "___MISSING___") is None:
-                st.session_state.pop("fi_t")
-
+            # Fecha/hora seguros
+            if st.session_state.get("fi_d", "___MISSING___") is None: st.session_state.pop("fi_d")
+            if st.session_state.get("fi_t", "___MISSING___") is None: st.session_state.pop("fi_t")
             c2_3.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
 
             _t = st.session_state.get("fi_t")
             _t_txt = ""
             if _t is not None:
-                try:
-                    _t_txt = _t.strftime("%H:%M")
-                except Exception:
-                    _t_txt = str(_t)
+                try: _t_txt = _t.strftime("%H:%M")
+                except Exception: _t_txt = str(_t)
             c2_4.text_input("Hora (auto)", value=_t_txt, disabled=True, help="Se asigna al elegir la fecha", key="fi_t_view")
 
             # ID preview
@@ -281,13 +194,11 @@ def render(user: dict | None = None):
                     elif "DEL" in df_out.columns:
                         df_out = df_out.rename(columns={"DEL": "__DEL__"})
                     df_out = df_out.loc[:, ~pd.Index(df_out.columns).duplicated()].copy()
-                    if not df_out.index.is_unique:
-                        df_out = df_out.reset_index(drop=True)
+                    if not df_out.index.is_unique: df_out = df_out.reset_index(drop=True)
                     if target_cols:
                         target = list(dict.fromkeys(list(target_cols)))
                         for c in target:
-                            if c not in df_out.columns:
-                                df_out[c] = None
+                            if c not in df_out.columns: df_out[c] = None
                         ordered = [c for c in target] + [c for c in df_out.columns if c not in target]
                         df_out = df_out.loc[:, ordered].copy()
                     return df_out
@@ -296,47 +207,33 @@ def render(user: dict | None = None):
 
                 reg_fecha = st.session_state.get("fi_d")
                 reg_hora_obj = st.session_state.get("fi_t")
-                try:
-                    reg_hora_txt = reg_hora_obj.strftime("%H:%M") if reg_hora_obj is not None else ""
-                except Exception:
-                    reg_hora_txt = str(reg_hora_obj) if reg_hora_obj is not None else ""
+                try: reg_hora_txt = reg_hora_obj.strftime("%H:%M") if reg_hora_obj is not None else ""
+                except Exception: reg_hora_txt = str(reg_hora_obj) if reg_hora_obj is not None else ""
 
                 new = blank_row()
-                new.update(
-                    {
-                        "Área": area,
-                        "Id": next_id_by_person(df, area, st.session_state.get("nt_resp", "")),
-                        "Tarea": st.session_state.get("nt_tarea", ""),
-                        "Tipo": st.session_state.get("nt_tipo", ""),
-                        "Responsable": st.session_state.get("nt_resp", ""),
-                        "Fase": fase,
-                        "Estado": "No iniciado",
-                        "Fecha": reg_fecha,
-                        "Hora": reg_hora_txt,
-                        "Fecha Registro": reg_fecha,
-                        "Hora Registro": reg_hora_txt,
-                        "Fecha inicio": None,
-                        "Hora de inicio": "",
-                        "Fecha Terminado": None,
-                        "Hora Terminado": "",
-                        "Ciclo de mejora": ciclo_mejora,
-                        "Detalle": st.session_state.get("nt_detalle", ""),
-                    }
-                )
+                new.update({
+                    "Área": area,
+                    "Id": next_id_by_person(df, area, st.session_state.get("nt_resp", "")),
+                    "Tarea": st.session_state.get("nt_tarea", ""),
+                    "Tipo": st.session_state.get("nt_tipo", ""),
+                    "Responsable": st.session_state.get("nt_resp", ""),
+                    "Fase": fase,
+                    "Estado": "No iniciado",
+                    "Fecha": reg_fecha, "Hora": reg_hora_txt,
+                    "Fecha Registro": reg_fecha, "Hora Registro": reg_hora_txt,
+                    "Fecha inicio": None, "Hora de inicio": "",
+                    "Fecha Terminado": None, "Hora Terminado": "",
+                    "Ciclo de mejora": ciclo_mejora,
+                    "Detalle": st.session_state.get("nt_detalle", ""),
+                })
 
                 df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
-
                 df = _sanitize(df, COLS if "COLS" in globals() else None)
                 st.session_state["df_main"] = df.copy()
                 os.makedirs("data", exist_ok=True)
                 df.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig", mode="w")
-
                 st.rerun()
             except Exception as e:
                 st.error(f"No pude guardar la nueva tarea: {e}")
 
-    # Separación vertical
-    st.markdown(
-        f"<div style='height:{SECTION_GAP if 'SECTION_GAP' in globals() else 30}px;'></div>",
-        unsafe_allow_html=True,
-    )
+    st.markdown(f"<div style='height:{SECTION_GAP if 'SECTION_GAP' in globals() else 30}px;'></div>", unsafe_allow_html=True)
