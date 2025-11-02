@@ -103,11 +103,17 @@ def render(user: dict | None = None):
     with c_pill:
         st.markdown('<div class="nt-pill"><span>📝 Nueva tarea</span></div>', unsafe_allow_html=True)
 
+    # —— pequeño espacio entre la píldora y la franja de ayuda
+    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+
     # ---------- Sección principal ----------
     if st.session_state.get("nt_visible", True):
+        # === Opción A (aplicada por defecto)
         st.markdown("""
         <div class="help-strip">
-          ✳️ Completa: <strong>Área, Fase, Tarea, Responsable y Fecha</strong>. La hora es automática.
+          ✳️ <b>Flujo:</b> 1) Completa <b>Área, Fase, Tarea, Responsable y Fecha</b>. 
+          2) Presiona <b>➕ Agregar</b>. 
+          3) Ve a <b>🕑 Tareas recientes</b> para revisar/ajustar y <b>💾 Guardar cambios</b>.
         </div>
         """, unsafe_allow_html=True)
 
@@ -118,7 +124,7 @@ def render(user: dict | None = None):
         with st.container(border=True):
             st.markdown('<span id="nt-card-sentinel"></span>', unsafe_allow_html=True)
 
-            # Proporciones de la fila
+            # ---------- FILA 1 ----------
             r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
             area = r1c1.selectbox("Área", options=AREAS_OPC, index=0, key="nt_area")
             FASES = ["Capacitación","Post-capacitación","Pre-consistencia","Consistencia","Operación de campo"]
