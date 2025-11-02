@@ -108,12 +108,11 @@ def render(user: dict | None = None):
 
     # ---------- Sección principal ----------
     if st.session_state.get("nt_visible", True):
-        # === Opción A (aplicada por defecto)
+        # ===== Texto elegido por ti (con nota de que en Tareas recientes no se edita)
         st.markdown("""
         <div class="help-strip">
-          ✳️ <b>Flujo:</b> 1) Completa <b>Área, Fase, Tarea, Responsable y Fecha</b>. 
-          2) Presiona <b>➕ Agregar</b>. 
-          3) Ve a <b>🕑 Tareas recientes</b> para revisar/ajustar y <b>💾 Guardar cambios</b>.
+          ✳️ Completa los campos obligatorios → pulsa <b>➕ Agregar</b> → revisa en <b>🕑 Tareas recientes</b> y confirma con <b>💾 Guardar cambios</b>.
+          <br><i>(En <b>Tareas recientes</b> no se edita nada; es solo para revisión/confirmación.)</i>
         </div>
         """, unsafe_allow_html=True)
 
