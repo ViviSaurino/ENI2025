@@ -49,7 +49,7 @@ except Exception:
 def render(user: dict | None = None):
     """Vista: ➕ Nueva tarea"""
 
-    # ===== CSS mínimo: inputs 100%, pill celeste y alineación de Agregar =====
+    # ===== CSS: inputs 100%, píldora celeste y botón Agregar más abajo =====
     st.markdown("""
     <style>
       /* Inputs al 100% solo dentro de este card */
@@ -82,7 +82,7 @@ def render(user: dict | None = None):
         padding:10px 12px; border-radius:10px; font-size:0.92rem;
       }
 
-      /* Alinear y bajar un poco más el botón Agregar */
+      /* Bajar un poco más el botón Agregar dentro del card */
       #nt-card .btn-agregar{ margin-top:44px; }
       #nt-card .btn-agregar .stButton>button{
         min-height:38px !important; height:38px !important; border-radius:10px !important;
@@ -103,7 +103,7 @@ def render(user: dict | None = None):
     with c_pill:
         st.markdown('<div class="nt-pill"><span>📝 Nueva tarea</span></div>', unsafe_allow_html=True)
 
-    # —— más espacio entre la píldora y la franja de ayuda
+    # — más espacio entre la píldora y la franja de ayuda
     st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
 
     # ---------- Sección principal ----------
@@ -118,7 +118,9 @@ def render(user: dict | None = None):
 
         submitted = False
 
-        with st.container(border=True, key="nt-card"):
+        # 👇 Envoltorio con id="nt-card" para apuntar el CSS (container sin key)
+        st.markdown('<div id="nt-card">', unsafe_allow_html=True)
+        with st.container(border=True):
             st.markdown('<span id="nt-card-sentinel"></span>', unsafe_allow_html=True)
 
             # ---------- FILA 1 ----------
@@ -157,6 +159,7 @@ def render(user: dict | None = None):
                 st.markdown('<div class="btn-agregar">', unsafe_allow_html=True)
                 submitted = st.button("➕ Agregar", use_container_width=True, key="btn_agregar")
                 st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)  # cierra #nt-card
 
         # ---------- Guardado ----------
         if submitted:
