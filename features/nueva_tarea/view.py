@@ -48,9 +48,14 @@ except Exception:
 def render(user: dict | None = None):
     """Vista: ➕ Nueva tarea"""
 
-    # ===== CSS: inputs 100%, píldora celeste y botón Agregar más abajo =====
+    # ===== CSS: inputs 100%, ocultar 'Sesión', espaciados y botón Agregar más abajo =====
     st.markdown("""
     <style>
+      /* Ocultar el rótulo 'Sesión: ...' bajo el título (primer caption de la página) */
+      section.main div[data-testid="stCaptionContainer"]:first-of-type{
+        display:none !important;
+      }
+
       /* Inputs al 100% solo dentro de este card */
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox,
@@ -81,8 +86,8 @@ def render(user: dict | None = None):
         padding:10px 12px; border-radius:10px; font-size:0.92rem;
       }
 
-      /* Bajar el botón Agregar para alinearlo con las celdas */
-      #nt-card .btn-agregar{ margin-top:76px; } /* ← antes 64px */
+      /* Bajar el botón Agregar para alinearlo con la segunda fila */
+      #nt-card .btn-agregar{ margin-top:100px; } /* <- bajado un poco más */
       #nt-card .btn-agregar .stButton>button{
         min-height:38px !important; height:38px !important; border-radius:10px !important;
       }
@@ -96,14 +101,17 @@ def render(user: dict | None = None):
         ]
     st.session_state.setdefault("nt_visible", True)
 
+    # ===== espaciado uniforme entre bloques =====
+    _NT_SPACE = 36  # mismo valor para: pestañas↔píldora, píldora↔indicaciones, indicaciones↔sección
+
+    # Espacio ENTRE pestañas y la píldora
+    st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
+
     # ---------- Píldora (no interactiva) con el ancho de la columna “Área” ----------
     A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
     c_pill, _, _, _, _, _ = st.columns([A, Fw, T, D, R, C], gap="medium")
     with c_pill:
         st.markdown('<div class="nt-pill"><span>📝 Nueva tarea</span></div>', unsafe_allow_html=True)
-
-    # ===== espaciado uniforme entre bloques =====
-    _NT_SPACE = 36  # controla píldora↔indicaciones e indicaciones↔sección
 
     # Espacio ENTRE píldora e indicaciones
     st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
@@ -116,7 +124,7 @@ def render(user: dict | None = None):
         </div>
         """, unsafe_allow_html=True)
 
-        # Espacio ENTRE indicaciones y la sección (igual que arriba)
+        # Espacio ENTRE indicaciones y la sección
         st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
 
         submitted = False
@@ -140,16 +148,23 @@ def render(user: dict | None = None):
             c2_1, c2_2, c2_3, c2_4, c2_5, c2_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
             c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría", key="nt_tipo")
             c2_2.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
-            if st.session_state.get("fi_d", "___MISSING___") is None: st.session_state.pop("fi_d")
-            if st.session_state.get("fi_t", "___MISSING___") is None: st.session_state.pop("fi_t")
+
+            if st.session_state.get("fi_d", "___MISSING___") is None:
+                st.session_state.pop("fi_d")
+            if st.session_state.get("fi_t", "___MISSING___") is None:
+                st.session_state.pop("fi_t")
+
             c2_3.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
 
             _t = st.session_state.get("fi_t")
             _t_txt = ""
             if _t is not None:
-                try: _t_txt = _t.strftime("%H:%M")
-                except Exception: _t_txt = str(_t)
-            c2_4.text_input("Hora (auto)", value=_t_txt, disabled=True, help="Se asigna al elegir la fecha", key="fi_t_view")
+                try:
+                    _t_txt = _t.strftime("%H:%M")
+                except Exception:
+                    _t_txt = str(_t)
+            c2_4.text_input("Hora (auto)", value=_t_txt, disabled=True,
+                            help="Se asigna al elegir la fecha", key="fi_t_view")
 
             _df_tmp = st.session_state.get("df_main", pd.DataFrame()).copy() if "df_main" in st.session_state else pd.DataFrame()
             prefix = make_id_prefix(st.session_state.get("nt_area", area), st.session_state.get("nt_resp", ""))
@@ -162,6 +177,7 @@ def render(user: dict | None = None):
                 st.markdown('<div class="btn-agregar">', unsafe_allow_html=True)
                 submitted = st.button("➕ Agregar", use_container_width=True, key="btn_agregar")
                 st.markdown('</div>', unsafe_allow_html=True)
+
         st.markdown('</div>', unsafe_allow_html=True)  # cierra #nt-card
 
         # ---------- Guardado ----------
@@ -223,6 +239,6 @@ def render(user: dict | None = None):
             except Exception as e:
                 st.error(f"No pude guardar la nueva tarea: {e}")
 
-    # Separación vertical
+    # Separación vertical al final
     gap = SECTION_GAP if 'SECTION_GAP' in globals() else 30
     st.markdown(f"<div style='height:{gap}px;'></div>", unsafe_allow_html=True)
