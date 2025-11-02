@@ -54,12 +54,11 @@ def render(user: dict | None = None):
     <style>
       :root{ --pill-h:38px; --pill-r:999px; }
 
-      /* ---- PÍLDORA "Nueva tarea" (SOLO esta) ----
-         Truco: inserto un marcador #nt-pill-wrap y estilizo el DIV hermano inmediato
-         que Streamlit genera para el botón. Así no afecta a ninguna otra pastilla. */
-      #nt-pill-wrap + div button{
+      /* ---- PÍLDORA "Nueva tarea" (SOLO aquí) ----
+         Scoped dentro de #nt-pill-scope para no afectar a otras pastillas. */
+      #nt-pill-scope .stButton > button{
         width:100% !important;                 /* ocupa el ancho de la columna Área */
-        background:#A7C8F0 !important;         /* azul suave como tu modelo */
+        background:#A7C8F0 !important;         /* azul suave del modelo */
         border:1px solid #A7C8F0 !important;
         color:#ffffff !important;              /* texto blanco */
         font-weight:700;
@@ -67,8 +66,8 @@ def render(user: dict | None = None):
         min-height:var(--pill-h) !important; height:var(--pill-h) !important; line-height:var(--pill-h) !important;
         box-shadow:0 6px 14px rgba(167,200,240,.35) !important;
       }
-      #nt-pill-wrap + div button:hover{ filter:brightness(0.97); }
-      #nt-pill-wrap + div button:focus{ outline:2px solid #6EA7EB !important; outline-offset:1px; }
+      #nt-pill-scope .stButton > button:hover{ filter:brightness(0.97); }
+      #nt-pill-scope .stButton > button:focus{ outline:2px solid #6EA7EB !important; outline-offset:1px; }
 
       /* Inputs 100% dentro del card de esta sección */
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
@@ -109,9 +108,9 @@ def render(user: dict | None = None):
     A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
     c_pill, _, _, _, _, _ = st.columns([A, Fw, T, D, R, C], gap="medium")
     with c_pill:
-        # Marcador para scoping de CSS (NO afecta a otras pastillas)
-        st.markdown('<div id="nt-pill-wrap"></div>', unsafe_allow_html=True)
+        st.markdown('<div id="nt-pill-scope">', unsafe_allow_html=True)
         st.button("📝 Nueva tarea", key="nt_pill")
+        st.markdown('</div>', unsafe_allow_html=True)
 
     # ---------- Sección principal ----------
     if st.session_state.get("nt_visible", True):
@@ -238,4 +237,3 @@ def render(user: dict | None = None):
         f"<div style='height:{SECTION_GAP if 'SECTION_GAP' in globals() else 30}px;'></div>",
         unsafe_allow_html=True,
     )
-
