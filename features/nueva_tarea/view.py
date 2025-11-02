@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import annotations 
 import os
 import pandas as pd
 import streamlit as st
@@ -86,8 +86,8 @@ def render(user: dict | None = None):
         padding:10px 12px; border-radius:10px; font-size:0.92rem;
       }
 
-      /* Bajar el botón Agregar para alinearlo con la segunda fila */
-      #nt-card .btn-agregar{ margin-top:150px; } /* <- bajado un poco más */
+      /* Alinear el botón Agregar con la segunda fila usando espaciador (sin margin-top) */
+      #nt-card .btn-agregar{ margin-top:0 !important; }
       #nt-card .btn-agregar .stButton>button{
         min-height:38px !important; height:38px !important; border-radius:10px !important;
       }
@@ -172,9 +172,11 @@ def render(user: dict | None = None):
                            st.session_state.get("nt_resp", "")) if st.session_state.get("fi_d") else f"{prefix}_")
             c2_5.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
 
-            # Botón Agregar (más abajo para alinear)
+            # Botón Agregar (más abajo para alinear mediante espaciador)
             with c2_6:
                 st.markdown('<div class="btn-agregar">', unsafe_allow_html=True)
+                BTN_OFFSET_PX = 28  # ↑ ajusta este valor para afinar la alineación
+                st.markdown(f"<div style='height:{BTN_OFFSET_PX}px'></div>", unsafe_allow_html=True)
                 submitted = st.button("➕ Agregar", use_container_width=True, key="btn_agregar")
                 st.markdown('</div>', unsafe_allow_html=True)
 
