@@ -4,7 +4,7 @@ import os
 import pandas as pd
 import streamlit as st
 
-# ====== utilidades que ya tienes en shared; aquí con fallbacks suaves ======
+# ====== utilidades (con fallbacks) ======
 try:
     from shared import (
         blank_row,
@@ -18,8 +18,7 @@ except Exception:
     from datetime import datetime
     import re
 
-    def blank_row() -> dict:
-        return {}
+    def blank_row() -> dict: return {}
 
     def _clean3(s: str) -> str:
         s = (s or "").strip().upper()
@@ -31,8 +30,7 @@ except Exception:
         r = (resp or "").strip().upper()
         r_first = r.split()[0] if r.split() else r
         r3 = _clean3(r_first)
-        if not a3 and not r3:
-            return "GEN"
+        if not a3 and not r3: return "GEN"
         return (a3 or "GEN") + (r3 or "")
 
     def next_id_by_person(df: pd.DataFrame, area: str, resp: str) -> str:
@@ -49,42 +47,26 @@ except Exception:
 
 # ==========================================================================
 
-
 def render(user: dict | None = None):
-    """
-    Render de la pestaña: ➕ Nueva tarea
-    """
+    """Vista: ➕ Nueva tarea"""
 
-    # ================== Estilos agresivos (solo cuando esta vista está montada) ==================
+    # ---------- CSS “forzado” ----------
     st.markdown(
         """
         <style>
-        :root{
-          --pill-h: 38px;          /* altura estándar para toggle/pills */
-          --pill-r: 999px;
-        }
+        :root{ --pill-h:38px; --pill-r:999px; }
 
-        /* (A) Ocultar subtítulo duplicado (h2/h3) cuando existe nuestra sección */
-        .block-container:has(#nt-section) h2{ display:none !important; }
-        .block-container:has(#nt-section) h3{ display:none !important; }
-        /* Si viniera como markdown plano */
-        .block-container:has(#nt-section) .stMarkdown p{
-          /* ocultamos solo si coincide visualmente con subtítulo (icono carpeta) */
-          white-space:pre-wrap;
-        }
-        /* (D) Ocultar franja informativa azul */
-        .block-container:has(#nt-section) [data-testid="stAlert"]{ display:none !important; }
+        /* 1) Ocultar subtítulo duplicado (todos los h2) */
+        .block-container h2{ display:none !important; }
 
-        /* ——— BARRA SUPERIOR (solo toggle, pegado a la fila global de píldoras) ——— */
+        /* 2) Ocultar la franja azul informativa */
+        .block-container .stAlert{ display:none !important; }
+
+        /* 3) Toggle alineado con la fila de píldoras superior */
         #ntbar{
-          display:flex; align-items:center; gap:12px;
-          /* Empuja el toggle hacia arriba para alinearlo con la fila global de píldoras */
-          margin-top:-22px;   /* <- ajuste fino vertical */
+          display:flex; align-items:center; gap:10px;
+          margin-top:-64px !important;   /* <- empuja hacia arriba con fuerza */
           margin-bottom:10px;
-        }
-        /* Si en alguna pantalla sube demasiado, lo aflojamos */
-        @media (max-width: 900px){
-          #ntbar{ margin-top:-12px; }
         }
         #ntbar .stButton > button{
           min-height: var(--pill-h) !important;
@@ -94,14 +76,12 @@ def render(user: dict | None = None):
           border-radius: var(--pill-r) !important;
         }
 
-        /* Inputs al 100% dentro del card de esta sección */
+        /* 4) Inputs 100% en el card */
         div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
         div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox,
         div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput,
         div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput,
-        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea{
-          width:100% !important;
-        }
+        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea{ width:100% !important; }
         div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput > div,
         div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox > div,
         div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput > div,
@@ -110,42 +90,38 @@ def render(user: dict | None = None):
           width:100% !important; max-width:none !important;
         }
         div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) [data-testid="stDateInput"] input,
-        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) [data-testid^="stTimeInput"] input{
-          width:100% !important;
-        }
+        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) [data-testid^="stTimeInput"] input{ width:100% !important; }
 
-        /* Tira de ayuda */
+        /* 5) Tira de ayuda */
         .help-strip{
           background:#F3F8FF; border:1px dashed #BDD7FF; color:#0B3B76;
           padding:10px 12px; border-radius:10px; font-size:0.92rem;
         }
 
-        /* (C) Alinear botón Agregar con la fila de campos */
+        /* 6) Alinear botón Agregar con la fila de campos */
+        #nt-card .btn-agregar{ margin-top:28px; }
         #nt-card .btn-agregar .stButton > button{
-          min-height: 38px !important; height: 38px !important; border-radius: 10px !important;
+          min-height:38px !important; height:38px !important; border-radius:10px !important;
         }
-        #nt-card .btn-agregar{ margin-top: 28px; } /* altura de label estándar */
+
+        /* Ajuste fino responsive */
+        @media (max-width: 900px){ #ntbar{ margin-top:-48px !important; } }
         </style>
         """,
         unsafe_allow_html=True,
     )
 
-    # ================== Formulario ==================
+    # ---------- Datos auxiliares ----------
     if "AREAS_OPC" not in globals():
         globals()["AREAS_OPC"] = [
-            "Jefatura",
-            "Gestión",
-            "Metodología",
-            "Base de datos",
-            "Capacitación",
-            "Monitoreo",
-            "Consistencia",
+            "Jefatura", "Gestión", "Metodología", "Base de datos",
+            "Capacitación", "Monitoreo", "Consistencia",
         ]
 
     st.session_state.setdefault("nt_visible", True)
     chev = "▾" if st.session_state.get("nt_visible", True) else "▸"
 
-    # ---------- SOLO TOGGLE (alineado con la fila global de píldoras) ----------
+    # ---------- Barra solo con toggle (pegada a la fila de píldoras) ----------
     st.markdown('<div id="ntbar">', unsafe_allow_html=True)
     col_tg, _ = st.columns([0.08, 0.92], gap="small")
     with col_tg:
@@ -153,12 +129,11 @@ def render(user: dict | None = None):
             st.session_state["nt_visible"] = not st.session_state.get("nt_visible", True)
         st.button(chev, key="nt_toggle_icon", help="Mostrar/ocultar", on_click=_toggle_nt)
     st.markdown('</div>', unsafe_allow_html=True)
-    # ---------------------------------------------------------------------------
 
+    # ---------- Sección principal ----------
     if st.session_state.get("nt_visible", True):
         st.markdown('<div id="nt-section">', unsafe_allow_html=True)
 
-        # Indicaciones
         st.markdown(
             """
             <div class="help-strip">
@@ -171,13 +146,12 @@ def render(user: dict | None = None):
 
         submitted = False
 
-        # ===== Card principal =====
         with st.container(border=True):
             st.markdown('<div id="nt-card"><span id="nt-card-sentinel"></span>', unsafe_allow_html=True)
 
             A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
-            # ---------- FILA 1 ----------
+            # ------- FILA 1 -------
             r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
             area = r1c1.selectbox("Área", options=AREAS_OPC, index=0, key="nt_area")
             FASES = ["Capacitación","Post-capacitación","Pre-consistencia","Consistencia","Operación de campo"]
@@ -187,7 +161,7 @@ def render(user: dict | None = None):
             resp = r1c5.text_input("Responsable", placeholder="Nombre", key="nt_resp")
             ciclo_mejora = r1c6.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
 
-            # ---------- FILA 2 ----------
+            # ------- FILA 2 -------
             c2_1, c2_2, c2_3, c2_4, c2_5, c2_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
             tipo = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría", key="nt_tipo")
 
@@ -195,7 +169,7 @@ def render(user: dict | None = None):
                 st.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
             estado = "No iniciado"
 
-            # Fecha / hora
+            # Fecha/Hora
             if st.session_state.get("fi_d", "___MISSING___") is None:
                 st.session_state.pop("fi_d")
             if st.session_state.get("fi_t", "___MISSING___") is None:
@@ -292,12 +266,11 @@ def render(user: dict | None = None):
                 os.makedirs("data", exist_ok=True)
                 df.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig", mode="w")
 
-                st.success(f"✔ Tarea agregada (Id {new['Id']}).")
+                # OJO: la franja .stAlert está oculta por CSS; si quieres feedback visual inmediato, podemos usar st.toast
                 st.rerun()
             except Exception as e:
                 st.error(f"No pude guardar la nueva tarea: {e}")
 
-    # Separación vertical
     st.markdown(
         f"<div style='height:{SECTION_GAP if 'SECTION_GAP' in globals() else 30}px;'></div>",
         unsafe_allow_html=True,
