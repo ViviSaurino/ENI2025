@@ -1,4 +1,3 @@
-# features/nueva_tarea/view.py
 from __future__ import annotations
 import os
 import pandas as pd
@@ -82,8 +81,8 @@ def render(user: dict | None = None):
         padding:10px 12px; border-radius:10px; font-size:0.92rem;
       }
 
-      /* Bajar más el botón Agregar dentro del card */
-      #nt-card .btn-agregar{ margin-top:64px; }
+      /* Bajar el botón Agregar para alinearlo con las celdas */
+      #nt-card .btn-agregar{ margin-top:76px; } /* ← antes 64px */
       #nt-card .btn-agregar .stButton>button{
         min-height:38px !important; height:38px !important; border-radius:10px !important;
       }
@@ -104,7 +103,7 @@ def render(user: dict | None = None):
         st.markdown('<div class="nt-pill"><span>📝 Nueva tarea</span></div>', unsafe_allow_html=True)
 
     # ===== espaciado uniforme entre bloques =====
-    _NT_SPACE = 36  # <-- Ajusta este número y afecta ambos espacios por igual
+    _NT_SPACE = 36  # controla píldora↔indicaciones e indicaciones↔sección
 
     # Espacio ENTRE píldora e indicaciones
     st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
@@ -158,7 +157,7 @@ def render(user: dict | None = None):
                            st.session_state.get("nt_resp", "")) if st.session_state.get("fi_d") else f"{prefix}_")
             c2_5.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
 
-            # Botón Agregar (más abajo)
+            # Botón Agregar (más abajo para alinear)
             with c2_6:
                 st.markdown('<div class="btn-agregar">', unsafe_allow_html=True)
                 submitted = st.button("➕ Agregar", use_container_width=True, key="btn_agregar")
