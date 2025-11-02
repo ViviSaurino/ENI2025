@@ -24,18 +24,11 @@ except Exception:
         return {}
 
     def _clean3(s: str) -> str:
-        """Toma solo A-Z0-9 y devuelve hasta 3 caracteres."""
         s = (s or "").strip().upper()
         s = re.sub(r"[^A-Z0-9\s]+", "", s)
         return re.sub(r"\s+", "", s)[:3]
 
     def make_id_prefix(area: str, resp: str) -> str:
-        """
-        Prefijo robusto:
-        - Si 'resp' está vacío o con espacios, no revienta.
-        - Limpia caracteres no alfanuméricos.
-        - Devuelve al menos 'GEN' si no hay nada.
-        """
         a3 = _clean3(area)
         r = (resp or "").strip().upper()
         r_first = r.split()[0] if r.split() else r
@@ -53,7 +46,6 @@ except Exception:
     SECTION_GAP = 30
 
     def _auto_time_on_date():
-        # Al elegir fecha, fija hora actual redondeada a minutos
         now = datetime.now().replace(second=0, microsecond=0)
         st.session_state["fi_t"] = now.time()
 
@@ -63,48 +55,48 @@ except Exception:
 def render(user: dict | None = None):
     """
     Render de la pestaña: ➕ Nueva tarea
-    (Lógica intacta; solo se encapsuló en una función pública)
     """
 
-    # ================== Estilos locales ==================
+    # ================== Estilos + pequeños helpers de UI ==================
     st.markdown(
         """
         <style>
         :root{
-          --pill-h: 38px;           /* altura estándar para toggle y "píldora" */
-          --pill-r: 999px;          /* radio para pastillas redondeadas */
+          --pill-h: 38px;           /* altura estándar para toggle / pastillas */
+          --pill-r: 999px;
         }
 
-        /* 1) Ocultar el sub-título duplicado solo cuando esta sección está en la página */
-        .block-container:has(#ntbar) h2:first-of-type{
-          display: none !important;
-        }
+        /* 1) Ocultar el sub-título duplicado SOLO cuando esta vista está montada */
+        .block-container:has(#ntbar) h2:first-of-type{ display:none !important; }
 
-        /* 2) Barra superior unificada: toggle + "píldora" en una misma línea */
+        /* 1b) Por si el subtítulo es un párrafo/markdown con el emoji de carpeta */
+        .block-container:has(#ntbar) .stMarkdown:has(p:only-child){ margin-top:0 }
+        /* (se refuerza con JS abajo para cubrir cualquier variante) */
+
+        /* 2) Barra superior unificada: toggle + "píldora" en misma línea/altura */
         .topbar-nt{
-          display: flex;
-          align-items: center;      /* misma altura visual */
-          gap: 12px;
-          margin: 6px 0 10px 0;
+          display:flex; align-items:center; gap:12px; margin: 6px 0 10px 0;
         }
         .topbar-nt .toggle-icon .stButton > button{
-          height: var(--pill-h) !important;
-          line-height: var(--pill-h) !important;
-          padding: 0 12px !important;
-          border-radius: var(--pill-r) !important;
+          height: var(--pill-h) !important; line-height: var(--pill-h) !important;
+          padding: 0 12px !important; border-radius: var(--pill-r) !important;
         }
-        /* La "píldora" de título (Nueva tarea) */
+        /* Si en este slot usas button real, también lo normalizamos */
+        #ntbar .stButton > button{
+          min-height: var(--pill-h) !important; height: var(--pill-h) !important;
+          line-height: var(--pill-h) !important; border-radius: var(--pill-r) !important;
+          padding: 0 14px !important;
+        }
+        #ntbar .stButton{ margin:0 !important; }
+
+        /* Píldora de título (si usas el DIV "form-title") */
         .topbar-nt .form-title{
-          display: inline-flex;
-          align-items: center;
-          height: var(--pill-h);
-          line-height: var(--pill-h);
-          padding: 0 14px;
-          border-radius: var(--pill-r);
+          display:inline-flex; align-items:center;
+          height: var(--pill-h); line-height: var(--pill-h);
+          padding: 0 14px; border-radius: var(--pill-r);
           background: var(--blue-pill-bg, #EAF2FF);
           border: 1px solid var(--blue-pill-bd, #BFDBFE);
-          color: var(--blue-pill-fg, #0B3B76);
-          font-weight: 600;
+          color: var(--blue-pill-fg, #0B3B76); font-weight:600;
         }
 
         /* Inputs al 100% dentro del card de esta sección */
@@ -132,14 +124,43 @@ def render(user: dict | None = None):
           background:#F3F8FF; border:1px dashed #BDD7FF; color:#0B3B76;
           padding:10px 12px; border-radius:10px; font-size:0.92rem;
         }
+
+        /* 4) Alineación del botón "Agregar" con los campos (creamos una etiqueta falsa) */
+        #nt-card .fake-label{ visibility:hidden; height: 24px; margin-bottom: 6px; }
+        #nt-card .btn-agregar .stButton > button{
+          min-height: 38px !important; height: 38px !important; border-radius: 10px !important;
+        }
         </style>
+
+        <!-- 1c y 3) Refuerzo con JS: oculta subtítulo duplicado y la franja informativa exacta -->
+        <script>
+        const _killExtras = () => {
+          // Ocultar subtítulo duplicado
+          const nodes = Array.from(document.querySelectorAll('.block-container h2, .block-container .stMarkdown p'));
+          for (const el of nodes){
+            const t = (el.innerText||'').trim();
+            if (t === 'Gestión – ENI 2025' || t === '🗂️ Gestión – ENI 2025'){
+              el.style.display='none';
+            }
+          }
+          // Ocultar la franja informativa solicitada
+          const alerts = Array.from(document.querySelectorAll('[data-testid="stAlert"]'));
+          for (const al of alerts){
+            const txt = (al.innerText||'').trim();
+            if (txt.includes('La vista principal está lista para conectar tus tablas, filtros y gráficos.')){
+              al.style.display='none';
+            }
+          }
+        };
+        setTimeout(_killExtras, 50);
+        setInterval(_killExtras, 400);
+        </script>
         """,
         unsafe_allow_html=True,
     )
 
     # ================== Formulario (misma malla + hora inmediata) ==================
 
-    # Fallback suave si aún no existe (no altera nada cuando ya viene del módulo principal)
     if "AREAS_OPC" not in globals():
         globals()["AREAS_OPC"] = [
             "Jefatura",
@@ -159,25 +180,20 @@ def render(user: dict | None = None):
     c_toggle, c_pill = st.columns([0.06, 0.94], gap="small")
     with c_toggle:
         st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
-
         def _toggle_nt():
             st.session_state["nt_visible"] = not st.session_state.get("nt_visible", True)
-
         st.button(chev, key="nt_toggle_icon", help="Mostrar/ocultar", on_click=_toggle_nt)
         st.markdown("</div>", unsafe_allow_html=True)
     with c_pill:
-        st.markdown(
-            '<div class="form-title">📝&nbsp;&nbsp;Nueva tarea</div>',
-            unsafe_allow_html=True,
-        )
+        # Si prefieres botón real como "píldora", reemplázalo por st.button y quedará igual de alineado.
+        st.markdown('<div class="form-title">📝&nbsp;&nbsp;Nueva tarea</div>', unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
     # ---------- fin barra superior ----------
 
     if st.session_state.get("nt_visible", True):
-        # ===== Scope local para NO afectar otras secciones =====
         st.markdown('<div id="nt-section">', unsafe_allow_html=True)
 
-        # ===== Indicaciones cortas (debajo de la píldora) =====
+        # ===== Indicaciones (debajo de la píldora) =====
         st.markdown(
             """
             <div class="help-strip">
@@ -187,15 +203,13 @@ def render(user: dict | None = None):
             unsafe_allow_html=True,
         )
 
-        # ===== ESPACIADOR entre indicaciones y el card =====
         st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
 
         submitted = False
 
         # ===== Card REAL que envuelve TODAS las celdas =====
         with st.container(border=True):
-            # Sentinel para limitar estilos SOLO a este card
-            st.markdown('<span id="nt-card-sentinel"></span>', unsafe_allow_html=True)
+            st.markdown('<div id="nt-card"><span id="nt-card-sentinel"></span>', unsafe_allow_html=True)
 
             # Proporciones (tus originales)
             A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
@@ -203,87 +217,55 @@ def render(user: dict | None = None):
             # ---------- FILA 1 ----------
             r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
             area = r1c1.selectbox("Área", options=AREAS_OPC, index=0, key="nt_area")
-            FASES = [
-                "Capacitación",
-                "Post-capacitación",
-                "Pre-consistencia",
-                "Consistencia",
-                "Operación de campo",
-            ]
-            fase = r1c2.selectbox(
-                "Fase",
-                options=FASES,
-                index=None,
-                placeholder="Selecciona una fase",
-                key="nt_fase",
-            )
+            FASES = ["Capacitación","Post-capacitación","Pre-consistencia","Consistencia","Operación de campo"]
+            fase = r1c2.selectbox("Fase", options=FASES, index=None, placeholder="Selecciona una fase", key="nt_fase")
             tarea = r1c3.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
-            detalle = r1c4.text_input(
-                "Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle"
-            )
+            detalle = r1c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle")
             resp = r1c5.text_input("Responsable", placeholder="Nombre", key="nt_resp")
-            ciclo_mejora = r1c6.selectbox(
-                "Ciclo de mejora", options=["1", "2", "3", "+4"], index=0, key="nt_ciclo_mejora"
-            )
+            ciclo_mejora = r1c6.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
 
             # ---------- FILA 2 ----------
             c2_1, c2_2, c2_3, c2_4, c2_5, c2_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
             tipo = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría", key="nt_tipo")
 
-            # Estado fijo (sin lista): siempre "No iniciado"
             with c2_2:
                 st.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
             estado = "No iniciado"
 
-            # --- FECHA/HORA: corrección para evitar None en date_input ---
-            # Limpia claves inválidas antes de crear el widget (Streamlit no acepta None para date_input si la clave ya existe)
+            # --- FECHA/HORA: claves limpias ---
             if st.session_state.get("fi_d", "___MISSING___") is None:
                 st.session_state.pop("fi_d")
             if st.session_state.get("fi_t", "___MISSING___") is None:
                 st.session_state.pop("fi_t")
 
-            # Fecha editable + callback inmediato (pone hora al elegir fecha)
             c2_3.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
 
-            # Hora auto (solo lectura)
             _t = st.session_state.get("fi_t")
             _t_txt = ""
             if _t is not None:
-                try:
-                    _t_txt = _t.strftime("%H:%M")
-                except Exception:
-                    _t_txt = str(_t)
-            c2_4.text_input(
-                "Hora (auto)",
-                value=_t_txt,
-                disabled=True,
-                help="Se asigna al elegir la fecha",
-                key="fi_t_view",
-            )
+                try: _t_txt = _t.strftime("%H:%M")
+                except Exception: _t_txt = str(_t)
+            c2_4.text_input("Hora (auto)", value=_t_txt, disabled=True, help="Se asigna al elegir la fecha", key="fi_t_view")
 
             # ID preview
-            _df_tmp = (
-                st.session_state.get("df_main", pd.DataFrame()).copy()
-                if "df_main" in st.session_state
-                else pd.DataFrame()
-            )
-            prefix = make_id_prefix(
-                st.session_state.get("nt_area", area), st.session_state.get("nt_resp", resp)
-            )
+            _df_tmp = st.session_state.get("df_main", pd.DataFrame()).copy() if "df_main" in st.session_state else pd.DataFrame()
+            prefix = make_id_prefix(st.session_state.get("nt_area", area), st.session_state.get("nt_resp", resp))
             if st.session_state.get("fi_d"):
-                id_preview = next_id_by_person(
-                    _df_tmp, st.session_state.get("nt_area", area), st.session_state.get("nt_resp", resp)
-                )
+                id_preview = next_id_by_person(_df_tmp, st.session_state.get("nt_area", area), st.session_state.get("nt_resp", resp))
             else:
                 id_preview = f"{prefix}_" if prefix else ""
             c2_5.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
 
-            # Botón
+            # Botón (alineado con campos)
             with c2_6:
-                st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
-                submitted = st.button("➕ Agregar", use_container_width=True, key="btn_agregar")
+                st.markdown('<div class="fake-label">.</div>', unsafe_allow_html=True)  # ocupa el alto del label
+                with st.container():
+                    st.markdown('<div class="btn-agregar">', unsafe_allow_html=True)
+                    submitted = st.button("➕ Agregar", use_container_width=True, key="btn_agregar")
+                    st.markdown('</div>', unsafe_allow_html=True)
 
-        # Cierra scope local
+            st.markdown('</div>', unsafe_allow_html=True)  # cierra #nt-card
+
         st.markdown("</div>", unsafe_allow_html=True)  # cierra #nt-section
 
         # ---------- Guardado ----------
@@ -312,7 +294,6 @@ def render(user: dict | None = None):
 
                 df = _sanitize(df, COLS if "COLS" in globals() else None)
 
-                # Armamos HH:MM seguro para registro
                 reg_fecha = st.session_state.get("fi_d")
                 reg_hora_obj = st.session_state.get("fi_t")
                 try:
@@ -329,18 +310,15 @@ def render(user: dict | None = None):
                         "Tipo": st.session_state.get("nt_tipo", ""),
                         "Responsable": st.session_state.get("nt_resp", ""),
                         "Fase": fase,
-                        "Estado": estado,  # ← fijo: No iniciado
-                        # Marcas de REGISTRO que pide el historial
-                        "Fecha": reg_fecha,  # respaldo simple (fallback)
-                        "Hora": reg_hora_txt,  # respaldo simple (fallback)
-                        "Fecha Registro": reg_fecha,  # registro explícito
-                        "Hora Registro": reg_hora_txt,  # registro explícito
-                        # Campos de inicio/fin (se llenan más adelante)
+                        "Estado": "No iniciado",
+                        "Fecha": reg_fecha,
+                        "Hora": reg_hora_txt,
+                        "Fecha Registro": reg_fecha,
+                        "Hora Registro": reg_hora_txt,
                         "Fecha inicio": None,
                         "Hora de inicio": "",
                         "Fecha Terminado": None,
                         "Hora Terminado": "",
-                        # Otros
                         "Ciclo de mejora": ciclo_mejora,
                         "Detalle": st.session_state.get("nt_detalle", ""),
                     }
