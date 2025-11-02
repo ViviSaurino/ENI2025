@@ -4,7 +4,7 @@ import os
 import types
 import streamlit as st
 
-# ---------- Util: localizar la animación del héroe (se usa en portada si quisieras) ----------
+# ---------- Util opcional para portada ----------
 def _find_hero_asset() -> str | None:
     candidates = ("hero.webm", "hero.mp4", "hero.gif",
                   "welcome_anim.webm", "welcome_anim.mp4", "welcome_anim.gif")
@@ -14,7 +14,6 @@ def _find_hero_asset() -> str | None:
             return p
     return None
 
-# ---------- Portada opcional (no usada si ya entras logueado) ----------
 def render_bienvenida(on_login=None):
     st.markdown("""
     <style>
@@ -25,15 +24,13 @@ def render_bienvenida(on_login=None):
       .hero-sub{color:#5b6470;margin-bottom:14px;}
       .hero-media{margin:8px 0 12px;border-radius:12px;overflow:hidden;}
       .hero-btn .stButton>button{height:42px;border-radius:10px;width:100%;}
-      .hero-note{font-size:12px;color:#8a8fa0;margin-top:6px;}
     </style>
     """, unsafe_allow_html=True)
 
     st.markdown('<div class="hero-wrap">', unsafe_allow_html=True)
     st.markdown('<div class="hero-title">👋 Bienvenidos — ENI2025</div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="hero-sub">Esta es la plataforma unificada de <b>Gestión — ENI2025</b>. '
-        'Inicia sesión con tu correo autorizado para gestionar tareas, prioridades, evaluaciones y más.</div>',
+        '<div class="hero-sub">Plataforma unificada de <b>Gestión — ENI2025</b>.</div>',
         unsafe_allow_html=True,
     )
     hero = _find_hero_asset()
@@ -83,7 +80,7 @@ def _call_view(mod_path: str, candidates: tuple[str, ...], **kwargs):
 
 # ---------- Vista principal ----------
 def render_all(user: dict | None = None):
-    # Título sin el caption de sesión
+    # Título (sin caption de sesión)
     st.subheader("🗂️ Gestión – ENI 2025")
 
     tabs = st.tabs([
@@ -95,7 +92,6 @@ def render_all(user: dict | None = None):
         "🕑 Tareas recientes",
     ])
 
-    # 1) Nueva tarea
     with tabs[0]:
         with st.spinner("Cargando 'Nueva tarea'..."):
             _call_view(
@@ -104,7 +100,6 @@ def render_all(user: dict | None = None):
                 user=user
             )
 
-    # 2) Editar estado
     with tabs[1]:
         with st.spinner("Cargando 'Editar estado'..."):
             _call_view(
@@ -113,7 +108,6 @@ def render_all(user: dict | None = None):
                 user=user
             )
 
-    # 3) Nueva alerta
     with tabs[2]:
         with st.spinner("Cargando 'Nueva alerta'..."):
             _call_view(
@@ -122,7 +116,6 @@ def render_all(user: dict | None = None):
                 user=user
             )
 
-    # 4) Prioridad
     with tabs[3]:
         with st.spinner("Cargando 'Prioridad'..."):
             _call_view(
@@ -131,7 +124,6 @@ def render_all(user: dict | None = None):
                 user=user
             )
 
-    # 5) Evaluación
     with tabs[4]:
         with st.spinner("Cargando 'Evaluación'..."):
             _call_view(
@@ -140,7 +132,6 @@ def render_all(user: dict | None = None):
                 user=user
             )
 
-    # 6) Tareas recientes
     with tabs[5]:
         with st.spinner("Cargando 'Tareas recientes'..."):
             _call_view(
