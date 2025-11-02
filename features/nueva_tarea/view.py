@@ -68,7 +68,7 @@ def render(user: dict | None = None):
 
       /* Píldora celeste con menos curvatura */
       .nt-pill{
-        width:100%; height:38px; border-radius:12px;
+        width:100%; height:45px; border-radius:12px;
         display:flex; align-items:center; justify-content:center;
         background:#A7C8F0; color:#ffffff; font-weight:700;
         box-shadow:0 6px 14px rgba(167,200,240,.35);
