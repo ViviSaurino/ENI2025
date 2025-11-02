@@ -44,7 +44,7 @@ with st.sidebar:
     if st.button("Cerrar sesión", use_container_width=True):
         logout()
 
-# ============ Datos ============ 
+# ============ Datos ============
 ensure_df_main()  # inicializa st.session_state["df_main"]
 
 # ============ UI principal ============
@@ -53,8 +53,8 @@ st.title("📂 Gestión - ENI 2025")
 # Cargar la vista principal (si aún no la tienes lista, no rompe)
 try:
     from features.dashboard.view import render_all
-    render_all()
+    # 🔹 Pasamos el usuario a la vista para que decida si muestra bienvenida o dashboard
+    render_all(st.session_state.get("user"))
 except Exception as e:
     st.info("Carga de la vista principal pendiente (features/dashboard/view.py).")
     st.exception(e)
-
