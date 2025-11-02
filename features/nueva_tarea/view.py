@@ -22,8 +22,8 @@ except Exception:
 
     def _clean3(s: str) -> str:
         s = (s or "").strip().upper()
-        s = re.sub(r"[^A-Z0-9\\s]+", "", s)
-        return re.sub(r"\\s+", "", s)[:3]
+        s = re.sub(r"[^A-Z0-9\s]+", "", s)
+        return re.sub(r"\s+", "", s)[:3]
 
     def make_id_prefix(area: str, resp: str) -> str:
         a3 = _clean3(area)
@@ -47,30 +47,29 @@ except Exception:
 
 # ==========================================================================
 
-# 👇 Toggle reutilizable para dibujarlo en la fila de píldoras del dashboard
-def render_toggle():
-    st.session_state.setdefault("nt_visible", True)
-    chev = "▾" if st.session_state.get("nt_visible", True) else "▸"
-    def _toggle_nt():
-        st.session_state["nt_visible"] = not st.session_state.get("nt_visible", True)
-    st.button(chev, key="nt_toggle_icon", help="Mostrar/ocultar sección", on_click=_toggle_nt)
-
 def render(user: dict | None = None):
     """Vista: ➕ Nueva tarea"""
 
-    # ===== Estilos locales (sin JS) =====
+    # ===== Estilos locales =====
     st.markdown("""
     <style>
       :root{ --pill-h:38px; --pill-r:999px; }
 
-      /* Píldora azul "Nueva tarea" (look igual al set) */
-      #nt_pill_wrap .stButton>button{
-        background:#EAF2FF !important; border:1px solid #BFDBFE !important;
-        color:#0B3B76 !important; font-weight:600; border-radius:var(--pill-r) !important;
-        min-height:var(--pill-h) !important; height:var(--pill-h) !important; line-height:var(--pill-h)!important;
-        padding:0 16px !important; box-shadow:none !important;
+      /* Píldora azul sólida (como las acciones), ancho 100% de su columna */
+      #nt_pill_wrap .stButton > button{
+        width:100% !important;
+        background:#93C5FD !important;        /* azul sólido */
+        border:1px solid #93C5FD !important;
+        color:#ffffff !important;
+        font-weight:700;
+        border-radius:var(--pill-r) !important;
+        min-height:var(--pill-h) !important; height:var(--pill-h) !important; line-height:var(--pill-h) !important;
+        box-shadow:none !important;
       }
-      #nt_pill_wrap .stButton>button:hover{ filter:brightness(0.98); }
+      #nt_pill_wrap .stButton > button:hover{ filter:brightness(0.97); }
+      #nt_pill_wrap .stButton > button:focus{
+        outline:2px solid #60A5FA !important; outline-offset:1px;
+      }
 
       /* Inputs 100% dentro del card de esta sección */
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
@@ -78,11 +77,11 @@ def render(user: dict | None = None):
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput,
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput,
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea{ width:100% !important; }
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput>div,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox>div,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput>div,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput>div,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea>div{
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput > div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox > div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput > div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput > div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea > div{
         width:100% !important; max-width:none !important;
       }
 
@@ -92,9 +91,9 @@ def render(user: dict | None = None):
         padding:10px 12px; border-radius:10px; font-size:0.92rem;
       }
 
-      /* Alinear botón Agregar con la fila de campos */
-      #nt-card .btn-agregar{ margin-top:26px; } /* ajusta 24–30 si ves 1–2px de diferencia */
-      #nt-card .btn-agregar .stButton>button{
+      /* Alinear botón Agregar con la fila de inputs */
+      #nt-card .btn-agregar{ margin-top:24px; }   /* si ves 1–2px, prueba 22/26 */
+      #nt-card .btn-agregar .stButton > button{
         min-height:38px !important; height:38px !important; border-radius:10px !important;
       }
     </style>
@@ -102,18 +101,20 @@ def render(user: dict | None = None):
 
     # ===== Datos auxiliares =====
     if "AREAS_OPC" not in globals():
-        globals()["AREAS_OPC"] = ["Jefatura","Gestión","Metodología","Base de datos","Capacitación","Monitoreo","Consistencia"]
+        globals()["AREAS_OPC"] = [
+            "Jefatura","Gestión","Metodología","Base de datos","Capacitación","Monitoreo","Consistencia"
+        ]
 
     st.session_state.setdefault("nt_visible", True)
 
-    # ---------- Barra local: píldora "Nueva tarea" (se mantiene para contexto) ----------
-    st.markdown('<div id="ntbar">', unsafe_allow_html=True)
-    _, c_pill = st.columns([0.06, 0.94], gap="small")
+    # ---------- Píldora alineada a la izquierda con el ancho de “Área” ----------
+    # Usamos la MISMA grilla que el formulario para asegurar la anchura.
+    A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
+    c_pill, _, _, _, _, _ = st.columns([A, Fw, T, D, R, C], gap="medium")
     with c_pill:
         st.markdown('<div id="nt_pill_wrap">', unsafe_allow_html=True)
-        st.button("📝 Nueva tarea", key="nt_pill", use_container_width=False)
+        st.button("📝 Nueva tarea", key="nt_pill")
         st.markdown("</div>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
 
     # ---------- Sección principal ----------
     if st.session_state.get("nt_visible", True):
@@ -130,8 +131,9 @@ def render(user: dict | None = None):
         submitted = False
 
         with st.container(border=True):
-            st.markdown('<div id="nt-card"><span id="nt-card-sentinel"></span>', unsafe_allow_html=True)
+            st.markdown('<span id="nt-card-sentinel"></span>', unsafe_allow_html=True)
 
+            # Proporciones de columnas (mismas que arriba)
             A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
             # ---------- FILA 1 ----------
@@ -146,11 +148,11 @@ def render(user: dict | None = None):
 
             # ---------- FILA 2 ----------
             c2_1, c2_2, c2_3, c2_4, c2_5, c2_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
-            c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría", key="nt_tipo")
+            tipo = c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría", key="nt_tipo")
             c2_2.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
             estado = "No iniciado"
 
-            # Fecha/hora seguros
+            # Fecha / Hora
             if st.session_state.get("fi_d", "___MISSING___") is None: st.session_state.pop("fi_d")
             if st.session_state.get("fi_t", "___MISSING___") is None: st.session_state.pop("fi_t")
             c2_3.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
@@ -177,8 +179,6 @@ def render(user: dict | None = None):
                 submitted = st.button("➕ Agregar", use_container_width=True, key="btn_agregar")
                 st.markdown('</div>', unsafe_allow_html=True)
 
-            st.markdown('</div>', unsafe_allow_html=True)  # cierra #nt-card
-
         st.markdown("</div>", unsafe_allow_html=True)  # cierra #nt-section
 
         # ---------- Guardado ----------
@@ -194,11 +194,13 @@ def render(user: dict | None = None):
                     elif "DEL" in df_out.columns:
                         df_out = df_out.rename(columns={"DEL": "__DEL__"})
                     df_out = df_out.loc[:, ~pd.Index(df_out.columns).duplicated()].copy()
-                    if not df_out.index.is_unique: df_out = df_out.reset_index(drop=True)
+                    if not df_out.index.is_unique:
+                        df_out = df_out.reset_index(drop=True)
                     if target_cols:
                         target = list(dict.fromkeys(list(target_cols)))
                         for c in target:
-                            if c not in df_out.columns: df_out[c] = None
+                            if c not in df_out.columns:
+                                df_out[c] = None
                         ordered = [c for c in target] + [c for c in df_out.columns if c not in target]
                         df_out = df_out.loc[:, ordered].copy()
                     return df_out
@@ -207,8 +209,10 @@ def render(user: dict | None = None):
 
                 reg_fecha = st.session_state.get("fi_d")
                 reg_hora_obj = st.session_state.get("fi_t")
-                try: reg_hora_txt = reg_hora_obj.strftime("%H:%M") if reg_hora_obj is not None else ""
-                except Exception: reg_hora_txt = str(reg_hora_obj) if reg_hora_obj is not None else ""
+                try:
+                    reg_hora_txt = reg_hora_obj.strftime("%H:%M") if reg_hora_obj is not None else ""
+                except Exception:
+                    reg_hora_txt = str(reg_hora_obj) if reg_hora_obj is not None else ""
 
                 new = blank_row()
                 new.update({
@@ -236,4 +240,8 @@ def render(user: dict | None = None):
             except Exception as e:
                 st.error(f"No pude guardar la nueva tarea: {e}")
 
-    st.markdown(f"<div style='height:{SECTION_GAP if 'SECTION_GAP' in globals() else 30}px;'></div>", unsafe_allow_html=True)
+    # Separación vertical
+    st.markdown(
+        f"<div style='height:{SECTION_GAP if 'SECTION_GAP' in globals() else 30}px;'></div>",
+        unsafe_allow_html=True,
+    )
