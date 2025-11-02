@@ -5,7 +5,7 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
-# ====== utilidades que ya tienes en shared; aquí con fallbacks suaves ======
+# ====== utilidades que ya tienes en shared; con fallbacks seguros ======
 try:
     from shared import (
         blank_row,
@@ -52,26 +52,21 @@ except Exception:
 
 
 def render(user: dict | None = None):
-    """
-    Render de la pestaña: ➕ Nueva tarea
-    """
+    """Vista: ➕ Nueva tarea"""
 
-    # ================== Estilos locales ==================
+    # ================== CSS local ==================
     st.markdown(
         """
         <style>
         :root{
-          --pill-h: 38px;          /* altura estándar para toggle/píldoras */
-          --pill-r: 999px;         /* radios bien redondeados */
+          --pill-h: 38px;
+          --pill-r: 999px;
         }
 
-        /* --- Barra superior: toggle + píldora (alineada con la fila global) --- */
+        /* --- Barra superior: toggle + píldora local --- */
         #ntbar{
           display:flex; align-items:center; gap:12px;
-          position: relative;
-          top: -40px;              /* <-- mueve hacia arriba para coincidir altura */
-          margin-bottom: -22px;    /* compensa el desplazamiento */
-          z-index: 5;
+          margin: 10px 0 6px 0;
         }
         #ntbar .stButton > button{
           min-height: var(--pill-h) !important;
@@ -80,22 +75,34 @@ def render(user: dict | None = None):
           padding: 0 14px !important;
           border-radius: var(--pill-r) !important;
         }
-        #ntbar .pill-local .stButton > button{
+
+        /* PÍLDORA local con look igual al set azul (como "Editar estado") */
+        #nt_pill_wrap .stButton > button{
+          background:#EAF2FF !important;               /* azul suave */
+          border:1px solid #BFDBFE !important;         /* borde azul */
+          color:#0B3B76 !important;                    /* texto azul intenso */
+          font-weight:600;
+          border-radius: var(--pill-r) !important;
+          box-shadow:none !important;
           min-height: var(--pill-h) !important;
           height: var(--pill-h) !important;
           line-height: var(--pill-h) !important;
-          border-radius: var(--pill-r) !important;
-          font-weight: 600;
+          padding:0 16px !important;
+        }
+        #nt_pill_wrap .stButton > button:hover{
+          filter:brightness(0.98);
+        }
+        #nt_pill_wrap .stButton > button:focus{
+          outline:2px solid #93C5FD !important;
+          outline-offset:1px;
         }
 
-        /* Inputs al 100% dentro del card de esta sección */
+        /* Inputs full width dentro del card */
         div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
         div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox,
         div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput,
         div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput,
-        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea{
-          width:100% !important;
-        }
+        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea{ width:100% !important; }
         div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput > div,
         div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox > div,
         div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput > div,
@@ -104,9 +111,7 @@ def render(user: dict | None = None):
           width:100% !important; max-width:none !important;
         }
         div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) [data-testid="stDateInput"] input,
-        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) [data-testid^="stTimeInput"] input{
-          width:100% !important;
-        }
+        div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) [data-testid^="stTimeInput"] input{ width:100% !important; }
 
         /* Tira de ayuda */
         .help-strip{
@@ -114,71 +119,68 @@ def render(user: dict | None = None):
           padding:10px 12px; border-radius:10px; font-size:0.92rem;
         }
 
-        /* Alinear botón Agregar con la fila de campos */
-        #nt-card .btn-agregar{ margin-top: 32px; }   /* altura de etiqueta estándar */
+        /* Alineación del botón Agregar con la fila de campos */
+        #nt-card .btn-agregar{ margin-top:26px; } /* si lo ves 2-3px bajo, cambia a 24 */
         #nt-card .btn-agregar .stButton > button{
           min-height:38px !important; height:38px !important; border-radius:10px !important;
-        }
-
-        @media (max-width: 900px){
-          #ntbar{ top:-28px; margin-bottom:-14px; }
         }
         </style>
         """,
         unsafe_allow_html=True,
     )
 
-    # ========= Ocultar el subtítulo duplicado y el banner azul con JS seguro =========
+    # ========== JS robusto: oculta subtítulo duplicado y el banner azul ==========
     components.html(
         """
         <script>
         (function(){
-          function killExtras(){
-            // Oculta SOLO el subtítulo pequeño duplicado (con o sin emoji)
-            const nodes = Array.from(document.querySelectorAll(".block-container h2, .block-container h3, .block-container .stMarkdown p"));
+          function norm(t){ return (t||'').replace(/\\s+/g,' ').trim(); }
+          function hideDupSubtitle(){
+            const nodes = Array.from(document.querySelectorAll(
+              ".block-container h2, .block-container h3, .block-container .stMarkdown p"
+            ));
             for(const el of nodes){
-              const t = (el.textContent||"").trim();
-              if (t === "Gestión – ENI 2025" || t === "🗂️ Gestión – ENI 2025"){
+              const tx = norm(el.textContent);
+              // Cubre variantes con o sin emoji, con guion - o en dash – (u otros espacios)
+              if ((/Gest(i|í)on/i.test(tx)) && (/ENI\\s*2025/i.test(tx)) && tx.length <= 40){
+                // No tocar el H1 grande; este selector ya se restringe a h2/h3/p
                 el.style.display = "none";
               }
             }
-            // Oculta el banner azul específico
-            const alerts = Array.from(document.querySelectorAll("[data-testid='stAlert']"));
-            for(const al of alerts){
-              const txt = (al.textContent||"").trim();
-              if (txt.indexOf("La vista principal está lista para conectar tus tablas, filtros y gráficos.") >= 0){
-                al.style.display="none";
-              }
-            }
           }
-          killExtras();
-          setTimeout(killExtras, 150);
-          setTimeout(killExtras, 600);
-          setInterval(killExtras, 1500);
+          function hideTopBlueBanner(){
+            const alerts = Array.from(document.querySelectorAll("[data-testid='stAlert']"));
+            if(!alerts.length) return;
+            // Oculta el primer alert (el más arriba en la página)
+            let best = null, top = Infinity;
+            alerts.forEach(el => {
+              const r = el.getBoundingClientRect();
+              if(r.top < top){ top = r.top; best = el; }
+            });
+            if(best) best.style.display = "none";
+          }
+          function tick(){ hideDupSubtitle(); hideTopBlueBanner(); }
+          tick(); setTimeout(tick, 200); setTimeout(tick, 800);
+          const id = setInterval(tick, 1500);
+          setTimeout(()=>clearInterval(id), 60000);
         })();
         </script>
         """,
         height=0, width=0
     )
-    # ======================================================================
+    # ============================================================================
 
-    # ================== Formulario (misma malla + hora inmediata) ==================
-
+    # ================== Formulario ==================
     if "AREAS_OPC" not in globals():
         globals()["AREAS_OPC"] = [
-            "Jefatura",
-            "Gestión",
-            "Metodología",
-            "Base de datos",
-            "Capacitación",
-            "Monitoreo",
-            "Consistencia",
+            "Jefatura", "Gestión", "Metodología", "Base de datos",
+            "Capacitación", "Monitoreo", "Consistencia",
         ]
 
     st.session_state.setdefault("nt_visible", True)
     chev = "▾" if st.session_state.get("nt_visible", True) else "▸"
 
-    # ---------- Barra superior: toggle + PÍLDORA “Nueva tarea” ----------
+    # ---------- Barra superior: toggle + PÍLDORA local ----------
     st.markdown('<div id="ntbar">', unsafe_allow_html=True)
     c_toggle, c_pill = st.columns([0.06, 0.94], gap="small")
     with c_toggle:
@@ -186,11 +188,11 @@ def render(user: dict | None = None):
             st.session_state["nt_visible"] = not st.session_state.get("nt_visible", True)
         st.button(chev, key="nt_toggle_icon", help="Mostrar/ocultar", on_click=_toggle_nt)
     with c_pill:
-        st.markdown('<div class="pill-local">', unsafe_allow_html=True)
+        st.markdown('<div id="nt_pill_wrap">', unsafe_allow_html=True)
         st.button("📝 Nueva tarea", key="nt_pill", use_container_width=False)
         st.markdown("</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
-    # --------------------------------------------------------------------
+    # ------------------------------------------------------------
 
     if st.session_state.get("nt_visible", True):
         st.markdown('<div id="nt-section">', unsafe_allow_html=True)
@@ -203,43 +205,24 @@ def render(user: dict | None = None):
             """,
             unsafe_allow_html=True,
         )
-
         st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
 
         submitted = False
 
-        # ===== Card principal =====
         with st.container(border=True):
             st.markdown('<div id="nt-card"><span id="nt-card-sentinel"></span>', unsafe_allow_html=True)
 
-            # Proporciones (tus originales)
             A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
             # ---------- FILA 1 ----------
             r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
             area = r1c1.selectbox("Área", options=AREAS_OPC, index=0, key="nt_area")
-            FASES = [
-                "Capacitación",
-                "Post-capacitación",
-                "Pre-consistencia",
-                "Consistencia",
-                "Operación de campo",
-            ]
-            fase = r1c2.selectbox(
-                "Fase",
-                options=FASES,
-                index=None,
-                placeholder="Selecciona una fase",
-                key="nt_fase",
-            )
+            FASES = ["Capacitación","Post-capacitación","Pre-consistencia","Consistencia","Operación de campo"]
+            fase = r1c2.selectbox("Fase", options=FASES, index=None, placeholder="Selecciona una fase", key="nt_fase")
             tarea = r1c3.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
-            detalle = r1c4.text_input(
-                "Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle"
-            )
+            detalle = r1c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle")
             resp = r1c5.text_input("Responsable", placeholder="Nombre", key="nt_resp")
-            ciclo_mejora = r1c6.selectbox(
-                "Ciclo de mejora", options=["1", "2", "3", "+4"], index=0, key="nt_ciclo_mejora"
-            )
+            ciclo_mejora = r1c6.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
 
             # ---------- FILA 2 ----------
             c2_1, c2_2, c2_3, c2_4, c2_5, c2_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
@@ -249,7 +232,7 @@ def render(user: dict | None = None):
                 st.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
             estado = "No iniciado"
 
-            # --- FECHA/HORA: claves limpias ---
+            # Fecha / hora
             if st.session_state.get("fi_d", "___MISSING___") is None:
                 st.session_state.pop("fi_d")
             if st.session_state.get("fi_t", "___MISSING___") is None:
@@ -264,27 +247,13 @@ def render(user: dict | None = None):
                     _t_txt = _t.strftime("%H:%M")
                 except Exception:
                     _t_txt = str(_t)
-            c2_4.text_input(
-                "Hora (auto)",
-                value=_t_txt,
-                disabled=True,
-                help="Se asigna al elegir la fecha",
-                key="fi_t_view",
-            )
+            c2_4.text_input("Hora (auto)", value=_t_txt, disabled=True, help="Se asigna al elegir la fecha", key="fi_t_view")
 
             # ID preview
-            _df_tmp = (
-                st.session_state.get("df_main", pd.DataFrame()).copy()
-                if "df_main" in st.session_state
-                else pd.DataFrame()
-            )
-            prefix = make_id_prefix(
-                st.session_state.get("nt_area", area), st.session_state.get("nt_resp", resp)
-            )
+            _df_tmp = st.session_state.get("df_main", pd.DataFrame()).copy() if "df_main" in st.session_state else pd.DataFrame()
+            prefix = make_id_prefix(st.session_state.get("nt_area", area), st.session_state.get("nt_resp", resp))
             if st.session_state.get("fi_d"):
-                id_preview = next_id_by_person(
-                    _df_tmp, st.session_state.get("nt_area", area), st.session_state.get("nt_resp", resp)
-                )
+                id_preview = next_id_by_person(_df_tmp, st.session_state.get("nt_area", area), st.session_state.get("nt_resp", resp))
             else:
                 id_preview = f"{prefix}_" if prefix else ""
             c2_5.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
@@ -325,7 +294,6 @@ def render(user: dict | None = None):
 
                 df = _sanitize(df, COLS if "COLS" in globals() else None)
 
-                # Armamos HH:MM seguro para registro
                 reg_fecha = st.session_state.get("fi_d")
                 reg_hora_obj = st.session_state.get("fi_t")
                 try:
