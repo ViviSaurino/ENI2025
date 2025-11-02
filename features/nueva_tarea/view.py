@@ -87,7 +87,7 @@ def render(user: dict | None = None):
       }
 
       /* Bajar el botón Agregar para alinearlo con la segunda fila */
-      #nt-card .btn-agregar{ margin-top:100px; } /* <- bajado un poco más */
+      #nt-card .btn-agregar{ margin-top:150px; } /* <- bajado un poco más */
       #nt-card .btn-agregar .stButton>button{
         min-height:38px !important; height:38px !important; border-radius:10px !important;
       }
