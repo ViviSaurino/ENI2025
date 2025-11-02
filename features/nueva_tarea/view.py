@@ -68,7 +68,7 @@ def render(user: dict | None = None):
 
       /* Píldora celeste con menos curvatura */
       .nt-pill{
-        width:100%; height:45px; border-radius:12px;
+        width:100%; height:38px; border-radius:12px;
         display:flex; align-items:center; justify-content:center;
         background:#A7C8F0; color:#ffffff; font-weight:700;
         box-shadow:0 6px 14px rgba(167,200,240,.35);
@@ -103,8 +103,11 @@ def render(user: dict | None = None):
     with c_pill:
         st.markdown('<div class="nt-pill"><span>📝 Nueva tarea</span></div>', unsafe_allow_html=True)
 
-    # — más espacio entre la píldora y la franja de ayuda (36px)
-    st.markdown("<div style='height:36px'></div>", unsafe_allow_html=True)
+    # ===== espaciado uniforme entre bloques =====
+    _NT_SPACE = 36  # <-- Ajusta este número y afecta ambos espacios por igual
+
+    # Espacio ENTRE píldora e indicaciones
+    st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
 
     # ---------- Sección principal ----------
     if st.session_state.get("nt_visible", True):
@@ -114,7 +117,8 @@ def render(user: dict | None = None):
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
+        # Espacio ENTRE indicaciones y la sección (igual que arriba)
+        st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
 
         submitted = False
 
