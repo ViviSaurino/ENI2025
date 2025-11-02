@@ -163,7 +163,7 @@ def google_login(
     # -------------- UI / portada --------------
     cfg = _get_oauth_cfg()
 
-    # CSS de portada (tu estilo)
+    # CSS de portada (ajustes para no cortar "VENIDOS" y separar botón)
     st.markdown(f"""
     <style>
       html, body {{ height:100%; overflow:hidden; }}
@@ -180,22 +180,29 @@ def google_login(
       }}
       [data-testid="stHorizontalBlock"]{{ height:100%; display:flex; align-items:center; gap: 8px !important; }}
 
-      :root{{ --left-w:{LEFT_W}px; --title-max:81px; --media-max:1000px; --stack-gap:10px; --title-bottom:10px; }}
+      :root{{ --left-w:{LEFT_W}px; --title-max:82px; --media-max:1000px; --stack-gap:14px; --title-bottom:10px; }}
       .left{{ width:var(--left-w); max-width:100%; }}
 
       .title{{
         width:var(--left-w); max-width:var(--left-w);
-        font-weight:930; color:#B38BE3; line-height:.92; letter-spacing:.10px;
+        font-weight:930; color:#B38BE3;
+        line-height:.92; letter-spacing:.10px;
         font-size: clamp(40px, calc(var(--left-w) * 0.38), var(--title-max)) !important;
         margin:0 0 var(--title-bottom) 0;
+        word-break: keep-all;       /* no romper palabras */
+        hyphens: none;              /* sin guiones automáticos */
       }}
-      .title .line{{ display:block; width:100%; word-break:break-word; overflow-wrap:anywhere; }}
+      .title .line{{
+        display:block; width:100%;
+        white-space: nowrap;        /* cada línea del título en una sola fila */
+      }}
 
       .cta{{ width:var(--left-w); display:flex; flex-direction:column; gap:var(--stack-gap); }}
       .pill{{
         width:var(--left-w); height:46px; display:flex; align-items:center; justify-content:center;
         border-radius:12px; background:#EEF2FF; border:1px solid #DBE4FF;
         color:#2B4C7E; font-weight:800; letter-spacing:.2px; font-size:16px;
+        margin-bottom:4px;           /* pequeño colchón extra respecto al botón */
       }}
 
       .left .stButton > button{{
