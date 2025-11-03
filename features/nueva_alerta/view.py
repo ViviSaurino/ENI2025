@@ -19,19 +19,15 @@ def _save_local(df: pd.DataFrame):
 
 def render(user: dict | None = None):
     # ================== Nueva alerta ==================
-    st.session_state.setdefault("na_visible", True)
-    chev3 = "▾" if st.session_state["na_visible"] else "▸"
+    st.session_state.setdefault("na_visible", True)  # siempre visible
 
-    # ---------- Barra superior ----------
+    # Proporciones (compartidas con el formulario para alinear la pastilla)
+    A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
+
+    # ---------- Barra superior (sin botón mostrar/ocultar) ----------
     st.markdown('<div class="topbar-na">', unsafe_allow_html=True)
-    c_toggle3, c_pill3 = st.columns([0.028, 0.965], gap="medium")
-    with c_toggle3:
-        st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
-        def _toggle_na():
-            st.session_state["na_visible"] = not st.session_state["na_visible"]
-        st.button(chev3, key="na_toggle_icon_v2", help="Mostrar/ocultar", on_click=_toggle_na)
-        st.markdown('</div>', unsafe_allow_html=True)
-    with c_pill3:
+    c_pill, _ = st.columns([A, Fw + T_width + D + R + C], gap="medium")
+    with c_pill:
         st.markdown('<div class="form-title-na">&nbsp;&nbsp;⚠️&nbsp;&nbsp;Nueva alerta</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
     # ---------- fin barra superior ----------
@@ -61,9 +57,6 @@ def render(user: dict | None = None):
           </div>
           <div class="form-card">
         """, unsafe_allow_html=True)
-
-        # Proporciones (igual que Editar estado)
-        A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
         # Base segura
         df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
