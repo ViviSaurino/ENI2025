@@ -90,7 +90,7 @@ def render(user: dict | None = None):
       .nt-outbtn .stButton>button{
         min-height:38px !important; height:38px !important; border-radius:10px !important;
       }
-      .nt-outbtn{ margin-top: 6px; }  /* ajusta si quieres más/menos cercanía al card */
+      .nt-outbtn{ margin-top: 6px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -148,9 +148,12 @@ def render(user: dict | None = None):
                 st.session_state.pop("fi_t")
 
             c2_1, c2_2, c2_3, c2_4, c2_5, _c2_6_dummy = st.columns([A, Fw, T, D, R, C], gap="medium")
-            c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría", key="nt_tipo")
-            c2_2.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
 
+            # (CAMBIO) Tipo de tarea ahora como selectbox con 'Otros'
+            TIPOS_TAREA_OPC = st.session_state.get("TIPOS_TAREA_OPC", ["— Selecciona —", "Otros"])
+            tipo_sel = c2_1.selectbox("Tipo de tarea", options=TIPOS_TAREA_OPC, index=0, key="nt_tipo")
+
+            c2_2.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
             c2_3.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
 
             _t = st.session_state.get("fi_t")
@@ -168,6 +171,18 @@ def render(user: dict | None = None):
             id_preview = (next_id_by_person(_df_tmp, st.session_state.get("nt_area", area),
                            st.session_state.get("nt_resp", "")) if st.session_state.get("fi_d") else f"{prefix}_")
             c2_5.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
+
+            # (NUEVO) FILA EXTRA SOLO SI Tipo de tarea = "Otros"
+            if (st.session_state.get("nt_tipo", "") or "").strip().lower() == "otros":
+                ex1, ex2, _ex3, _ex4, _ex5, _ex6 = st.columns([T, D, R, C, A, Fw], gap="medium")
+
+                # Complejidad con emojis
+                comp_opc = ["🟢 Baja", "🟡 Media", "🔴 Alta"]
+                ex1.selectbox("Complejidad", options=comp_opc, index=0, key="nt_complejidad")
+
+                # Duración 1–5 días (guardaremos el número)
+                dur_labels = [f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)]
+                ex2.selectbox("Duración", options=dur_labels, index=0, key="nt_duracion_label")
 
         # ——— Botón fuera del card, a la derecha, con el mismo ancho que C (Ciclo de mejora) ———
         left_space, right_btn = st.columns([A + Fw + T + D + R, C], gap="medium")
@@ -225,6 +240,16 @@ def render(user: dict | None = None):
                     "Ciclo de mejora": ciclo_mejora,
                     "Detalle": st.session_state.get("nt_detalle", ""),
                 })
+
+                # Agregar extras solo si Tipo = Otros
+                if (st.session_state.get("nt_tipo", "") or "").strip().lower() == "otros":
+                    new["Complejidad"] = st.session_state.get("nt_complejidad", "")
+                    # convertir "3 días" -> 3 (número)
+                    lbl = st.session_state.get("nt_duracion_label", "")
+                    try:
+                        new["Duración"] = int(str(lbl).split()[0])
+                    except Exception:
+                        new["Duración"] = ""
 
                 df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
                 df = _sanitize(df, COLS if "COLS" in globals() else None)
