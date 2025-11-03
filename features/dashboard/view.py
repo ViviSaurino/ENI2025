@@ -3,7 +3,8 @@ from __future__ import annotations
 import importlib
 import os
 import types
-import streamlit as st
+import pandas as pd
+import streamlit as st  # <-- FALTA ESTE IMPORT
 
 # ---------- Util: localizar la animación del héroe (se usa en portada si quisieras) ----------
 def _find_hero_asset() -> str | None:
