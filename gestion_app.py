@@ -38,7 +38,7 @@ st.markdown("""
     background:#C7A0FF !important;
     color:#FFFFFF !important;
     border:none !important;
-    border-radius:24px !important;
+    border-radius:12px !important; /* <- menos curvatura */
     font-weight:700 !important;
     box-shadow:0 6px 14px rgba(199,160,255,.35) !important;
   }
