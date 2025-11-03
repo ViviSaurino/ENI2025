@@ -1,8 +1,9 @@
-# ============================
+# ============================ 
 # Gestión — ENI2025 (App única)
 # ============================
 import streamlit as st
 import pandas as pd
+from pathlib import Path  # NEW
 
 from auth_google import google_login, logout
 from shared import (
@@ -10,6 +11,9 @@ from shared import (
     inject_global_css,
     ensure_df_main,
 )
+
+# Ruta del logo (pequeño, esquina superior izquierda del sidebar)
+LOGO_PATH = Path("assets/branding/eni2025_logo.png")  # NEW
 
 # ============ Config de página ============
 st.set_page_config(
@@ -57,6 +61,10 @@ email = st.session_state.get("user_email") or (st.session_state.get("user") or {
 
 # ============ Sidebar ============
 with st.sidebar:
+    # Logo arriba, pequeño
+    if LOGO_PATH.exists():
+        st.image(str(LOGO_PATH), width=120)
+
     st.markdown("<div class='eni-banner'>Esta es la plataforma unificada para gestión - ENI2025</div>", unsafe_allow_html=True)
 
     st.header("Secciones")
