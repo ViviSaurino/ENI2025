@@ -15,7 +15,7 @@ def render(user: dict | None = None):
     # ================== EDITAR ESTADO ==================
     st.session_state.setdefault("est_visible", True)  # siempre visible
 
-    # ---------- Barra superior (sin botón mostrar/ocultar) ----------
+    # ---------- Barra superior ----------
     st.markdown('<div class="topbar-eval">', unsafe_allow_html=True)
     st.markdown('<div class="form-title">✏️&nbsp;&nbsp;Editar estado</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
@@ -28,7 +28,12 @@ def render(user: dict | None = None):
         st.markdown("""
         <style>
           #est-section .stButton > button { width: 100% !important; }
-          #est-section .ag-header-cell-label{ font-weight: 400 !important; }
+          /* Encabezados más legibles: permiten salto de línea y mayor altura */
+          #est-section .ag-header-cell-label{
+            font-weight: 400 !important;
+            white-space: normal !important;   /* <-- permite que el título se parta en 2 líneas */
+            line-height: 1.15 !important;
+          }
           #est-section .ag-body-horizontal-scroll,
           #est-section .ag-center-cols-viewport { overflow-x: hidden !important; }
           .section-est .help-strip + .form-card{ margin-top: 6px !important; }
@@ -83,7 +88,7 @@ def render(user: dict | None = None):
             fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
             est_fase = c_fase.selectbox("Fase", ["Todas"] + fases_all, index=0)
 
-            # Responsable (dependiente de área/fase si existen)
+            # Responsable
             df_resp_src = df_all.copy()
             if est_area != "Todas" and "Área" in df_resp_src.columns:
                 df_resp_src = df_resp_src[df_resp_src["Área"].astype(str) == est_area]
@@ -206,7 +211,7 @@ def render(user: dict | None = None):
             fecha_from_estado[m4] = fr_can[m4];   hora_from_estado[m4] = hr_can[m4]
             fecha_from_estado[m5] = fr_eli[m5];   hora_from_estado[m5] = hr_eli[m5]
 
-            # Respetar valores existentes en "Fecha/Hora estado actual" si no están vacíos
+            # Respetar valores existentes
             fecha_estado_exist = pd.to_datetime(base["Fecha estado actual"], errors="coerce").dt.normalize()
             hora_estado_exist  = base["Hora estado actual"].astype(str)
 
@@ -293,9 +298,12 @@ def render(user: dict | None = None):
             domLayout="normal",
             ensureDomOrder=True,
             rowHeight=38,
-            headerHeight=42,
+            headerHeight=60,               # <-- más alto para que el texto envuelto no se corte
             suppressHorizontalScroll=True
         )
+        # Encabezados con salto de línea automático
+        gob.configure_default_column(wrapHeaderText=True, autoHeaderHeight=True)
+
         gob.configure_selection("single", use_checkbox=False)
 
         gob.configure_column(
@@ -307,8 +315,8 @@ def render(user: dict | None = None):
             cellStyle=estado_cell_style,
             minWidth=180
         )
-        gob.configure_column("Fecha estado modificado", editable=True, cellEditor=date_editor, minWidth=160)
-        gob.configure_column("Hora estado modificado",  editable=False, minWidth=140)
+        gob.configure_column("Fecha estado modificado", editable=True, cellEditor=date_editor, minWidth=170)
+        gob.configure_column("Hora estado modificado",  editable=False, minWidth=150)
 
         grid_opts = gob.build()
         grid_opts["onCellValueChanged"] = on_cell_changed.js_code
@@ -326,7 +334,7 @@ def render(user: dict | None = None):
             theme="balham"
         )
 
-        # ===== Guardar cambios (actualiza la MISMA fila por Id) =====
+        # ===== Guardar cambios =====
         u1, u2 = st.columns([A+Fw+T_width+D+R, C], gap="medium")
         with u2:
             if st.button("💾 Guardar", use_container_width=True, key="est_guardar_inline_v3"):
