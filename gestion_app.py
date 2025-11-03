@@ -104,65 +104,13 @@ section = st.session_state.get("nav_section", "🧰 Gestión de tareas")
 
 if section == "🧰 Gestión de tareas":
     st.title("🧰 Gestión de tareas")
-
-    # Pestañas como las que pediste (en el área principal)
-    tabs = st.tabs([
-        "➕ Nueva tarea",
-        "🛠️ Editar estado",
-        "🚨 Nueva alerta",
-        "🧭 Prioridad",
-        "📝 Evaluación",
-        "🕑 Tareas recientes",
-    ])
-
-    # ➕ Nueva tarea
-    with tabs[0]:
-        try:
-            from features.tasks.new_task import render as render_new_task
-            render_new_task(st.session_state.get("user"))
-        except Exception as e:
-            st.info("Vista 'Nueva tarea' no encontrada (features/tasks/new_task.py).")
-            st.exception(e)
-
-    # 🛠️ Editar estado
-    with tabs[1]:
-        try:
-            from features.tasks.edit_state import render as render_edit_state
-            render_edit_state(st.session_state.get("user"))
-        except Exception:
-            st.info("Vista 'Editar estado' pendiente (features/tasks/edit_state.py).")
-
-    # 🚨 Nueva alerta
-    with tabs[2]:
-        try:
-            from features.alerts.new import render as render_new_alert
-            render_new_alert(st.session_state.get("user"))
-        except Exception:
-            st.info("Vista 'Nueva alerta' pendiente (features/alerts/new.py).")
-
-    # 🧭 Prioridad
-    with tabs[3]:
-        try:
-            from features.tasks.priority import render as render_priority
-            render_priority(st.session_state.get("user"))
-        except Exception:
-            st.info("Vista 'Prioridad' pendiente (features/tasks/priority.py).")
-
-    # 📝 Evaluación
-    with tabs[4]:
-        try:
-            from features.tasks.evaluation import render as render_eval
-            render_eval(st.session_state.get("user"))
-        except Exception:
-            st.info("Vista 'Evaluación' pendiente (features/tasks/evaluation.py).")
-
-    # 🕑 Tareas recientes
-    with tabs[5]:
-        try:
-            from features.tasks.recent import render as render_recent
-            render_recent(st.session_state.get("user"))
-        except Exception:
-            st.info("Vista 'Tareas recientes' pendiente (features/tasks/recent.py).")
+    try:
+        # Reutilizamos la vista funcional del Dashboard
+        from features.dashboard.view import render_all
+        render_all(st.session_state.get("user"))
+    except Exception as e:
+        st.info("Vista de Gestión de tareas pendiente.")
+        st.exception(e)
 
 elif section == "🗂️ Kanban":
     st.title("🗂️ Kanban")
@@ -183,7 +131,7 @@ elif section == "📅 Gantt":
         st.exception(e)
 
 else:  # "📊 Dashboard"
-    st.title("📊 Dashboard")  # <- ajuste: ahora muestra Dashboard cuando corresponde
+    st.title("📊 Dashboard")  # <- muestra Dashboard cuando corresponde
     try:
         from features.dashboard.view import render_all
         render_all(st.session_state.get("user"))
