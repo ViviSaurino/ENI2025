@@ -184,7 +184,7 @@ elif section == "📅 Gantt":
         st.exception(e)
 
 else:  # "📊 Dashboard"
-    st.title("📊 Dashboard")
+    st.title("🧰 Gestión de tareas")  # <-- cambiado solo el título
     try:
         # Ya tenías este módulo
         from features.dashboard.view import render_all
