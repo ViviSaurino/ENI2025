@@ -158,7 +158,7 @@ def render(user: dict | None = None):
             # Estado fijo
             r2c2.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
 
-            # Obtener hora desde session_state y sincronizar campo visible
+            # Obtener hora desde session_state y sincronizar campo visible (valor inicial)
             _t = st.session_state.get("fi_t")
             _t_txt = ""
             if _t is not None:
@@ -166,9 +166,7 @@ def render(user: dict | None = None):
                     _t_txt = _t.strftime("%H:%M")
                 except Exception:
                     _t_txt = str(_t)
-
-            # Mantener el input deshabilitado sincronizado con la hora
-            st.session_state["fi_t_view"] = _t_txt
+            st.session_state["fi_t_view"] = _t_txt  # base
 
             # Prepara ID preview una sola vez
             _df_tmp = st.session_state.get("df_main", pd.DataFrame()).copy() if "df_main" in st.session_state else pd.DataFrame()
@@ -186,7 +184,26 @@ def render(user: dict | None = None):
                 dur_labels = [f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)]
                 r2c4.selectbox("Duración", options=dur_labels, index=0, key="nt_duracion_label")
 
+                # Fecha
                 r2c5.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
+                # --- Fuerza hora si la fecha es hoy, aunque no cambie ---
+                try:
+                    from datetime import datetime, date as _date
+                    _sel = st.session_state.get("fi_d")
+                    if _sel is not None:
+                        _sel_date = _sel if hasattr(_sel, "year") and not hasattr(_sel, "hour") else _sel.date()
+                        if _sel_date == datetime.now().date():
+                            now = datetime.now().replace(second=0, microsecond=0)
+                            st.session_state["fi_t"] = now.time()
+                except Exception:
+                    pass
+                # sincroniza vista antes de pintar
+                _t2 = st.session_state.get("fi_t")
+                try:
+                    st.session_state["fi_t_view"] = _t2.strftime("%H:%M") if _t2 else ""
+                except Exception:
+                    st.session_state["fi_t_view"] = str(_t2) if _t2 else ""
+
                 r2c6.text_input("Hora (auto)", key="fi_t_view", disabled=True,
                                 help="Se asigna al elegir la fecha")
 
@@ -197,6 +214,24 @@ def render(user: dict | None = None):
             else:
                 # Caso normal (dos filas): Tipo, Estado, Fecha, Hora, ID asignado, (vacío)
                 r2c3.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
+                # --- Fuerza hora si la fecha es hoy, aunque no cambie ---
+                try:
+                    from datetime import datetime, date as _date
+                    _sel = st.session_state.get("fi_d")
+                    if _sel is not None:
+                        _sel_date = _sel if hasattr(_sel, "year") and not hasattr(_sel, "hour") else _sel.date()
+                        if _sel_date == datetime.now().date():
+                            now = datetime.now().replace(second=0, microsecond=0)
+                            st.session_state["fi_t"] = now.time()
+                except Exception:
+                    pass
+                # sincroniza vista antes de pintar
+                _t2 = st.session_state.get("fi_t")
+                try:
+                    st.session_state["fi_t_view"] = _t2.strftime("%H:%M") if _t2 else ""
+                except Exception:
+                    st.session_state["fi_t_view"] = str(_t2) if _t2 else ""
+
                 r2c4.text_input("Hora (auto)", key="fi_t_view", disabled=True,
                                 help="Se asigna al elegir la fecha")
                 r2c5.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
