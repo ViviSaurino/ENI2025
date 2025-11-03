@@ -118,7 +118,6 @@ if section == "🧰 Gestión de tareas":
     # ➕ Nueva tarea
     with tabs[0]:
         try:
-            # Tu módulo actual de “Nueva tarea”
             from features.tasks.new_task import render as render_new_task
             render_new_task(st.session_state.get("user"))
         except Exception as e:
@@ -184,9 +183,8 @@ elif section == "📅 Gantt":
         st.exception(e)
 
 else:  # "📊 Dashboard"
-    st.title("🧰 Gestión de tareas")  # <-- cambiado solo el título
+    st.title("📊 Dashboard")  # <- ajuste: ahora muestra Dashboard cuando corresponde
     try:
-        # Ya tenías este módulo
         from features.dashboard.view import render_all
         render_all(st.session_state.get("user"))
     except Exception as e:
