@@ -48,7 +48,7 @@ except Exception:
 def render(user: dict | None = None):
     """Vista: ➕ Nueva tarea"""
 
-    # ===== CSS: inputs 100%, ocultar 'Sesión', espaciados y botón Agregar más abajo =====
+    # ===== CSS (oculta 'Sesión', inputs 100%, estilos y botón fuera del card) =====
     st.markdown("""
     <style>
       /* Ocultar el rótulo 'Sesión: ...' bajo el título (primer caption de la página) */
@@ -86,11 +86,11 @@ def render(user: dict | None = None):
         padding:10px 12px; border-radius:10px; font-size:0.92rem;
       }
 
-      /* Alinear el botón Agregar con la segunda fila usando espaciador (sin margin-top) */
-      #nt-card .btn-agregar{ margin-top:0 !important; }
-      #nt-card .btn-agregar .stButton>button{
+      /* Botón fuera del card: pequeño margen superior para respirito visual */
+      .nt-outbtn .stButton>button{
         min-height:38px !important; height:38px !important; border-radius:10px !important;
       }
+      .nt-outbtn{ margin-top: 6px; }  /* ajusta si quieres más/menos cercanía al card */
     </style>
     """, unsafe_allow_html=True)
 
@@ -102,7 +102,7 @@ def render(user: dict | None = None):
     st.session_state.setdefault("nt_visible", True)
 
     # ===== espaciado uniforme entre bloques =====
-    _NT_SPACE = 36  # mismo valor para: pestañas↔píldora, píldora↔indicaciones, indicaciones↔sección
+    _NT_SPACE = 36  # pestañas↔píldora, píldora↔indicaciones, indicaciones↔sección
 
     # Espacio ENTRE pestañas y la píldora
     st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
@@ -127,14 +127,11 @@ def render(user: dict | None = None):
         # Espacio ENTRE indicaciones y la sección
         st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
 
-        submitted = False
-
-        # Envoltorio con id="nt-card" para apuntar el CSS (container sin key)
-        st.markdown('<div id="nt-card">', unsafe_allow_html=True)
+        # ——— Campos dentro del card (rectángulo plomo) ———
         with st.container(border=True):
             st.markdown('<span id="nt-card-sentinel"></span>', unsafe_allow_html=True)
 
-            # ---------- FILA 1 ----------
+            # FILA 1
             r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
             area = r1c1.selectbox("Área", options=AREAS_OPC, index=0, key="nt_area")
             FASES = ["Capacitación","Post-capacitación","Pre-consistencia","Consistencia","Operación de campo"]
@@ -144,59 +141,40 @@ def render(user: dict | None = None):
             r1c5.text_input("Responsable", placeholder="Nombre", key="nt_resp")
             ciclo_mejora = r1c6.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
 
-            # ---------- FILA 2 ----------
-            # Limpieza de estados previos (si quedaron None)
+            # FILA 2
             if st.session_state.get("fi_d", "___MISSING___") is None:
                 st.session_state.pop("fi_d")
             if st.session_state.get("fi_t", "___MISSING___") is None:
                 st.session_state.pop("fi_t")
 
-            c2_1, c2_2, c2_3, c2_4, c2_5, c2_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
+            c2_1, c2_2, c2_3, c2_4, c2_5, _c2_6_dummy = st.columns([A, Fw, T, D, R, C], gap="medium")
+            c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría", key="nt_tipo")
+            c2_2.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
 
-            # ↓↓↓ Baja SOLO los campos de la fila 2 (columnas 1-5)
-            ROW2_TOP_PAD = 10  # ajusta aquí para afinar la alineación con el botón
+            c2_3.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
 
-            with c2_1:
-                st.markdown(f"<div style='height:{ROW2_TOP_PAD}px'></div>", unsafe_allow_html=True)
-                st.text_input("Tipo de tarea", placeholder="Tipo o categoría", key="nt_tipo")
+            _t = st.session_state.get("fi_t")
+            _t_txt = ""
+            if _t is not None:
+                try:
+                    _t_txt = _t.strftime("%H:%M")
+                except Exception:
+                    _t_txt = str(_t)
+            c2_4.text_input("Hora (auto)", value=_t_txt, disabled=True,
+                            help="Se asigna al elegir la fecha", key="fi_t_view")
 
-            with c2_2:
-                st.markdown(f"<div style='height:{ROW2_TOP_PAD}px'></div>", unsafe_allow_html=True)
-                st.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
+            _df_tmp = st.session_state.get("df_main", pd.DataFrame()).copy() if "df_main" in st.session_state else pd.DataFrame()
+            prefix = make_id_prefix(st.session_state.get("nt_area", area), st.session_state.get("nt_resp", ""))
+            id_preview = (next_id_by_person(_df_tmp, st.session_state.get("nt_area", area),
+                           st.session_state.get("nt_resp", "")) if st.session_state.get("fi_d") else f"{prefix}_")
+            c2_5.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
 
-            with c2_3:
-                st.markdown(f"<div style='height:{ROW2_TOP_PAD}px'></div>", unsafe_allow_html=True)
-                st.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
-
-            with c2_4:
-                st.markdown(f"<div style='height:{ROW2_TOP_PAD}px'></div>", unsafe_allow_html=True)
-                _t = st.session_state.get("fi_t")
-                _t_txt = ""
-                if _t is not None:
-                    try:
-                        _t_txt = _t.strftime("%H:%M")
-                    except Exception:
-                        _t_txt = str(_t)
-                st.text_input("Hora (auto)", value=_t_txt, disabled=True,
-                              help="Se asigna al elegir la fecha", key="fi_t_view")
-
-            with c2_5:
-                st.markdown(f"<div style='height:{ROW2_TOP_PAD}px'></div>", unsafe_allow_html=True)
-                _df_tmp = st.session_state.get("df_main", pd.DataFrame()).copy() if "df_main" in st.session_state else pd.DataFrame()
-                prefix = make_id_prefix(st.session_state.get("nt_area", area), st.session_state.get("nt_resp", ""))
-                id_preview = (next_id_by_person(_df_tmp, st.session_state.get("nt_area", area),
-                               st.session_state.get("nt_resp", "")) if st.session_state.get("fi_d") else f"{prefix}_")
-                st.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
-
-            # Botón Agregar (columna 6) — se mantiene con micro-ajuste independiente
-            with c2_6:
-                st.markdown('<div class="btn-agregar">', unsafe_allow_html=True)
-                BTN_OFFSET_PX = 16  # micro-ajuste del botón (si hiciera falta)
-                st.markdown(f"<div style='height:{BTN_OFFSET_PX}px'></div>", unsafe_allow_html=True)
-                submitted = st.button("➕ Agregar", use_container_width=True, key="btn_agregar")
-                st.markdown('</div>', unsafe_allow_html=True)
-
-        st.markdown('</div>', unsafe_allow_html=True)  # cierra #nt-card
+        # ——— Botón fuera del card, a la derecha, con el mismo ancho que C (Ciclo de mejora) ———
+        left_space, right_btn = st.columns([A + Fw + T + D + R, C], gap="medium")
+        with right_btn:
+            st.markdown('<div class="nt-outbtn">', unsafe_allow_html=True)
+            submitted = st.button("➕ Agregar", use_container_width=True, key="btn_agregar")
+            st.markdown('</div>', unsafe_allow_html=True)
 
         # ---------- Guardado ----------
         if submitted:
