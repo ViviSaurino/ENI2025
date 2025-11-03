@@ -49,6 +49,10 @@ st.markdown("""
   section[data-testid="stSidebar"] .stButton > button:hover{
     filter:brightness(0.95);
   }
+  /* NEW: Llevar el logo un poco más a la izquierda */
+  section[data-testid="stSidebar"] .eni-logo-wrap{
+    margin-left:-8px;  /* ajusta si quieres más/menos */
+  }
 </style>
 """, unsafe_allow_html=True)
 
@@ -61,9 +65,11 @@ email = st.session_state.get("user_email") or (st.session_state.get("user") or {
 
 # ============ Sidebar ============
 with st.sidebar:
-    # Logo arriba, pequeño
+    # Logo arriba, pequeño, con ajuste de margen a la izquierda
     if LOGO_PATH.exists():
+        st.markdown("<div class='eni-logo-wrap'>", unsafe_allow_html=True)
         st.image(str(LOGO_PATH), width=120)
+        st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("<div class='eni-banner'>Esta es la plataforma unificada para gestión - ENI2025</div>", unsafe_allow_html=True)
 
