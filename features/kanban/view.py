@@ -1,14 +1,19 @@
 # features/kanban/view.py
 from __future__ import annotations
 
-from datetime import datetime
 import re
+from datetime import datetime
+from typing import Dict, List
+
 import pandas as pd
 import streamlit as st
+import matplotlib.pyplot as plt
 
 __all__ = ["render"]
 
-# ====== Helpers ======
+# =========================
+# Utilitarios
+# =========================
 def _to_date(v):
     if pd.isna(v):
         return pd.NaT
@@ -20,12 +25,11 @@ def _to_date(v):
         except Exception:
             return pd.NaT
 
-
 def _classify_estado(raw: str) -> str:
     s = (str(raw) or "").strip().lower()
-    if s in {"en curso", "en progreso"}:
+    if s in {"en curso", "en progreso", "progreso"}:
         return "En curso"
-    if s in {"terminado", "finalizado"}:
+    if s in {"terminado", "finalizado", "completado"}:
         return "Terminado"
     if s in {"pausado"}:
         return "Pausado"
@@ -35,18 +39,86 @@ def _classify_estado(raw: str) -> str:
         return "Eliminado"
     return "No iniciado"
 
-
-def _render_col(title: str, color_bg: str, cards: list[dict], accent: str | None = None):
+# =========================
+# UI helpers
+# =========================
+def _emit_css():
     st.markdown(
-        f"""
-        <div class="kan-col" style="--col-bg:{color_bg}; --col-ac:{accent or 'transparent'};">
-            <div class="kan-col__head">
-                <div class="kan-col__title">{title}</div>
-                <div class="kan-col__count">{len(cards)}</div>
-            </div>
+        """
+        <style>
+        /* ===== Paleta pastel ===== */
+        :root{
+          /* principales */
+          --blue-soft:#EAF4FF;   --blue-ac:#7BB5FF;
+          --green-soft:#E9FFF5;  --green-ac:#6ED3B6;
+          --pink-soft:#FFEAF4;   --pink-ac:#F6A6C1;
+          /* secundarios (ver más) */
+          --yellow-soft:#FFF8CC; --yellow-ac:#F7DA63;
+          --orange-soft:#FFE9D6; --orange-ac:#FFBF8C;
+          --red-soft:#FFE3E3;    --red-ac:#FF9AA2;
+          --text-600:#374151; --text-500:#4B5563; --muted:#6B7280;
+          --card:#FFFFFF; --border:rgba(0,0,0,.08); --shadow:0 1px 2px rgba(0,0,0,.06);
+        }
+
+        /* ===== Filtros ===== */
+        .kan-filters [data-testid="column"]>div{ display:flex; align-items:end; }
+        .kan-filters .stButton>button{ height:38px !important; border-radius:10px !important; }
+
+        /* ===== Donut card ===== */
+        .kan-donut{
+          background:var(--card); border:1px solid var(--border);
+          border-radius:14px; padding:12px; box-shadow:var(--shadow); margin-top:6px;
+        }
+
+        /* ===== Kanban ===== */
+        .kan-row{ display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; }
+        .kan-row--more{ margin-top:18px; }
+
+        .kan-col{
+          background:var(--col-bg); border:1px solid var(--border);
+          border-radius:14px; padding:10px; box-shadow:var(--shadow);
+          border-left:6px solid var(--col-ac);   /* acento lateral como el modelo */
+        }
+        .kan-col__head{
+          display:flex; align-items:center; justify-content:space-between;
+          padding:6px 6px 8px 6px;
+        }
+        .kan-col__title{ font-weight:700; color:var(--text-600); font-size:0.98rem; display:flex; gap:8px; align-items:center;}
+        .kan-col__right{ display:flex; gap:8px; align-items:center; color:var(--muted); }
+        .kan-col__pill{ background:#fff; border:1px solid var(--border); border-radius:999px; padding:2px 10px; font-size:.82rem; color:var(--text-500); }
+        .kan-col__pct{ font-size:.82rem; opacity:.8; }
+
+        .kan-card{
+          background:#fff; border:1px solid var(--border);
+          border-radius:12px; padding:10px 12px; margin:10px 4px 0 4px; box-shadow:var(--shadow);
+        }
+        .kan-card--empty{ color:#8a8f98; font-style:italic; text-align:center; padding:14px; }
+
+        .chip{ display:inline-block; padding:3px 8px; border-radius:999px; font-size:.75rem;
+               background:#f3f4f6; color:#4b5563; border:1px solid #e5e7eb; }
+        </style>
         """,
         unsafe_allow_html=True,
     )
+
+def _column_header(title: str, icon: str, total: int, pct: float):
+    st.markdown(
+        f"""
+        <div class="kan-col__head">
+          <div class="kan-col__title">{icon} {title}</div>
+          <div class="kan-col__right">
+            <div class="kan-col__pill">{total}</div>
+            <div class="kan-col__pct">{pct:.1f}%</div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+def _render_col(title: str, icon: str, color_bg: str, color_ac: str, cards: List[Dict]):
+    st.markdown(f'<div class="kan-col" style="--col-bg:{color_bg}; --col-ac:{color_ac};">', unsafe_allow_html=True)
+    _column_header(title, icon, len(cards), pct=0.0)  # pct será sobrescrito por el caller
+    st.markdown("<!-- body -->", unsafe_allow_html=True)
     if not cards:
         st.markdown('<div class="kan-card kan-card--empty">Sin tareas</div>', unsafe_allow_html=True)
     else:
@@ -55,134 +127,86 @@ def _render_col(title: str, color_bg: str, cards: list[dict], accent: str | None
             resp = (c.get("Responsable") or "").strip()
             area = (c.get("Área") or "").strip()
             fase = (c.get("Fase") or "").strip()
-            venc_f = c.get("Fecha Vencimiento")
-            venc_h = c.get("Hora Vencimiento")
+            v_f = c.get("Fecha Vencimiento")
+            v_h = c.get("Hora Vencimiento")
             venc_txt = ""
-            if pd.notna(venc_f):
-                venc_txt = f"{pd.to_datetime(venc_f).date().isoformat()}"
-                if isinstance(venc_h, str) and re.match(r"^\\d{1,2}:\\d{2}$", venc_h or ""):
-                    venc_txt += f" · {venc_h}"
+            if pd.notna(v_f):
+                try:
+                    venc_txt = f"{pd.to_datetime(v_f).date().isoformat()}"
+                except Exception:
+                    pass
+            if isinstance(v_h, str) and re.match(r"^\\d{1,2}:\\d{2}$", v_h or ""):
+                venc_txt = (venc_txt + f" · {v_h}").strip(" ·")
             meta = " · ".join([x for x in [resp, area or None, fase or None] if x])
-            chips = f'<span class="chip">{venc_txt}</span>' if venc_txt else ""
+
             st.markdown(
                 f"""
                 <div class="kan-card">
-                  <div class="kan-card__title">{title}</div>
-                  <div class="kan-card__meta">{meta}</div>
-                  <div class="kan-card__chips">{chips}</div>
+                  <div style="font-weight:600; color:var(--text-600); margin-bottom:4px;">{title}</div>
+                  <div style="font-size:.82rem; color:#6b7280; margin-bottom:6px;">{meta}</div>
+                  <div class="chip">{venc_txt or "Sin vencimiento"}</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
     st.markdown("</div>", unsafe_allow_html=True)
 
+def _donut_chart(summary: Dict[str, int], palette: Dict[str, str]):
+    total = sum(summary.values()) or 1
+    labels = []
+    sizes = []
+    colors = []
+    for k in ["No iniciado", "En curso", "Terminado"]:
+        labels.append(k)
+        sizes.append(summary.get(k, 0))
+        colors.append(palette[k])
 
-def render(user: dict | None = None) -> None:
-    # ===== CSS =====
-    st.markdown(
-        """
-        <style>
-        /* ----- Filtros (misma altura y alineados) ----- */
-        .kan-filters .stButton>button{
-            height:38px !important; border-radius:10px !important; margin-top:0 !important;
-        }
-        .kan-filters [data-testid="column"]>div{ display:flex; align-items:end; }
+    # Evitar division por cero en autopct y ocultar 0%
+    def _fmt(pct):
+        return (f"{pct:.1f}%" if pct > 0 else "")
 
-        /* ----- Paleta pastel solicitada ----- */
-        :root{
-          /* principales */
-          --blue-soft:#EAF4FF;   /* celeste claro visible */
-          --blue-ac:#B6D7FF;
-          --green-soft:#E9FFF5;  /* verde claro */
-          --green-ac:#A6F0CD;
-          --pink-soft:#FFEAF4;   /* rosado claro */
-          --pink-ac:#FFBEDA;
-
-          /* secundarios (ver más) */
-          --yellow-soft:#FFF8CC; /* pausado */
-          --yellow-ac:#F7DA63;
-          --orange-soft:#FFE9D6; /* cancelado */
-          --orange-ac:#FFBF8C;
-          --red-soft:#FFE3E3;    /* eliminado */
-          --red-ac:#FF9AA2;
-        }
-
-        /* ----- Kanban layout ----- */
-        .kan-row{
-          display:grid; grid-template-columns:repeat(3, 1fr); gap:16px;
-        }
-        .kan-row--more{ margin-top:18px; }
-        .kan-col{
-          background:var(--col-bg);
-          border-radius:14px; padding:10px;
-          box-shadow:0 1px 2px rgba(0,0,0,.06);
-          border:1px solid rgba(0,0,0,.06);
-          border-left:6px solid var(--col-ac);   /* acento visible */
-        }
-        .kan-col__head{
-          display:flex; align-items:center; justify-content:space-between;
-          padding:4px 6px 8px 6px; font-weight:600;
-        }
-        .kan-col__title{ font-size:0.98rem; opacity:.85; }
-        .kan-col__count{
-          background:#fff; border-radius:999px; min-width:28px; height:24px; 
-          display:grid; place-items:center; font-size:.8rem; padding:0 8px;
-          box-shadow:0 1px 1px rgba(0,0,0,.05);
-        }
-        .kan-card{
-          background:#fff; border-radius:12px; padding:10px 12px; margin:10px 4px 0 4px;
-          box-shadow:0 1px 2px rgba(0,0,0,.05);
-        }
-        .kan-card--empty{
-          color:#8a8f98; font-style:italic; text-align:center; padding:14px; margin:8px 4px 0 4px;
-        }
-        .kan-card__title{ font-size:.93rem; font-weight:600; margin-bottom:4px; }
-        .kan-card__meta{ font-size:.82rem; color:#6b7280; margin-bottom:6px; }
-        .kan-card__chips{ display:flex; gap:6px; flex-wrap:wrap; }
-        .chip{
-          display:inline-block; padding:3px 8px; border-radius:999px; font-size:.75rem;
-          background:#f3f4f6; color:#4b5563; border:1px solid #e5e7eb;
-        }
-        .kan-toggle{ margin-top:6px; }
-        </style>
-        """,
-        unsafe_allow_html=True,
+    fig, ax = plt.subplots(figsize=(4.8, 4.0))
+    wedges, _ = ax.pie(
+        sizes,
+        colors=colors,
+        startangle=90,
+        wedgeprops=dict(width=0.38, edgecolor="white")
     )
+    ax.set(aspect="equal")
+    ax.text(0, 0, f"{total}\nTareas", ha="center", va="center", fontsize=11, color="#111")
+    # Leyenda a la derecha
+    legend_labels = [f"{lbl}: {summary.get(lbl,0)}" for lbl in labels]
+    ax.legend(wedges, legend_labels, loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False)
+    st.pyplot(fig, clear_figure=True)
 
-    # ===== Datos base =====
+# =========================
+# Render principal
+# =========================
+def render(user: dict | None = None):
+    _emit_css()
+
+    st.markdown("<h2>📑 Kanban</h2>", unsafe_allow_html=True)
+
+    # ------- Datos base -------
     if "df_main" in st.session_state and isinstance(st.session_state["df_main"], pd.DataFrame):
         df = st.session_state["df_main"].copy()
     else:
-        df = pd.DataFrame(
-            {
-                "Id": [1, 2, 3, 4, 5, 6],
-                "Área": ["Gestión", "Metodología", "Gestión", "Monitoreo", "Capacitación", "Gestión"],
-                "Fase": ["Diseño", "Validación", "Diseño", "Ejecución", "Cierre", "Diseño"],
-                "Responsable": ["Vivi", "Stephany", "Carmen", "Ketty", "Margot", "Vivi"],
-                "Tarea": [
-                    "Definir indicadores",
-                    "Ajustar instrumento",
-                    "Revisión ROF",
-                    "Carga dashboard",
-                    "Informe cierre",
-                    "Reunión interna",
-                ],
-                "Fecha inicio": ["2025-10-01","2025-10-03","2025-10-10","2025-10-15","2025-10-20","2025-10-25"],
-                "Fecha Vencimiento": ["2025-11-10"] * 6,
-                "Hora Vencimiento": ["17:00"] * 6,
-                "Estado": ["No iniciado", "En curso", "No iniciado", "Terminado", "Pausado", "Cancelado"],
-            }
-        )
+        # Dataset vacío/ficticio para estructura
+        df = pd.DataFrame(columns=[
+            "Id","Área","Fase","Responsable","Tarea","Fecha inicio","Fecha Vencimiento","Hora Vencimiento","Estado"
+        ])
 
+    # Normalizar estado
     if "Estado" not in df.columns:
         df["Estado"] = ""
     df["__Estado__"] = df["Estado"].map(_classify_estado)
 
+    # Fecha de filtrado (prioriza 'Fecha inicio' y luego 'Fecha Registro')
     date_col = "Fecha inicio" if "Fecha inicio" in df.columns else ("Fecha Registro" if "Fecha Registro" in df.columns else None)
     if date_col:
         df[date_col] = df[date_col].map(_to_date)
 
-    # ===== FILTROS =====
+    # ------- Filtros -------
     with st.form("kanban_filters", clear_on_submit=False):
         st.markdown('<div class="kan-filters">', unsafe_allow_html=True)
         cA, cF, cR, cD, cH, cB = st.columns([1.8, 2.1, 3.0, 1.6, 1.4, 1.2], gap="medium", vertical_alignment="bottom")
@@ -190,16 +214,17 @@ def render(user: dict | None = None) -> None:
         area_sel = cA.selectbox("Área", ["Todas"] + sorted([x for x in df.get("Área", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"]), index=0)
         fase_sel = cF.selectbox("Fase", ["Todas"] + sorted([x for x in df.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"]), index=0)
 
-        _df_r = df.copy()
-        if area_sel != "Todas" and "Área" in _df_r.columns:
-            _df_r = _df_r[_df_r["Área"] == area_sel]
-        if fase_sel != "Todas" and "Fase" in _df_r.columns:
-            _df_r = _df_r[_df_r["Fase"].astype(str) == fase_sel]
-        resp_opts = ["Todos"] + sorted([x for x in _df_r.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+        df_r = df.copy()
+        if area_sel != "Todas" and "Área" in df_r.columns:
+            df_r = df_r[df_r["Área"] == area_sel]
+        if fase_sel != "Todas" and "Fase" in df_r.columns:
+            df_r = df_r[df_r["Fase"].astype(str) == fase_sel]
+        resp_opts = ["Todos"] + sorted([x for x in df_r.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
         resp_sel = cR.selectbox("Responsable", resp_opts, index=0)
 
         f_desde = cD.date_input("Desde", value=None)
         f_hasta = cH.date_input("Hasta", value=None)
+
         do_search = cB.form_submit_button("🔎 Buscar", use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -217,35 +242,95 @@ def render(user: dict | None = None) -> None:
             if f_hasta:
                 df_view = df_view[df_view[date_col].dt.date <= f_hasta]
 
-    # ===== KANBAN =====
-    # (bg, accent)
-    colors_primary = {
-        "No iniciado": ("var(--blue-soft)", "var(--blue-ac)"),
-        "En curso": ("var(--green-soft)", "var(--green-ac)"),
-        "Terminado": ("var(--pink-soft)", "var(--pink-ac)"),
-    }
-    colors_more = {
-        "Pausado": ("var(--yellow-soft)", "var(--yellow-ac)"),
-        "Cancelado": ("var(--orange-soft)", "var(--orange-ac)"),
-        "Eliminado": ("var(--red-soft)", "var(--red-ac)"),
+    # ------- Resumen por estado -------
+    main_states = ["No iniciado", "En curso", "Terminado"]
+    extra_states = ["Pausado", "Cancelado", "Eliminado"]
+
+    counts = df_view["__Estado__"].value_counts().to_dict() if len(df_view) else {}
+    total = sum(counts.get(s, 0) for s in main_states + extra_states) or 1
+
+    # Paleta para donut (fondos de las columnas principales)
+    palette_for_donut = {
+        "No iniciado": "#B6D7FF",  # usar el acento (un poco más saturado para la dona)
+        "En curso": "#6ED3B6",
+        "Terminado": "#F6A6C1",
     }
 
-    buckets = {k: [] for k in list(colors_primary.keys()) + list(colors_more.keys())}
+    # ------- Dona arriba del tablero -------
+    st.markdown('<div class="kan-donut">', unsafe_allow_html=True)
+    st.markdown("**Distribución por estado (∑ principales)**")
+    _donut_chart({k: counts.get(k, 0) for k in main_states}, palette_for_donut)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # ------- Construcción de buckets -------
+    buckets = {k: [] for k in main_states + extra_states}
     for _, row in df_view.iterrows():
         k = _classify_estado(row.get("Estado", ""))
         buckets.setdefault(k, [])
         buckets[k].append(row.to_dict())
 
+    # ------- Kanban: 3 principales -------
     st.markdown('<div class="kan-row">', unsafe_allow_html=True)
     cols = st.columns(3)
-    for col, k in zip(cols, colors_primary.keys()):
+
+    main_colors = {
+        "No iniciado": ("var(--blue-soft)", "var(--blue-ac)", "⏳"),
+        "En curso": ("var(--green-soft)", "var(--green-ac)", "🚀"),
+        "Terminado": ("var(--pink-soft)", "var(--pink-ac)", "✅"),
+    }
+
+    for col, k in zip(cols, main_states):
         with col:
-            bg, ac = colors_primary[k]
-            _render_col(k, bg, buckets.get(k, []), accent=ac)
+            bg, ac, ico = main_colors[k]
+            # render columna
+            st.markdown(f'<div class="kan-col" style="--col-bg:{bg}; --col-ac:{ac};">', unsafe_allow_html=True)
+            pct = 100.0 * (counts.get(k, 0) / total) if total else 0.0
+            st.markdown(
+                f"""
+                <div class="kan-col__head">
+                  <div class="kan-col__title">{ico} {k}</div>
+                  <div class="kan-col__right">
+                    <div class="kan-col__pill">{counts.get(k,0)}</div>
+                    <div class="kan-col__pct">{pct:.1f}%</div>
+                  </div>
+                </div>
+                """, unsafe_allow_html=True
+            )
+            # body
+            if not buckets[k]:
+                st.markdown('<div class="kan-card kan-card--empty">Sin tareas</div>', unsafe_allow_html=True)
+            else:
+                for c in buckets[k]:
+                    title = (c.get("Tarea") or "").strip() or "(sin título)"
+                    resp = (c.get("Responsable") or "").strip()
+                    area = (c.get("Área") or "").strip()
+                    fase = (c.get("Fase") or "").strip()
+                    v_f = c.get("Fecha Vencimiento")
+                    v_h = c.get("Hora Vencimiento")
+                    vtxt = ""
+                    if pd.notna(v_f):
+                        try: vtxt = f"{pd.to_datetime(v_f).date().isoformat()}"
+                        except Exception: pass
+                    if isinstance(v_h, str) and re.match(r"^\\d{1,2}:\\d{2}$", v_h or ""):
+                        vtxt = (vtxt + f" · {v_h}").strip(" ·")
+                    meta = " · ".join([x for x in [resp, area or None, fase or None] if x])
+                    st.markdown(
+                        f"""
+                        <div class="kan-card">
+                          <div style="font-weight:600; color:var(--text-600); margin-bottom:4px;">{title}</div>
+                          <div style="font-size:.82rem; color:#6b7280; margin-bottom:6px;">{meta}</div>
+                          <div class="chip">{vtxt or "Sin vencimiento"}</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+            st.markdown("</div>", unsafe_allow_html=True)  # fin columna
+
     st.markdown("</div>", unsafe_allow_html=True)
 
+    # ------- Ver más -------
     show_more = st.session_state.get("kanban_show_more", False)
-    if st.button("Ver más" if not show_more else "Ocultar", key="kan_show_more_btn"):
+    if st.button("Ver más" if not show_more else "Ocultar"):
         st.session_state["kanban_show_more"] = not show_more
         st.rerun()
     show_more = st.session_state.get("kanban_show_more", False)
@@ -253,8 +338,44 @@ def render(user: dict | None = None) -> None:
     if show_more:
         st.markdown('<div class="kan-row kan-row--more">', unsafe_allow_html=True)
         cols2 = st.columns(3)
-        for col, k in zip(cols2, colors_more.keys()):
+        extra_colors = {
+            "Pausado": ("var(--yellow-soft)", "var(--yellow-ac)", "⏸️"),
+            "Cancelado": ("var(--orange-soft)", "var(--orange-ac)", "🛑"),
+            "Eliminado": ("var(--red-soft)", "var(--red-ac)", "🗑️"),
+        }
+        for col, k in zip(cols2, extra_states):
             with col:
-                bg, ac = colors_more[k]
-                _render_col(k, bg, buckets.get(k, []), accent=ac)
+                bg, ac, ico = extra_colors[k]
+                st.markdown(f'<div class="kan-col" style="--col-bg:{bg}; --col-ac:{ac};">', unsafe_allow_html=True)
+                pct = 100.0 * (counts.get(k, 0) / total) if total else 0.0
+                st.markdown(
+                    f"""
+                    <div class="kan-col__head">
+                      <div class="kan-col__title">{ico} {k}</div>
+                      <div class="kan-col__right">
+                        <div class="kan-col__pill">{counts.get(k,0)}</div>
+                        <div class="kan-col__pct">{pct:.1f}%</div>
+                      </div>
+                    </div>
+                    """, unsafe_allow_html=True
+                )
+                if not buckets[k]:
+                    st.markdown('<div class="kan-card kan-card--empty">Sin tareas</div>', unsafe_allow_html=True)
+                else:
+                    for c in buckets[k]:
+                        title = (c.get("Tarea") or "").strip() or "(sin título)"
+                        resp = (c.get("Responsable") or "").strip()
+                        area = (c.get("Área") or "").strip()
+                        fase = (c.get("Fase") or "").strip()
+                        meta = " · ".join([x for x in [resp, area or None, fase or None] if x])
+                        st.markdown(
+                            f"""
+                            <div class="kan-card">
+                              <div style="font-weight:600; color:var(--text-600); margin-bottom:4px;">{title}</div>
+                              <div style="font-size:.82rem; color:#6b7280; margin-bottom:6px;">{meta}</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+                st.markdown("</div>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
