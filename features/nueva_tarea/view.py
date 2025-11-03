@@ -39,10 +39,20 @@ except Exception:
     COLS = None
     SECTION_GAP = 30
 
+    # --- Hora local America/Lima ---
+    try:
+        from zoneinfo import ZoneInfo
+        _LIMA = ZoneInfo("America/Lima")
+        def _now_local():
+            return datetime.now(_LIMA).replace(second=0, microsecond=0)
+    except Exception:
+        # Fallback si zoneinfo no está disponible
+        def _now_local():
+            return datetime.now().replace(second=0, microsecond=0)
+
     def _auto_time_on_date():
-        # al elegir fecha, guardar hora actual (minutos) en session_state
-        from datetime import datetime
-        now = datetime.now().replace(second=0, microsecond=0)
+        # al elegir fecha, guardar hora local (minutos) en session_state
+        now = _now_local()
         st.session_state["fi_t"] = now.time()
 
 # ==========================================================================
@@ -186,15 +196,13 @@ def render(user: dict | None = None):
 
                 # Fecha
                 r2c5.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
-                # --- Fuerza hora si la fecha es hoy, aunque no cambie ---
+                # --- Fuerza hora local si la fecha es hoy, aunque no cambie ---
                 try:
-                    from datetime import datetime, date as _date
                     _sel = st.session_state.get("fi_d")
                     if _sel is not None:
                         _sel_date = _sel if hasattr(_sel, "year") and not hasattr(_sel, "hour") else _sel.date()
-                        if _sel_date == datetime.now().date():
-                            now = datetime.now().replace(second=0, microsecond=0)
-                            st.session_state["fi_t"] = now.time()
+                        if _sel_date == _now_local().date():
+                            st.session_state["fi_t"] = _now_local().time()
                 except Exception:
                     pass
                 # sincroniza vista antes de pintar
@@ -214,15 +222,13 @@ def render(user: dict | None = None):
             else:
                 # Caso normal (dos filas): Tipo, Estado, Fecha, Hora, ID asignado, (vacío)
                 r2c3.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
-                # --- Fuerza hora si la fecha es hoy, aunque no cambie ---
+                # --- Fuerza hora local si la fecha es hoy, aunque no cambie ---
                 try:
-                    from datetime import datetime, date as _date
                     _sel = st.session_state.get("fi_d")
                     if _sel is not None:
                         _sel_date = _sel if hasattr(_sel, "year") and not hasattr(_sel, "hour") else _sel.date()
-                        if _sel_date == datetime.now().date():
-                            now = datetime.now().replace(second=0, microsecond=0)
-                            st.session_state["fi_t"] = now.time()
+                        if _sel_date == _now_local().date():
+                            st.session_state["fi_t"] = _now_local().time()
                 except Exception:
                     pass
                 # sincroniza vista antes de pintar
