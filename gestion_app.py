@@ -131,10 +131,7 @@ elif section == "📅 Gantt":
         st.exception(e)
 
 else:  # "📊 Dashboard"
-    st.title("📊 Dashboard")  # <- muestra Dashboard cuando corresponde
-    try:
-        from features.dashboard.view import render_all
-        render_all(st.session_state.get("user"))
-    except Exception as e:
-        st.info("Vista Dashboard pendiente (features/dashboard/view.py).")
-        st.exception(e)
+    st.title("📊 Dashboard")
+    # 🔹 Por ahora no hay contenido; dejamos la sección en blanco con un placeholder suave
+    st.caption("Próximamente: visualizaciones y KPIs del dashboard.")
+    st.write("")  # espacio en blanco
