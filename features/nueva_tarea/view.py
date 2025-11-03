@@ -40,6 +40,8 @@ except Exception:
     SECTION_GAP = 30
 
     def _auto_time_on_date():
+        # al elegir fecha, guardar hora actual (minutos) en session_state
+        from datetime import datetime
         now = datetime.now().replace(second=0, microsecond=0)
         st.session_state["fi_t"] = now.time()
 
@@ -149,14 +151,14 @@ def render(user: dict | None = None):
 
             r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
 
-            # Tipo de tarea (con 'Otros')
-            TIPOS_TAREA_OPC = st.session_state.get("TIPOS_TAREA_OPC", ["— Selecciona —", "Otros"])
+            # Tipo de tarea (con Producción didáctica y Otros)
+            TIPOS_TAREA_OPC = ["— Selecciona —", "Producción didáctica", "Otros"]
             tipo_sel = r2c1.selectbox("Tipo de tarea", options=TIPOS_TAREA_OPC, index=0, key="nt_tipo")
 
             # Estado fijo
             r2c2.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
 
-            # Prepara tiempo (no costoso)
+            # Obtener hora desde session_state y sincronizar campo visible
             _t = st.session_state.get("fi_t")
             _t_txt = ""
             if _t is not None:
@@ -164,6 +166,9 @@ def render(user: dict | None = None):
                     _t_txt = _t.strftime("%H:%M")
                 except Exception:
                     _t_txt = str(_t)
+
+            # Mantener el input deshabilitado sincronizado con la hora
+            st.session_state["fi_t_view"] = _t_txt
 
             # Prepara ID preview una sola vez
             _df_tmp = st.session_state.get("df_main", pd.DataFrame()).copy() if "df_main" in st.session_state else pd.DataFrame()
@@ -174,7 +179,7 @@ def render(user: dict | None = None):
             is_otros = (str(st.session_state.get("nt_tipo", "")).strip().lower() == "otros")
 
             if is_otros:
-                # Orden requerido: Tipo, Estado, Complejidad, Duración, Fecha, Hora
+                # Orden: Tipo, Estado, Complejidad, Duración, Fecha, Hora
                 comp_opc = ["🟢 Baja", "🟡 Media", "🔴 Alta"]
                 r2c3.selectbox("Complejidad", options=comp_opc, index=0, key="nt_complejidad")
 
@@ -182,8 +187,8 @@ def render(user: dict | None = None):
                 r2c4.selectbox("Duración", options=dur_labels, index=0, key="nt_duracion_label")
 
                 r2c5.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
-                r2c6.text_input("Hora (auto)", value=_t_txt, disabled=True,
-                                help="Se asigna al elegir la fecha", key="fi_t_view")
+                r2c6.text_input("Hora (auto)", key="fi_t_view", disabled=True,
+                                help="Se asigna al elegir la fecha")
 
                 # FILA 3: solo ID asignado
                 r3c1, r3c2, r3c3, r3c4, r3c5, r3c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
@@ -192,10 +197,10 @@ def render(user: dict | None = None):
             else:
                 # Caso normal (dos filas): Tipo, Estado, Fecha, Hora, ID asignado, (vacío)
                 r2c3.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
-                r2c4.text_input("Hora (auto)", value=_t_txt, disabled=True,
-                                help="Se asigna al elegir la fecha", key="fi_t_view")
+                r2c4.text_input("Hora (auto)", key="fi_t_view", disabled=True,
+                                help="Se asigna al elegir la fecha")
                 r2c5.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
-                # r2c6 queda vacío
+                # r2c6 vacío
 
         # ——— Botón fuera del card, a la derecha, con el mismo ancho que C (Ciclo de mejora) ———
         left_space, right_btn = st.columns([A + Fw + T + D + R, C], gap="medium")
@@ -257,7 +262,6 @@ def render(user: dict | None = None):
                 # Agregar extras solo si Tipo = Otros
                 if is_otros:
                     new["Complejidad"] = st.session_state.get("nt_complejidad", "")
-                    # convertir "3 días" -> 3 (número)
                     lbl = st.session_state.get("nt_duracion_label", "")
                     try:
                         new["Duración"] = int(str(lbl).split()[0])
