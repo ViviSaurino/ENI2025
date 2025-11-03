@@ -55,13 +55,12 @@ except Exception:
         now = _now_local()
         st.session_state["fi_t"] = now.time()
 
-    # >>> NUEVO: forzar hora cuando la fecha seleccionada es HOY (aunque no cambie)
+    # forzar hora cuando la fecha seleccionada es HOY (aunque no cambie)
     def _sync_time_from_date():
         d = st.session_state.get("fi_d", None)
         if d is None:
             return
         try:
-            # convierte a date (maneja datetime, Timestamp, etc.)
             d = pd.to_datetime(d).date()
         except Exception:
             return
@@ -159,7 +158,11 @@ def render(user: dict | None = None):
             if st.session_state.get("fi_t", "___MISSING___") is None:
                 st.session_state.pop("fi_t")
 
-            # >>> NUEVO: sincroniza hora si la fecha ya es hoy antes de pintar
+            # >>> INICIALIZA fi_d si no existe (para que hoy no dependa de on_change)
+            if "fi_d" not in st.session_state:
+                st.session_state["fi_d"] = _now_local().date()
+
+            # sincroniza hora si la fecha ya es hoy antes de pintar
             _sync_time_from_date()
 
             r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
@@ -193,8 +196,7 @@ def render(user: dict | None = None):
                 r2c4.selectbox("Duración", options=dur_labels, index=0, key="nt_duracion_label")
 
                 r2c5.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
-                # >>> NUEVO: inmediatamente después del date_input, vuelve a sincronizar
-                _sync_time_from_date()
+                _sync_time_from_date()  # re-sincroniza tras el date_input
 
                 r2c6.text_input("Hora (auto)", key="fi_t_view", disabled=True,
                                 help="Se asigna al elegir la fecha")
@@ -204,8 +206,7 @@ def render(user: dict | None = None):
 
             else:
                 r2c3.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
-                # >>> NUEVO: inmediatamente después del date_input, vuelve a sincronizar
-                _sync_time_from_date()
+                _sync_time_from_date()  # re-sincroniza tras el date_input
 
                 r2c4.text_input("Hora (auto)", key="fi_t_view", disabled=True,
                                 help="Se asigna al elegir la fecha")
