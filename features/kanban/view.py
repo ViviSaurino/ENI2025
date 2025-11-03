@@ -2,14 +2,15 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime
+import math
 from typing import Dict, List
 
 import pandas as pd
 import streamlit as st
-from plotly import graph_objects as go
+
 
 __all__ = ["render"]
+
 
 # =========================
 # Utilitarios
@@ -25,6 +26,7 @@ def _to_date(v):
         except Exception:
             return pd.NaT
 
+
 def _classify_estado(raw: str) -> str:
     s = (str(raw) or "").strip().lower()
     if s in {"en curso", "en progreso", "progreso"}:
@@ -38,6 +40,7 @@ def _classify_estado(raw: str) -> str:
     if s in {"eliminado", "borrado"}:
         return "Eliminado"
     return "No iniciado"
+
 
 # =========================
 # UI helpers
@@ -69,6 +72,9 @@ def _emit_css():
           background:var(--card); border:1px solid var(--border);
           border-radius:14px; padding:12px; box-shadow:var(--shadow); margin-top:6px;
         }
+        .kan-legend{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; font-size:.9rem; color:var(--text-500); }
+        .kan-leg-item{ display:flex; gap:8px; align-items:center; }
+        .kan-leg-dot{ width:14px; height:14px; border-radius:4px; border:2px solid #fff; box-shadow:var(--shadow); }
 
         /* ===== Kanban ===== */
         .kan-row{ display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; }
@@ -101,6 +107,7 @@ def _emit_css():
         unsafe_allow_html=True,
     )
 
+
 def _column_header(title: str, icon: str, total: int, pct: float):
     st.markdown(
         f"""
@@ -114,6 +121,7 @@ def _column_header(title: str, icon: str, total: int, pct: float):
         """,
         unsafe_allow_html=True,
     )
+
 
 def _render_col(title: str, icon: str, color_bg: str, color_ac: str, cards: List[Dict], pct: float):
     st.markdown(f'<div class="kan-col" style="--col-bg:{color_bg}; --col-ac:{color_ac};">', unsafe_allow_html=True)
@@ -134,7 +142,7 @@ def _render_col(title: str, icon: str, color_bg: str, color_ac: str, cards: List
                     venc_txt = f"{pd.to_datetime(v_f).date().isoformat()}"
                 except Exception:
                     pass
-            if isinstance(v_h, str) and re.match(r"^\\d{1,2}:\\d{2}$", v_h or ""):
+            if isinstance(v_h, str) and re.match(r"^\\d{{1,2}}:\\d{{2}}$", v_h or ""):
                 venc_txt = (venc_txt + f" · {v_h}").strip(" ·")
             meta = " · ".join([x for x in [resp, area or None, fase or None] if x])
 
@@ -150,39 +158,65 @@ def _render_col(title: str, icon: str, color_bg: str, color_ac: str, cards: List
             )
     st.markdown("</div>", unsafe_allow_html=True)
 
-def _donut_chart(summary: Dict[str, int], palette: Dict[str, str]):
-    total = sum(summary.values()) or 1
-    labels = ["No iniciado", "En curso", "Terminado"]
-    values = [summary.get(k, 0) for k in labels]
-    colors = [palette[k] for k in labels]
 
-    fig = go.Figure(
-        data=[
-            go.Pie(
-                labels=labels,
-                values=values,
-                hole=0.55,
-                marker=dict(colors=colors, line=dict(color="white", width=2)),
-                textinfo="percent",
-                hovertemplate="%{label}: %{value}<extra></extra>",
-                sort=False,
-            )
-        ]
+# ===== Donut SVG (sin dependencias) =====
+def _arc_path(cx, cy, r, start_ang, end_ang):
+    # ángulos en radianes
+    x1 = cx + r * math.cos(start_ang)
+    y1 = cy + r * math.sin(start_ang)
+    x2 = cx + r * math.cos(end_ang)
+    y2 = cy + r * math.sin(end_ang)
+    large_arc = 1 if (end_ang - start_ang) % (2 * math.pi) > math.pi else 0
+    # arco exterior + línea hacia el interior + arco interior + cierre
+    r_in = r * 0.62
+    xi = cx + r_in * math.cos(end_ang)
+    yi = cy + r_in * math.sin(end_ang)
+    xo = cx + r_in * math.cos(start_ang)
+    yo = cy + r_in * math.sin(start_ang)
+    d = (
+        f"M {x1:.3f},{y1:.3f} "
+        f"A {r:.3f},{r:.3f} 0 {large_arc} 1 {x2:.3f},{y2:.3f} "
+        f"L {xi:.3f},{yi:.3f} "
+        f"A {r_in:.3f},{r_in:.3f} 0 {large_arc} 0 {xo:.3f},{yo:.3f} Z"
     )
-    fig.update_layout(
-        showlegend=True,
-        legend=dict(orientation="v", y=0.5, yanchor="middle", x=1.05),
-        margin=dict(l=10, r=10, t=10, b=10),
-        height=280,
-        annotations=[
-            dict(
-                text=f"{total}<br>Tareas",
-                x=0.5, y=0.5, font=dict(size=13, color="#111"),
-                showarrow=False
-            )
-        ],
-    )
-    st.plotly_chart(fig, use_container_width=True, theme=None)
+    return d
+
+
+def _donut_svg(summary: Dict[str, int], palette: Dict[str, str]):
+    total = sum(summary.values())
+    total = total if total > 0 else 1
+    order = list(summary.keys())
+    values = [summary[k] for k in order]
+    colors = [palette.get(k, "#ddd") for k in order]
+
+    # SVG base
+    cx, cy, r = 130, 90, 70
+    theta = -math.pi / 2  # inicia arriba
+    pieces = []
+    for v, col in zip(values, colors):
+        frac = (v / total) if total else 0
+        ang = frac * 2 * math.pi
+        if ang <= 0:
+            continue
+        path = _arc_path(cx, cy, r, theta, theta + ang)
+        theta += ang
+        pieces.append(f'<path d="{path}" fill="{col}" stroke="white" stroke-width="2"/>')
+
+    center_text = f"""
+      <text x="{cx}" y="{cy-4}" text-anchor="middle" style="font-size:14px; fill:#111; font-weight:600">{sum(values)}</text>
+      <text x="{cx}" y="{cy+14}" text-anchor="middle" style="font-size:12px; fill:#6b7280">Tareas</text>
+    """
+
+    svg = f"""
+    <svg viewBox="0 0 300 180" width="100%" height="280" preserveAspectRatio="xMidYMid meet">
+      <g>
+        {''.join(pieces)}
+        {center_text}
+      </g>
+    </svg>
+    """
+    return svg
+
 
 # =========================
 # Render principal
@@ -251,19 +285,32 @@ def render(user: dict | None = None):
     extra_states = ["Pausado", "Cancelado", "Eliminado"]
 
     counts = df_view["__Estado__"].value_counts().to_dict() if len(df_view) else {}
-    total = sum(counts.get(s, 0) for s in main_states + extra_states) or 1
+    total_all = sum(counts.get(s, 0) for s in main_states + extra_states) or 1
 
-    # Paleta para donut y columnas principales
-    palette_for_donut = {
+    # Paleta pastel para donut y columnas
+    palette_donut = {
         "No iniciado": "#B6D7FF",
         "En curso": "#6ED3B6",
         "Terminado": "#F6A6C1",
     }
 
-    # ------- Dona arriba del tablero -------
+    # ------- Dona arriba del tablero (SVG) -------
     st.markdown('<div class="kan-donut">', unsafe_allow_html=True)
     st.markdown("**Distribución por estado (∑ principales)**")
-    _donut_chart({k: counts.get(k, 0) for k in main_states}, palette_for_donut)
+    # SVG
+    svg = _donut_svg({k: counts.get(k, 0) for k in main_states}, palette_donut)
+    st.markdown(svg, unsafe_allow_html=True)
+    # Leyenda
+    st.markdown(
+        f"""
+        <div class="kan-legend">
+          <div class="kan-leg-item"><span class="kan-leg-dot" style="background:{palette_donut['No iniciado']}"></span>No iniciado</div>
+          <div class="kan-leg-item"><span class="kan-leg-dot" style="background:{palette_donut['En curso']}"></span>En curso</div>
+          <div class="kan-leg-item"><span class="kan-leg-dot" style="background:{palette_donut['Terminado']}"></span>Terminado</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
     st.markdown("</div>", unsafe_allow_html=True)
 
     # ------- Construcción de buckets -------
@@ -286,7 +333,7 @@ def render(user: dict | None = None):
     for col, k in zip(cols, main_states):
         with col:
             bg, ac, ico = main_colors[k]
-            pct = 100.0 * (counts.get(k, 0) / total) if total else 0.0
+            pct = 100.0 * (counts.get(k, 0) / total_all) if total_all else 0.0
             _render_col(k, ico, bg, ac, buckets[k], pct)
 
     st.markdown("</div>", unsafe_allow_html=True)
@@ -309,6 +356,6 @@ def render(user: dict | None = None):
         for col, k in zip(cols2, extra_states):
             with col:
                 bg, ac, ico = extra_colors[k]
-                pct = 100.0 * (counts.get(k, 0) / total) if total else 0.0
+                pct = 100.0 * (counts.get(k, 0) / total_all) if total_all else 0.0
                 _render_col(k, ico, bg, ac, buckets[k], pct)
         st.markdown("</div>", unsafe_allow_html=True)
