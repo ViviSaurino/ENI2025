@@ -191,7 +191,7 @@ def render(user: dict | None = None):
             # Botón Agregar (columna 6) — se mantiene con micro-ajuste independiente
             with c2_6:
                 st.markdown('<div class="btn-agregar">', unsafe_allow_html=True)
-                BTN_OFFSET_PX = 9  # micro-ajuste del botón (si hiciera falta)
+                BTN_OFFSET_PX = 13  # micro-ajuste del botón (si hiciera falta)
                 st.markdown(f"<div style='height:{BTN_OFFSET_PX}px'></div>", unsafe_allow_html=True)
                 submitted = st.button("➕ Agregar", use_container_width=True, key="btn_agregar")
                 st.markdown('</div>', unsafe_allow_html=True)
