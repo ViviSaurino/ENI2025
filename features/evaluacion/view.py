@@ -21,19 +21,13 @@ def _save_local(df: pd.DataFrame):
 def render(user: dict | None = None):
     # =========================== EVALUACIÓN ===============================
     st.session_state.setdefault("eva_visible", True)
-    chev_eva = "▾" if st.session_state["eva_visible"] else "▸"
 
-    # ---------- Barra superior ----------
+    # Anchos (consistentes con las otras secciones)
+    A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
+
+    # ---------- Barra superior (SIN botón mostrar/ocultar) ----------
     st.markdown('<div class="topbar-eval">', unsafe_allow_html=True)
-    c_toggle_e, c_pill_e = st.columns([0.028, 0.965], gap="medium")
-    with c_toggle_e:
-        st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
-
-        def _toggle_eva():
-            st.session_state["eva_visible"] = not st.session_state["eva_visible"]
-
-        st.button(chev_eva, key="eva_toggle_v2", help="Mostrar/ocultar", on_click=_toggle_eva)
-        st.markdown("</div>", unsafe_allow_html=True)
+    c_pill_e, _ = st.columns([A, Fw + T_width + D + R + C], gap="medium")
     with c_pill_e:
         st.markdown('<div class="form-title-eval">📝&nbsp;&nbsp;Evaluación</div>', unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
@@ -76,9 +70,6 @@ def render(user: dict | None = None):
             unsafe_allow_html=True,
         )
 
-        # Anchos (consistentes)
-        A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
-
         df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
         if df_all.empty:
             df_all = pd.DataFrame(
@@ -92,6 +83,24 @@ def render(user: dict | None = None):
         if "Calificación" not in df_all.columns:
             df_all["Calificación"] = 0
         df_all["Calificación"] = pd.to_numeric(df_all["Calificación"], errors="coerce").fillna(0).astype(int).clip(0, 5)
+
+        # ===== Rango por defecto (min–max del dataset) =====
+        def _first_valid_date_series(df: pd.DataFrame) -> pd.Series:
+            for col in ["Fecha inicio", "Fecha Registro", "Fecha"]:
+                if col in df.columns:
+                    s = pd.to_datetime(df[col], errors="coerce")
+                    if s.notna().any():
+                        return s
+            return pd.Series([], dtype="datetime64[ns]")
+
+        dates_all = _first_valid_date_series(df_all)
+        if dates_all.empty:
+            today = pd.Timestamp.today().normalize().date()
+            min_date = today
+            max_date = today
+        else:
+            min_date = dates_all.min().date()
+            max_date = dates_all.max().date()
 
         # ===== FILTROS =====
         with st.form("eva_filtros_v2", clear_on_submit=False):
@@ -123,28 +132,13 @@ def render(user: dict | None = None):
                 "Responsable", options=responsables_all, default=[], placeholder="Selecciona responsable(s)"
             )
 
-            # 🔁 Rango de fechas opcional
-            use_date_range = c_buscar.checkbox("Filtrar por fechas", value=False, key="eva_use_dates")
-            if use_date_range:
-                eva_desde = c_desde.date_input("Desde", key="eva_desde")
-                eva_hasta = c_hasta.date_input("Hasta", key="eva_hasta")
-            else:
-                eva_desde = eva_hasta = None
-                with c_desde:
-                    st.caption("Desde")
-                    st.markdown(
-                        "<div style='height:38px;border:1px dashed #e5e7eb;border-radius:8px;'></div>",
-                        unsafe_allow_html=True,
-                    )
-                with c_hasta:
-                    st.caption("Hasta")
-                    st.markdown(
-                        "<div style='height:38px;border:1px dashed #e5e7eb;border-radius:8px;'></div>",
-                        unsafe_allow_html=True,
-                    )
+            # 🗓️ Rango de fechas SIEMPRE visible (sin checkbox)
+            eva_desde = c_desde.date_input("Desde", value=min_date, min_value=min_date, max_value=max_date, key="eva_desde")
+            eva_hasta = c_hasta.date_input("Hasta",  value=max_date, min_value=min_date, max_value=max_date, key="eva_hasta")
 
+            # Botón Buscar alineado con la fila
             with c_buscar:
-                st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+                st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
                 eva_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
         # ===== Filtrado para tabla =====
@@ -159,9 +153,9 @@ def render(user: dict | None = None):
             base_fecha_col = "Fecha inicio" if "Fecha inicio" in df_filtrado.columns else None
             if base_fecha_col:
                 fcol = pd.to_datetime(df_filtrado[base_fecha_col], errors="coerce")
-                if use_date_range and (eva_desde is not None):
+                if eva_desde is not None:
                     df_filtrado = df_filtrado[fcol >= pd.to_datetime(eva_desde)]
-                if use_date_range and (eva_hasta is not None):
+                if eva_hasta is not None:
                     df_filtrado = df_filtrado[
                         fcol <= (pd.to_datetime(eva_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))
                     ]
@@ -303,7 +297,7 @@ def render(user: dict | None = None):
         # ===== Guardar cambios (merge por Id en df_main) =====
         _sp_eva, _btn_eva = st.columns([A + Fw + T_width + D + R, C], gap="medium")
         with _btn_eva:
-            do_save_eva = st.button("💾 Guardar evaluación", use_container_width=True, key="eva_guardar_v1")
+            do_save_eva = st.button("✅ Evaluar", use_container_width=True, key="eva_guardar_v1")
 
         if do_save_eva:
             try:
@@ -332,7 +326,7 @@ def render(user: dict | None = None):
 
                             # Mapear evaluación con/sin emoji -> texto limpio
                             eva_ui = str(row.get("Evaluación ajustada", "Sin evaluar")).strip()
-                            eva_new = EVA_TO_TEXT.get(eva_ui, "Sin evaluar")
+                            eva_new = {"🟢 Aprobado":"Aprobado","🔴 Desaprobado":"Desaprobado","🟠 Observado":"Observado"}.get(eva_ui, "Sin evaluar")
 
                             # Calificación segura 0..5
                             cal_new = row.get("Calificación", 0)
