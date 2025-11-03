@@ -13,20 +13,11 @@ from st_aggrid import (
 
 def render(user: dict | None = None):
     # ================== EDITAR ESTADO (mismo layout que "Nueva alerta") ==================
-    st.session_state.setdefault("est_visible", True)
-    chev_est = "▾" if st.session_state["est_visible"] else "▸"
+    st.session_state.setdefault("est_visible", True)  # siempre visible
 
-    # ---------- Barra superior ----------
+    # ---------- Barra superior (sin botón mostrar/ocultar) ----------
     st.markdown('<div class="topbar-eval">', unsafe_allow_html=True)
-    c_est_toggle, c_est_pill = st.columns([0.028, 0.965], gap="medium")
-    with c_est_toggle:
-        st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
-        def _toggle_est():
-            st.session_state["est_visible"] = not st.session_state["est_visible"]
-        st.button(chev_est, key="est_toggle_icon_v3", help="Mostrar/ocultar", on_click=_toggle_est)
-        st.markdown('</div>', unsafe_allow_html=True)
-    with c_est_pill:
-        st.markdown('<div class="form-title">&nbsp;&nbsp;✏️&nbsp;&nbsp;Editar estado</div>', unsafe_allow_html=True)
+    st.markdown('<div class="form-title">✏️&nbsp;&nbsp;Editar estado</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
     # ---------- fin barra superior ----------
 
@@ -59,6 +50,24 @@ def render(user: dict | None = None):
         # Base
         df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
 
+        # ===== Rango por defecto (min–max del dataset) =====
+        def _first_valid_date_series(df: pd.DataFrame) -> pd.Series:
+            for col in ["Fecha inicio", "Fecha Registro", "Fecha"]:
+                if col in df.columns:
+                    s = pd.to_datetime(df[col], errors="coerce")
+                    if s.notna().any():
+                        return s
+            return pd.Series([], dtype="datetime64[ns]")
+
+        dates_all = _first_valid_date_series(df_all)
+        if dates_all.empty:
+            today = pd.Timestamp.today().normalize().date()
+            min_date = today
+            max_date = today
+        else:
+            min_date = dates_all.min().date()
+            max_date = dates_all.max().date()
+
         # ===== FILTROS =====
         with st.form("est_filtros_v3", clear_on_submit=False):
             c_area, c_fase, c_resp, c_desde, c_hasta, c_buscar = st.columns([A, Fw, T_width, D, R, C], gap="medium")
@@ -83,20 +92,9 @@ def render(user: dict | None = None):
             responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
             est_resp = c_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0)
 
-            # Rango de fechas (opcional) — sin value=None (rompe)
-            use_date_range = c_buscar.checkbox("Filtrar por fechas", value=False)
-            if use_date_range:
-                est_desde = c_desde.date_input("Desde")
-                est_hasta = c_hasta.date_input("Hasta")
-            else:
-                est_desde, est_hasta = None, None
-                # Mostrar labels “apagados” para mantener la malla
-                with c_desde:
-                    st.caption("Desde")
-                    st.markdown("<div style='height:38px;border:1px dashed #e5e7eb;border-radius:8px;'></div>", unsafe_allow_html=True)
-                with c_hasta:
-                    st.caption("Hasta")
-                    st.markdown("<div style='height:38px;border:1px dashed #e5e7eb;border-radius:8px;'></div>", unsafe_allow_html=True)
+            # Rango de fechas (siempre visible; por defecto = min–max del dataset)
+            est_desde = c_desde.date_input("Desde", value=min_date, min_value=min_date, max_value=max_date, key="est_desde")
+            est_hasta = c_hasta.date_input("Hasta", value=max_date, min_value=min_date, max_value=max_date, key="est_hasta")
 
             with c_buscar:
                 st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
@@ -111,13 +109,20 @@ def render(user: dict | None = None):
                 df_tasks = df_tasks[df_tasks["Fase"].astype(str) == est_fase]
             if est_resp != "Todos" and "Responsable" in df_tasks.columns:
                 df_tasks = df_tasks[df_tasks["Responsable"].astype(str) == est_resp]
-            if use_date_range and "Fecha inicio" in df_tasks.columns:
+
+            # aplicar rango
+            # prioridad: Fecha inicio -> Fecha Registro -> Fecha
+            if "Fecha inicio" in df_tasks.columns:
                 fcol = pd.to_datetime(df_tasks["Fecha inicio"], errors="coerce")
-                if est_desde:
-                    df_tasks = df_tasks[fcol >= pd.to_datetime(est_desde)]
-                if est_hasta:
-                    # incluir todo el día de "hasta"
-                    df_tasks = df_tasks[fcol <= (pd.to_datetime(est_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
+            elif "Fecha Registro" in df_tasks.columns:
+                fcol = pd.to_datetime(df_tasks["Fecha Registro"], errors="coerce")
+            else:
+                fcol = pd.to_datetime(df_tasks.get("Fecha", pd.Series([], dtype=str)), errors="coerce")
+
+            if est_desde:
+                df_tasks = df_tasks[fcol >= pd.to_datetime(est_desde)]
+            if est_hasta:
+                df_tasks = df_tasks[fcol <= (pd.to_datetime(est_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
 
         # ===== Tabla "Resultados" =====
         st.markdown("**Resultados**")
