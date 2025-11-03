@@ -40,11 +40,17 @@ def render(user: dict | None = None):
         <style>
           #na-section .stButton > button { width: 100% !important; }
           .section-na .help-strip-na + .form-card{ margin-top: 6px !important; }
-          /* Encabezados legibles: permiten salto de línea */
+
+          /* Encabezados legibles: permiten salto de línea y sin ellipsis */
           #na-section .ag-header-cell-label{
             white-space: normal !important;
             line-height: 1.15 !important;
             font-weight: 400 !important;
+          }
+          #na-section .ag-header-cell-text{
+            white-space: normal !important;
+            overflow: visible !important;
+            text-overflow: unset !important;
           }
         </style>
         """, unsafe_allow_html=True)
@@ -68,7 +74,7 @@ def render(user: dict | None = None):
                     s = pd.to_datetime(df[col], errors="coerce")
                     if s.notna().any():
                         return s
-            return pd.Series([], dtype="datetime64[ns]")
+            return pd.Series([], dtype="datetime64[ns]"])
 
         dates_all = _first_valid_date_series(df_all)
         if dates_all.empty:
@@ -233,10 +239,6 @@ def render(user: dict | None = None):
           }
         }""")
 
-        # autosize para ocupar todo el ancho
-        on_ready_size = JsCode("function(p){ p.api.sizeColumnsToFit(); }")
-        on_first_size = JsCode("function(p){ p.api.sizeColumnsToFit(); }")
-
         col_defs = [
             {"field":"Id", "headerName":"Id", "editable": False, "pinned":"left", "flex":1.2, "minWidth":110},
             {"field":"Tarea", "headerName":"Tarea", "editable": False, "flex":3, "minWidth":200,
@@ -246,30 +248,30 @@ def render(user: dict | None = None):
              "editable": True, "cellEditor": "agSelectCellEditor",
              "cellEditorParams": {"values": ["No","Sí"]},
              "valueFormatter": si_no_formatter, "cellStyle": si_no_style_genero,
-             "flex":1.2, "minWidth":150},
+             "flex":1.2, "minWidth":160},
 
             {"field":"N° alerta", "headerName":"N° alerta",
              "editable": True, "cellEditor": "agSelectCellEditor",
              "cellEditorParams": {"values": ["1","2","3","+4"]},
-             "flex":0.8, "minWidth":120},
+             "flex":0.8, "minWidth":130},
 
             {"field":"Fecha de detección", "headerName":"Fecha de detección",
-             "editable": True, "cellEditor": date_editor, "flex":1.3, "minWidth":170},
+             "editable": True, "cellEditor": date_editor, "flex":1.3, "minWidth":180},
 
             {"field":"Hora de detección", "headerName":"Hora de detección",
-             "editable": False, "flex":1.1, "minWidth":160},
+             "editable": False, "flex":1.1, "minWidth":170},
 
             {"field":"¿Se corrigió?", "headerName":"¿Se corrigió?",
              "editable": True, "cellEditor": "agSelectCellEditor",
              "cellEditorParams": {"values": ["No","Sí"]},
              "valueFormatter": si_no_formatter, "cellStyle": si_no_style_corrigio,
-             "flex":1.2, "minWidth":150},
+             "flex":1.2, "minWidth":160},
 
             {"field":"Fecha de corrección", "headerName":"Fecha de corrección",
-             "editable": True, "cellEditor": date_editor, "flex":1.3, "minWidth":170},
+             "editable": True, "cellEditor": date_editor, "flex":1.3, "minWidth":180},
 
             {"field":"Hora de corrección", "headerName":"Hora de corrección",
-             "editable": False, "flex":1.1, "minWidth":170},
+             "editable": False, "flex":1.1, "minWidth":180},
         ]
 
         grid_opts = {
@@ -278,8 +280,8 @@ def render(user: dict | None = None):
                 "resizable": True,
                 "wrapText": False,
                 "autoHeight": False,
-                "wrapHeaderText": True,     # <-- para que el header haga wrap
-                "autoHeaderHeight": True,   # <-- ajusta la altura automáticamente
+                "wrapHeaderText": True,     # headers hacen wrap
+                "autoHeaderHeight": True,   # altura automática de headers
                 "minWidth": 110,
                 "flex": 1
             },
@@ -287,11 +289,10 @@ def render(user: dict | None = None):
             "domLayout": "normal",
             "ensureDomOrder": True,
             "rowHeight": 38,
-            "headerHeight": 60,            # <-- más alto para que no se corte
-            "suppressHorizontalScroll": True,
-            "onCellValueChanged": on_cell_changed,
-            "onGridReady": on_ready_size,
-            "onFirstDataRendered": on_first_size,
+            # Sin headerHeight fijo; autoHeaderHeight decide
+            "suppressHorizontalScroll": False,   # permitir scroll para no cortar títulos
+            "onCellValueChanged": on_cell_changed
+            # (Quitamos sizeColumnsToFit para no comprimir columnas)
         }
 
         grid = AgGrid(
