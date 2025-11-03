@@ -141,21 +141,22 @@ def render(user: dict | None = None):
             r1c5.text_input("Responsable", placeholder="Nombre", key="nt_resp")
             ciclo_mejora = r1c6.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
 
-            # FILA 2
+            # FILA 2: base de estados/fecha/hora/ID (con llaves estables)
             if st.session_state.get("fi_d", "___MISSING___") is None:
                 st.session_state.pop("fi_d")
             if st.session_state.get("fi_t", "___MISSING___") is None:
                 st.session_state.pop("fi_t")
 
-            c2_1, c2_2, c2_3, c2_4, c2_5, _c2_6_dummy = st.columns([A, Fw, T, D, R, C], gap="medium")
+            r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
 
-            # (CAMBIO) Tipo de tarea ahora como selectbox con 'Otros'
+            # Tipo de tarea (con 'Otros')
             TIPOS_TAREA_OPC = st.session_state.get("TIPOS_TAREA_OPC", ["— Selecciona —", "Otros"])
-            tipo_sel = c2_1.selectbox("Tipo de tarea", options=TIPOS_TAREA_OPC, index=0, key="nt_tipo")
+            tipo_sel = r2c1.selectbox("Tipo de tarea", options=TIPOS_TAREA_OPC, index=0, key="nt_tipo")
 
-            c2_2.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
-            c2_3.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
+            # Estado fijo
+            r2c2.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
 
+            # Prepara tiempo (no costoso)
             _t = st.session_state.get("fi_t")
             _t_txt = ""
             if _t is not None:
@@ -163,26 +164,38 @@ def render(user: dict | None = None):
                     _t_txt = _t.strftime("%H:%M")
                 except Exception:
                     _t_txt = str(_t)
-            c2_4.text_input("Hora (auto)", value=_t_txt, disabled=True,
-                            help="Se asigna al elegir la fecha", key="fi_t_view")
 
+            # Prepara ID preview una sola vez
             _df_tmp = st.session_state.get("df_main", pd.DataFrame()).copy() if "df_main" in st.session_state else pd.DataFrame()
             prefix = make_id_prefix(st.session_state.get("nt_area", area), st.session_state.get("nt_resp", ""))
             id_preview = (next_id_by_person(_df_tmp, st.session_state.get("nt_area", area),
                            st.session_state.get("nt_resp", "")) if st.session_state.get("fi_d") else f"{prefix}_")
-            c2_5.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
 
-            # (NUEVO) FILA EXTRA SOLO SI Tipo de tarea = "Otros"
-            if (st.session_state.get("nt_tipo", "") or "").strip().lower() == "otros":
-                ex1, ex2, _ex3, _ex4, _ex5, _ex6 = st.columns([T, D, R, C, A, Fw], gap="medium")
+            is_otros = (str(st.session_state.get("nt_tipo", "")).strip().lower() == "otros")
 
-                # Complejidad con emojis
+            if is_otros:
+                # Orden requerido: Tipo, Estado, Complejidad, Duración, Fecha, Hora
                 comp_opc = ["🟢 Baja", "🟡 Media", "🔴 Alta"]
-                ex1.selectbox("Complejidad", options=comp_opc, index=0, key="nt_complejidad")
+                r2c3.selectbox("Complejidad", options=comp_opc, index=0, key="nt_complejidad")
 
-                # Duración 1–5 días (guardaremos el número)
                 dur_labels = [f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)]
-                ex2.selectbox("Duración", options=dur_labels, index=0, key="nt_duracion_label")
+                r2c4.selectbox("Duración", options=dur_labels, index=0, key="nt_duracion_label")
+
+                r2c5.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
+                r2c6.text_input("Hora (auto)", value=_t_txt, disabled=True,
+                                help="Se asigna al elegir la fecha", key="fi_t_view")
+
+                # FILA 3: solo ID asignado
+                r3c1, r3c2, r3c3, r3c4, r3c5, r3c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
+                r3c1.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
+
+            else:
+                # Caso normal (dos filas): Tipo, Estado, Fecha, Hora, ID asignado, (vacío)
+                r2c3.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
+                r2c4.text_input("Hora (auto)", value=_t_txt, disabled=True,
+                                help="Se asigna al elegir la fecha", key="fi_t_view")
+                r2c5.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
+                # r2c6 queda vacío
 
         # ——— Botón fuera del card, a la derecha, con el mismo ancho que C (Ciclo de mejora) ———
         left_space, right_btn = st.columns([A + Fw + T + D + R, C], gap="medium")
@@ -242,7 +255,7 @@ def render(user: dict | None = None):
                 })
 
                 # Agregar extras solo si Tipo = Otros
-                if (st.session_state.get("nt_tipo", "") or "").strip().lower() == "otros":
+                if is_otros:
                     new["Complejidad"] = st.session_state.get("nt_complejidad", "")
                     # convertir "3 días" -> 3 (número)
                     lbl = st.session_state.get("nt_duracion_label", "")
