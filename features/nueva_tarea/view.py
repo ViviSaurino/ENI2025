@@ -48,6 +48,7 @@ except Exception:
     except Exception:
         # Fallback si zoneinfo no está disponible
         def _now_local():
+            from datetime import datetime
             return datetime.now().replace(second=0, microsecond=0)
 
     def _auto_time_on_date():
@@ -131,6 +132,11 @@ def render(user: dict | None = None):
     st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
 
     if st.session_state.get("nt_visible", True):
+
+        # >>> MENSAJE DE CONFIRMACIÓN TRAS AGREGAR
+        if st.session_state.pop("nt_added_ok", False):
+            st.success("Agregado a Tareas recientes")
+
         st.markdown("""
         <div class="help-strip">
           ✳️ Completa los campos obligatorios → pulsa <b>➕ Agregar</b> → revisa en <b>🕑 Tareas recientes</b> y confirma con <b>💾 Guardar cambios</b>.
@@ -160,7 +166,11 @@ def render(user: dict | None = None):
 
             # >>> INICIALIZA fi_d si no existe (para que hoy no dependa de on_change)
             if "fi_d" not in st.session_state:
-                st.session_state["fi_d"] = _now_local().date()
+                if st.session_state.get("nt_skip_date_init", False):
+                    # mantenerla vacía solo en el primer render post-reset
+                    st.session_state.pop("nt_skip_date_init", None)
+                else:
+                    st.session_state["fi_d"] = _now_local().date()
 
             # sincroniza hora si la fecha ya es hoy antes de pintar
             _sync_time_from_date()
@@ -268,7 +278,7 @@ def render(user: dict | None = None):
                     "Detalle": st.session_state.get("nt_detalle", ""),
                 })
 
-                if is_otros:
+                if str(st.session_state.get("nt_tipo", "")).strip().lower() == "otros":
                     new["Complejidad"] = st.session_state.get("nt_complejidad", "")
                     lbl = st.session_state.get("nt_duracion_label", "")
                     try:
@@ -281,7 +291,19 @@ def render(user: dict | None = None):
                 st.session_state["df_main"] = df.copy()
                 os.makedirs("data", exist_ok=True)
                 df.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig", mode="w")
+
+                # >>> LIMPIEZA DE CAMPOS + MENSAJE + SALTO DE ESTADO
+                for k in [
+                    "nt_area","nt_fase","nt_tarea","nt_detalle","nt_resp",
+                    "nt_ciclo_mejora","nt_tipo","nt_complejidad","nt_duracion_label",
+                    "fi_d","fi_t","fi_t_view","nt_id_preview"
+                ]:
+                    st.session_state.pop(k, None)
+                st.session_state["nt_skip_date_init"] = True   # deja fecha en blanco tras el reset
+                st.session_state["nt_added_ok"] = True         # mensaje de confirmación
+
                 st.rerun()
+
             except Exception as e:
                 st.error(f"No pude guardar la nueva tarea: {e}")
 
