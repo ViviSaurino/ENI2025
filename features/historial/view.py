@@ -66,9 +66,9 @@ def render(user: dict | None = None):
       width: 100%;
     }
 
-    /* Alinear el botón Buscar con la fila de filtros (baja un poco) */
+    /* Alinear el botón Buscar con la fila de filtros (bájalo un poco más) */
     .hist-search .stButton > button{
-      margin-top: 8px !important;   /* ⬅️ bajar ligeramente */
+      margin-top: 12px !important;  /* ⬅️ antes 8px */
       height: 38px !important;
     }
 
@@ -88,7 +88,7 @@ def render(user: dict | None = None):
       text-overflow: clip !important;
       line-height: 1.2 !important;
     }
-    /* ⬅️ Asegurar que también aplique en columnas ancladas (Id, Área, Fase) */
+    /* ⬅️ También en columnas ancladas (Id, Área, Fase) */
     .ag-theme-balham .ag-pinned-left-header .ag-header-cell,
     .ag-theme-balham .ag-pinned-left-header .ag-header-cell-label,
     .ag-theme-balham .ag-pinned-left-header .ag-header-cell-text{
@@ -343,10 +343,10 @@ def render(user: dict | None = None):
         enterMovesDown=False,
         suppressMovableColumns=False,
         getRowId=JsCode("function(p){ return (p.data && (p.data.Id || p.data['Id'])) + ''; }"),
-        suppressHeaderVirtualisation=True,
+        suppressHeaderVirtualisation=True,  # <— ayuda a medir bien alturas/ancho de encabezados
     )
 
-    # ⬅️ Asegurar que los 3 primeros encabezados se muestren completos
+    # Encabezados de las 3 primeras columnas completos
     gob.configure_column("Id", headerName="ID", editable=False, minWidth=110, pinned="left", suppressMovable=True)
     gob.configure_column("Área", headerName="Área", editable=False, minWidth=160, pinned="left", suppressMovable=True)
     gob.configure_column("Fase", headerName="Fase", editable=False, minWidth=140, pinned="left", suppressMovable=True)
@@ -404,8 +404,7 @@ def render(user: dict | None = None):
     }""")
 
     colw = {
-        "Tarea":280,
-        "Tipo":180,
+        "Tarea":280, "Tipo":180,
         "Detalle":240, "Ciclo de mejora":140, "Complejidad":130, "Prioridad":130,
         "Estado":130, "Duración":110, "Fecha Registro":160, "Hora Registro":140,
         "Fecha inicio":160, "Hora de inicio":140,
