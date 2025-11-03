@@ -33,7 +33,7 @@ def render(user: dict | None = None):
     st.subheader("📝 Tareas recientes")
     st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
-    # --- Estilo para filas eliminadas (tachado + rojo pastel suave) + wrapper de acciones alineado ---
+    # --- Estilo para filas eliminadas + botones alineados ---
     st.markdown("""
     <style>
     .ag-theme-balham .row-deleted .ag-cell {
@@ -52,7 +52,13 @@ def render(user: dict | None = None):
     .hist-actions{
       padding-left: var(--hist-pad-x) !important;
       padding-right: var(--hist-pad-x) !important;
+      padding-top: 10px; /* pequeño respiro bajo la línea roja */
       border-top: var(--hist-border-w) solid var(--hist-border-c);
+    }
+    /* Botones inferiores: misma altura y aspecto en una sola línea */
+    .hist-actions .stButton > button{
+      height: 38px !important;
+      border-radius: 10px !important;
     }
 
     /* Encabezados gris tenue para columnas Pausado/Cancelado/Eliminado */
@@ -67,7 +73,6 @@ def render(user: dict | None = None):
     df_all = st.session_state["df_main"].copy()
 
     # ===== Proporciones de filtros =====
-    # ⬇️ Ajuste de anchos (incluye reducción de los 3 botones inferiores)
     A_f, Fw_f, T_width_f, D_f, R_f, C_f = 1.80, 2.10, 3.00, 1.60, 1.40, 1.20
 
     # ===== FILA DE 5 FILTROS + Buscar =====
@@ -97,9 +102,9 @@ def render(user: dict | None = None):
         f_desde = cD.date_input("Desde", value=None, key="hist_desde")
         f_hasta = cH.date_input("Hasta",  value=None, key="hist_hasta")
 
-        # 🔧 Alineado arriba con el resto de inputs
+        # 🔧 Bajar un poco el botón para alinearlo con la fila de inputs
         with cB:
-            st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
             hist_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
     # Toggle mostrar/ocultar eliminadas
@@ -245,7 +250,6 @@ def render(user: dict | None = None):
         "Fecha de detección","Hora de detección",
         "¿Se corrigió?","Fecha de corrección","Hora de corrección",
         "Cumplimiento","Evaluación","Calificación",
-        # al final:
         "Fecha Pausado","Hora Pausado",
         "Fecha Cancelado","Hora Cancelado",
         "Fecha Eliminado","Hora Eliminado",
@@ -254,7 +258,7 @@ def render(user: dict | None = None):
 
     # Ocultas en grid (no visibles)
     HIDDEN_COLS = [
-        "¿Eliminar?",                        # ← ELIMINADA del grid
+        "¿Eliminar?",
         "Estado modificado",
         "Fecha estado modificado","Hora estado modificado",
         "Fecha estado actual","Hora estado actual",
@@ -277,7 +281,7 @@ def render(user: dict | None = None):
     df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()
     df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
 
-    # 💥 Remueve completamente la columna ¿Eliminar? del grid
+    # Remueve por completo ¿Eliminar?
     if "¿Eliminar?" in df_grid.columns:
         df_grid.drop(columns=["¿Eliminar?"], inplace=True, errors="ignore")
 
@@ -417,7 +421,7 @@ def render(user: dict | None = None):
         if cc in df_grid.columns:
             gob.configure_column(cc, headerClass="muted-col", cellStyle=MUTED_CELL_STYLE)
 
-    # ==== Reglas de clase por fila (tachado/pintado si Estado = Eliminado o __DEL__ True) ====
+    # ==== Reglas de clase por fila (tachado/pintado) ====
     row_class_rules = {
         "row-deleted": JsCode("""
             function(params){
@@ -477,14 +481,14 @@ def render(user: dict | None = None):
         allow_unsafe_jscode=True, theme="balham",
     )
 
-    # Guarda última data del grid (por si la usas en otros procesos)
+    # Guarda última data del grid
     try:
         if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
             st.session_state["_grid_historial_latest"] = pd.DataFrame(grid["data"]).copy()
     except Exception:
         pass
 
-    # --- Sincroniza (aunque es solo lectura, mantenemos coherencia por selección/flags) ---
+    # --- Sincroniza (solo lectura, conservamos flags de selección) ---
     if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
         try:
             edited = pd.DataFrame(grid["data"]).copy()
@@ -505,14 +509,13 @@ def render(user: dict | None = None):
     # ---- Botones alineados EXACTAMENTE bajo "Desde | Hasta | Buscar" ----
     left_spacer = A_f + Fw_f + T_width_f  # ocupa Área + Fase + Responsable
 
-    # ⬇️ Wrapper con el mismo padding lateral que el st.form de los filtros
     st.markdown('<div class="hist-actions">', unsafe_allow_html=True)
     _spacer, b_xlsx, b_save_local, b_save_sheets = st.columns([left_spacer, D_f, R_f, C_f], gap="medium")
 
     with b_xlsx:
         try:
             df_xlsx = st.session_state["df_main"].copy()
-            # Remueve columnas internas, incl. ¿Eliminar?
+            # Remueve columnas internas
             drop_cols = [c for c in ("__DEL__", "DEL", "__SEL__", "¿Eliminar?") if c in df_xlsx.columns]
             if drop_cols:
                 df_xlsx.drop(columns=drop_cols, inplace=True, errors="ignore")
@@ -550,7 +553,7 @@ def render(user: dict | None = None):
                         base.loc[mask_elim & fe.isna(), "Fecha Eliminado"] = now.normalize()
                     if "Hora Eliminado" in base.columns:
                         he = base["Hora Eliminado"].astype(str).str.strip()
-                        base.loc[mask_elim & ((he=="")|(he=="nan")|(he=="NaN")), "Hora Eliminado"] = now.strftime("%H:%M")
+                        base.loc[mask_elim & ((he=='')|(he=='nan')|(he=='NaN')), "Hora Eliminado"] = now.strftime("%H:%M")
 
             st.session_state["df_main"] = base.reset_index(drop=True)
 
@@ -586,5 +589,4 @@ def render(user: dict | None = None):
             except Exception as e:
                 st.warning(f"No se pudo subir a Sheets: {e}")
 
-    # cierre del wrapper de acciones
     st.markdown('</div>', unsafe_allow_html=True)
