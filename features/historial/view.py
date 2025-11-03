@@ -66,9 +66,9 @@ def render(user: dict | None = None):
       width: 100%;
     }
 
-    /* Alinear el botón Buscar con la fila de filtros */
+    /* Alinear el botón Buscar con la fila de filtros (baja un poco) */
     .hist-search .stButton > button{
-      margin-top: 0 !important;
+      margin-top: 8px !important;   /* ⬅️ bajar ligeramente */
       height: 38px !important;
     }
 
@@ -83,6 +83,15 @@ def render(user: dict | None = None):
     .ag-theme-balham .ag-header-cell,
     .ag-theme-balham .ag-header-cell-label,
     .ag-theme-balham .ag-header-cell-text{
+      white-space: normal !important;
+      overflow: visible !important;
+      text-overflow: clip !important;
+      line-height: 1.2 !important;
+    }
+    /* ⬅️ Asegurar que también aplique en columnas ancladas (Id, Área, Fase) */
+    .ag-theme-balham .ag-pinned-left-header .ag-header-cell,
+    .ag-theme-balham .ag-pinned-left-header .ag-header-cell-label,
+    .ag-theme-balham .ag-pinned-left-header .ag-header-cell-text{
       white-space: normal !important;
       overflow: visible !important;
       text-overflow: clip !important;
@@ -334,13 +343,14 @@ def render(user: dict | None = None):
         enterMovesDown=False,
         suppressMovableColumns=False,
         getRowId=JsCode("function(p){ return (p.data && (p.data.Id || p.data['Id'])) + ''; }"),
-        suppressHeaderVirtualisation=True,  # <— ayuda a medir bien alturas/ancho de encabezados
+        suppressHeaderVirtualisation=True,
     )
 
-    gob.configure_column("Id", headerName="ID", editable=False, width=110, pinned="left", suppressMovable=True)
-    gob.configure_column("Área",        editable=False, width=160, pinned="left", suppressMovable=True)
-    gob.configure_column("Fase",        editable=False, width=140, pinned="left", suppressMovable=True)
-    gob.configure_column("Responsable", editable=False, minWidth=200, pinned="left", suppressMovable=True)  # <— antes 180
+    # ⬅️ Asegurar que los 3 primeros encabezados se muestren completos
+    gob.configure_column("Id", headerName="ID", editable=False, minWidth=110, pinned="left", suppressMovable=True)
+    gob.configure_column("Área", headerName="Área", editable=False, minWidth=160, pinned="left", suppressMovable=True)
+    gob.configure_column("Fase", headerName="Fase", editable=False, minWidth=140, pinned="left", suppressMovable=True)
+    gob.configure_column("Responsable", editable=False, minWidth=200, pinned="left", suppressMovable=True)
 
     gob.configure_column("Estado",            headerName="Estado actual")
     gob.configure_column("Fecha Vencimiento", headerName="Fecha límite")
@@ -394,8 +404,8 @@ def render(user: dict | None = None):
     }""")
 
     colw = {
-        "Tarea":280,  # <— antes 260
-        "Tipo":180,   # <— antes 160
+        "Tarea":280,
+        "Tipo":180,
         "Detalle":240, "Ciclo de mejora":140, "Complejidad":130, "Prioridad":130,
         "Estado":130, "Duración":110, "Fecha Registro":160, "Hora Registro":140,
         "Fecha inicio":160, "Hora de inicio":140,
