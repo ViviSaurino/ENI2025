@@ -1,5 +1,10 @@
 # ================== Historial ==================
 
+import streamlit as st
+import pandas as pd
+
+# ================== Historial ==================
+
 st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
 st.subheader("📝 Tareas recientes")
 st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
