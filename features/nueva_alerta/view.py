@@ -52,6 +52,12 @@ def render(user: dict | None = None):
             overflow: visible !important;
             text-overflow: unset !important;
           }
+
+          /* Ocultar scroll horizontal del body */
+          #na-section .ag-body-horizontal-scroll,
+          #na-section .ag-center-cols-viewport{
+            overflow-x: hidden !important;
+          }
         </style>
         """, unsafe_allow_html=True)
 
@@ -239,39 +245,43 @@ def render(user: dict | None = None):
           }
         }""")
 
+        # auto ajuste al ancho del contenedor (sin barra horizontal)
+        on_ready_size  = JsCode("function(p){ p.api.sizeColumnsToFit(); }")
+        on_first_size  = JsCode("function(p){ p.api.sizeColumnsToFit(); }")
+
         col_defs = [
-            {"field":"Id", "headerName":"Id", "editable": False, "pinned":"left", "flex":1.2, "minWidth":110},
-            {"field":"Tarea", "headerName":"Tarea", "editable": False, "flex":3, "minWidth":200,
+            {"field":"Id", "headerName":"Id", "editable": False, "flex":0.9, "minWidth":100},
+            {"field":"Tarea", "headerName":"Tarea", "editable": False, "flex":2.2, "minWidth":220,
              "cellStyle": {"whiteSpace":"nowrap", "overflow":"hidden", "textOverflow":"ellipsis"}},
 
             {"field":"¿Generó alerta?", "headerName":"¿Generó alerta?",
              "editable": True, "cellEditor": "agSelectCellEditor",
              "cellEditorParams": {"values": ["No","Sí"]},
              "valueFormatter": si_no_formatter, "cellStyle": si_no_style_genero,
-             "flex":1.2, "minWidth":160},
+             "flex":1.2, "minWidth":120},
 
             {"field":"N° alerta", "headerName":"N° alerta",
              "editable": True, "cellEditor": "agSelectCellEditor",
              "cellEditorParams": {"values": ["1","2","3","+4"]},
-             "flex":0.8, "minWidth":130},
+             "flex":1.0, "minWidth":110},
 
             {"field":"Fecha de detección", "headerName":"Fecha de detección",
-             "editable": True, "cellEditor": date_editor, "flex":1.3, "minWidth":180},
+             "editable": True, "cellEditor": date_editor, "flex":1.4, "minWidth":140},
 
             {"field":"Hora de detección", "headerName":"Hora de detección",
-             "editable": False, "flex":1.1, "minWidth":170},
+             "editable": False, "flex":1.2, "minWidth":130},
 
             {"field":"¿Se corrigió?", "headerName":"¿Se corrigió?",
              "editable": True, "cellEditor": "agSelectCellEditor",
              "cellEditorParams": {"values": ["No","Sí"]},
              "valueFormatter": si_no_formatter, "cellStyle": si_no_style_corrigio,
-             "flex":1.2, "minWidth":160},
+             "flex":1.2, "minWidth":120},
 
             {"field":"Fecha de corrección", "headerName":"Fecha de corrección",
-             "editable": True, "cellEditor": date_editor, "flex":1.3, "minWidth":180},
+             "editable": True, "cellEditor": date_editor, "flex":1.4, "minWidth":140},
 
             {"field":"Hora de corrección", "headerName":"Hora de corrección",
-             "editable": False, "flex":1.1, "minWidth":180},
+             "editable": False, "flex":1.2, "minWidth":130},
         ]
 
         grid_opts = {
@@ -282,17 +292,18 @@ def render(user: dict | None = None):
                 "autoHeight": False,
                 "wrapHeaderText": True,     # headers hacen wrap
                 "autoHeaderHeight": True,   # altura automática de headers
-                "minWidth": 110,
+                "minWidth": 100,
                 "flex": 1
             },
             "suppressMovableColumns": True,
             "domLayout": "normal",
             "ensureDomOrder": True,
             "rowHeight": 38,
-            # Sin headerHeight fijo; autoHeaderHeight decide
-            "suppressHorizontalScroll": False,   # permitir scroll para no cortar títulos
-            "onCellValueChanged": on_cell_changed
-            # (Quitamos sizeColumnsToFit para no comprimir columnas)
+            "headerHeight": 64,            # alto suficiente para el wrap
+            "suppressHorizontalScroll": True,  # sin barra horizontal
+            "onCellValueChanged": on_cell_changed,
+            "onGridReady": on_ready_size,
+            "onFirstDataRendered": on_first_size,
         }
 
         grid = AgGrid(
