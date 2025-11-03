@@ -12,7 +12,7 @@ from st_aggrid import (
 )
 
 def render(user: dict | None = None):
-    # ================== EDITAR ESTADO (mismo layout que "Nueva alerta") ==================
+    # ================== EDITAR ESTADO ==================
     st.session_state.setdefault("est_visible", True)  # siempre visible
 
     # ---------- Barra superior (sin botón mostrar/ocultar) ----------
@@ -96,8 +96,9 @@ def render(user: dict | None = None):
             est_desde = c_desde.date_input("Desde", value=min_date, min_value=min_date, max_value=max_date, key="est_desde")
             est_hasta = c_hasta.date_input("Hasta", value=max_date, min_value=min_date, max_value=max_date, key="est_hasta")
 
+            # Alineación del botón Buscar a la misma altura que los campos
             with c_buscar:
-                st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+                st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
                 est_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
         # ===== Filtrado de tareas =====
@@ -110,8 +111,7 @@ def render(user: dict | None = None):
             if est_resp != "Todos" and "Responsable" in df_tasks.columns:
                 df_tasks = df_tasks[df_tasks["Responsable"].astype(str) == est_resp]
 
-            # aplicar rango
-            # prioridad: Fecha inicio -> Fecha Registro -> Fecha
+            # aplicar rango (prioridad: Fecha inicio -> Fecha Registro -> Fecha)
             if "Fecha inicio" in df_tasks.columns:
                 fcol = pd.to_datetime(df_tasks["Fecha inicio"], errors="coerce")
             elif "Fecha Registro" in df_tasks.columns:
@@ -329,7 +329,7 @@ def render(user: dict | None = None):
         # ===== Guardar cambios (actualiza la MISMA fila por Id) =====
         u1, u2 = st.columns([A+Fw+T_width+D+R, C], gap="medium")
         with u2:
-            if st.button("💾 Guardar cambios", use_container_width=True, key="est_guardar_inline_v3"):
+            if st.button("Guardar", use_container_width=True, key="est_guardar_inline_v3"):
                 try:
                     grid_data = pd.DataFrame(grid.get("data", []))
                     if grid_data.empty or "Id" not in grid_data.columns:
