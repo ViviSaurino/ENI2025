@@ -145,37 +145,53 @@ def render(user: dict | None = None):
             ciclo_mejora = r1c6.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
 
             # ---------- FILA 2 ----------
-            c2_1, c2_2, c2_3, c2_4, c2_5, c2_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
-            c2_1.text_input("Tipo de tarea", placeholder="Tipo o categoría", key="nt_tipo")
-            c2_2.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
-
+            # Limpieza de estados previos (si quedaron None)
             if st.session_state.get("fi_d", "___MISSING___") is None:
                 st.session_state.pop("fi_d")
             if st.session_state.get("fi_t", "___MISSING___") is None:
                 st.session_state.pop("fi_t")
 
-            c2_3.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
+            c2_1, c2_2, c2_3, c2_4, c2_5, c2_6 = st.columns([A, Fw, T, D, R, C], gap="medium")
 
-            _t = st.session_state.get("fi_t")
-            _t_txt = ""
-            if _t is not None:
-                try:
-                    _t_txt = _t.strftime("%H:%M")
-                except Exception:
-                    _t_txt = str(_t)
-            c2_4.text_input("Hora (auto)", value=_t_txt, disabled=True,
-                            help="Se asigna al elegir la fecha", key="fi_t_view")
+            # ↓↓↓ Baja SOLO los campos de la fila 2 (columnas 1-5)
+            ROW2_TOP_PAD = 10  # ajusta aquí para afinar la alineación con el botón
 
-            _df_tmp = st.session_state.get("df_main", pd.DataFrame()).copy() if "df_main" in st.session_state else pd.DataFrame()
-            prefix = make_id_prefix(st.session_state.get("nt_area", area), st.session_state.get("nt_resp", ""))
-            id_preview = (next_id_by_person(_df_tmp, st.session_state.get("nt_area", area),
-                           st.session_state.get("nt_resp", "")) if st.session_state.get("fi_d") else f"{prefix}_")
-            c2_5.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
+            with c2_1:
+                st.markdown(f"<div style='height:{ROW2_TOP_PAD}px'></div>", unsafe_allow_html=True)
+                st.text_input("Tipo de tarea", placeholder="Tipo o categoría", key="nt_tipo")
 
-            # Botón Agregar (más abajo para alinear mediante espaciador)
+            with c2_2:
+                st.markdown(f"<div style='height:{ROW2_TOP_PAD}px'></div>", unsafe_allow_html=True)
+                st.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
+
+            with c2_3:
+                st.markdown(f"<div style='height:{ROW2_TOP_PAD}px'></div>", unsafe_allow_html=True)
+                st.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
+
+            with c2_4:
+                st.markdown(f"<div style='height:{ROW2_TOP_PAD}px'></div>", unsafe_allow_html=True)
+                _t = st.session_state.get("fi_t")
+                _t_txt = ""
+                if _t is not None:
+                    try:
+                        _t_txt = _t.strftime("%H:%M")
+                    except Exception:
+                        _t_txt = str(_t)
+                st.text_input("Hora (auto)", value=_t_txt, disabled=True,
+                              help="Se asigna al elegir la fecha", key="fi_t_view")
+
+            with c2_5:
+                st.markdown(f"<div style='height:{ROW2_TOP_PAD}px'></div>", unsafe_allow_html=True)
+                _df_tmp = st.session_state.get("df_main", pd.DataFrame()).copy() if "df_main" in st.session_state else pd.DataFrame()
+                prefix = make_id_prefix(st.session_state.get("nt_area", area), st.session_state.get("nt_resp", ""))
+                id_preview = (next_id_by_person(_df_tmp, st.session_state.get("nt_area", area),
+                               st.session_state.get("nt_resp", "")) if st.session_state.get("fi_d") else f"{prefix}_")
+                st.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
+
+            # Botón Agregar (columna 6) — se mantiene con micro-ajuste independiente
             with c2_6:
                 st.markdown('<div class="btn-agregar">', unsafe_allow_html=True)
-                BTN_OFFSET_PX = 9  # ↑ ajusta este valor para afinar la alineación
+                BTN_OFFSET_PX = 9  # micro-ajuste del botón (si hiciera falta)
                 st.markdown(f"<div style='height:{BTN_OFFSET_PX}px'></div>", unsafe_allow_html=True)
                 submitted = st.button("➕ Agregar", use_container_width=True, key="btn_agregar")
                 st.markdown('</div>', unsafe_allow_html=True)
