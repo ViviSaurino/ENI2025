@@ -175,7 +175,7 @@ def render(user: dict | None = None):
             # Botón Agregar (más abajo para alinear mediante espaciador)
             with c2_6:
                 st.markdown('<div class="btn-agregar">', unsafe_allow_html=True)
-                BTN_OFFSET_PX = 16  # ↑ ajusta este valor para afinar la alineación
+                BTN_OFFSET_PX = 14  # ↑ ajusta este valor para afinar la alineación
                 st.markdown(f"<div style='height:{BTN_OFFSET_PX}px'></div>", unsafe_allow_html=True)
                 submitted = st.button("➕ Agregar", use_container_width=True, key="btn_agregar")
                 st.markdown('</div>', unsafe_allow_html=True)
