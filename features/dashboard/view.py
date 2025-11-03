@@ -153,11 +153,11 @@ def render_all(user: dict | None = None):
                 user=user
             )
 
-    # 6) Tareas recientes (carpeta 'tareas')
+    # 6) Tareas recientes
     with tabs[5]:
         with st.spinner("Cargando 'Tareas recientes'..."):
             _call_view(
-                "features.tareas.view",
+                "features.historial.view",  # <- corregido
                 ("render", "render_recientes", "render_tabla", "render_view", "main", "app", "ui"),
                 user=user
             )
