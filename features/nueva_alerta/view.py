@@ -19,7 +19,6 @@ def _save_local(df: pd.DataFrame):
 
 def render(user: dict | None = None):
     # ================== Nueva alerta ==================
-
     st.session_state.setdefault("na_visible", True)
     chev3 = "▾" if st.session_state["na_visible"] else "▸"
 
@@ -45,6 +44,12 @@ def render(user: dict | None = None):
         <style>
           #na-section .stButton > button { width: 100% !important; }
           .section-na .help-strip-na + .form-card{ margin-top: 6px !important; }
+          /* Encabezados legibles: permiten salto de línea */
+          #na-section .ag-header-cell-label{
+            white-space: normal !important;
+            line-height: 1.15 !important;
+            font-weight: 400 !important;
+          }
         </style>
         """, unsafe_allow_html=True)
 
@@ -62,6 +67,24 @@ def render(user: dict | None = None):
 
         # Base segura
         df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
+
+        # ===== Rango por defecto (min–max del dataset) =====
+        def _first_valid_date_series(df: pd.DataFrame) -> pd.Series:
+            for col in ["Fecha inicio", "Fecha Registro", "Fecha"]:
+                if col in df.columns:
+                    s = pd.to_datetime(df[col], errors="coerce")
+                    if s.notna().any():
+                        return s
+            return pd.Series([], dtype="datetime64[ns]")
+
+        dates_all = _first_valid_date_series(df_all)
+        if dates_all.empty:
+            today = pd.Timestamp.today().normalize().date()
+            min_date = today
+            max_date = today
+        else:
+            min_date = dates_all.min().date()
+            max_date = dates_all.max().date()
 
         # ===== FILTROS =====
         with st.form("na_filtros_v3", clear_on_submit=False):
@@ -84,22 +107,13 @@ def render(user: dict | None = None):
             responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
             na_resp = c_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0)
 
-            # Rango de fechas opcional (evita value=None)
-            use_date_range = c_buscar.checkbox("Filtrar por fechas", value=False)
-            if use_date_range:
-                na_desde = c_desde.date_input("Desde")
-                na_hasta = c_hasta.date_input("Hasta")
-            else:
-                na_desde = na_hasta = None
-                with c_desde:
-                    st.caption("Desde")
-                    st.markdown("<div style='height:38px;border:1px dashed #e5e7eb;border-radius:8px;'></div>", unsafe_allow_html=True)
-                with c_hasta:
-                    st.caption("Hasta")
-                    st.markdown("<div style='height:38px;border:1px dashed #e5e7eb;border-radius:8px;'></div>", unsafe_allow_html=True)
+            # Rango de fechas (siempre visible; por defecto = min–max del dataset)
+            na_desde = c_desde.date_input("Desde", value=min_date, min_value=min_date, max_value=max_date, key="na_desde")
+            na_hasta = c_hasta.date_input("Hasta", value=max_date, min_value=min_date, max_value=max_date, key="na_hasta")
 
+            # Alinear botón Buscar con la fila de campos
             with c_buscar:
-                st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+                st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
                 na_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
         # ===== Filtrado de tareas =====
@@ -111,12 +125,19 @@ def render(user: dict | None = None):
                 df_tasks = df_tasks[df_tasks["Fase"].astype(str) == na_fase]
             if na_resp != "Todos" and "Responsable" in df_tasks.columns:
                 df_tasks = df_tasks[df_tasks["Responsable"].astype(str) == na_resp]
-            if use_date_range and "Fecha inicio" in df_tasks.columns:
+
+            # aplicar rango (prioridad: Fecha inicio -> Fecha Registro -> Fecha)
+            if "Fecha inicio" in df_tasks.columns:
                 fcol = pd.to_datetime(df_tasks["Fecha inicio"], errors="coerce")
-                if na_desde:
-                    df_tasks = df_tasks[fcol >= pd.to_datetime(na_desde)]
-                if na_hasta:
-                    df_tasks = df_tasks[fcol <= (pd.to_datetime(na_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
+            elif "Fecha Registro" in df_tasks.columns:
+                fcol = pd.to_datetime(df_tasks["Fecha Registro"], errors="coerce")
+            else:
+                fcol = pd.to_datetime(df_tasks.get("Fecha", pd.Series([], dtype=str)), errors="coerce")
+
+            if na_desde:
+                df_tasks = df_tasks[fcol >= pd.to_datetime(na_desde)]
+            if na_hasta:
+                df_tasks = df_tasks[fcol <= (pd.to_datetime(na_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
 
         # ===== Tabla =====
         st.markdown("**Resultados**")
@@ -145,11 +166,10 @@ def render(user: dict | None = None):
             df_tmp["N° alerta"]       = df_tmp["N° alerta"].replace("", "1")
 
             df_view = df_tmp[["Id","Tarea"] + alert_cols].copy()
-            df_view = df_view.rename(columns={})  # (reservado por si renombras algo luego)
 
         # ====== AG-GRID ======
 
-        # editores de fecha
+        # Editor de fecha
         date_editor = JsCode("""
         class DateEditor{
           init(p){
@@ -233,7 +253,7 @@ def render(user: dict | None = None):
              "editable": True, "cellEditor": "agSelectCellEditor",
              "cellEditorParams": {"values": ["No","Sí"]},
              "valueFormatter": si_no_formatter, "cellStyle": si_no_style_genero,
-             "flex":1.2, "minWidth":140},
+             "flex":1.2, "minWidth":150},
 
             {"field":"N° alerta", "headerName":"N° alerta",
              "editable": True, "cellEditor": "agSelectCellEditor",
@@ -241,22 +261,22 @@ def render(user: dict | None = None):
              "flex":0.8, "minWidth":120},
 
             {"field":"Fecha de detección", "headerName":"Fecha de detección",
-             "editable": True, "cellEditor": date_editor, "flex":1.2, "minWidth":150},
+             "editable": True, "cellEditor": date_editor, "flex":1.3, "minWidth":170},
 
             {"field":"Hora de detección", "headerName":"Hora de detección",
-             "editable": False, "flex":1.0, "minWidth":140},
+             "editable": False, "flex":1.1, "minWidth":160},
 
             {"field":"¿Se corrigió?", "headerName":"¿Se corrigió?",
              "editable": True, "cellEditor": "agSelectCellEditor",
              "cellEditorParams": {"values": ["No","Sí"]},
              "valueFormatter": si_no_formatter, "cellStyle": si_no_style_corrigio,
-             "flex":1.2, "minWidth":140},
+             "flex":1.2, "minWidth":150},
 
             {"field":"Fecha de corrección", "headerName":"Fecha de corrección",
-             "editable": True, "cellEditor": date_editor, "flex":1.2, "minWidth":150},
+             "editable": True, "cellEditor": date_editor, "flex":1.3, "minWidth":170},
 
             {"field":"Hora de corrección", "headerName":"Hora de corrección",
-             "editable": False, "flex":1.0, "minWidth":140},
+             "editable": False, "flex":1.1, "minWidth":170},
         ]
 
         grid_opts = {
@@ -265,6 +285,8 @@ def render(user: dict | None = None):
                 "resizable": True,
                 "wrapText": False,
                 "autoHeight": False,
+                "wrapHeaderText": True,     # <-- para que el header haga wrap
+                "autoHeaderHeight": True,   # <-- ajusta la altura automáticamente
                 "minWidth": 110,
                 "flex": 1
             },
@@ -272,7 +294,7 @@ def render(user: dict | None = None):
             "domLayout": "normal",
             "ensureDomOrder": True,
             "rowHeight": 38,
-            "headerHeight": 36,
+            "headerHeight": 60,            # <-- más alto para que no se corte
             "suppressHorizontalScroll": True,
             "onCellValueChanged": on_cell_changed,
             "onGridReady": on_ready_size,
@@ -295,7 +317,7 @@ def render(user: dict | None = None):
         # ===== Guardar (merge por Id en df_main) =====
         _sp, _btn = st.columns([A+Fw+T_width+D+R, C], gap="medium")
         with _btn:
-            if st.button("💾 Guardar cambios", use_container_width=True):
+            if st.button("💾 Guardar", use_container_width=True):
                 try:
                     df_edit = pd.DataFrame(grid["data"]).copy()
                     df_base = st.session_state.get("df_main", pd.DataFrame()).copy()
