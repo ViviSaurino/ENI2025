@@ -66,9 +66,9 @@ def render(user: dict | None = None):
       width: 100%;
     }
 
-    /* Alinear el botón Buscar con la fila de filtros (SUBE un poco) */
+    /* Alinear el botón Buscar con la fila de filtros */
     .hist-search .stButton > button{
-      margin-top: 4px;   /* <— antes 12px */
+      margin-top: 0 !important;
       height: 38px !important;
     }
 
@@ -99,7 +99,11 @@ def render(user: dict | None = None):
 
     # ===== FILA DE 5 FILTROS + Buscar =====
     with st.form("hist_filtros_v1", clear_on_submit=False):
-        cA, cF, cR, cD, cH, cB = st.columns([A_f, Fw_f, T_width_f, D_f, R_f, C_f], gap="medium")
+        cA, cF, cR, cD, cH, cB = st.columns(
+            [A_f, Fw_f, T_width_f, D_f, R_f, C_f],
+            gap="medium",
+            vertical_alignment="bottom"
+        )
 
         area_sel = cA.selectbox(
             "Área",
@@ -124,9 +128,8 @@ def render(user: dict | None = None):
         f_desde = cD.date_input("Desde", value=None, key="hist_desde")
         f_hasta = cH.date_input("Hasta",  value=None, key="hist_hasta")
 
-        # 🔧 Subir un poco el botón para alinearlo con la fila
+        # 🔧 Botón alineado con la fila
         with cB:
-            st.markdown("<div style='height:22px'></div>", unsafe_allow_html=True)  # <— antes 34px
             st.markdown('<div class="hist-search">', unsafe_allow_html=True)
             hist_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
