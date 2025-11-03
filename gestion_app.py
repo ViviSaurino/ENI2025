@@ -49,9 +49,9 @@ st.markdown("""
   section[data-testid="stSidebar"] .stButton > button:hover{
     filter:brightness(0.95);
   }
-  /* NEW: Llevar el logo un poco más a la izquierda */
+  /* Más a la izquierda */
   section[data-testid="stSidebar"] .eni-logo-wrap{
-    margin-left:-8px;  /* ajusta si quieres más/menos */
+    margin-left:-20px;  /* ajusta si quieres aún más */
   }
 </style>
 """, unsafe_allow_html=True)
