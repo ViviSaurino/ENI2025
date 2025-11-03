@@ -8,7 +8,6 @@ import streamlit as st
 
 __all__ = ["render"]
 
-
 # ====== Helpers ======
 def _to_date(v):
     if pd.isna(v):
@@ -34,14 +33,13 @@ def _classify_estado(raw: str) -> str:
         return "Cancelado"
     if s in {"eliminado", "borrado"}:
         return "Eliminado"
-    # Todo lo demás se considera "No iniciado"
     return "No iniciado"
 
 
-def _render_col(title: str, color_bg: str, cards: list[dict]):
+def _render_col(title: str, color_bg: str, cards: list[dict], accent: str | None = None):
     st.markdown(
         f"""
-        <div class="kan-col" style="--col-bg:{color_bg}">
+        <div class="kan-col" style="--col-bg:{color_bg}; --col-ac:{accent or 'transparent'};">
             <div class="kan-col__head">
                 <div class="kan-col__title">{title}</div>
                 <div class="kan-col__count">{len(cards)}</div>
@@ -62,7 +60,7 @@ def _render_col(title: str, color_bg: str, cards: list[dict]):
             venc_txt = ""
             if pd.notna(venc_f):
                 venc_txt = f"{pd.to_datetime(venc_f).date().isoformat()}"
-                if isinstance(venc_h, str) and re.match(r"^\d{1,2}:\d{2}$", venc_h or ""):
+                if isinstance(venc_h, str) and re.match(r"^\\d{1,2}:\\d{2}$", venc_h or ""):
                     venc_txt += f" · {venc_h}"
             meta = " · ".join([x for x in [resp, area or None, fase or None] if x])
             chips = f'<span class="chip">{venc_txt}</span>' if venc_txt else ""
@@ -90,23 +88,36 @@ def render(user: dict | None = None) -> None:
         }
         .kan-filters [data-testid="column"]>div{ display:flex; align-items:end; }
 
-        /* ----- Kanban layout ----- */
+        /* ----- Paleta pastel solicitada ----- */
         :root{
-          --blue-soft:#DCEFFD;      /* celeste claro */
-          --green-soft:#D9FBEA;     /* verde claro */
-          --pink-soft:#FDE2F3;      /* rosado claro */
+          /* principales */
+          --blue-soft:#EAF4FF;   /* celeste claro visible */
+          --blue-ac:#B6D7FF;
+          --green-soft:#E9FFF5;  /* verde claro */
+          --green-ac:#A6F0CD;
+          --pink-soft:#FFEAF4;   /* rosado claro */
+          --pink-ac:#FFBEDA;
 
-          --yellow-soft:#FFF6CC;    /* pausado */
-          --orange-soft:#FFE2CC;    /* cancelado */
-          --red-soft:#FFD6D6;       /* eliminado */
+          /* secundarios (ver más) */
+          --yellow-soft:#FFF8CC; /* pausado */
+          --yellow-ac:#F7DA63;
+          --orange-soft:#FFE9D6; /* cancelado */
+          --orange-ac:#FFBF8C;
+          --red-soft:#FFE3E3;    /* eliminado */
+          --red-ac:#FF9AA2;
         }
+
+        /* ----- Kanban layout ----- */
         .kan-row{
           display:grid; grid-template-columns:repeat(3, 1fr); gap:16px;
         }
         .kan-row--more{ margin-top:18px; }
         .kan-col{
-          background:var(--col-bg); border-radius:14px; padding:10px; 
+          background:var(--col-bg);
+          border-radius:14px; padding:10px;
           box-shadow:0 1px 2px rgba(0,0,0,.06);
+          border:1px solid rgba(0,0,0,.06);
+          border-left:6px solid var(--col-ac);   /* acento visible */
         }
         .kan-col__head{
           display:flex; align-items:center; justify-content:space-between;
@@ -142,7 +153,6 @@ def render(user: dict | None = None) -> None:
     if "df_main" in st.session_state and isinstance(st.session_state["df_main"], pd.DataFrame):
         df = st.session_state["df_main"].copy()
     else:
-        # Muestra: dataset mínimo si no hay base en sesión
         df = pd.DataFrame(
             {
                 "Id": [1, 2, 3, 4, 5, 6],
@@ -157,31 +167,22 @@ def render(user: dict | None = None) -> None:
                     "Informe cierre",
                     "Reunión interna",
                 ],
-                "Fecha inicio": [
-                    "2025-10-01",
-                    "2025-10-03",
-                    "2025-10-10",
-                    "2025-10-15",
-                    "2025-10-20",
-                    "2025-10-25",
-                ],
+                "Fecha inicio": ["2025-10-01","2025-10-03","2025-10-10","2025-10-15","2025-10-20","2025-10-25"],
                 "Fecha Vencimiento": ["2025-11-10"] * 6,
                 "Hora Vencimiento": ["17:00"] * 6,
                 "Estado": ["No iniciado", "En curso", "No iniciado", "Terminado", "Pausado", "Cancelado"],
             }
         )
 
-    # Normalizaciones útiles
     if "Estado" not in df.columns:
         df["Estado"] = ""
     df["__Estado__"] = df["Estado"].map(_classify_estado)
 
-    # Columna de fecha para filtros
     date_col = "Fecha inicio" if "Fecha inicio" in df.columns else ("Fecha Registro" if "Fecha Registro" in df.columns else None)
     if date_col:
         df[date_col] = df[date_col].map(_to_date)
 
-    # ======= FILTROS =======
+    # ===== FILTROS =====
     with st.form("kanban_filters", clear_on_submit=False):
         st.markdown('<div class="kan-filters">', unsafe_allow_html=True)
         cA, cF, cR, cD, cH, cB = st.columns([1.8, 2.1, 3.0, 1.6, 1.4, 1.2], gap="medium", vertical_alignment="bottom")
@@ -202,7 +203,6 @@ def render(user: dict | None = None) -> None:
         do_search = cB.form_submit_button("🔎 Buscar", use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # Aplicar filtros (solo al presionar Buscar)
     df_view = df.copy()
     if do_search:
         if area_sel != "Todas" and "Área" in df_view.columns:
@@ -217,47 +217,44 @@ def render(user: dict | None = None) -> None:
             if f_hasta:
                 df_view = df_view[df_view[date_col].dt.date <= f_hasta]
 
-    # ======= KANBAN =======
-    # Paletas
+    # ===== KANBAN =====
+    # (bg, accent)
     colors_primary = {
-        "No iniciado": "var(--blue-soft)",
-        "En curso": "var(--green-soft)",
-        "Terminado": "var(--pink-soft)",
+        "No iniciado": ("var(--blue-soft)", "var(--blue-ac)"),
+        "En curso": ("var(--green-soft)", "var(--green-ac)"),
+        "Terminado": ("var(--pink-soft)", "var(--pink-ac)"),
     }
     colors_more = {
-        "Pausado": "var(--yellow-soft)",
-        "Cancelado": "var(--orange-soft)",
-        "Eliminado": "var(--red-soft)",
+        "Pausado": ("var(--yellow-soft)", "var(--yellow-ac)"),
+        "Cancelado": ("var(--orange-soft)", "var(--orange-ac)"),
+        "Eliminado": ("var(--red-soft)", "var(--red-ac)"),
     }
 
-    # Diccionario por estado
     buckets = {k: [] for k in list(colors_primary.keys()) + list(colors_more.keys())}
     for _, row in df_view.iterrows():
         k = _classify_estado(row.get("Estado", ""))
         buckets.setdefault(k, [])
         buckets[k].append(row.to_dict())
 
-    # Fila principal
     st.markdown('<div class="kan-row">', unsafe_allow_html=True)
     cols = st.columns(3)
     for col, k in zip(cols, colors_primary.keys()):
         with col:
-            _render_col(k, colors_primary[k], buckets.get(k, []))
+            bg, ac = colors_primary[k]
+            _render_col(k, bg, buckets.get(k, []), accent=ac)
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Botón "Ver más"
     show_more = st.session_state.get("kanban_show_more", False)
-    btn_label = "Ver más" if not show_more else "Ocultar"
-    if st.button(btn_label, key="kan_show_more_btn"):
+    if st.button("Ver más" if not show_more else "Ocultar", key="kan_show_more_btn"):
         st.session_state["kanban_show_more"] = not show_more
         st.rerun()
     show_more = st.session_state.get("kanban_show_more", False)
 
-    # Fila secundaria (oculta/visible)
     if show_more:
         st.markdown('<div class="kan-row kan-row--more">', unsafe_allow_html=True)
         cols2 = st.columns(3)
         for col, k in zip(cols2, colors_more.keys()):
             with col:
-                _render_col(k, colors_more[k], buckets.get(k, []))
+                bg, ac = colors_more[k]
+                _render_col(k, bg, buckets.get(k, []), accent=ac)
         st.markdown("</div>", unsafe_allow_html=True)
