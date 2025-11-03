@@ -329,7 +329,7 @@ def render(user: dict | None = None):
         # ===== Guardar cambios (actualiza la MISMA fila por Id) =====
         u1, u2 = st.columns([A+Fw+T_width+D+R, C], gap="medium")
         with u2:
-            if st.button("Guardar", use_container_width=True, key="est_guardar_inline_v3"):
+            if st.button("💾 Guardar", use_container_width=True, key="est_guardar_inline_v3"):
                 try:
                     grid_data = pd.DataFrame(grid.get("data", []))
                     if grid_data.empty or "Id" not in grid_data.columns:
