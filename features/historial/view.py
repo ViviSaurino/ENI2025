@@ -33,9 +33,10 @@ def render(user: dict | None = None):
     st.subheader("📝 Tareas recientes")
     st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
-    # --- Estilo para filas eliminadas + botones alineados ---
+    # --- Estilos globales (filas eliminadas, filtros/acciones y headers) ---
     st.markdown("""
     <style>
+    /* Fila tachada (Eliminado) */
     .ag-theme-balham .row-deleted .ag-cell {
       text-decoration: line-through;
       background-color: #FEE2E2 !important;
@@ -43,28 +44,45 @@ def render(user: dict | None = None):
       opacity: 0.95;
     }
 
-    /* ===== Alineación exacta de los botones inferiores con los filtros ===== */
+    /* ===== Alineación exacta contenedor de acciones ===== */
     :root{
-      --hist-pad-x: 16px;        /* padding lateral del contenedor de botones */
-      --hist-border-w: 2px;      /* grosor de línea superior (visible en rojo) */
-      --hist-border-c: #EF4444;  /* color de la línea (roja) */
+      --hist-pad-x: 16px;       /* padding lateral del contenedor de botones */
+      --hist-border-w: 2px;     /* grosor de la línea superior (roja) */
+      --hist-border-c: #EF4444; /* color de la línea */
     }
     .hist-actions{
       padding-left: var(--hist-pad-x) !important;
       padding-right: var(--hist-pad-x) !important;
-      padding-top: 10px; /* pequeño respiro bajo la línea roja */
       border-top: var(--hist-border-w) solid var(--hist-border-c);
     }
-    /* Botones inferiores: misma altura y aspecto en una sola línea */
+    /* Centrar verticalmente el contenido de cada columna de la franja de acciones */
+    .hist-actions [data-testid="column"] > div{
+      display: flex; align-items: center; height: 46px;
+    }
+    /* Botones de acciones: misma altura y ancho adaptable */
     .hist-actions .stButton > button{
       height: 38px !important;
       border-radius: 10px !important;
+      width: 100%;
+    }
+
+    /* Alinear el botón Buscar con la fila de filtros */
+    .hist-search .stButton > button{
+      margin-top: 12px;  /* ajuste fino adicional */
+      height: 38px !important;
     }
 
     /* Encabezados gris tenue para columnas Pausado/Cancelado/Eliminado */
     :root{ --muted-bg:#ECEFF1; --muted-fg:#90A4AE; }
     .ag-theme-balham .ag-header-cell.muted-col .ag-header-cell-label{
       color: var(--muted-fg) !important;
+    }
+
+    /* Mostrar encabezados completos (permitir salto de línea) */
+    .ag-theme-balham .ag-header-cell-label,
+    .ag-theme-balham .ag-header-cell-text{
+      white-space: normal !important;
+      line-height: 1.2 !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -102,10 +120,12 @@ def render(user: dict | None = None):
         f_desde = cD.date_input("Desde", value=None, key="hist_desde")
         f_hasta = cH.date_input("Hasta",  value=None, key="hist_hasta")
 
-        # 🔧 Bajar un poco el botón para alinearlo con la fila de inputs
+        # 🔧 Bajar un poco más el botón para alinearlo con la fila
         with cB:
-            st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height:34px'></div>", unsafe_allow_html=True)
+            st.markdown('<div class="hist-search">', unsafe_allow_html=True)
             hist_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
 
     # Toggle mostrar/ocultar eliminadas
     show_deleted = st.toggle("Mostrar eliminadas (tachadas)", value=True, key="hist_show_deleted")
@@ -295,7 +315,10 @@ def render(user: dict | None = None):
         suppressRowClickSelection=False,
         domLayout="normal",
         rowHeight=30,
-        headerHeight=42,
+        # Encabezados completos:
+        wrapHeaderText=True,
+        autoHeaderHeight=True,
+        headerHeight=56,
         enableRangeSelection=True,
         enableCellTextSelection=True,
         singleClickEdit=False,
