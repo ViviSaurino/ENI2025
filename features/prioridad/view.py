@@ -21,17 +21,12 @@ def render(user: dict | None = None):
     # =========================== PRIORIDAD ===============================
 
     st.session_state.setdefault("pri_visible", True)
-    chev_pri = "▾" if st.session_state["pri_visible"] else "▸"
 
-    # ---------- Barra superior ----------
+    # ---------- Barra superior (SIN botón mostrar/ocultar) ----------
+    # La píldora queda a la izquierda y con el mismo ancho que "Área"
+    A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
     st.markdown('<div class="topbar-pri">', unsafe_allow_html=True)
-    c_toggle_p, c_pill_p = st.columns([0.028, 0.965], gap="medium")
-    with c_toggle_p:
-        st.markdown('<div class="toggle-icon">', unsafe_allow_html=True)
-        def _toggle_pri():
-            st.session_state["pri_visible"] = not st.session_state["pri_visible"]
-        st.button(chev_pri, key="pri_toggle_v2", help="Mostrar/ocultar", on_click=_toggle_pri)
-        st.markdown('</div>', unsafe_allow_html=True)
+    c_pill_p, _ = st.columns([A, Fw + T_width + D + R + C], gap="medium")
     with c_pill_p:
         st.markdown('<div class="form-title-pri">🧭&nbsp;&nbsp;Prioridad</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
@@ -90,9 +85,6 @@ def render(user: dict | None = None):
           <div class="form-card">
         """, unsafe_allow_html=True)
 
-        # Proporciones
-        A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
-
         df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
         if df_all.empty:
             df_all = pd.DataFrame(columns=["Id","Área","Fase","Responsable","Tarea","Fecha inicio","Prioridad"])
@@ -101,6 +93,24 @@ def render(user: dict | None = None):
         if "Prioridad" not in df_all.columns:
             df_all["Prioridad"] = "Media"
         df_all["Prioridad"] = df_all["Prioridad"].fillna("Media").replace({"": "Media"})
+
+        # ===== Rango de fechas por defecto (min–max del dataset) =====
+        def _first_valid_date_series(df: pd.DataFrame) -> pd.Series:
+            for col in ["Fecha inicio", "Fecha Registro", "Fecha"]:
+                if col in df.columns:
+                    s = pd.to_datetime(df[col], errors="coerce")
+                    if s.notna().any():
+                        return s
+            return pd.Series([], dtype="datetime64[ns]")
+
+        dates_all = _first_valid_date_series(df_all)
+        if dates_all.empty:
+            today = pd.Timestamp.today().normalize().date()
+            min_date = today
+            max_date = today
+        else:
+            min_date = dates_all.min().date()
+            max_date = dates_all.max().date()
 
         # ===== FILTROS =====
         with st.form("pri_filtros_v2", clear_on_submit=False):
@@ -125,22 +135,12 @@ def render(user: dict | None = None):
             responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
             pri_resp = c_resp.multiselect("Responsable", options=responsables_all, default=[], placeholder="Selecciona responsable(s)")
 
-            # 🔁 Rango de fechas opcional (sin value=None)
-            use_date_range = c_buscar.checkbox("Filtrar por fechas", value=False, key="pri_use_dates")
-            if use_date_range:
-                pri_desde = c_desde.date_input("Desde", key="pri_desde")
-                pri_hasta = c_hasta.date_input("Hasta",  key="pri_hasta")
-            else:
-                pri_desde = pri_hasta = None
-                with c_desde:
-                    st.caption("Desde")
-                    st.markdown("<div style='height:38px;border:1px dashed #e5e7eb;border-radius:8px;'></div>", unsafe_allow_html=True)
-                with c_hasta:
-                    st.caption("Hasta")
-                    st.markdown("<div style='height:38px;border:1px dashed #e5e7eb;border-radius:8px;'></div>", unsafe_allow_html=True)
+            # 🗓️ Rango de fechas SIEMPRE visible (sin checkbox)
+            pri_desde = c_desde.date_input("Desde", value=min_date, min_value=min_date, max_value=max_date, key="pri_desde")
+            pri_hasta = c_hasta.date_input("Hasta",  value=max_date, min_value=min_date, max_value=max_date, key="pri_hasta")
 
             with c_buscar:
-                st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+                st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
                 pri_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
         # ===== Filtrado para la tabla =====
