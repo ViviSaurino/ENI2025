@@ -66,9 +66,9 @@ def render(user: dict | None = None):
       width: 100%;
     }
 
-    /* Alinear el botón Buscar con la fila de filtros */
+    /* Alinear el botón Buscar con la fila de filtros (SUBE un poco) */
     .hist-search .stButton > button{
-      margin-top: 12px;  /* ajuste fino adicional */
+      margin-top: 4px;   /* <— antes 12px */
       height: 38px !important;
     }
 
@@ -78,10 +78,14 @@ def render(user: dict | None = None):
       color: var(--muted-fg) !important;
     }
 
-    /* Mostrar encabezados completos (permitir salto de línea) */
+    /* === Mostrar encabezados completos (sin recorte) === */
+    .ag-theme-balham .ag-header,
+    .ag-theme-balham .ag-header-cell,
     .ag-theme-balham .ag-header-cell-label,
     .ag-theme-balham .ag-header-cell-text{
       white-space: normal !important;
+      overflow: visible !important;
+      text-overflow: clip !important;
       line-height: 1.2 !important;
     }
     </style>
@@ -120,9 +124,9 @@ def render(user: dict | None = None):
         f_desde = cD.date_input("Desde", value=None, key="hist_desde")
         f_hasta = cH.date_input("Hasta",  value=None, key="hist_hasta")
 
-        # 🔧 Bajar un poco más el botón para alinearlo con la fila
+        # 🔧 Subir un poco el botón para alinearlo con la fila
         with cB:
-            st.markdown("<div style='height:34px'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height:22px'></div>", unsafe_allow_html=True)  # <— antes 34px
             st.markdown('<div class="hist-search">', unsafe_allow_html=True)
             hist_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
@@ -327,12 +331,13 @@ def render(user: dict | None = None):
         enterMovesDown=False,
         suppressMovableColumns=False,
         getRowId=JsCode("function(p){ return (p.data && (p.data.Id || p.data['Id'])) + ''; }"),
+        suppressHeaderVirtualisation=True,  # <— ayuda a medir bien alturas/ancho de encabezados
     )
 
     gob.configure_column("Id", headerName="ID", editable=False, width=110, pinned="left", suppressMovable=True)
     gob.configure_column("Área",        editable=False, width=160, pinned="left", suppressMovable=True)
     gob.configure_column("Fase",        editable=False, width=140, pinned="left", suppressMovable=True)
-    gob.configure_column("Responsable", editable=False, minWidth=180, pinned="left", suppressMovable=True)
+    gob.configure_column("Responsable", editable=False, minWidth=200, pinned="left", suppressMovable=True)  # <— antes 180
 
     gob.configure_column("Estado",            headerName="Estado actual")
     gob.configure_column("Fecha Vencimiento", headerName="Fecha límite")
@@ -386,7 +391,9 @@ def render(user: dict | None = None):
     }""")
 
     colw = {
-        "Tarea":260, "Tipo":160, "Detalle":240, "Ciclo de mejora":140, "Complejidad":130, "Prioridad":130,
+        "Tarea":280,  # <— antes 260
+        "Tipo":180,   # <— antes 160
+        "Detalle":240, "Ciclo de mejora":140, "Complejidad":130, "Prioridad":130,
         "Estado":130, "Duración":110, "Fecha Registro":160, "Hora Registro":140,
         "Fecha inicio":160, "Hora de inicio":140,
         "Fecha Vencimiento":160, "Hora Vencimiento":140,
