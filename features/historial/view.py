@@ -30,7 +30,31 @@ def render(user: dict | None = None):
     # ================== Historial ==================
 
     st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-    st.subheader("📝 Tareas recientes")
+
+    # ---- TÍTULO EN PÍLDORA (ajuste solicitado) ----
+    st.markdown("""
+    <style>
+    /* ====== Píldora de título (tono IMAGEN 2) ====== */
+    :root{
+      --pill-coral:#F25F6A; /* coral/rosado cálido */
+    }
+    .hist-title-wrap{
+      display:flex; align-items:center;
+    }
+    .hist-title-pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 14px;
+      border-radius:9999px;
+      background: var(--pill-coral);
+      color:#fff; font-weight:600; font-size:1.10rem; line-height:1;
+      box-shadow: inset 0 -2px 0 rgba(0,0,0,0.08);
+    }
+    </style>
+    <div class="hist-title-wrap">
+      <span class="hist-title-pill">📝 Tareas recientes</span>
+    </div>
+    """, unsafe_allow_html=True)
+
     st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
     # --- Estilos globales (filas eliminadas, filtros/acciones y headers) ---
@@ -641,5 +665,3 @@ def render(user: dict | None = None):
                 st.success(msg) if ok else st.warning(msg)
             except Exception as e:
                 st.warning(f"No se pudo subir a Sheets: {e}")
-
-    st.markdown('</div>', unsafe_allow_html=True)
