@@ -91,7 +91,6 @@ def render(user: dict | None = None):
             display:flex; align-items:center; justify-content:center;
             background: var(--pri-pill);
             color:#ffffff; font-weight:700;
-            box-shadow:0 6px 14px rgb(73, 190, 169);
             user-select:none; margin:4px 0 16px;
           }
           .pri-pill span{ display:inline-flex; gap:8px; align-items:center; }
