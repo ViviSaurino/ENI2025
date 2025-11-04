@@ -33,7 +33,6 @@ def render(user: dict | None = None):
     st.markdown('<div class="topbar-eval">', unsafe_allow_html=True)
     c_pill_e, _ = st.columns([A, Fw + T_width + D + R + C], gap="medium")
     with c_pill_e:
-        # Quitamos la píldora pequeña
         st.markdown("", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
     # ---------- fin barra superior ----------
@@ -130,7 +129,7 @@ def render(user: dict | None = None):
                     s = pd.to_datetime(df[col], errors="coerce")
                     if s.notna().any():
                         return s
-            return pd.Series([], dtype="datetime64[ns]"])
+            return pd.Series([], dtype="datetime64[ns]")
 
         dates_all = _first_valid_date_series(df_all)
         if dates_all.empty:
@@ -423,7 +422,7 @@ def render(user: dict | None = None):
 
         # Cerrar wrappers
         st.markdown("</div></div>", unsafe_allow_html=True)  # cierra .form-card y .section-eva
-        st.markdown("</div>", unsafe_allow_html=True)  # cierra #eva-section
+        st.markdown("</div>", unsafe_allow_html=True)        # cierra #eva-section
 
         # Separación vertical
         st.markdown(f"<div style='height:{SECTION_GAP_DEF}px'></div>", unsafe_allow_html=True)
