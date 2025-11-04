@@ -11,6 +11,7 @@ TZ = "America/Lima"
 _TRUE = {"true", "1", "si", "sí", "verdadero", "x", "y"}
 _FALSE = {"false", "0", "no", "falso", ""}
 
+
 def _to_bool(x) -> bool:
     s = str(x).strip().lower()
     if s in _TRUE:
@@ -19,6 +20,7 @@ def _to_bool(x) -> bool:
         return False
     # fallback: cualquier cosa distinta de los falsos explícitos
     return bool(s)
+
 
 def load_roles(path: str = ROLES_PATH) -> pd.DataFrame:
     """
@@ -42,7 +44,8 @@ def load_roles(path: str = ROLES_PATH) -> pd.DataFrame:
     for c in [
         "person_id", "email", "display_name", "role", "can_edit_all_tabs",
         "allowed_tabs", "allowed_after_hours", "allowed_weekends",
-        "is_active", "avatar_url", "dry_run", "save_scope"
+        "is_active", "avatar_url", "dry_run", "save_scope",
+        "read_only_cols",  # <-- NUEVO: columnas de solo lectura por usuario
     ]:
         if c not in df.columns:
             df[c] = ""
@@ -56,7 +59,12 @@ def load_roles(path: str = ROLES_PATH) -> pd.DataFrame:
 
     # Normaliza save_scope
     df["save_scope"] = df["save_scope"].astype(str).str.lower().replace({"": "all"})
+
+    # Asegura tipo string para read_only_cols (lista separada por comas)
+    df["read_only_cols"] = df["read_only_cols"].astype(str)
+
     return df
+
 
 def find_user(df: pd.DataFrame, email: str) -> dict:
     em = (email or "").strip().lower()
@@ -67,8 +75,10 @@ def find_user(df: pd.DataFrame, email: str) -> dict:
         return {}
     return m.iloc[0].to_dict()
 
+
 def _now_lima() -> datetime:
     return datetime.now(pytz.timezone(TZ))
+
 
 def can_access_now(user_row: dict) -> tuple[bool, str]:
     """
@@ -92,6 +102,7 @@ def can_access_now(user_row: dict) -> tuple[bool, str]:
 
     return (True, "")
 
+
 def _split_tabs(s: str) -> set[str]:
     # soporta 'ALL' y lista separada por comas
     t = (s or "").strip()
@@ -101,6 +112,7 @@ def _split_tabs(s: str) -> set[str]:
         return {"ALL"}
     return {x.strip() for x in t.split(",") if x.strip()}
 
+
 def can_see_tab(user_row: dict, tab_key: str) -> bool:
     if bool(user_row.get("can_edit_all_tabs", False)):
         return True
@@ -108,6 +120,7 @@ def can_see_tab(user_row: dict, tab_key: str) -> bool:
     if "ALL" in tabs:
         return True
     return tab_key in tabs
+
 
 def maybe_save(user_row: dict, fn, *args, **kwargs):
     """
@@ -130,3 +143,20 @@ def maybe_save(user_row: dict, fn, *args, **kwargs):
         return fn(*args, **kwargs)
     except Exception as e:
         return {"ok": False, "msg": f"Error al guardar: {e}"}
+
+
+# ===== NUEVO: soporte a columnas de solo-lectura por usuario =====
+
+def _split_list(s: str) -> set[str]:
+    """
+    Convierte 'a, b, c' -> {'a','b','c'} (sin espacios vacíos).
+    """
+    return {x.strip() for x in str(s or "").split(",") if x and x.strip()}
+
+
+def get_readonly_cols(user_row: dict) -> set[str]:
+    """
+    Devuelve el conjunto de columnas que deben ser solo-lectura para este usuario.
+    Se alimenta desde la columna 'read_only_cols' del Excel de roles.
+    """
+    return _split_list(user_row.get("read_only_cols", ""))
