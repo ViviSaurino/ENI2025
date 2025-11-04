@@ -150,7 +150,7 @@ def render_all(user: dict | None = None):
     with tabs[1]:
         with st.spinner("Cargando 'Editar estado'..."):
             _call_view(
-                "features.editar_tarea.view",
+                "features.editar_estado.view",
                 ("render", "render_estado", "render_view", "main", "app", "ui"),
                 user=user
             )
