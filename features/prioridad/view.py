@@ -19,7 +19,6 @@ def _save_local(df: pd.DataFrame):
 
 def render(user: dict | None = None):
     # =========================== PRIORIDAD ===============================
-
     st.session_state.setdefault("pri_visible", True)
 
     # ---------- Barra superior (SIN botón mostrar/ocultar) ----------
@@ -187,8 +186,10 @@ def render(user: dict | None = None):
 
         # ====== AG-GRID con columnDefs explícitos ======
         PRI_OPC_SHOW = ["🔵 Baja","🟡 Media","🔴 Alta"]
-        PRI_MAP_TO_TEXT = {"🔵 Baja":"Baja","🟡 Media":"Media","🔴 Alta":"Alta",
-                           "Baja":"Baja","Media":"Media","Alta":"Alta"}
+        PRI_MAP_TO_TEXT = {
+            "🔵 Baja":"Baja","🟡 Media":"Media","🔴 Alta":"Alta",
+            "Baja":"Baja","Media":"Media","Alta":"Alta"
+        }
 
         # Reglas de color sin JS (expresiones)
         cell_class_rules = {
@@ -249,43 +250,59 @@ def render(user: dict | None = None):
             key="grid_prioridad",             # KEY ÚNICO
         )
 
-        # ===== Guardar (actualiza Prioridad en df_main) =====
-        _sp_pri, _btn_pri = st.columns([A+Fw+T_width+D+R, C], gap="medium")
-        with _btn_pri:
-            # 🔐 Solo jefatura/owner ve el botón
-            do_save_pri = st.button("🧭 Dar prioridad", use_container_width=True, key="pri_guardar_v1") if IS_EDITOR else None
+        # ===== 🔐 Acciones y guardado condicional =====
+        _sp_pri, _btns_pri = st.columns([A+Fw+T_width+D+R, C], gap="medium")
+        with _btns_pri:
+            if IS_EDITOR:
+                c1, c2 = st.columns(2, gap="small")
+                with c1:
+                    st.button("⭐ Dar prioridad", use_container_width=True)
+                with c2:
+                    if st.button("💾 Guardar cambios", use_container_width=True, key="pri_guardar_v2"):
+                        try:
+                            edited = pd.DataFrame(grid_pri.get("data", []))
+                            if edited.empty:
+                                st.info("No hay filas para actualizar.")
+                            else:
+                                df_base = st.session_state.get("df_main", pd.DataFrame()).copy()
+                                if "Prioridad" not in df_base.columns:
+                                    df_base["Prioridad"] = "Media"
 
-        if IS_EDITOR and do_save_pri:
-            try:
-                edited = pd.DataFrame(grid_pri.get("data", []))
-                if edited.empty:
-                    st.info("No hay filas para actualizar.")
-                else:
-                    df_base = st.session_state.get("df_main", pd.DataFrame()).copy()
-                    if "Prioridad" not in df_base.columns:
-                        df_base["Prioridad"] = "Media"
+                                # Merge por Id
+                                df_base["Id"] = df_base["Id"].astype(str)
+                                edited["Id"] = edited["Id"].astype(str)
 
-                    cambios = 0
-                    for _, row in edited.iterrows():
-                        id_row = str(row.get("Id", "")).strip()
-                        if not id_row:
-                            continue
-                        valor_ui = str(row.get("Prioridad a ajustar", "Media")).strip()
-                        nuevo = PRI_MAP_TO_TEXT.get(valor_ui, "Media")  # guardamos sin emoji
-                        m = df_base["Id"].astype(str).str.strip() == id_row
-                        if m.any():
-                            df_base.loc[m, "Prioridad"] = nuevo
-                            cambios += 1
+                                b_i = df_base.set_index("Id")
+                                e_i = edited.set_index("Id")
+                                common = b_i.index.intersection(e_i.index)
 
-                    if cambios > 0:
-                        st.session_state["df_main"] = df_base.copy()
-                        _save_local(df_base.copy())
-                        st.success(f"✔ Prioridades actualizadas: {cambios} fila(s).")
-                        st.rerun()
-                    else:
-                        st.info("No se detectaron cambios para guardar.")
-            except Exception as e:
-                st.error(f"No pude guardar los cambios de prioridad: {e}")
+                                # Toma 'Prioridad a ajustar' (sin emoji)
+                                if "Prioridad a ajustar" in e_i.columns:
+                                    map_clean = {"🔵 Baja":"Baja","🟡 Media":"Media","🔴 Alta":"Alta"}
+                                    src_vals = e_i["Prioridad a ajustar"].map(lambda v: map_clean.get(str(v), str(v)))
+                                    b_i.loc[common, "Prioridad"] = src_vals.loc[common]
+
+                                new_df = b_i.reset_index()
+                                st.session_state["df_main"] = new_df
+
+                                # Persistencia con políticas (dry_run/save_scope)
+                                def _persist(df):
+                                    _save_local(df)
+                                    return {"ok": True, "msg": "Prioridades guardadas."}
+
+                                maybe_save = st.session_state.get("maybe_save")
+                                if callable(maybe_save):
+                                    res = maybe_save(_persist, new_df)
+                                else:
+                                    _save_local(new_df)
+                                    res = {"ok": True, "msg": "Prioridades guardadas (local)."}
+
+                                st.success(res.get("msg", "Listo."))
+                                st.rerun()
+                        except Exception as e:
+                            st.error(f"No pude guardar los cambios de prioridad: {e}")
+            else:
+                st.caption("🔒 Solo lectura. Puedes filtrar, pero no editar ni guardar.")
 
         # Cerrar wrappers
         st.markdown('</div></div>', unsafe_allow_html=True)  # cierra .form-card y .section-pri
