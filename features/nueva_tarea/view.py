@@ -289,8 +289,21 @@ def render(user: dict | None = None):
                 df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
                 df = _sanitize(df, COLS if "COLS" in globals() else None)
                 st.session_state["df_main"] = df.copy()
-                os.makedirs("data", exist_ok=True)
-                df.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig", mode="w")
+
+                # ======== PERSISTENCIA controlada por ACL (respeta dry_run/save_scope) ========
+                def _persist(_df: pd.DataFrame):
+                    try:
+                        os.makedirs("data", exist_ok=True)
+                        _df.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig", mode="w")
+                        return {"ok": True, "msg": "Cambios guardados."}
+                    except Exception as _e:
+                        return {"ok": False, "msg": f"Error al guardar: {_e}"}
+
+                maybe_save = st.session_state.get("maybe_save")
+                res = maybe_save(_persist, df.copy()) if callable(maybe_save) else _persist(df.copy())
+                if not res.get("ok", False):
+                    # Ej.: DRY-RUN o guardado deshabilitado
+                    st.info(res.get("msg", "Guardado deshabilitado."))
 
                 # >>> LIMPIEZA DE CAMPOS + MENSAJE + SALTO DE ESTADO
                 for k in [
