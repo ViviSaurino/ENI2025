@@ -46,6 +46,9 @@ def render(user: dict | None = None):
           #eva-section .stButton > button { width: 100% !important; }
           .section-eva .help-strip-eval + .form-card{ margin-top: 6px !important; }
 
+          /* Oculta la píldora pequeña del topbar SOLO aquí */
+          .topbar-eval .form-title-eval{ display:none !important; }
+
           /* overflow horizontal visible SOLO aquí */
           #eva-section .ag-body-horizontal-scroll,
           #eva-section .ag-center-cols-viewport { overflow-x: auto !important; }
@@ -57,10 +60,25 @@ def render(user: dict | None = None):
           #eva-section .eva-ok  { color:#16a34a !important; }
           #eva-section .eva-bad { color:#dc2626 !important; }
           #eva-section .eva-obs { color:#d97706 !important; }
+
+          /* Píldora celeste (mismo ancho que "Área") */
+          .eva-pill{
+            width:100%; height:38px; border-radius:12px;
+            display:flex; align-items:center; justify-content:center;
+            background:#A7C8F0; color:#ffffff; font-weight:700;
+            box-shadow:0 6px 14px rgba(167,200,240,.35);
+            user-select:none; margin:4px 0 16px;
+          }
+          .eva-pill span{ display:inline-flex; gap:8px; align-items:center; }
         </style>
         """,
             unsafe_allow_html=True,
         )
+
+        # ===== Píldora alineada al ancho de "Área" =====
+        _pill, _, _, _, _, _ = st.columns([A, Fw, T_width, D, R, C], gap="medium")
+        with _pill:
+            st.markdown('<div class="eva-pill"><span>📝&nbsp;Evaluación</span></div>', unsafe_allow_html=True)
 
         # ===== Wrapper UNIDO: help-strip + form-card =====
         st.markdown(
