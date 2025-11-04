@@ -362,10 +362,26 @@ def render(user: dict | None = None):
                                     base.drop(columns=[n], inplace=True)
 
                             st.session_state["df_main"] = base.copy()
-                            os.makedirs("data", exist_ok=True)
-                            base.to_csv(os.path.join("data","tareas.csv"), index=False, encoding="utf-8-sig")
-                            st.success("Cambios guardados. *Tareas recientes* se actualizará automáticamente.")
-                            st.rerun()
+
+                            # ======== PERSISTIR con maybe_save (sin ACL de edición; todos pueden) ========
+                            def _persist(_df: pd.DataFrame):
+                                try:
+                                    os.makedirs("data", exist_ok=True)
+                                    _df.to_csv(os.path.join("data","tareas.csv"), index=False, encoding="utf-8-sig")
+                                    return {"ok": True, "msg": "Cambios guardados."}
+                                except Exception as _e:
+                                    return {"ok": False, "msg": f"Error al guardar: {_e}"}
+
+                            maybe_save = st.session_state.get("maybe_save")
+                            res = maybe_save(_persist, base.copy()) if callable(maybe_save) else _persist(base.copy())
+
+                            if res.get("ok", False):
+                                st.success(res.get("msg", "Cambios guardados."))
+                                st.rerun()
+                            else:
+                                # Ej.: DRY-RUN o guardado deshabilitado por política
+                                st.info(res.get("msg", "Guardado deshabilitado."))
+
                 except Exception as e:
                     st.error(f"No pude guardar: {e}")
 
