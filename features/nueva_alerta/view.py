@@ -25,13 +25,9 @@ def render(user: dict | None = None):
     # Proporciones (compartidas con el formulario para alinear la pastilla)
     A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
-    # ---------- Barra superior (sin botón mostrar/ocultar) ----------
-    st.markdown('<div class="topbar-na">', unsafe_allow_html=True)
-    c_pill, _ = st.columns([A, Fw + T_width + D + R + C], gap="medium")
-    with c_pill:
-        st.markdown('<div class="form-title-na">&nbsp;&nbsp;⚠️&nbsp;&nbsp;Nueva alerta</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-    # ---------- fin barra superior ----------
+    # ---------- Encabezado compacto (sin barra superior duplicada) ----------
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+    # -----------------------------------------------------------------------
 
     if st.session_state["na_visible"]:
 
@@ -59,8 +55,24 @@ def render(user: dict | None = None):
           #na-section .ag-center-cols-viewport{
             overflow-x: hidden !important;
           }
+
+          /* Píldora local (alineada al ancho de "Área") */
+          .na-pill{
+            width:100%; height:38px; border-radius:12px;
+            display:flex; align-items:center; justify-content:center;
+            background:#F4B36C; color:#ffffff; font-weight:700;
+            box-shadow:0 6px 14px rgba(244,179,108,.35);
+            user-select:none;
+            margin:4px 0 16px;  /* respirito antes de las indicaciones */
+          }
+          .na-pill span{ display:inline-flex; gap:8px; align-items:center; }
         </style>
         """, unsafe_allow_html=True)
+
+        # ===== Píldora alineada al ancho de "Área" =====
+        c_pill, _, _, _, _, _ = st.columns([A, Fw, T_width, D, R, C], gap="medium")
+        with c_pill:
+            st.markdown('<div class="na-pill"><span>⚠️&nbsp;Nueva alerta</span></div>', unsafe_allow_html=True)
 
         # ===== Wrapper UNIDO: help-strip + form-card =====
         st.markdown("""
@@ -291,8 +303,8 @@ def render(user: dict | None = None):
                 "resizable": True,
                 "wrapText": False,
                 "autoHeight": False,
-                "wrapHeaderText": True,     # headers hacen wrap
-                "autoHeaderHeight": True,   # altura automática de headers
+                "wrapHeaderText": True,
+                "autoHeaderHeight": True,
                 "minWidth": 100,
                 "flex": 1
             },
@@ -300,10 +312,9 @@ def render(user: dict | None = None):
             "domLayout": "normal",
             "ensureDomOrder": True,
             "rowHeight": 38,
-            "headerHeight": 64,            # alto suficiente para el wrap
-            "suppressHorizontalScroll": True  # sin barra horizontal
+            "headerHeight": 64,
+            "suppressHorizontalScroll": True
         }
-        # eventos JS (compatibilidad máxima)
         grid_opts["onCellValueChanged"]  = on_cell_changed.js_code
         grid_opts["onGridReady"]         = on_ready_size.js_code
         grid_opts["onFirstDataRendered"] = on_first_size.js_code
