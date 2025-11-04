@@ -61,12 +61,12 @@ def render(user: dict | None = None):
           #eva-section .eva-bad { color:#dc2626 !important; }
           #eva-section .eva-obs { color:#d97706 !important; }
 
-          /* ===== Colores solicitados (Imagen 2) ===== */
+          /* ===== Paleta (Imagen 2) ===== */
           :root{
-            --eva-pill: #FF9A1F;          /* Naranja de la pastilla */
-            --eva-help-bg: #FFF1DD;       /* Naranja MUY claro */
-            --eva-help-border: #FFC770;   /* Borde naranja claro */
-            --eva-help-text: #8A4E00;     /* Texto sobre fondo claro */
+            --eva-pill: #FF9A1F;        /* Naranja pastilla */
+            --eva-help-bg: #FFF1DD;     /* Naranja MUY claro */
+            --eva-help-border: #FFC770; /* Naranja claro para borde */
+            --eva-help-text: #8A4E00;   /* Texto legible */
           }
 
           /* Píldora naranja (ancho igual a la columna "Área") */
@@ -80,12 +80,14 @@ def render(user: dict | None = None):
           }
           .eva-pill span{ display:inline-flex; gap:8px; align-items:center; }
 
-          /* Franja de indicaciones en naranja más claro (solo aquí) */
+          /* Franja de indicaciones: forzar naranja (derrota estilos globales) */
+          #eva-section .help-strip,
           #eva-section .help-strip-eval{
             background: var(--eva-help-bg) !important;
+            background-image: none !important;
             color: var(--eva-help-text) !important;
             border: 1px dashed var(--eva-help-border) !important;
-            box-shadow: 0 0 0 1px var(--eva-help-border) inset !important; /* refuerza el tono */
+            box-shadow: 0 0 0 1px var(--eva-help-border) inset !important;
           }
         </style>
         """,
@@ -98,10 +100,13 @@ def render(user: dict | None = None):
             st.markdown('<div class="eva-pill"><span>📝&nbsp;Evaluación</span></div>', unsafe_allow_html=True)
 
         # ===== Wrapper UNIDO: help-strip + form-card =====
+        # (Incluye estilos inline para asegurar el color naranja)
         st.markdown(
-            """
+            f"""
         <div class="section-eva">
-          <div class="help-strip help-strip-eval" id="eva-help">
+          <div class="help-strip help-strip-eval" id="eva-help"
+               style="background: var(--eva-help-bg); color: var(--eva-help-text);
+                      border:1px dashed var(--eva-help-border); box-shadow:0 0 0 1px var(--eva-help-border) inset;">
             📝 <strong>Registra/actualiza la evaluación</strong> de tareas filtradas (solo jefatura).
           </div>
           <div class="form-card">
