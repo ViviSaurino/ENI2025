@@ -33,11 +33,13 @@ def render(user: dict | None = None):
     st.markdown('<div class="topbar-eval">', unsafe_allow_html=True)
     c_pill_e, _ = st.columns([A, Fw + T_width + D + R + C], gap="medium")
     with c_pill_e:
-        st.markdown('<div class="form-title-eval">📝&nbsp;&nbsp;Evaluación</div>', unsafe_allow_html=True)
+        # Quitamos la píldora pequeña
+        st.markdown("", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
     # ---------- fin barra superior ----------
 
     if st.session_state["eva_visible"]:
+
         # --- contenedor local + css (botón, headers 600, colores y estrellas) ---
         st.markdown('<div id="eva-section">', unsafe_allow_html=True)
         st.markdown(
@@ -46,7 +48,7 @@ def render(user: dict | None = None):
           #eva-section .stButton > button { width: 100% !important; }
           .section-eva .help-strip-eval + .form-card{ margin-top: 6px !important; }
 
-          /* Oculta la píldora pequeña del topbar SOLO aquí */
+          /* Oculta la píldora pequeña del topbar SOLO aquí (por si se renderiza) */
           .topbar-eval .form-title-eval{ display:none !important; }
 
           /* overflow horizontal visible SOLO aquí */
@@ -61,11 +63,12 @@ def render(user: dict | None = None):
           #eva-section .eva-bad { color:#dc2626 !important; }
           #eva-section .eva-obs { color:#d97706 !important; }
 
-          /* Píldora celeste (mismo ancho que "Área") */
+          /* Píldora celeste (mismo ancho que "Área") - color de la pequeña */
           .eva-pill{
             width:100%; height:38px; border-radius:12px;
             display:flex; align-items:center; justify-content:center;
-            background:#A7C8F0; color:#ffffff; font-weight:700;
+            background:#A7C8F0;   /* celeste de la píldora pequeña */
+            color:#ffffff; font-weight:700;
             box-shadow:0 6px 14px rgba(167,200,240,.35);
             user-select:none; margin:4px 0 16px;
           }
