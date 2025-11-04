@@ -44,7 +44,7 @@ def render(user: dict | None = None):
     .hist-title-pill{
       display:inline-flex; align-items:center; gap:8px;
       padding:8px 14px;
-      border-radius:9999px;
+      border-radius:14px; /* antes 9999px: ahora menos curvo */
       background: var(--pill-coral);
       color:#fff; font-weight:600; font-size:1.10rem; line-height:1;
       box-shadow: inset 0 -2px 0 rgba(0,0,0,0.08);
