@@ -39,7 +39,6 @@ def render(user: dict | None = None):
     # ---------- fin barra superior ----------
 
     if st.session_state["eva_visible"]:
-
         # --- contenedor local + css (botón, headers 600, colores y estrellas) ---
         st.markdown('<div id="eva-section">', unsafe_allow_html=True)
         st.markdown(
@@ -63,13 +62,13 @@ def render(user: dict | None = None):
           #eva-section .eva-bad { color:#dc2626 !important; }
           #eva-section .eva-obs { color:#d97706 !important; }
 
-          /* Píldora jade pastel (mismo ancho que "Área") */
+          /* Píldora jade pastel (igual a Prioridad) */
           .eva-pill{
             width:100%; height:38px; border-radius:12px;
             display:flex; align-items:center; justify-content:center;
-            background:#9FE7C2;                 /* 💚 jade pastel bonito */
+            background:#6EE7B7;                 /* jade pastel */
             color:#ffffff; font-weight:700;
-            box-shadow:0 6px 14px rgba(159,231,194,.35);
+            box-shadow:0 6px 14px rgba(110,231,183,.35);
             user-select:none; margin:4px 0 16px;
           }
           .eva-pill span{ display:inline-flex; gap:8px; align-items:center; }
