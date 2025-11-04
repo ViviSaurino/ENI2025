@@ -13,8 +13,9 @@ def _save_local(df: pd.DataFrame):
     try:
         os.makedirs("data", exist_ok=True)
         df.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig")
-    except Exception:
-        pass
+        return {"ok": True, "msg": "Cambios guardados."}
+    except Exception as e:
+        return {"ok": False, "msg": f"Error al guardar: {e}"}
 
 
 def render(user: dict | None = None):
@@ -300,11 +301,12 @@ def render(user: dict | None = None):
             "ensureDomOrder": True,
             "rowHeight": 38,
             "headerHeight": 64,            # alto suficiente para el wrap
-            "suppressHorizontalScroll": True,  # sin barra horizontal
-            "onCellValueChanged": on_cell_changed,
-            "onGridReady": on_ready_size,
-            "onFirstDataRendered": on_first_size,
+            "suppressHorizontalScroll": True  # sin barra horizontal
         }
+        # eventos JS (compatibilidad máxima)
+        grid_opts["onCellValueChanged"]  = on_cell_changed.js_code
+        grid_opts["onGridReady"]         = on_ready_size.js_code
+        grid_opts["onFirstDataRendered"] = on_first_size.js_code
 
         grid = AgGrid(
             df_view,
@@ -363,9 +365,20 @@ def render(user: dict | None = None):
 
                         if cambios > 0:
                             st.session_state["df_main"] = df_base.copy()
-                            _save_local(df_base.copy())
-                            st.success(f"✔ Cambios guardados: {cambios} actualización(es).")
-                            st.rerun()
+
+                            # Persistencia que respeta dry_run/save_scope si existe maybe_save
+                            def _persist(_df: pd.DataFrame):
+                                return _save_local(_df)
+
+                            maybe_save = st.session_state.get("maybe_save")
+                            res = maybe_save(_persist, df_base.copy()) if callable(maybe_save) else _persist(df_base.copy())
+
+                            if res.get("ok", False):
+                                st.success(f"✔ Cambios guardados: {cambios} actualización(es).")
+                                st.rerun()
+                            else:
+                                st.info(res.get("msg", "Guardado deshabilitado."))
+
                         else:
                             st.info("No se detectaron cambios para guardar.")
                 except Exception as e:
