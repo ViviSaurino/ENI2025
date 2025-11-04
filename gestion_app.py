@@ -121,12 +121,12 @@ with st.sidebar:
     # Navegación (clicable) solicitada
     st.header("Secciones")
     nav_labels = [
-        "🧰 Gestión de tareas",
+        "📘 Gestión de tareas",
         "🗂️ Kanban",
         "📅 Gantt",
         "📊 Dashboard",
     ]
-    default_idx = nav_labels.index(st.session_state.get("nav_section", "🧰 Gestión de tareas"))
+    default_idx = nav_labels.index(st.session_state.get("nav_section", "📘 Gestión de tareas"))
     nav_choice = st.radio(
         "Navegación",
         nav_labels,
@@ -151,11 +151,11 @@ ensure_df_main()
 
 # ============ UI principal ============
 # Ruteo a vistas según la opción elegida en el sidebar
-section = st.session_state.get("nav_section", "🧰 Gestión de tareas")
+section = st.session_state.get("nav_section", "📘 Gestión de tareas")
 tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
 
-if section == "🧰 Gestión de tareas":
-    st.title("🧰 Gestión de tareas")
+if section == "📘 Gestión de tareas":
+    st.title("📘 Gestión de tareas")
 
     def _render_gestion():
         try:
