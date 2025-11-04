@@ -5,11 +5,9 @@ import pandas as pd
 import streamlit as st
 from st_aggrid import AgGrid, GridUpdateMode, DataReturnMode, JsCode
 
-# Fallbacks seguros (no alteran tu lógica existente)
 SECTION_GAP_DEF = globals().get("SECTION_GAP", 30)
 
 def _save_local(df: pd.DataFrame):
-    """Guardar localmente sin romper si la carpeta no existe."""
     try:
         os.makedirs("data", exist_ok=True)
         df.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig")
@@ -17,28 +15,20 @@ def _save_local(df: pd.DataFrame):
     except Exception as e:
         return {"ok": False, "msg": f"Error al guardar: {e}"}
 
-
 def render(user: dict | None = None):
-    # ================== Nueva alerta ==================
-    st.session_state.setdefault("na_visible", True)  # siempre visible
+    st.session_state.setdefault("na_visible", True)
 
-    # Proporciones (compartidas con el formulario para alinear la pastilla)
     A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
-    # ---------- Encabezado compacto (sin barra superior duplicada) ----------
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-    # -----------------------------------------------------------------------
 
     if st.session_state["na_visible"]:
-
-        # --- contenedor local + css ---
         st.markdown('<div id="na-section">', unsafe_allow_html=True)
         st.markdown("""
         <style>
           #na-section .stButton > button { width: 100% !important; }
           .section-na .help-strip-na + .form-card{ margin-top: 6px !important; }
 
-          /* Encabezados legibles: permiten salto de línea y sin ellipsis */
           #na-section .ag-header-cell-label{
             white-space: normal !important;
             line-height: 1.15 !important;
@@ -49,32 +39,28 @@ def render(user: dict | None = None):
             overflow: visible !important;
             text-overflow: unset !important;
           }
-
-          /* Ocultar scroll horizontal del body */
           #na-section .ag-body-horizontal-scroll,
           #na-section .ag-center-cols-viewport{
             overflow-x: hidden !important;
           }
 
-          /* Píldora local (alineada al ancho de "Área") */
+          /* Píldora local (celeste, mismo estilo que Editar estado/Nueva tarea) */
           .na-pill{
             width:100%; height:38px; border-radius:12px;
             display:flex; align-items:center; justify-content:center;
-            background:#F4B36C; color:#ffffff; font-weight:700;
-            box-shadow:0 6px 14px rgba(244,179,108,.35);
+            background:#A7C8F0; color:#ffffff; font-weight:700;
+            box-shadow:0 6px 14px rgba(167,200,240,.35);
             user-select:none;
-            margin:4px 0 16px;  /* respirito antes de las indicaciones */
+            margin:4px 0 16px;
           }
           .na-pill span{ display:inline-flex; gap:8px; align-items:center; }
         </style>
         """, unsafe_allow_html=True)
 
-        # ===== Píldora alineada al ancho de "Área" =====
         c_pill, _, _, _, _, _ = st.columns([A, Fw, T_width, D, R, C], gap="medium")
         with c_pill:
             st.markdown('<div class="na-pill"><span>⚠️&nbsp;Nueva alerta</span></div>', unsafe_allow_html=True)
 
-        # ===== Wrapper UNIDO: help-strip + form-card =====
         st.markdown("""
         <div class="section-na">
           <div class="help-strip help-strip-na" id="na-help">
@@ -83,10 +69,8 @@ def render(user: dict | None = None):
           <div class="form-card">
         """, unsafe_allow_html=True)
 
-        # Base segura
         df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
 
-        # ===== Rango por defecto (min–max del dataset) =====
         def _first_valid_date_series(df: pd.DataFrame) -> pd.Series:
             for col in ["Fecha inicio", "Fecha Registro", "Fecha"]:
                 if col in df.columns:
@@ -104,7 +88,6 @@ def render(user: dict | None = None):
             min_date = dates_all.min().date()
             max_date = dates_all.max().date()
 
-        # ===== FILTROS =====
         with st.form("na_filtros_v3", clear_on_submit=False):
             c_area, c_fase, c_resp, c_desde, c_hasta, c_buscar = st.columns([A, Fw, T_width, D, R, C], gap="medium")
 
@@ -125,16 +108,13 @@ def render(user: dict | None = None):
             responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
             na_resp = c_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0)
 
-            # Rango de fechas (siempre visible; por defecto = min–max del dataset)
             na_desde = c_desde.date_input("Desde", value=min_date, min_value=min_date, max_value=max_date, key="na_desde")
             na_hasta = c_hasta.date_input("Hasta", value=max_date, min_value=min_date, max_value=max_date, key="na_hasta")
 
-            # Alinear botón Buscar con la fila de campos
             with c_buscar:
                 st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
                 na_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
-        # ===== Filtrado de tareas =====
         df_tasks = df_all.copy()
         if na_do_buscar:
             if na_area != "Todas" and "Área" in df_tasks.columns:
@@ -144,7 +124,6 @@ def render(user: dict | None = None):
             if na_resp != "Todos" and "Responsable" in df_tasks.columns:
                 df_tasks = df_tasks[df_tasks["Responsable"].astype(str) == na_resp]
 
-            # aplicar rango (prioridad: Fecha inicio -> Fecha Registro -> Fecha)
             if "Fecha inicio" in df_tasks.columns:
                 fcol = pd.to_datetime(df_tasks["Fecha inicio"], errors="coerce")
             elif "Fecha Registro" in df_tasks.columns:
@@ -157,7 +136,6 @@ def render(user: dict | None = None):
             if na_hasta:
                 df_tasks = df_tasks[fcol <= (pd.to_datetime(na_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
 
-        # ===== Tabla =====
         st.markdown("**Resultados**")
 
         cols_out = [
@@ -167,27 +145,18 @@ def render(user: dict | None = None):
             "¿Se corrigió?", "Fecha de corrección", "Hora de corrección",
         ]
 
-        # Data para la grilla (puede ser vacía)
         df_view = pd.DataFrame(columns=cols_out)
         if not df_tasks.empty and "Id" in df_tasks.columns:
             df_tmp = df_tasks.dropna(subset=["Id"]).copy()
-
-            # Garantizar columnas de alerta
             alert_cols = ["¿Generó alerta?","N° alerta","Fecha de detección","Hora de detección",
                           "¿Se corrigió?","Fecha de corrección","Hora de corrección"]
             for c in ["Tarea"] + alert_cols:
                 if c not in df_tmp.columns:
                     df_tmp[c] = ""
-
-            # Prefiere valores existentes; usa defaults solo cuando están vacíos
             df_tmp["¿Generó alerta?"] = df_tmp["¿Generó alerta?"].replace("", "No")
             df_tmp["N° alerta"]       = df_tmp["N° alerta"].replace("", "1")
-
             df_view = df_tmp[["Id","Tarea"] + alert_cols].copy()
 
-        # ====== AG-GRID ======
-
-        # Editor de fecha
         date_editor = JsCode("""
         class DateEditor{
           init(p){
@@ -210,7 +179,6 @@ def render(user: dict | None = None):
           getValue(){ return this.eInput.value }
         }""")
 
-        # Sí/No con emoji
         si_no_formatter = JsCode("""
         function(p){
           const v = String(p.value || '');
@@ -218,7 +186,6 @@ def render(user: dict | None = None):
           return M[v] || v;
         }""")
 
-        # estilos “pill”
         si_no_style_genero = JsCode("""
         function(p){
           const base = {
@@ -245,7 +212,6 @@ def render(user: dict | None = None):
           return {};
         }""")
 
-        # al cambiar fecha, poner hora actual correspondiente
         on_cell_changed = JsCode("""
         function(params){
           const pad = n => String(n).padStart(2,'0');
@@ -258,7 +224,6 @@ def render(user: dict | None = None):
           }
         }""")
 
-        # auto ajuste al ancho del contenedor (sin barra horizontal)
         on_ready_size  = JsCode("function(p){ p.api.sizeColumnsToFit(); }")
         on_first_size  = JsCode("function(p){ p.api.sizeColumnsToFit(); }")
 
@@ -332,7 +297,6 @@ def render(user: dict | None = None):
             theme="balham",
         )
 
-        # ===== Guardar (merge por Id en df_main) =====
         _sp, _btn = st.columns([A+Fw+T_width+D+R, C], gap="medium")
         with _btn:
             if st.button("💾 Guardar", use_container_width=True):
@@ -343,7 +307,6 @@ def render(user: dict | None = None):
                     if df_edit.empty or "Id" not in df_edit.columns or df_base.empty or "Id" not in df_base.columns:
                         st.info("No hay cambios para guardar.")
                     else:
-                        # Asegurar columnas de alerta en base
                         alert_cols = ["¿Generó alerta?","N° alerta","Fecha de detección","Hora de detección",
                                       "¿Se corrigió?","Fecha de corrección","Hora de corrección"]
                         for c in alert_cols:
@@ -377,7 +340,6 @@ def render(user: dict | None = None):
                         if cambios > 0:
                             st.session_state["df_main"] = df_base.copy()
 
-                            # Persistencia que respeta dry_run/save_scope si existe maybe_save
                             def _persist(_df: pd.DataFrame):
                                 return _save_local(_df)
 
@@ -395,9 +357,6 @@ def render(user: dict | None = None):
                 except Exception as e:
                     st.error(f"No pude guardar los cambios: {e}")
 
-        # Cierra form-card + section-na y el contenedor local
-        st.markdown('</div></div>', unsafe_allow_html=True)  # cierra .form-card y .section-na
-        st.markdown('</div>', unsafe_allow_html=True)        # cierra #na-section
-
-        # Separación vertical entre secciones
+        st.markdown('</div></div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
         st.markdown(f"<div style='height:{SECTION_GAP_DEF}px'></div>", unsafe_allow_html=True)
