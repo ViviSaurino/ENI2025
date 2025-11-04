@@ -203,4 +203,3 @@ else:  # "📊 Dashboard"
         st.write("")  # espacio en blanco
 
     render_if_allowed(tab_key, _render_dashboard)
-v
