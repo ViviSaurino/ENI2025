@@ -139,7 +139,7 @@ def render(user: dict | None = None):
 
         st.markdown("""
         <div class="help-strip">
-          ✳️ Completa los campos obligatorios → pulsa <b>➕ Agregar</b> → revisa en <b>🕑 Tareas recientes</b> y confirma con <b>💾 Grabar</b>.
+          ✳️ Completa los campos obligatorios → pulsa <b>➕ Agregar</b> → revisa en <b>🕑 Tareas recientes</b> y confirma con <b>💾 Grabar</b>. Si deseas editar una tarea, dirígete a la sección <b>🕑 Tareas recientes</b>.
         </div>
         """, unsafe_allow_html=True)
 
