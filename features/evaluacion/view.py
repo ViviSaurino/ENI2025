@@ -64,9 +64,9 @@ def render(user: dict | None = None):
           /* ===== Colores solicitados (Imagen 2) ===== */
           :root{
             --eva-pill: #FF9A1F;          /* Naranja de la pastilla */
-            --eva-help-bg: #FFE5C2;       /* Naranja claro para la franja de ayuda */
-            --eva-help-border: #FFC06A;   /* Borde suavemente más oscuro */
-            --eva-help-text: #8A4E00;     /* Texto legible sobre fondo claro */
+            --eva-help-bg: #FFF1DD;       /* Naranja MUY claro */
+            --eva-help-border: #FFC770;   /* Borde naranja claro */
+            --eva-help-text: #8A4E00;     /* Texto sobre fondo claro */
           }
 
           /* Píldora naranja (ancho igual a la columna "Área") */
@@ -83,8 +83,9 @@ def render(user: dict | None = None):
           /* Franja de indicaciones en naranja más claro (solo aquí) */
           #eva-section .help-strip-eval{
             background: var(--eva-help-bg) !important;
-            border: 1px solid var(--eva-help-border) !important;
             color: var(--eva-help-text) !important;
+            border: 1px dashed var(--eva-help-border) !important;
+            box-shadow: 0 0 0 1px var(--eva-help-border) inset !important; /* refuerza el tono */
           }
         </style>
         """,
