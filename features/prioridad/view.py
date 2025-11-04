@@ -79,10 +79,10 @@ def render(user: dict | None = None):
 
           /* ===== Paleta jade ===== */
           :root{
-            --pri-pill: #86EFAC;        /* jade pastel para la píldora */
-            --pri-help-bg: #D1FAE5;     /* jade muy claro para franja */
-            --pri-help-border: #A7F3D0; /* borde jade claro */
-            --pri-help-text: #065F46;   /* texto verde legible */
+            --pri-pill: #49BEA9;        /* jade pastel para la píldora */
+            --pri-help-bg: #C8EBE5;     /* jade muy claro para franja */
+            --pri-help-border: #A3DED3; /* borde jade claro */
+            --pri-help-text: #0F766E;   /* texto verde legible */
           }
 
           /* Píldora jade pastel (mismo ancho que "Área") */
@@ -91,7 +91,7 @@ def render(user: dict | None = None):
             display:flex; align-items:center; justify-content:center;
             background: var(--pri-pill);
             color:#ffffff; font-weight:700;
-            box-shadow:0 6px 14px rgba(134,239,172,.30);
+            box-shadow:0 6px 14px rgb(73, 190, 169);
             user-select:none; margin:4px 0 16px;
           }
           .pri-pill span{ display:inline-flex; gap:8px; align-items:center; }
