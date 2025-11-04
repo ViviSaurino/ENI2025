@@ -177,8 +177,8 @@ def render(user: dict | None = None):
 
             r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
 
-            TIPOS_TAREA_OPC = ["— Selecciona —", "Producción didáctica", "Otros"]
-            tipo_sel = r2c1.selectbox("Tipo de tarea", options=TIPOS_TAREA_OPC, index=0, key="nt_tipo")
+            # === Tipo de tarea: SOLO "Otros" y fijo ===
+            tipo_sel = r2c1.selectbox("Tipo de tarea", options=["Otros"], index=0, key="nt_tipo", disabled=True)
 
             r2c2.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
 
