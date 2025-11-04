@@ -62,16 +62,31 @@ def render(user: dict | None = None):
           #eva-section .eva-bad { color:#dc2626 !important; }
           #eva-section .eva-obs { color:#d97706 !important; }
 
-          /* Píldora jade pastel (igual a Prioridad) */
+          /* ===== Colores solicitados (Imagen 2) ===== */
+          :root{
+            --eva-pill: #FF9A1F;          /* Naranja de la pastilla */
+            --eva-help-bg: #FFE5C2;       /* Naranja claro para la franja de ayuda */
+            --eva-help-border: #FFC06A;   /* Borde suavemente más oscuro */
+            --eva-help-text: #8A4E00;     /* Texto legible sobre fondo claro */
+          }
+
+          /* Píldora naranja (ancho igual a la columna "Área") */
           .eva-pill{
             width:100%; height:38px; border-radius:12px;
             display:flex; align-items:center; justify-content:center;
-            background:#6EE7B7;                 /* jade pastel */
+            background: var(--eva-pill);
             color:#ffffff; font-weight:700;
-            box-shadow:0 6px 14px rgba(110,231,183,.35);
+            box-shadow:0 6px 14px rgba(255,154,31,.28);
             user-select:none; margin:4px 0 16px;
           }
           .eva-pill span{ display:inline-flex; gap:8px; align-items:center; }
+
+          /* Franja de indicaciones en naranja más claro (solo aquí) */
+          #eva-section .help-strip-eval{
+            background: var(--eva-help-bg) !important;
+            border: 1px solid var(--eva-help-border) !important;
+            color: var(--eva-help-text) !important;
+          }
         </style>
         """,
             unsafe_allow_html=True,
@@ -115,7 +130,7 @@ def render(user: dict | None = None):
                     s = pd.to_datetime(df[col], errors="coerce")
                     if s.notna().any():
                         return s
-            return pd.Series([], dtype="datetime64[ns]")
+            return pd.Series([], dtype="datetime64[ns]"])
 
         dates_all = _first_valid_date_series(df_all)
         if dates_all.empty:
