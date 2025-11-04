@@ -15,11 +15,9 @@ def render(user: dict | None = None):
     # ================== EDITAR ESTADO ==================
     st.session_state.setdefault("est_visible", True)  # siempre visible
 
-    # ---------- Barra superior ----------
-    st.markdown('<div class="topbar-eval">', unsafe_allow_html=True)
-    st.markdown('<div class="form-title">✏️&nbsp;&nbsp;Editar estado</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-    # ---------- fin barra superior ----------
+    # ---------- (sin píldora superior duplicada) ----------
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+    # ---------- fin ----------
 
     if st.session_state["est_visible"]:
 
@@ -48,6 +46,7 @@ def render(user: dict | None = None):
             background:#A7C8F0; color:#ffffff; font-weight:700;
             box-shadow:0 6px 14px rgba(167,200,240,.35);
             user-select:none;
+            margin: 4px 0 16px;              /* <-- más separación respecto a las indicaciones */
           }
           .est-pill span{ display:inline-flex; gap:8px; align-items:center; }
         </style>
