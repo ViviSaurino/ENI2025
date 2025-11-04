@@ -95,7 +95,7 @@ def render(user: dict | None = None):
                     s = pd.to_datetime(df[col], errors="coerce")
                     if s.notna().any():
                         return s
-            return pd.Series([], dtype="datetime64[ns]")
+            return pd.Series([], dtype="datetime64[ns]"])
 
         dates_all = _first_valid_date_series(df_all)
         if dates_all.empty:
@@ -298,13 +298,20 @@ def render(user: dict | None = None):
             key="grid_evaluacion",  # KEY ÚNICO
         )
 
-        # ===== Guardar cambios (merge por Id en df_main) =====
-        _sp_eva, _btn_eva = st.columns([A + Fw + T_width + D + R, C], gap="medium")
-        with _btn_eva:
-            # 🔐 Solo jefatura/owner ve el botón
-            do_save_eva = st.button("✅ Evaluar", use_container_width=True, key="eva_guardar_v1") if IS_EDITOR else None
+        # ===== 🔐 Acciones y guardado condicional =====
+        _sp_eva, _btns_eva = st.columns([A + Fw + T_width + D + R, C], gap="medium")
+        with _btns_eva:
+            if IS_EDITOR:
+                c1, c2 = st.columns(2, gap="small")
+                with c1:
+                    click_eval = st.button("✅ Evaluar", use_container_width=True, key="eva_guardar_v1")
+                with c2:
+                    click_save = st.button("💾 Guardar cambios", use_container_width=True, key="eva_guardar_v2")
+            else:
+                st.caption("🔒 Solo lectura. Puedes filtrar, pero no editar ni guardar.")
+                click_eval = click_save = False
 
-        if IS_EDITOR and do_save_eva:
+        if IS_EDITOR and (click_eval or click_save):
             try:
                 edited = pd.DataFrame(grid_eval.get("data", []))
                 if edited.empty or "Id" not in edited.columns:
@@ -331,7 +338,11 @@ def render(user: dict | None = None):
 
                             # Mapear evaluación con/sin emoji -> texto limpio
                             eva_ui = str(row.get("Evaluación ajustada", "Sin evaluar")).strip()
-                            eva_new = {"🟢 Aprobado":"Aprobado","🔴 Desaprobado":"Desaprobado","🟠 Observado":"Observado"}.get(eva_ui, "Sin evaluar")
+                            eva_new = {
+                                "🟢 Aprobado":"Aprobado",
+                                "🔴 Desaprobado":"Desaprobado",
+                                "🟠 Observado":"Observado"
+                            }.get(eva_ui, "Sin evaluar")
 
                             # Calificación segura 0..5
                             cal_new = row.get("Calificación", 0)
@@ -353,9 +364,22 @@ def render(user: dict | None = None):
                                 cambios += 1
 
                         if cambios > 0:
-                            st.session_state["df_main"] = df_base.copy()
-                            _save_local(df_base.copy())
-                            st.success(f"✔ Evaluaciones actualizadas: {cambios} cambio(s).")
+                            new_df = df_base.copy()
+                            st.session_state["df_main"] = new_df
+
+                            # Persistencia con políticas (dry_run/save_scope)
+                            def _persist(df):
+                                _save_local(df)
+                                return {"ok": True, "msg": "Evaluaciones guardadas."}
+
+                            maybe_save = st.session_state.get("maybe_save")
+                            if callable(maybe_save):
+                                res = maybe_save(_persist, new_df)
+                            else:
+                                _save_local(new_df)
+                                res = {"ok": True, "msg": "Evaluaciones guardadas (local)."}
+
+                            st.success(res.get("msg", "Listo."))
                             st.rerun()
                         else:
                             st.info("No se detectaron cambios para guardar.")
