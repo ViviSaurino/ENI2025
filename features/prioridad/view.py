@@ -34,6 +34,10 @@ def render(user: dict | None = None):
 
     if st.session_state["pri_visible"]:
 
+        # === 🔐 ACL: solo jefatura/owner puede editar ===
+        acl_user = st.session_state.get("acl_user", {}) or {}
+        IS_EDITOR = bool(acl_user.get("can_edit_all_tabs", False))
+
         # --- contenedor local + css ---
         st.markdown('<div id="pri-section">', unsafe_allow_html=True)
         st.markdown("""
@@ -200,7 +204,8 @@ def render(user: dict | None = None):
              "wrapText": True, "autoHeight": True},
             {"field":"Prioridad actual", "headerName":"Prioridad actual", "editable": False,
              "flex":1.2, "minWidth":160, "cellClassRules": cell_class_rules},
-            {"field":"Prioridad a ajustar", "headerName":"Prioridad a ajustar", "editable": True,
+            # 🔐 editable condicionado por ACL
+            {"field":"Prioridad a ajustar", "headerName":"Prioridad a ajustar", "editable": bool(IS_EDITOR),
              "cellEditor":"agSelectCellEditor", "cellEditorParams":{"values": PRI_OPC_SHOW},
              "flex":1.2, "minWidth":180, "cellClassRules": cell_class_rules},
         ]
@@ -247,9 +252,10 @@ def render(user: dict | None = None):
         # ===== Guardar (actualiza Prioridad en df_main) =====
         _sp_pri, _btn_pri = st.columns([A+Fw+T_width+D+R, C], gap="medium")
         with _btn_pri:
-            do_save_pri = st.button("🧭 Dar prioridad", use_container_width=True, key="pri_guardar_v1")
+            # 🔐 Solo jefatura/owner ve el botón
+            do_save_pri = st.button("🧭 Dar prioridad", use_container_width=True, key="pri_guardar_v1") if IS_EDITOR else None
 
-        if do_save_pri:
+        if IS_EDITOR and do_save_pri:
             try:
                 edited = pd.DataFrame(grid_pri.get("data", []))
                 if edited.empty:
