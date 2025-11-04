@@ -68,7 +68,7 @@ def render(user: dict | None = None):
 
     /* Alinear el botón Buscar con la fila de filtros (bájalo un poco más) */
     .hist-search .stButton > button{
-      margin-top: 12px !important;  /* ⬅️ antes 8px */
+      margin-top: 12px !important;
       height: 38px !important;
     }
 
@@ -88,7 +88,7 @@ def render(user: dict | None = None):
       text-overflow: clip !important;
       line-height: 1.2 !important;
     }
-    /* ⬅️ También en columnas ancladas (Id, Área, Fase) */
+    /* También en columnas ancladas (Id, Área, Fase) */
     .ag-theme-balham .ag-pinned-left-header .ag-header-cell,
     .ag-theme-balham .ag-pinned-left-header .ag-header-cell-label,
     .ag-theme-balham .ag-pinned-left-header .ag-header-cell-text{
@@ -251,9 +251,10 @@ def render(user: dict | None = None):
         df_view.loc[need_ini_tm, "Hora de inicio"] = _h_ini[need_ini_tm]
 
         need_fin_dt = _terminado & df_view["Fecha Terminado"].isna()
-        need_fin_tm = _terminado & (df_view["Hora Terminado"].astype(str).str.strip() == "")
+        need_fin_tm = _terminado & (df_view["Hora Terminado"].astype(str).str.trim() == "") if "Hora Terminado" in df_view.columns else False
         df_view.loc[need_fin_dt, "Fecha Terminado"]      = _mod[need_fin_dt]
-        df_view.loc[need_fin_tm, "Hora Terminado"] = _hmod.where(_hmod != "", _mod.dt.strftime("%H:%M"))[need_fin_tm]
+        if "Hora Terminado" in df_view.columns:
+            df_view.loc[need_fin_tm, "Hora Terminado"] = _hmod.where(_hmod != "", _mod.dt.strftime("%H:%M"))[need_fin_tm]
 
     # 3.b) VENCIMIENTO
     if "Fecha Vencimiento" not in df_view.columns: df_view["Fecha Vencimiento"] = pd.NaT
@@ -321,7 +322,8 @@ def render(user: dict | None = None):
     if "¿Eliminar?" in df_grid.columns:
         df_grid.drop(columns=["¿Eliminar?"], inplace=True, errors="ignore")
 
-    # ================= GRID OPTIONS (solo lectura) =================
+    # ================= GRID OPTIONS =================
+    # Por defecto TODO es de solo lectura; luego habilitamos solo Tarea, Tipo, Detalle.
     gob = GridOptionsBuilder.from_dataframe(df_grid)
     gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, editable=False)
     gob.configure_selection(selection_mode="multiple", use_checkbox=False)
@@ -337,21 +339,22 @@ def render(user: dict | None = None):
         headerHeight=56,
         enableRangeSelection=True,
         enableCellTextSelection=True,
-        singleClickEdit=False,
+        singleClickEdit=False,        # doble clic para editar
         stopEditingWhenCellsLoseFocus=True,
         undoRedoCellEditing=False,
         enterMovesDown=False,
         suppressMovableColumns=False,
         getRowId=JsCode("function(p){ return (p.data && (p.data.Id || p.data['Id'])) + ''; }"),
-        suppressHeaderVirtualisation=True,  # <— ayuda a medir bien alturas/ancho de encabezados
+        suppressHeaderVirtualisation=True,
     )
 
-    # Encabezados de las 3 primeras columnas completos
+    # Encabezados de las 3 primeras columnas completos y anclados
     gob.configure_column("Id", headerName="ID", editable=False, minWidth=110, pinned="left", suppressMovable=True)
     gob.configure_column("Área", headerName="Área", editable=False, minWidth=160, pinned="left", suppressMovable=True)
     gob.configure_column("Fase", headerName="Fase", editable=False, minWidth=140, pinned="left", suppressMovable=True)
     gob.configure_column("Responsable", editable=False, minWidth=200, pinned="left", suppressMovable=True)
 
+    # —— Mostrar como lectura (nombres legibles)
     gob.configure_column("Estado",            headerName="Estado actual")
     gob.configure_column("Fecha Vencimiento", headerName="Fecha límite")
     gob.configure_column("Fecha inicio",      headerName="Fecha de inicio")
@@ -432,7 +435,7 @@ def render(user: dict | None = None):
         if c in df_grid.columns:
             gob.configure_column(
                 c,
-                editable=False,
+                editable=False,  # <— por defecto, lectura
                 minWidth=colw.get(c,120),
                 flex=fx,
                 valueFormatter=(
@@ -462,6 +465,14 @@ def render(user: dict | None = None):
     for cc in ["Fecha Pausado","Hora Pausado","Fecha Cancelado","Hora Cancelado","Fecha Eliminado","Hora Eliminado"]:
         if cc in df_grid.columns:
             gob.configure_column(cc, headerClass="muted-col", cellStyle=MUTED_CELL_STYLE)
+
+    # === Habilitar edición SOLO en: Tarea, Tipo, Detalle ===
+    # (doble clic para entrar a editar; todo lo demás queda bloqueado)
+    for c_edit, w in [("Tarea", colw.get("Tarea", 280)),
+                      ("Tipo", colw.get("Tipo", 180)),
+                      ("Detalle", colw.get("Detalle", 240))]:
+        if c_edit in df_grid.columns:
+            gob.configure_column(c_edit, editable=True, minWidth=w)
 
     # ==== Reglas de clase por fila (tachado/pintado) ====
     row_class_rules = {
@@ -530,7 +541,7 @@ def render(user: dict | None = None):
     except Exception:
         pass
 
-    # --- Sincroniza (solo lectura, conservamos flags de selección) ---
+    # --- Sincroniza (actualiza df_main con lo editado; solo 3 campos son editables) ---
     if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
         try:
             edited = pd.DataFrame(grid["data"]).copy()
@@ -539,11 +550,11 @@ def render(user: dict | None = None):
             base = st.session_state["df_main"].copy()
             base["Id"] = base["Id"].astype(str)
 
+            # Merge seguro (mantiene todo; aplica cambios que vengan del grid)
             b_i = base.set_index("Id")
             e_i = edited.set_index("Id")
             common = b_i.index.intersection(e_i.index)
-            b_i.loc[common, :] = b_i.loc[common, :].combine_first(e_i.loc[common, :])
-            b_i.update(e_i)
+            b_i.loc[common, ["Tarea", "Tipo", "Detalle"]] = e_i.loc[common, ["Tarea", "Tipo", "Detalle"]]
             st.session_state["df_main"] = b_i.reset_index()
         except Exception:
             pass
