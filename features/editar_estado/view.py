@@ -23,6 +23,9 @@ def render(user: dict | None = None):
 
     if st.session_state["est_visible"]:
 
+        # === Proporciones (igual que los filtros; A = ancho de "Área") ===
+        A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
+
         # --- Contenedor + CSS local ---
         st.markdown('<div id="est-section">', unsafe_allow_html=True)
         st.markdown("""
@@ -37,8 +40,23 @@ def render(user: dict | None = None):
           #est-section .ag-body-horizontal-scroll,
           #est-section .ag-center-cols-viewport { overflow-x: hidden !important; }
           .section-est .help-strip + .form-card{ margin-top: 6px !important; }
+
+          /* Píldora local para Editar estado (mismo estilo/anchura que "Área") */
+          .est-pill{
+            width:100%; height:38px; border-radius:12px;
+            display:flex; align-items:center; justify-content:center;
+            background:#A7C8F0; color:#ffffff; font-weight:700;
+            box-shadow:0 6px 14px rgba(167,200,240,.35);
+            user-select:none;
+          }
+          .est-pill span{ display:inline-flex; gap:8px; align-items:center; }
         </style>
         """, unsafe_allow_html=True)
+
+        # ===== Píldora alineada al ancho de "Área" =====
+        c_pill, _, _, _, _, _ = st.columns([A, Fw, T_width, D, R, C], gap="medium")
+        with c_pill:
+            st.markdown('<div class="est-pill"><span>✏️&nbsp;Editar estado</span></div>', unsafe_allow_html=True)
 
         # ===== Wrapper UNIDO: help-strip + form-card =====
         st.markdown("""
@@ -48,9 +66,6 @@ def render(user: dict | None = None):
           </div>
           <div class="form-card">
         """, unsafe_allow_html=True)
-
-        # Proporciones
-        A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
         # Base
         df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
