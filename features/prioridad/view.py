@@ -68,7 +68,7 @@ def render(user: dict | None = None):
             font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif !important;
             font-weight: 400 !important;
             font-synthesis-weight: none !important;
-            color: #1f2937 !important;
+            color: #A7F3D0 !important;
             opacity: 1 !important;
             visibility: visible !important;
           }
