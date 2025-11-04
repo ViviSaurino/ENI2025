@@ -80,7 +80,7 @@ def render(user: dict | None = None):
 
           /* ===== Paleta jade (pedido) ===== */
           :root{
-            --pri-pill: #6EE7B7;        /* jade pastel para la píldora */
+            --pri-pill: #86EFAC;        /* jade pastel para la píldora */
             --pri-help-bg: #D1FAE5;     /* jade muy claro para franja */
             --pri-help-border: #A7F3D0; /* borde jade claro */
             --pri-help-text: #065F46;   /* texto verde legible */
@@ -92,16 +92,19 @@ def render(user: dict | None = None):
             display:flex; align-items:center; justify-content:center;
             background: var(--pri-pill);
             color:#ffffff; font-weight:700;
-            box-shadow:0 6px 14px rgba(110,231,183,.32);
+            box-shadow:0 6px 14px rgba(134,239,172,.30);
             user-select:none; margin:4px 0 16px;
           }
           .pri-pill span{ display:inline-flex; gap:8px; align-items:center; }
 
-          /* Franja de indicaciones en jade claro */
+          /* Franja de indicaciones en jade claro — forzar sobre estilo global azul */
+          #pri-section .help-strip,
           #pri-section .help-strip-pri{
             background: var(--pri-help-bg) !important;
-            border: 1px solid var(--pri-help-border) !important;
+            background-image: none !important;
+            border: 1px dashed var(--pri-help-border) !important;
             color: var(--pri-help-text) !important;
+            box-shadow: 0 0 0 1px var(--pri-help-border) inset !important;
           }
         </style>
         """, unsafe_allow_html=True)
