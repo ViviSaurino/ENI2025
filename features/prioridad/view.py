@@ -26,6 +26,7 @@ def render(user: dict | None = None):
     A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
     st.markdown('<div class="topbar-pri">', unsafe_allow_html=True)
     c_pill_p, _ = st.columns([A, Fw + T_width + D + R + C], gap="medium")
+    # (Se mantiene el contenedor, pero ocultamos la píldora pequeña vía CSS más abajo)
     with c_pill_p:
         st.markdown('<div class="form-title-pri">🧭&nbsp;&nbsp;Prioridad</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
@@ -43,6 +44,9 @@ def render(user: dict | None = None):
         <style>
           #pri-section .stButton > button { width: 100% !important; }
           .section-pri .help-strip-pri + .form-card{ margin-top: 6px !important; }
+
+          /* 🔕 Oculta la píldora pequeña del topbar SOLO en Prioridad */
+          .topbar-pri .form-title-pri{ display:none !important; }
 
           /* Evita efectos colaterales: solo dentro de PRIORIDAD */
           #pri-section .ag-body-horizontal-scroll,
@@ -77,19 +81,20 @@ def render(user: dict | None = None):
           #pri-section .pri-med   { color:#ca8a04 !important; }  /* 🟡 Media */
           #pri-section .pri-high  { color:#dc2626 !important; }  /* 🔴 Alta */
 
-          /* Píldora jade (mismo ancho que "Área") */
+          /* Píldora jade (mismo ancho que "Área") — tono igual a la pequeña */
           .pri-pill{
             width:100%; height:38px; border-radius:12px;
             display:flex; align-items:center; justify-content:center;
-            background:#34D399; color:#ffffff; font-weight:700;
-            box-shadow:0 6px 14px rgba(52,211,153,.35);
+            background:#6EE7B7; /* << cambia este hex si quieres afinar el tono */
+            color:#ffffff; font-weight:700;
+            box-shadow:0 6px 14px rgba(110,231,183,.35);
             user-select:none; margin:4px 0 16px;
           }
           .pri-pill span{ display:inline-flex; gap:8px; align-items:center; }
         </style>
         """, unsafe_allow_html=True)
 
-        # ===== Píldora alineada al ancho de "Área" =====
+        # ===== Píldora alineada al ancho de "Área" (solo una) =====
         _pill, _, _, _, _, _ = st.columns([A, Fw, T_width, D, R, C], gap="medium")
         with _pill:
             st.markdown('<div class="pri-pill"><span>🧭&nbsp;Prioridad</span></div>', unsafe_allow_html=True)
@@ -119,7 +124,7 @@ def render(user: dict | None = None):
                     s = pd.to_datetime(df[col], errors="coerce")
                     if s.notna().any():
                         return s
-            return pd.Series([], dtype="datetime64[ns]")
+            return pd.Series([], dtype="datetime64[ns]"])
 
         dates_all = _first_valid_date_series(df_all)
         if dates_all.empty:
@@ -201,10 +206,6 @@ def render(user: dict | None = None):
 
         # ====== AG-GRID con columnDefs explícitos ======
         PRI_OPC_SHOW = ["🔵 Baja","🟡 Media","🔴 Alta"]
-        PRI_MAP_TO_TEXT = {
-            "🔵 Baja":"Baja","🟡 Media":"Media","🔴 Alta":"Alta",
-            "Baja":"Baja","Media":"Media","Alta":"Alta"
-        }
 
         # Reglas de color sin JS (expresiones)
         cell_class_rules = {
