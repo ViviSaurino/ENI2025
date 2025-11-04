@@ -76,8 +76,23 @@ def render(user: dict | None = None):
           #pri-section .pri-low   { color:#2563eb !important; }  /* 🔵 Baja */
           #pri-section .pri-med   { color:#ca8a04 !important; }  /* 🟡 Media */
           #pri-section .pri-high  { color:#dc2626 !important; }  /* 🔴 Alta */
+
+          /* Píldora jade (mismo ancho que "Área") */
+          .pri-pill{
+            width:100%; height:38px; border-radius:12px;
+            display:flex; align-items:center; justify-content:center;
+            background:#34D399; color:#ffffff; font-weight:700;
+            box-shadow:0 6px 14px rgba(52,211,153,.35);
+            user-select:none; margin:4px 0 16px;
+          }
+          .pri-pill span{ display:inline-flex; gap:8px; align-items:center; }
         </style>
         """, unsafe_allow_html=True)
+
+        # ===== Píldora alineada al ancho de "Área" =====
+        _pill, _, _, _, _, _ = st.columns([A, Fw, T_width, D, R, C], gap="medium")
+        with _pill:
+            st.markdown('<div class="pri-pill"><span>🧭&nbsp;Prioridad</span></div>', unsafe_allow_html=True)
 
         # ===== Wrapper UNIDO: help-strip + form-card =====
         st.markdown("""
