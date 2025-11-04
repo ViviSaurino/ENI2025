@@ -62,6 +62,30 @@ def render(user: dict | None = None):
 
     st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
+    # ---- Franja de indicaciones (coral suave) ----
+    st.markdown("""
+    <style>
+      :root{
+        --hist-help-bg: #FFE1DE;     /* coral muy claro (más suave que la píldora) */
+        --hist-help-border: #F6B1AD; /* coral medio para borde */
+        --hist-help-text: #7A2E2A;   /* texto legible sobre coral claro */
+      }
+      .hist-help-strip{
+        background: var(--hist-help-bg) !important;
+        border: 1px solid var(--hist-help-border) !important;
+        color: var(--hist-help-text) !important;
+        padding: 10px 14px;
+        border-radius: 10px;
+        width: 100%;
+        box-shadow: 0 0 0 1px rgba(0,0,0,0.02) inset;
+        margin: 0 0 10px 0;
+      }
+    </style>
+    <div class="hist-help-strip">
+      🕒 Filtra y guarda tus tareas. Tarea y Detalle solo se editan para correcciones. Excel: opcional · Sheets: obligatorio para que el avance quede en el historial.
+    </div>
+    """, unsafe_allow_html=True)
+
     # --- Estilos globales (filas eliminadas, filtros/acciones y headers) ---
     st.markdown("""
     <style>
