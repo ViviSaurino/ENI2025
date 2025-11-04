@@ -26,7 +26,6 @@ def render(user: dict | None = None):
     A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
     st.markdown('<div class="topbar-pri">', unsafe_allow_html=True)
     c_pill_p, _ = st.columns([A, Fw + T_width + D + R + C], gap="medium")
-    # (sin pastilla pequeña)
     with c_pill_p:
         st.markdown("", unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
@@ -78,7 +77,7 @@ def render(user: dict | None = None):
           #pri-section .pri-med   { color:#ca8a04 !important; }  /* 🟡 Media */
           #pri-section .pri-high  { color:#dc2626 !important; }  /* 🔴 Alta */
 
-          /* ===== Paleta jade (pedido) ===== */
+          /* ===== Paleta jade ===== */
           :root{
             --pri-pill: #86EFAC;        /* jade pastel para la píldora */
             --pri-help-bg: #D1FAE5;     /* jade muy claro para franja */
@@ -97,27 +96,28 @@ def render(user: dict | None = None):
           }
           .pri-pill span{ display:inline-flex; gap:8px; align-items:center; }
 
-          /* Franja de indicaciones en jade claro — forzar sobre estilo global azul */
-          #pri-section .help-strip,
+          /* Por si el estilo global intenta recolorear después */
           #pri-section .help-strip-pri{
             background: var(--pri-help-bg) !important;
-            background-image: none !important;
             border: 1px dashed var(--pri-help-border) !important;
             color: var(--pri-help-text) !important;
-            box-shadow: 0 0 0 1px var(--pri-help-border) inset !important;
+            background-image: none !important;
+            box-shadow: none !important;
           }
         </style>
         """, unsafe_allow_html=True)
 
-        # ===== Píldora alineada al ancho de "Área" (solo una) =====
+        # ===== Píldora alineada al ancho de "Área" =====
         _pill, _, _, _, _, _ = st.columns([A, Fw, T_width, D, R, C], gap="medium")
         with _pill:
             st.markdown('<div class="pri-pill"><span>🧭&nbsp;Prioridad</span></div>', unsafe_allow_html=True)
 
         # ===== Wrapper UNIDO: help-strip + form-card =====
-        st.markdown("""
+        # ▶ Forzamos el color con inline style para vencer cualquier CSS global.
+        st.markdown(f"""
         <div class="section-pri">
-          <div class="help-strip help-strip-pri" id="pri-help">
+          <div class="help-strip help-strip-pri" id="pri-help"
+               style="background:#D1FAE5;border:1px dashed #A7F3D0;color:#065F46;">
             🧭 <strong>Asigna o edita prioridades</strong> para varias tareas a la vez (solo jefatura)
           </div>
           <div class="form-card">
@@ -236,7 +236,6 @@ def render(user: dict | None = None):
              "wrapText": True, "autoHeight": True},
             {"field":"Prioridad actual", "headerName":"Prioridad actual", "editable": False,
              "flex":1.2, "minWidth":160, "cellClassRules": cell_class_rules},
-            # 🔐 editable condicionado por ACL
             {"field":"Prioridad a ajustar", "headerName":"Prioridad a ajustar", "editable": bool(IS_EDITOR),
              "cellEditor":"agSelectCellEditor", "cellEditorParams":{"values": PRI_OPC_SHOW},
              "flex":1.2, "minWidth":180, "cellClassRules": cell_class_rules},
@@ -272,13 +271,13 @@ def render(user: dict | None = None):
             gridOptions=grid_opts,
             data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
             update_mode=GridUpdateMode.VALUE_CHANGED,
-            fit_columns_on_grid_load=False,   # las columnas llenan por flex
+            fit_columns_on_grid_load=False,
             enable_enterprise_modules=False,
             reload_data=False,
             height=220,
             theme="alpine",
-            custom_css=custom_css_pri,        # encabezado más liviano
-            key="grid_prioridad",             # KEY ÚNICO
+            custom_css=custom_css_pri,
+            key="grid_prioridad",
         )
 
         # ===== 🔐 Acciones y guardado condicional =====
