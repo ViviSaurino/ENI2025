@@ -68,8 +68,7 @@ def render(user: dict | None = None):
             width:100%; height:38px; border-radius:12px;
             display:flex; align-items:center; justify-content:center;
             background:#A7F3D0;   /* celeste de la píldora pequeña */
-            color:#ffffff; font-weight:700;
-            box-shadow:0 6px 14px rgba(167,243,208) 
+            color:#ffffff; font-weight:700; 
             user-select:none; margin:4px 0 16px;
           }
           .eva-pill span{ display:inline-flex; gap:8px; align-items:center; }
