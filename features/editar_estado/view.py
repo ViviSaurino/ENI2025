@@ -1,4 +1,4 @@
-# features/editar_tarea/view.py
+# features/editar_estado/view.py
 from __future__ import annotations
 import os
 import pandas as pd
@@ -62,7 +62,7 @@ def render(user: dict | None = None):
                     s = pd.to_datetime(df[col], errors="coerce")
                     if s.notna().any():
                         return s
-            return pd.Series([], dtype="datetime64[ns]")
+            return pd.Series([], dtype="datetime64[ns]"])
 
         dates_all = _first_valid_date_series(df_all)
         if dates_all.empty:
