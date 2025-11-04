@@ -28,32 +28,37 @@ def export_excel(df: pd.DataFrame, sheet_name: str = TAB_NAME) -> bytes:
 
 def render(user: dict | None = None):
     # ================== Historial ==================
-
     st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
 
-    # ---- TÍTULO EN PÍLDORA (ajuste solicitado) ----
-    st.markdown("""
-    <style>
-    /* ====== Píldora de título (tono IMAGEN 2) ====== */
-    :root{
-      --pill-coral:#F25F6A; /* coral/rosado cálido */
-    }
-    .hist-title-wrap{
-      display:flex; align-items:center;
-    }
-    .hist-title-pill{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:8px 14px;
-      border-radius:14px; /* antes 9999px: ahora menos curvo */
-      background: var(--pill-coral);
-      color:#fff; font-weight:600; font-size:1.10rem; line-height:1;
-      box-shadow: inset 0 -2px 0 rgba(0,0,0,0.08);
-    }
-    </style>
-    <div class="hist-title-wrap">
-      <span class="hist-title-pill">📝 Tareas recientes</span>
-    </div>
-    """, unsafe_allow_html=True)
+    # —— (Para alinear el ancho del título con el select Área) ——
+    A_f, Fw_f, T_width_f, D_f, R_f, C_f = 1.80, 2.10, 3.00, 1.60, 1.40, 1.20
+
+    # ---- TÍTULO EN PÍLDORA (menos curvo, color imagen 2, ancho = columna Área) ----
+    title_cA, _t2, _t3, _t4, _t5, _t6 = st.columns(
+        [A_f, Fw_f, T_width_f, D_f, R_f, C_f],
+        gap="medium",
+        vertical_alignment="center"
+    )
+    with title_cA:
+        st.markdown("""
+        <style>
+        /* ====== Píldora de título ====== */
+        :root{
+          /* tono de la IMAGEN 2 (salmon/rosado suave) */
+          --pill-salmon:#F28B85;
+        }
+        .hist-title-pill{
+          display:flex; align-items:center; gap:8px;
+          padding:10px 16px;
+          width:100%;              /* iguala el ancho al de la columna Área */
+          border-radius:10px;      /* menos curvo */
+          background: var(--pill-salmon);
+          color:#fff; font-weight:600; font-size:1.10rem; line-height:1;
+          box-shadow: inset 0 -2px 0 rgba(0,0,0,0.06);
+        }
+        </style>
+        <div class="hist-title-pill">📝 Tareas recientes</div>
+        """, unsafe_allow_html=True)
 
     st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
