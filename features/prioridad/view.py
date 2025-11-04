@@ -26,9 +26,9 @@ def render(user: dict | None = None):
     A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
     st.markdown('<div class="topbar-pri">', unsafe_allow_html=True)
     c_pill_p, _ = st.columns([A, Fw + T_width + D + R + C], gap="medium")
-    # (Se mantiene el contenedor, pero ocultamos la píldora pequeña vía CSS más abajo)
+    # (sin pastilla pequeña)
     with c_pill_p:
-        st.markdown('<div class="form-title-pri">🧭&nbsp;&nbsp;Prioridad</div>', unsafe_allow_html=True)
+        st.markdown("", unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
     # ---------- fin barra superior ----------
 
@@ -44,9 +44,6 @@ def render(user: dict | None = None):
         <style>
           #pri-section .stButton > button { width: 100% !important; }
           .section-pri .help-strip-pri + .form-card{ margin-top: 6px !important; }
-
-          /* 🔕 Oculta la píldora pequeña del topbar SOLO en Prioridad */
-          .topbar-pri .form-title-pri{ display:none !important; }
 
           /* Evita efectos colaterales: solo dentro de PRIORIDAD */
           #pri-section .ag-body-horizontal-scroll,
@@ -81,13 +78,13 @@ def render(user: dict | None = None):
           #pri-section .pri-med   { color:#ca8a04 !important; }  /* 🟡 Media */
           #pri-section .pri-high  { color:#dc2626 !important; }  /* 🔴 Alta */
 
-          /* Píldora jade (mismo ancho que "Área") — tono igual a la pequeña */
+          /* Píldora jade (mismo ancho que "Área") — color de la pequeña */
           .pri-pill{
             width:100%; height:38px; border-radius:12px;
             display:flex; align-items:center; justify-content:center;
-            background:#6EE7B7; /* << cambia este hex si quieres afinar el tono */
+            background:#34D399;           /* jade */
             color:#ffffff; font-weight:700;
-            box-shadow:0 6px 14px rgba(110,231,183,.35);
+            box-shadow:0 6px 14px rgba(52,211,153,.35);
             user-select:none; margin:4px 0 16px;
           }
           .pri-pill span{ display:inline-flex; gap:8px; align-items:center; }
