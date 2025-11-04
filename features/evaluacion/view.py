@@ -22,6 +22,10 @@ def render(user: dict | None = None):
     # =========================== EVALUACIÓN ===============================
     st.session_state.setdefault("eva_visible", True)
 
+    # 🔐 ACL: solo jefatura/owner puede editar/guardar
+    acl_user = st.session_state.get("acl_user", {}) or {}
+    IS_EDITOR = bool(acl_user.get("can_edit_all_tabs", False))
+
     # Anchos (consistentes con las otras secciones)
     A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
@@ -63,7 +67,7 @@ def render(user: dict | None = None):
             """
         <div class="section-eva">
           <div class="help-strip help-strip-eval" id="eva-help">
-            📝 <strong>Registra/actualiza la evaluación</strong> de tareas filtradas.
+            📝 <strong>Registra/actualiza la evaluación</strong> de tareas filtradas (solo jefatura).
           </div>
           <div class="form-card">
         """,
@@ -239,10 +243,10 @@ def render(user: dict | None = None):
         for ro in ["Id", "Responsable", "Tarea", "Evaluación actual"]:
             gob.configure_column(ro, editable=False, cellClassRules=eva_cell_rules if ro == "Evaluación actual" else None)
 
-        # Editable: Evaluación ajustada
+        # 🔐 Editable (solo jefatura): Evaluación ajustada
         gob.configure_column(
             "Evaluación ajustada",
-            editable=True,
+            editable=bool(IS_EDITOR),
             cellEditor="agSelectCellEditor",
             cellEditorParams={"values": EVA_OPC_SHOW},
             cellClassRules=eva_cell_rules,
@@ -250,10 +254,10 @@ def render(user: dict | None = None):
             minWidth=180,
         )
 
-        # Editable: Calificación (0..5) + estrellas
+        # 🔐 Editable (solo jefatura): Calificación (0..5) + estrellas
         gob.configure_column(
             "Calificación",
-            editable=True,
+            editable=bool(IS_EDITOR),
             cellEditor="agSelectCellEditor",
             cellEditorParams={"values": [0, 1, 2, 3, 4, 5]},
             valueFormatter=stars_fmt,
@@ -297,9 +301,10 @@ def render(user: dict | None = None):
         # ===== Guardar cambios (merge por Id en df_main) =====
         _sp_eva, _btn_eva = st.columns([A + Fw + T_width + D + R, C], gap="medium")
         with _btn_eva:
-            do_save_eva = st.button("✅ Evaluar", use_container_width=True, key="eva_guardar_v1")
+            # 🔐 Solo jefatura/owner ve el botón
+            do_save_eva = st.button("✅ Evaluar", use_container_width=True, key="eva_guardar_v1") if IS_EDITOR else None
 
-        if do_save_eva:
+        if IS_EDITOR and do_save_eva:
             try:
                 edited = pd.DataFrame(grid_eval.get("data", []))
                 if edited.empty or "Id" not in edited.columns:
