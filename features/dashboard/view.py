@@ -1,10 +1,16 @@
-# features/dashboard/view.py
+# features/dashboard/view.py 
 from __future__ import annotations
 import importlib
 import os
 import types
 import pandas as pd
-import streamlit as st  # <-- FALTA ESTE IMPORT
+import streamlit as st  # <-- IMPORT OK
+
+# 🔐 ACL (para marcar modo editor / solo lectura en tabs específicas)
+try:
+    from features.security import acl
+except Exception:
+    acl = None  # Si aún no existe el módulo, no rompemos la vista.
 
 # ---------- Util: localizar la animación del héroe (se usa en portada si quisieras) ----------
 def _find_hero_asset() -> str | None:
@@ -97,6 +103,28 @@ def render_all(user: dict | None = None):
     if email:
         st.caption(f"Sesión: {email}")
 
+    # === ACL flags (editor / solo lectura) ===
+    user_acl = st.session_state.get("acl_user", {}) if isinstance(st.session_state.get("acl_user", {}), dict) else {}
+    IS_EDITOR = bool(user_acl.get("can_edit_all_tabs", False))
+    # Guardamos flags para que sub-vistas puedan leerlos sin romper firmas
+    st.session_state["IS_EDITOR"] = IS_EDITOR
+    # Columnas de solo lectura según ACL (si existe helper; si no, set vacío)
+    readonly_cols = set()
+    if acl and hasattr(acl, "get_readonly_cols"):
+        try:
+            readonly_cols = set(acl.get_readonly_cols(user_acl))
+        except Exception:
+            readonly_cols = set()
+    st.session_state["READONLY_COLS"] = readonly_cols
+
+    # Badge helper para indicar modo
+    def _badge_readonly(msg: str = "🔒 Solo lectura. Puedes filtrar, pero no editar."):
+        st.markdown(
+            f"<div style='margin:2px 0 10px;padding:8px 10px;border-radius:10px;"
+            f"background:#F1F5F9;color:#334155;font-size:13px;'>{msg}</div>",
+            unsafe_allow_html=True
+        )
+
     # ⛔ Se elimina el banner azul informativo:
     # st.info("La vista principal está lista para conectar tus tablas, filtros y gráficos.")
 
@@ -136,17 +164,23 @@ def render_all(user: dict | None = None):
                 user=user
             )
 
-    # 4) Prioridad
+    # 4) Prioridad (solo lectura para no-editores, pero con filtros)
     with tabs[3]:
+        # Flag de solo lectura visible
+        if not IS_EDITOR:
+            _badge_readonly("🔒 Solo lectura en 'Prioridad'. Puedes filtrar, pero no editar ni guardar.")
         with st.spinner("Cargando 'Prioridad'..."):
+            # Sub-vista leerá st.session_state['IS_EDITOR'] y ['READONLY_COLS'] si lo deseas
             _call_view(
                 "features.prioridad.view",
                 ("render", "render_view", "main", "app", "ui"),
                 user=user
             )
 
-    # 5) Evaluación
+    # 5) Evaluación (solo lectura para no-editores, pero con filtros)
     with tabs[4]:
+        if not IS_EDITOR:
+            _badge_readonly("🔒 Solo lectura en 'Evaluación'. Puedes filtrar, pero no editar ni guardar.")
         with st.spinner("Cargando 'Evaluación'..."):
             _call_view(
                 "features.evaluacion.view",
