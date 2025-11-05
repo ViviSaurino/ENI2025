@@ -13,6 +13,68 @@ import requests
 import streamlit as st
 from streamlit_oauth import OAuth2Component
 
+# ===== (NUEVO) Roles + avatar =====
+import pandas as pd
+
+ROLES_PATH = "data/roles.xlsx"   # ajusta si tu archivo está en otra ruta
+
+@st.cache_data(show_spinner=False)
+def _load_roles(path: str = ROLES_PATH) -> pd.DataFrame:
+    """Lee roles desde Excel y cae a CSV si no existe o falla."""
+    try:
+        return pd.read_excel(path)
+    except Exception:
+        try:
+            return pd.read_csv(path)
+        except Exception:
+            return pd.DataFrame(columns=["email","name","role","avatar_url","can_edit_all_tabs"])
+
+def set_user_session_from_roles(email: str, fallback_google_pic: str = ""):
+    """
+    Carga data/roles.xlsx (o .csv) y setea st.session_state['acl_user'] con:
+      name, email, role, avatar_url, can_edit_all_tabs.
+    Si no encuentra el correo, crea un ACL mínimo (solo lectura).
+    """
+    email = (email or "").strip().lower()
+    roles = _load_roles()
+    if "email" in roles.columns:
+        roles["email"] = roles["email"].astype(str).str.lower().str.strip()
+        row = roles.loc[roles["email"] == email]
+    else:
+        row = pd.DataFrame()
+
+    def _tobool(v):
+        try:
+            if isinstance(v, str):
+                return v.strip().lower() in {"1","true","sí","si","yes","y"}
+            return bool(int(v)) if str(v).isdigit() else bool(v)
+        except Exception:
+            return False
+
+    if row.empty:
+        st.session_state["acl_user"] = {
+            "name": "Usuario",
+            "email": email,
+            "role": "",
+            "avatar_url": fallback_google_pic,   # usa foto de Google si no hay en roles
+            "can_edit_all_tabs": False,
+        }
+        return
+
+    r = row.iloc[0]
+    avatar = str(r.get("avatar_url", "") or "").strip()
+    if not avatar and fallback_google_pic:
+        avatar = fallback_google_pic
+
+    st.session_state["acl_user"] = {
+        "name": r.get("name", "Usuario"),
+        "email": r.get("email", email),
+        "role": r.get("role", ""),
+        "avatar_url": avatar,                          # p.ej. "enrique_avatar.png"
+        "can_edit_all_tabs": _tobool(r.get("can_edit_all_tabs", False)),
+    }
+# ================================
+
 # ========== Config de layout ==========
 LEFT_W = 320  # píxeles: ancho de título/píldora/botón en la portada
 
@@ -155,6 +217,12 @@ def google_login(
     if u and _is_allowed(u.get("email"), allowed_emails, allowed_domains):
         st.session_state["user_email"] = u.get("email", "")
         st.session_state["auth_ok"] = True
+        # (NUEVO) Cargar ACL (roles + avatar) si aún no existe
+        if "acl_user" not in st.session_state:
+            set_user_session_from_roles(
+                st.session_state["user_email"],
+                fallback_google_pic=u.get("picture", "")
+            )
         if redirect_page:
             _switch_page(redirect_page)
             st.stop()
@@ -351,6 +419,12 @@ def google_login(
     st.session_state["user"] = user
     st.session_state["user_email"] = user.get("email", "")
     st.session_state["auth_ok"] = True
+
+    # (NUEVO) ACL de roles + avatar desde roles.xlsx y/o foto de Google
+    set_user_session_from_roles(
+        st.session_state["user_email"],
+        fallback_google_pic=user.get("picture", "")
+    )
 
     _clear_oauth_params()
     if redirect_page:
