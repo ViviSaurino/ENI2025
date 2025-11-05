@@ -37,7 +37,7 @@ st.markdown("""
 <style>
   .eni-banner{
     margin:6px 0 14px;
-    font-weight:400;  /* sin negrita */
+    font-weight:400;
     font-size:16px;
     color:#4B5563;
   }
@@ -45,7 +45,7 @@ st.markdown("""
     background:#C7A0FF !important;
     color:#FFFFFF !important;
     border:none !important;
-    border-radius:12px !important;  /* menos curvatura */
+    border-radius:12px !important;
     font-weight:700 !important;
     box-shadow:0 6px 14px rgba(199,160,255,.35) !important;
   }
@@ -57,7 +57,7 @@ st.markdown("""
   /* Radio de navegación: más compacto */
   .eni-nav label{ padding:6px 8px !important; }
 
-  /* ================= AJUSTES EXTRA: subir y compactar el sidebar ================ */
+  /* Compactar sidebar */
   section[data-testid="stSidebar"] .block-container{
     padding-top:6px !important;
     padding-bottom:10px !important;
@@ -77,7 +77,7 @@ if "user" not in st.session_state:
 
 email = st.session_state.get("user_email") or (st.session_state.get("user") or {}).get("email", "")
 
-# ============ Carga de ROLES / ACL (NUEVO) ============
+# ============ Carga de ROLES / ACL ============
 try:
     if "roles_df" not in st.session_state:
         st.session_state["roles_df"] = acl.load_roles(ROLES_XLSX)
@@ -102,14 +102,8 @@ st.session_state["user_display_name"] = user_acl.get("display_name", email or "U
 st.session_state["user_dry_run"] = bool(user_acl.get("dry_run", False))
 st.session_state["save_scope"] = user_acl.get("save_scope", "all")
 
-# ========= NUEVO: Hook "maybe_save" encadenado con Google Sheets =========
+# ========= Hook "maybe_save" + Google Sheets =========
 def _push_gsheets(df: pd.DataFrame):
-    """Sube df a la hoja configurada en secrets. Crea la hoja si no existe."""
-    # Config requerida en secrets:
-    # [gcp_service_account]  -> JSON de servicio
-    # [gsheets]
-    #   spreadsheet_url = "https://docs.google.com/..."
-    #   worksheet = "TareasRecientes"  (opcional)
     if "gsheets" not in st.secrets or "gcp_service_account" not in st.secrets:
         raise KeyError("Faltan 'gsheets' o 'gcp_service_account' en secrets.")
 
@@ -121,7 +115,6 @@ def _push_gsheets(df: pd.DataFrame):
         st.secrets["gcp_service_account"], scopes=scopes
     )
     gc = gspread.authorize(creds)
-
     ss = gc.open_by_url(st.secrets["gsheets"]["spreadsheet_url"])
     ws_name = st.secrets["gsheets"].get("worksheet", "TareasRecientes")
 
@@ -132,22 +125,13 @@ def _push_gsheets(df: pd.DataFrame):
         cols = str(max(26, len(df.columns) + 5))
         ws = ss.add_worksheet(title=ws_name, rows=rows, cols=cols)
 
-    df_out = df.copy()
-    # Normalizamos tipos a string y NaN -> ""
-    df_out = df_out.fillna("").astype(str)
+    df_out = df.copy().fillna("").astype(str)
     values = [list(df_out.columns)] + df_out.values.tolist()
-
     ws.clear()
     ws.update("A1", values)
 
 def _maybe_save_chain(persist_local_fn, df: pd.DataFrame):
-    """
-    1) Ejecuta la persistencia que define tu app (CSV / disco) respetando ACL.
-    2) Si procede, sincroniza a Google Sheets.
-    """
-    # Paso 1: respeta tu ACL (dry_run, save_scope, etc.)
     res = acl.maybe_save(user_acl, persist_local_fn, df)
-    # Paso 2: sincroniza GSheets (salvo dry-run)
     try:
         if st.session_state.get("user_dry_run", False):
             res["msg"] = res.get("msg", "") + " | DRY-RUN: no se sincronizó Google Sheets."
@@ -155,13 +139,11 @@ def _maybe_save_chain(persist_local_fn, df: pd.DataFrame):
         _push_gsheets(df)
         res["msg"] = res.get("msg", "") + " | Sincronizado a Google Sheets."
     except Exception as e:
-        # No rompemos el flujo si falla la subida; dejamos traza en el mensaje
         res["msg"] = res.get("msg", "") + f" | GSheets error: {e}"
     return res
 
-# Registrar el hook final que verán las vistas
 st.session_state["maybe_save"] = _maybe_save_chain
-# ========= FIN hook GSheets =========
+# ========= FIN hook =========
 
 # Mapeo de claves de pestaña para permisos
 TAB_KEY_BY_SECTION = {
@@ -172,7 +154,6 @@ TAB_KEY_BY_SECTION = {
 }
 
 def render_if_allowed(tab_key: str, render_fn):
-    """Dibuja la vista solo si el usuario tiene permiso por pestaña."""
     if acl.can_see_tab(user_acl, tab_key):
         render_fn()
     else:
@@ -180,16 +161,13 @@ def render_if_allowed(tab_key: str, render_fn):
 
 # ============ Sidebar ============
 with st.sidebar:
-    # Logo
     if LOGO_PATH.exists():
         st.markdown("<div class='eni-logo-wrap'>", unsafe_allow_html=True)
         st.image(str(LOGO_PATH), width=120)
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # Banner
     st.markdown("<div class='eni-banner'>Esta es la plataforma unificada para gestión - ENI2025</div>", unsafe_allow_html=True)
 
-    # Navegación (clicable) solicitada
     st.header("Secciones")
     nav_labels = [
         "📘 Gestión de tareas",
@@ -208,10 +186,8 @@ with st.sidebar:
     )
 
     st.divider()
-    # Saludo con display_name y avatar (si hay)
     dn = st.session_state.get("user_display_name", email or "Usuario")
-    # Avatar circular sin borde; busca assets/avatars/<archivo> o usa URL; fallback a iniciales
-    show_user_avatar_from_session(size=150)  # ⬅️ Aumentado el tamaño del avatar
+    show_user_avatar_from_session(size=150)
     st.markdown(f"👋 **Hola, {dn}**")
     st.caption(f"**Usuario:** {email or '—'}")
     if st.button("🔒 Cerrar sesión", use_container_width=True):
@@ -221,16 +197,17 @@ with st.sidebar:
 ensure_df_main()
 
 # ============ UI principal ============
-# Ruteo a vistas según la opción elegida en el sidebar
 section = st.session_state.get("nav_section", "📘 Gestión de tareas")
 tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
 
 if section == "📘 Gestión de tareas":
     st.title("📘 Gestión de tareas")
 
+    # --- WRAPPER + CSS ANTI-BOTÓN FANTASMA ---
+    st.markdown('<div class="eni-gestion-wrap">', unsafe_allow_html=True)
+
     def _render_gestion():
         try:
-            # Reutilizamos la vista funcional del Dashboard
             from features.dashboard.view import render_all
             render_all(st.session_state.get("user"))
         except Exception as e:
@@ -239,14 +216,16 @@ if section == "📘 Gestión de tareas":
 
     render_if_allowed(tab_key, _render_gestion)
 
-    # ===== FIX: Ocultar botón "Sincronizar" suelto que aparece debajo de la franja =====
-    # No toca la lógica ni los cuatro botones oficiales. Solo oculta cualquier botón
-    # renderizado COMO HERMANO POSTERIOR de .hist-actions (el fantasma).
+    # ✅ Oculta cualquier stButton fuera de .hist-actions (fila oficial) y .hist-search (Buscar)
     st.markdown("""
     <style>
-      .hist-actions ~ div .stButton { display:none !important; }
+      .eni-gestion-wrap .stButton{ display:none !important; }
+      .eni-gestion-wrap .hist-actions .stButton,
+      .eni-gestion-wrap .hist-search .stButton{ display:inline-flex !important; }
     </style>
     """, unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)  # cierre del wrapper
 
 elif section == "🗂️ Kanban":
     st.title("🗂️ Kanban")
@@ -278,8 +257,7 @@ else:  # "📊 Dashboard"
     st.title("📊 Dashboard")
 
     def _render_dashboard():
-        # 🔹 Por ahora no hay contenido; dejamos la sección en blanco con un placeholder suave
         st.caption("Próximamente: visualizaciones y KPIs del dashboard.")
-        st.write("")  # espacio en blanco
+        st.write("")
 
     render_if_allowed(tab_key, _render_dashboard)
