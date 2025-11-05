@@ -1,4 +1,4 @@
-# ============================ 
+# ============================  
 # Gestión — ENI2025 (App única)
 # ============================
 import streamlit as st
@@ -141,7 +141,7 @@ with st.sidebar:
     # Saludo con display_name y avatar (si hay)
     dn = st.session_state.get("user_display_name", email or "Usuario")
     # Avatar circular sin borde; busca assets/avatars/<archivo> o usa URL; fallback a iniciales
-    show_user_avatar_from_session(size=72)  # <-- NUEVO (render avatar)
+    show_user_avatar_from_session(size=150)  # ⬅️ Aumentado el tamaño del avatar
     st.markdown(f"👋 **Hola, {dn}**")
     st.caption(f"**Usuario:** {email or '—'}")
     if st.button("🔒 Cerrar sesión", use_container_width=True):
