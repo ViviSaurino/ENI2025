@@ -172,8 +172,8 @@ def render(user: dict | None = None):
             fase = r1c2.selectbox("Fase", options=FASES, index=None, placeholder="Selecciona una fase", key="nt_fase")
             tarea = r1c3.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
             r1c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle")
-            # ← Responsable prellenado y BLOQUEADO
-            r1c5.text_input("Responsable", value=st.session_state.get("nt_resp", ""), key="nt_resp", disabled=True)
+            # ← Responsable prellenado y BLOQUEADO (sin 'value' para evitar el warning)
+            r1c5.text_input("Responsable", key="nt_resp", disabled=True)
             ciclo_mejora = r1c6.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
 
             # ---------- FILA 2 ----------
