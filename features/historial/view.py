@@ -9,7 +9,7 @@ from datetime import datetime, time
 import pandas as pd
 import streamlit as st
 from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode, JsCode
-import streamlit.components.v1 as components  # ⬅️ NUEVO: para ocultar el botón fantasma
+import streamlit.components.v1 as components  # para ocultar el botón fantasma
 
 # ===== Helpers para import perezoso (evita UI fantasma del Dashboard) =====
 def _get_dashboard_module():
@@ -344,7 +344,7 @@ def render(user: dict | None = None):
 
     df_view["Duración"] = df_view["Duración"].astype(str).fillna("")
     df_grid = df_view.reindex(columns=list(dict.fromkeys(target_cols)) + [c for c in df_view.columns if c not in target_cols + HIDDEN_COLS]).copy()
-    df_grid = df_grid.loc[:, ~df_view.columns.duplicated()].copy()
+    df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()  # ✅ FIX correcto
     df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
 
     # Remueve por completo ¿Eliminar?
