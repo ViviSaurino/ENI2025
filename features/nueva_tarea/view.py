@@ -149,8 +149,9 @@ def render(user: dict | None = None):
             st.markdown('<span id="nt-card-sentinel"></span>', unsafe_allow_html=True)
 
             # ============================================================
-            # AJUSTE: prellenar y bloquear "Responsable" con el nombre
-            # y precargar "Área" desde roles.xlsx (ACL)
+            # AJUSTE: bloquear Responsable y Área usando roles (ACL)
+            # - Responsable: del display_name / name
+            # - Área: del campo 'area'/'Área'/'area_name'; si falta, "Operación de campo"
             # ============================================================
             _acl = st.session_state.get("acl_user", {}) or {}
             _display_name = (
@@ -160,30 +161,24 @@ def render(user: dict | None = None):
                 or (st.session_state.get("user") or {}).get("name", "")
                 or ""
             )
-            # Si no existe nt_resp (o está vacío), fijarlo al nombre
             if not str(st.session_state.get("nt_resp", "")).strip():
                 st.session_state["nt_resp"] = _display_name
 
-            # Área por defecto desde ACL (columna 'area' o 'Área' en roles.xlsx)
             _area_acl = (_acl.get("area") or _acl.get("Área") or _acl.get("area_name") or "").strip()
-            if _area_acl and _area_acl not in AREAS_OPC:
-                AREAS_OPC.insert(0, _area_acl)
-            _default_area_idx = 0
-            if _area_acl:
-                try:
-                    _default_area_idx = AREAS_OPC.index(_area_acl)
-                except ValueError:
-                    _default_area_idx = 0
+            area_fixed = _area_acl if _area_acl else "Operación de campo"
+            # Guardamos en session_state para que el resto del flujo lo use
+            st.session_state["nt_area"] = area_fixed
             # ============================================================
 
             # ---------- FILA 1 ----------
             r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
-            area = r1c1.selectbox("Área", options=AREAS_OPC, index=_default_area_idx, key="nt_area")
+            # Área fija, sin lista desplegable
+            r1c1.text_input("Área", value=area_fixed, key="nt_area_view", disabled=True)
             FASES = ["Capacitación","Post-capacitación","Pre-consistencia","Consistencia","Operación de campo"]
             fase = r1c2.selectbox("Fase", options=FASES, index=None, placeholder="Selecciona una fase", key="nt_fase")
             tarea = r1c3.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
             r1c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle")
-            # ← Responsable prellenado y BLOQUEADO (sin 'value' para evitar el warning)
+            # Responsable bloqueado
             r1c5.text_input("Responsable", key="nt_resp", disabled=True)
             ciclo_mejora = r1c6.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
 
@@ -196,18 +191,16 @@ def render(user: dict | None = None):
             # >>> INICIALIZA fi_d si no existe (para que hoy no dependa de on_change)
             if "fi_d" not in st.session_state:
                 if st.session_state.get("nt_skip_date_init", False):
-                    # mantenerla vacía solo en el primer render post-reset
                     st.session_state.pop("nt_skip_date_init", None)
                 else:
                     st.session_state["fi_d"] = _now_local().date()
 
-            # sincroniza hora si la fecha ya es hoy antes de pintar
             _sync_time_from_date()
 
             r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
 
             # === Tipo de tarea: SOLO "Otros" y fijo ===
-            tipo_sel = r2c1.selectbox("Tipo de tarea", options=["Otros"], index=0, key="nt_tipo", disabled=True)
+            r2c1.selectbox("Tipo de tarea", options=["Otros"], index=0, key="nt_tipo", disabled=True)
 
             r2c2.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
 
@@ -221,9 +214,12 @@ def render(user: dict | None = None):
             st.session_state["fi_t_view"] = _t_txt
 
             _df_tmp = st.session_state.get("df_main", pd.DataFrame()).copy() if "df_main" in st.session_state else pd.DataFrame()
-            prefix = make_id_prefix(st.session_state.get("nt_area", area), st.session_state.get("nt_resp", ""))
-            id_preview = (next_id_by_person(_df_tmp, st.session_state.get("nt_area", area),
-                           st.session_state.get("nt_resp", "")) if st.session_state.get("fi_d") else f"{prefix}_")
+            prefix = make_id_prefix(st.session_state.get("nt_area", area_fixed), st.session_state.get("nt_resp", ""))
+            id_preview = (next_id_by_person(
+                _df_tmp,
+                st.session_state.get("nt_area", area_fixed),
+                st.session_state.get("nt_resp", "")
+            ) if st.session_state.get("fi_d") else f"{prefix}_")
 
             is_otros = (str(st.session_state.get("nt_tipo", "")).strip().lower() == "otros")
 
@@ -235,7 +231,7 @@ def render(user: dict | None = None):
                 r2c4.selectbox("Duración", options=dur_labels, index=0, key="nt_duracion_label")
 
                 r2c5.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
-                _sync_time_from_date()  # re-sincroniza tras el date_input
+                _sync_time_from_date()
 
                 r2c6.text_input("Hora (auto)", key="fi_t_view", disabled=True,
                                 help="Se asigna al elegir la fecha")
@@ -245,7 +241,7 @@ def render(user: dict | None = None):
 
             else:
                 r2c3.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
-                _sync_time_from_date()  # re-sincroniza tras el date_input
+                _sync_time_from_date()
 
                 r2c4.text_input("Hora (auto)", key="fi_t_view", disabled=True,
                                 help="Se asigna al elegir la fecha")
@@ -292,18 +288,18 @@ def render(user: dict | None = None):
 
                 new = blank_row()
                 new.update({
-                    "Área": area,
-                    "Id": next_id_by_person(df, area, st.session_state.get("nt_resp", "")),
+                    "Área": st.session_state.get("nt_area", area_fixed),
+                    "Id": next_id_by_person(df, st.session_state.get("nt_area", area_fixed), st.session_state.get("nt_resp", "")),
                     "Tarea": st.session_state.get("nt_tarea", ""),
                     "Tipo": st.session_state.get("nt_tipo", ""),
-                    "Responsable": st.session_state.get("nt_resp", ""),  # ← queda forzado al usuario logueado
-                    "Fase": fase,
+                    "Responsable": st.session_state.get("nt_resp", ""),  # ← forzado al usuario logueado
+                    "Fase": st.session_state.get("nt_fase", ""),
                     "Estado": "No iniciado",
                     "Fecha": reg_fecha, "Hora": reg_hora_txt,
                     "Fecha Registro": reg_fecha, "Hora Registro": reg_hora_txt,
                     "Fecha inicio": None, "Hora de inicio": "",
                     "Fecha Terminado": None, "Hora Terminado": "",
-                    "Ciclo de mejora": ciclo_mejora,
+                    "Ciclo de mejora": st.session_state.get("nt_ciclo_mejora", ""),
                     "Detalle": st.session_state.get("nt_detalle", ""),
                 })
 
@@ -331,7 +327,6 @@ def render(user: dict | None = None):
                 maybe_save = st.session_state.get("maybe_save")
                 res = maybe_save(_persist, df.copy()) if callable(maybe_save) else _persist(df.copy())
                 if not res.get("ok", False):
-                    # Ej.: DRY-RUN o guardado deshabilitado
                     st.info(res.get("msg", "Guardado deshabilitado."))
 
                 # >>> LIMPIEZA DE CAMPOS + MENSAJE + SALTO DE ESTADO
@@ -341,8 +336,8 @@ def render(user: dict | None = None):
                     "fi_d","fi_t","fi_t_view","nt_id_preview"
                 ]:
                     st.session_state.pop(k, None)
-                st.session_state["nt_skip_date_init"] = True   # deja fecha en blanco tras el reset
-                st.session_state["nt_added_ok"] = True         # mensaje de confirmación
+                st.session_state["nt_skip_date_init"] = True
+                st.session_state["nt_added_ok"] = True
 
                 st.rerun()
 
