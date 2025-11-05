@@ -6,6 +6,7 @@ pytz>=2023.3
 python-dateutil>=2.8,<2.9
 requests>=2.31,<3
 PyJWT>=2.8,<3
+tzdata>=2023.3         # <-- añadido: asegura zonas horarias con zoneinfo en Windows/containers
 
 # --- UI ---
 streamlit-aggrid>=0.3.5
@@ -18,8 +19,7 @@ google-auth>=2.20,<3
 google-auth-oauthlib>=1.1,<2
 google-auth-httplib2>=0.2,<1
 google-api-python-client>=2.100,<3
-# Si alguna vez tienes conflictos de dependencias con Google Client:
-# protobuf>=4.23,<5  # <- descomenta solo si lo necesitas
+# protobuf>=4.23,<5   # <-- déjalo comentado; actívalo solo si ves conflictos de dependencias
 
 # --- Excel / utilidades ---
 openpyxl>=3.1.2,<3.2
