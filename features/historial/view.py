@@ -9,6 +9,12 @@ import pandas as pd
 import streamlit as st
 from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode, JsCode
 
+# === Import de funciones Sheets (Dashboard) ===
+from features.dashboard.view import (
+    push_user_slice_to_sheet,
+    pull_user_slice_from_sheet,
+)
+
 # ====== Soporte de exportación ======
 TAB_NAME = "Tareas"
 
@@ -617,7 +623,9 @@ def render(user: dict | None = None):
     left_spacer = A_f + Fw_f + T_width_f  # ocupa Área + Fase + Responsable
 
     st.markdown('<div class="hist-actions">', unsafe_allow_html=True)
-    _spacer, b_xlsx, b_save_local, b_save_sheets = st.columns([left_spacer, D_f, R_f, C_f], gap="medium")
+    _spacer, b_xlsx, b_sync, b_save_local, b_save_sheets = st.columns(
+        [left_spacer, D_f, R_f, R_f, C_f], gap="medium"
+    )
 
     with b_xlsx:
         try:
@@ -641,6 +649,14 @@ def render(user: dict | None = None):
             st.error("No pude generar Excel: falta instalar 'xlsxwriter' u 'openpyxl' en el entorno.")
         except Exception as e:
             st.error(f"No pude generar Excel: {e}")
+
+    # --- Nuevo: SINCRONIZAR (Sheet → App) al costado de Exportar Excel ---
+    with b_sync:
+        if st.button("🔄 Sincronizar", use_container_width=True, key="btn_sync_sheet"):
+            try:
+                pull_user_slice_from_sheet(replace_df_main=True)
+            except Exception as e:
+                st.warning(f"No se pudo sincronizar: {e}")
 
     with b_save_local:
         if st.button("💾 Grabar", use_container_width=True):
@@ -691,7 +707,7 @@ def render(user: dict | None = None):
             except Exception:
                 pass
             try:
-                ok, msg = _write_sheet_tab(df.copy())  # definida fuera
-                st.success(msg) if ok else st.warning(msg)
+                # Reemplaza la función antigua por la oficial del Dashboard
+                push_user_slice_to_sheet()
             except Exception as e:
                 st.warning(f"No se pudo subir a Sheets: {e}")
