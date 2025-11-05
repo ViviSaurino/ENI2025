@@ -15,6 +15,15 @@ from features.dashboard.view import (
     pull_user_slice_from_sheet,
 )
 
+# === Import para persistencia local (y columnas) ===
+try:
+    from features.dashboard.view import _save_local, COLS
+except Exception:
+    COLS = None
+    def _save_local(df: pd.DataFrame):
+        # Fallback mínimo (no persistente a disco, pero no rompe)
+        st.session_state["_df_main_local_backup"] = df.copy()
+
 # ====== Soporte de exportación ======
 TAB_NAME = "Tareas"
 
@@ -39,7 +48,7 @@ def render(user: dict | None = None):
     # —— (Para alinear el ancho del título con el select Área) ——
     A_f, Fw_f, T_width_f, D_f, R_f, C_f = 1.80, 2.10, 3.00, 1.60, 1.40, 1.20
 
-    # ---- TÍTULO EN PÍLDORA (menos curvo, color imagen 2, ancho = columna Área) ----
+    # ---- TÍTULO EN PÍLDORA ----
     title_cA, _t2, _t3, _t4, _t5, _t6 = st.columns(
         [A_f, Fw_f, T_width_f, D_f, R_f, C_f],
         gap="medium",
@@ -48,17 +57,11 @@ def render(user: dict | None = None):
     with title_cA:
         st.markdown("""
         <style>
-        /* ====== Píldora de título ====== */
-        :root{
-          /* tono de la IMAGEN 2 (salmon/rosado suave) */
-          --pill-salmon:#F28B85;
-        }
+        :root{ --pill-salmon:#F28B85; }
         .hist-title-pill{
           display:flex; align-items:center; gap:8px;
-          padding:10px 16px;
-          width:100%;              /* iguala el ancho al de la columna Área */
-          border-radius:10px;      /* menos curvo */
-          background: var(--pill-salmon);
+          padding:10px 16px; width:100%;
+          border-radius:10px; background: var(--pill-salmon);
           color:#fff; font-weight:600; font-size:1.10rem; line-height:1;
           box-shadow: inset 0 -2px 0 rgba(0,0,0,0.06);
         }
@@ -68,93 +71,51 @@ def render(user: dict | None = None):
 
     st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
-    # ---- Franja de indicaciones (coral suave) ----
+    # ---- Franja de indicaciones ----
     st.markdown("""
     <style>
       :root{
-        --hist-help-bg: #FFE1DE;     /* coral muy claro (más suave que la píldora) */
-        --hist-help-border: #F6B1AD; /* coral medio para borde */
-        --hist-help-text: #7A2E2A;   /* texto legible sobre coral claro */
+        --hist-help-bg:#FFE1DE; --hist-help-border:#F6B1AD; --hist-help-text:#7A2E2A;
       }
       .hist-help-strip{
-        background: var(--hist-help-bg) !important;
-        border: 1px solid var(--hist-help-border) !important;
-        color: var(--hist-help-text) !important;
-        padding: 10px 14px;
-        border-radius: 10px;
-        width: 100%;
-        box-shadow: 0 0 0 1px rgba(0,0,0,0.02) inset;
-        margin: 0 0 10px 0;
+        background:var(--hist-help-bg)!important; border:1px solid var(--hist-help-border)!important;
+        color:var(--hist-help-text)!important; padding:10px 14px; border-radius:10px; width:100%;
+        box-shadow:0 0 0 1px rgba(0,0,0,0.02) inset; margin:0 0 10px 0;
       }
     </style>
     <div class="hist-help-strip">
-      🕒 Filtra y guarda tus tareas. Tarea y Detalle solo se editan para correcciones. Excel: opcional · Sheets: obligatorio para que el avance quede en el historial.
+      🕒 Filtra y guarda tus tareas. Tarea y Detalle solo se editan para correcciones.
+      Excel: opcional · Sheets: obligatorio para que el avance quede en el historial.
     </div>
     """, unsafe_allow_html=True)
 
-    # --- Estilos globales (filas eliminadas, filtros/acciones y headers) ---
+    # --- Estilos globales ---
     st.markdown("""
     <style>
-    /* Fila tachada (Eliminado) */
     .ag-theme-balham .row-deleted .ag-cell {
-      text-decoration: line-through;
-      background-color: #FEE2E2 !important;
-      color: #7F1D1D !important;
-      opacity: 0.95;
+      text-decoration: line-through; background-color:#FEE2E2 !important;
+      color:#7F1D1D !important; opacity:.95;
     }
-
-    /* ===== Alineación exacta contenedor de acciones ===== */
-    :root{
-      --hist-pad-x: 16px;       /* padding lateral del contenedor de botones */
-      --hist-border-w: 2px;     /* grosor de la línea superior (roja) */
-      --hist-border-c: #EF4444; /* color de la línea */
-    }
+    :root{ --hist-pad-x:16px; --hist-border-w:2px; --hist-border-c:#EF4444; }
     .hist-actions{
-      padding-left: var(--hist-pad-x) !important;
-      padding-right: var(--hist-pad-x) !important;
-      border-top: var(--hist-border-w) solid var(--hist-border-c);
+      padding-left:var(--hist-pad-x)!important; padding-right:var(--hist-pad-x)!important;
+      border-top:var(--hist-border-w) solid var(--hist-border-c);
     }
-    /* Centrar verticalmente el contenido de cada columna de la franja de acciones */
-    .hist-actions [data-testid="column"] > div{
-      display: flex; align-items: center; height: 46px;
-    }
-    /* Botones de acciones: misma altura y ancho adaptable */
-    .hist-actions .stButton > button{
-      height: 38px !important;
-      border-radius: 10px !important;
-      width: 100%;
-    }
+    .hist-actions [data-testid="column"] > div{ display:flex; align-items:center; height:46px; }
+    .hist-actions .stButton > button{ height:38px!important; border-radius:10px!important; width:100%; }
+    .hist-search .stButton > button{ margin-top:12px!important; height:38px!important; }
 
-    /* Alinear el botón Buscar con la fila de filtros (bájalo un poco más) */
-    .hist-search .stButton > button{
-      margin-top: 12px !important;
-      height: 38px !important;
-    }
-
-    /* Encabezados gris tenue para columnas Pausado/Cancelado/Eliminado */
     :root{ --muted-bg:#ECEFF1; --muted-fg:#90A4AE; }
-    .ag-theme-balham .ag-header-cell.muted-col .ag-header-cell-label{
-      color: var(--muted-fg) !important;
-    }
+    .ag-theme-balham .ag-header-cell.muted-col .ag-header-cell-label{ color:var(--muted-fg)!important; }
 
-    /* === Mostrar encabezados completos (sin recorte) === */
-    .ag-theme-balham .ag-header,
-    .ag-theme-balham .ag-header-cell,
-    .ag-theme-balham .ag-header-cell-label,
-    .ag-theme-balham .ag-header-cell-text{
-      white-space: normal !important;
-      overflow: visible !important;
-      text-overflow: clip !important;
-      line-height: 1.2 !important;
+    .ag-theme-balham .ag-header, .ag-theme-balham .ag-header-cell,
+    .ag-theme-balham .ag-header-cell-label, .ag-theme-balham .ag-header-cell-text{
+      white-space:normal!important; overflow:visible!important; text-overflow:clip!important; line-height:1.2!important;
     }
-    /* También en columnas ancladas (Id, Área, Fase) */
     .ag-theme-balham .ag-pinned-left-header .ag-header-cell,
     .ag-theme-balham .ag-pinned-left-header .ag-header-cell-label,
     .ag-theme-balham .ag-pinned-left-header .ag-header-cell-text{
-      white-space: normal !important;
-      overflow: visible !important;
-      text-overflow: clip !important;
-      line-height: 1.2 !important;
+      white-space:normal!important; overflow:visible!important; text-overflow:clip!important; line-height:1.2!important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -382,7 +343,6 @@ def render(user: dict | None = None):
         df_grid.drop(columns=["¿Eliminar?"], inplace=True, errors="ignore")
 
     # ================= GRID OPTIONS =================
-    # Por defecto TODO es de solo lectura; luego habilitamos solo Tarea, Tipo, Detalle.
     gob = GridOptionsBuilder.from_dataframe(df_grid)
     gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, editable=False)
     gob.configure_selection(selection_mode="multiple", use_checkbox=False)
@@ -392,34 +352,26 @@ def render(user: dict | None = None):
         suppressRowClickSelection=False,
         domLayout="normal",
         rowHeight=30,
-        # Encabezados completos:
-        wrapHeaderText=True,
-        autoHeaderHeight=True,
-        headerHeight=56,
-        enableRangeSelection=True,
-        enableCellTextSelection=True,
-        singleClickEdit=False,        # doble clic para editar
-        stopEditingWhenCellsLoseFocus=True,
-        undoRedoCellEditing=False,
-        enterMovesDown=False,
+        wrapHeaderText=True, autoHeaderHeight=True, headerHeight=56,
+        enableRangeSelection=True, enableCellTextSelection=True,
+        singleClickEdit=False, stopEditingWhenCellsLoseFocus=True,
+        undoRedoCellEditing=False, enterMovesDown=False,
         suppressMovableColumns=False,
         getRowId=JsCode("function(p){ return (p.data && (p.data.Id || p.data['Id'])) + ''; }"),
         suppressHeaderVirtualisation=True,
     )
 
-    # Encabezados de las 3 primeras columnas completos y anclados
+    # Encabezados anclados
     gob.configure_column("Id", headerName="ID", editable=False, minWidth=110, pinned="left", suppressMovable=True)
     gob.configure_column("Área", headerName="Área", editable=False, minWidth=160, pinned="left", suppressMovable=True)
     gob.configure_column("Fase", headerName="Fase", editable=False, minWidth=140, pinned="left", suppressMovable=True)
     gob.configure_column("Responsable", editable=False, minWidth=200, pinned="left", suppressMovable=True)
 
-    # —— Mostrar como lectura (nombres legibles)
-    gob.configure_column("Estado",            headerName="Estado actual")
+    gob.configure_column("Estado", headerName="Estado actual")
     gob.configure_column("Fecha Vencimiento", headerName="Fecha límite")
-    gob.configure_column("Fecha inicio",      headerName="Fecha de inicio")
-    gob.configure_column("Fecha Terminado",   headerName="Fecha Terminado")
+    gob.configure_column("Fecha inicio", headerName="Fecha de inicio")
+    gob.configure_column("Fecha Terminado", headerName="Fecha Terminado")
 
-    # Ocultar columnas internas
     for ocultar in HIDDEN_COLS:
         if ocultar in df_grid.columns:
             gob.configure_column(ocultar, hide=True, suppressMenu=True, filter=False)
@@ -494,7 +446,7 @@ def render(user: dict | None = None):
         if c in df_grid.columns:
             gob.configure_column(
                 c,
-                editable=False,  # <— por defecto, lectura
+                editable=False,
                 minWidth=colw.get(c,120),
                 flex=fx,
                 valueFormatter=(
@@ -519,21 +471,19 @@ def render(user: dict | None = None):
                                       "Fecha Eliminado","Hora Eliminado"] else None
             )
 
-    # —— Estilo gris para las 6 columnas (celdas y encabezado)
     MUTED_CELL_STYLE = {"backgroundColor":"#ECEFF1","color":"#90A4AE"}
     for cc in ["Fecha Pausado","Hora Pausado","Fecha Cancelado","Hora Cancelado","Fecha Eliminado","Hora Eliminado"]:
         if cc in df_grid.columns:
             gob.configure_column(cc, headerClass="muted-col", cellStyle=MUTED_CELL_STYLE)
 
-    # === Habilitar edición SOLO en: Tarea, Tipo, Detalle ===
-    # (doble clic para entrar a editar; todo lo demás queda bloqueado)
+    # === Editables: Tarea, Tipo, Detalle ===
     for c_edit, w in [("Tarea", colw.get("Tarea", 280)),
                       ("Tipo", colw.get("Tipo", 180)),
                       ("Detalle", colw.get("Detalle", 240))]:
         if c_edit in df_grid.columns:
             gob.configure_column(c_edit, editable=True, minWidth=w)
 
-    # ==== Reglas de clase por fila (tachado/pintado) ====
+    # ==== Reglas de clase por fila ====
     row_class_rules = {
         "row-deleted": JsCode("""
             function(params){
@@ -600,7 +550,7 @@ def render(user: dict | None = None):
     except Exception:
         pass
 
-    # --- Sincroniza (actualiza df_main con lo editado; solo 3 campos son editables) ---
+    # --- Sincroniza edición de 3 campos ---
     if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
         try:
             edited = pd.DataFrame(grid["data"]).copy()
@@ -609,7 +559,6 @@ def render(user: dict | None = None):
             base = st.session_state["df_main"].copy()
             base["Id"] = base["Id"].astype(str)
 
-            # Merge seguro (mantiene todo; aplica cambios que vengan del grid)
             b_i = base.set_index("Id")
             e_i = edited.set_index("Id")
             common = b_i.index.intersection(e_i.index)
@@ -629,7 +578,6 @@ def render(user: dict | None = None):
     with b_xlsx:
         try:
             df_xlsx = st.session_state["df_main"].copy()
-            # Remueve columnas internas
             drop_cols = [c for c in ("__DEL__", "DEL", "__SEL__", "¿Eliminar?") if c in df_xlsx.columns]
             if drop_cols:
                 df_xlsx.drop(columns=drop_cols, inplace=True, errors="ignore")
@@ -649,7 +597,6 @@ def render(user: dict | None = None):
         except Exception as e:
             st.error(f"No pude generar Excel: {e}")
 
-    # --- SINCRONIZAR (Sheet → App) en la misma fila ---
     with b_sync:
         if st.button("🔄 Sincronizar", use_container_width=True, key="btn_sync_sheet"):
             try:
@@ -657,29 +604,25 @@ def render(user: dict | None = None):
             except Exception as e:
                 st.warning(f"No se pudo sincronizar: {e}")
 
-    # ============ Grabar (sin lógica de Eliminado) ============
+    # ============ Grabar (persiste usando _save_local del Dashboard) ============
     with b_save_local:
         if st.button("💾 Grabar", use_container_width=True):
             base = st.session_state["df_main"].copy()
             base["Id"] = base["Id"].astype(str)
-
-            # Garantizamos columna __DEL__ pero NO la modificamos ni generamos fechas de eliminado.
             if "__DEL__" not in base.columns:
                 base["__DEL__"] = False
-
             st.session_state["df_main"] = base.reset_index(drop=True)
 
-            # Persistimos localmente (usa COLS si existe; si no, guarda todo)
             try:
-                df_save = st.session_state["df_main"][COLS].copy()  # noqa: F821
+                df_save = st.session_state["df_main"][COLS].copy() if COLS else st.session_state["df_main"].copy()
             except Exception:
                 df_save = st.session_state["df_main"].copy()
-            try:
-                _save_local(df_save.copy())  # definida fuera
-            except Exception:
-                pass
 
-            st.success("Datos grabados localmente. Se mantendrán al volver a iniciar sesión.")
+            try:
+                _save_local(df_save.copy())
+                st.success("Datos grabados localmente. Se mantendrán al volver a iniciar sesión.")
+            except Exception as e:
+                st.warning(f"No se pudo grabar localmente: {e}")
 
     with b_save_sheets:
         if st.button("📤 Subir a Sheets", use_container_width=True):
@@ -696,3 +639,13 @@ def render(user: dict | None = None):
                 push_user_slice_to_sheet()
             except Exception as e:
                 st.warning(f"No se pudo subir a Sheets: {e}")
+
+    # ✅ Cierro el contenedor de acciones (evita que Streamlit dibuje bloques sueltos)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # 🧼 Oculta cualquier bloque inmediato que aparezca debajo de la franja (botón residual)
+    st.markdown("""
+    <style>
+      .hist-actions + div { display:none !important; }
+    </style>
+    """, unsafe_allow_html=True)
