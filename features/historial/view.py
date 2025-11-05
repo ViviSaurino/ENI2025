@@ -657,7 +657,7 @@ def render(user: dict | None = None):
             except Exception as e:
                 st.warning(f"No se pudo sincronizar: {e}")
 
-    # ============ AJUSTE SOLICITADO: Grabar sin lógica de Eliminado ============
+    # ============ Grabar (sin lógica de Eliminado) ============
     with b_save_local:
         if st.button("💾 Grabar", use_container_width=True):
             base = st.session_state["df_main"].copy()
