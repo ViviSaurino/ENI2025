@@ -14,6 +14,7 @@ from shared import (
 
 # 🔐 ACL / Roles
 from features.security import acl  # <-- NUEVO
+from utils.avatar import show_user_avatar_from_session  # <-- NUEVO (import avatar)
 
 # Ruta del logo (arriba, a la izquierda del sidebar)
 LOGO_PATH = Path("assets/branding/eni2025_logo.png")
@@ -139,9 +140,9 @@ with st.sidebar:
     st.divider()
     # Saludo con display_name y avatar (si hay)
     dn = st.session_state.get("user_display_name", email or "Usuario")
+    # Avatar circular sin borde; busca assets/avatars/<archivo> o usa URL; fallback a iniciales
+    show_user_avatar_from_session(size=72)  # <-- NUEVO (render avatar)
     st.markdown(f"👋 **Hola, {dn}**")
-    if user_acl.get("avatar_url"):
-        st.image(user_acl["avatar_url"], width=72)
     st.caption(f"**Usuario:** {email or '—'}")
     if st.button("🔒 Cerrar sesión", use_container_width=True):
         logout()
