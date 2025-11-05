@@ -304,7 +304,7 @@ def render(user: dict | None = None):
         df_view.loc[need_ini_tm, "Hora de inicio"] = _h_ini[need_ini_tm]
 
         need_fin_dt = _terminado & df_view["Fecha Terminado"].isna()
-        need_fin_tm = _terminado & (df_view["Hora Terminado"].astype(str).str.trim() == "") if "Hora Terminado" in df_view.columns else False
+        need_fin_tm = _terminado & (df_view["Hora Terminado"].astype(str).str.trip() == "") if "Hora Terminado" in df_view.columns else False
         df_view.loc[need_fin_dt, "Fecha Terminado"]      = _mod[need_fin_dt]
         if "Hora Terminado" in df_view.columns:
             df_view.loc[need_fin_tm, "Hora Terminado"] = _hmod.where(_hmod != "", _mod.dt.strftime("%H:%M"))[need_fin_tm]
