@@ -58,24 +58,14 @@ st.markdown("""
   .eni-nav label{ padding:6px 8px !important; }
 
   /* ================= AJUSTES EXTRA: subir y compactar el sidebar ================ */
-  /* Reducimos el padding superior del contenedor del sidebar */
   section[data-testid="stSidebar"] .block-container{
     padding-top:6px !important;
     padding-bottom:10px !important;
   }
-  /* Un pelín menos de margen arriba del logo para “subir” todo */
   section[data-testid="stSidebar"] .eni-logo-wrap{ margin-top:-6px !important; }
-
-  /* Compactar gaps verticales internos */
   section[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{ gap:8px !important; }
-
-  /* Avatar: margen compacto y tamaño controlado por st.image, pero sin borde */
   section[data-testid="stSidebar"] .avatar-wrap{ margin:6px 0 6px !important; }
-  section[data-testid="stSidebar"] .avatar-wrap img{
-    border-radius:9999px !important;
-  }
-
-  /* Evitar barra de scroll visual (el contenido ya está compactado) */
+  section[data-testid="stSidebar"] .avatar-wrap img{ border-radius:9999px !important; }
   section[data-testid="stSidebar"]{ overflow-y:hidden !important; }
 </style>
 """, unsafe_allow_html=True)
@@ -111,8 +101,67 @@ st.session_state["acl_user"] = user_acl
 st.session_state["user_display_name"] = user_acl.get("display_name", email or "Usuario")
 st.session_state["user_dry_run"] = bool(user_acl.get("dry_run", False))
 st.session_state["save_scope"] = user_acl.get("save_scope", "all")
-# Wrapper para persistencias (por si luego lo usas en features)
-st.session_state["maybe_save"] = lambda fn, *a, **k: acl.maybe_save(user_acl, fn, *a, **k)
+
+# ========= NUEVO: Hook "maybe_save" encadenado con Google Sheets =========
+def _push_gsheets(df: pd.DataFrame):
+    """Sube df a la hoja configurada en secrets. Crea la hoja si no existe."""
+    # Config requerida en secrets:
+    # [gcp_service_account]  -> JSON de servicio
+    # [gsheets]
+    #   spreadsheet_url = "https://docs.google.com/..."
+    #   worksheet = "TareasRecientes"  (opcional)
+    if "gsheets" not in st.secrets or "gcp_service_account" not in st.secrets:
+        raise KeyError("Faltan 'gsheets' o 'gcp_service_account' en secrets.")
+
+    import gspread
+    from google.oauth2.service_account import Credentials
+
+    scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+    creds = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"], scopes=scopes
+    )
+    gc = gspread.authorize(creds)
+
+    ss = gc.open_by_url(st.secrets["gsheets"]["spreadsheet_url"])
+    ws_name = st.secrets["gsheets"].get("worksheet", "TareasRecientes")
+
+    try:
+        ws = ss.worksheet(ws_name)
+    except gspread.WorksheetNotFound:
+        rows = str(max(1000, len(df) + 10))
+        cols = str(max(26, len(df.columns) + 5))
+        ws = ss.add_worksheet(title=ws_name, rows=rows, cols=cols)
+
+    df_out = df.copy()
+    # Normalizamos tipos a string y NaN -> ""
+    df_out = df_out.fillna("").astype(str)
+    values = [list(df_out.columns)] + df_out.values.tolist()
+
+    ws.clear()
+    ws.update("A1", values)
+
+def _maybe_save_chain(persist_local_fn, df: pd.DataFrame):
+    """
+    1) Ejecuta la persistencia que define tu app (CSV / disco) respetando ACL.
+    2) Si procede, sincroniza a Google Sheets.
+    """
+    # Paso 1: respeta tu ACL (dry_run, save_scope, etc.)
+    res = acl.maybe_save(user_acl, persist_local_fn, df)
+    # Paso 2: sincroniza GSheets (salvo dry-run)
+    try:
+        if st.session_state.get("user_dry_run", False):
+            res["msg"] = res.get("msg", "") + " | DRY-RUN: no se sincronizó Google Sheets."
+            return res
+        _push_gsheets(df)
+        res["msg"] = res.get("msg", "") + " | Sincronizado a Google Sheets."
+    except Exception as e:
+        # No rompemos el flujo si falla la subida; dejamos traza en el mensaje
+        res["msg"] = res.get("msg", "") + f" | GSheets error: {e}"
+    return res
+
+# Registrar el hook final que verán las vistas
+st.session_state["maybe_save"] = _maybe_save_chain
+# ========= FIN hook GSheets =========
 
 # Mapeo de claves de pestaña para permisos
 TAB_KEY_BY_SECTION = {
