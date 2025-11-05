@@ -148,6 +148,23 @@ def render(user: dict | None = None):
         with st.container(border=True):
             st.markdown('<span id="nt-card-sentinel"></span>', unsafe_allow_html=True)
 
+            # ============================================================
+            # AJUSTE: prellenar y bloquear "Responsable" con el nombre
+            # que ya aparece en la columna lila (roles.xlsx)
+            # ============================================================
+            _acl = st.session_state.get("acl_user", {}) or {}
+            _display_name = (
+                _acl.get("display_name")
+                or st.session_state.get("user_display_name", "")
+                or _acl.get("name", "")
+                or (st.session_state.get("user") or {}).get("name", "")
+                or ""
+            )
+            # Si no existe nt_resp (o está vacío), fijarlo al nombre
+            if not str(st.session_state.get("nt_resp", "")).strip():
+                st.session_state["nt_resp"] = _display_name
+            # ============================================================
+
             # ---------- FILA 1 ----------
             r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
             area = r1c1.selectbox("Área", options=AREAS_OPC, index=0, key="nt_area")
@@ -155,7 +172,8 @@ def render(user: dict | None = None):
             fase = r1c2.selectbox("Fase", options=FASES, index=None, placeholder="Selecciona una fase", key="nt_fase")
             tarea = r1c3.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
             r1c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle")
-            r1c5.text_input("Responsable", placeholder="Nombre", key="nt_resp")
+            # ← Responsable prellenado y BLOQUEADO
+            r1c5.text_input("Responsable", value=st.session_state.get("nt_resp", ""), key="nt_resp", disabled=True)
             ciclo_mejora = r1c6.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
 
             # ---------- FILA 2 ----------
@@ -267,7 +285,7 @@ def render(user: dict | None = None):
                     "Id": next_id_by_person(df, area, st.session_state.get("nt_resp", "")),
                     "Tarea": st.session_state.get("nt_tarea", ""),
                     "Tipo": st.session_state.get("nt_tipo", ""),
-                    "Responsable": st.session_state.get("nt_resp", ""),
+                    "Responsable": st.session_state.get("nt_resp", ""),  # ← queda forzado al usuario logueado
                     "Fase": fase,
                     "Estado": "No iniciado",
                     "Fecha": reg_fecha, "Hora": reg_hora_txt,
