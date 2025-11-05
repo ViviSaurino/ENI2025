@@ -132,7 +132,7 @@ def show_user_avatar_from_session(
     session_key: str = "acl_user",
     link_field: str = "avatar_url",
     name_field: str = "name",
-    size: int = 96,
+    size: int = 135,
 ):
     acl = st.session_state.get(session_key, {}) or {}
     link = acl.get(link_field)
