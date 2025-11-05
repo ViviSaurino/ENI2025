@@ -56,6 +56,27 @@ st.markdown("""
 
   /* Radio de navegación: más compacto */
   .eni-nav label{ padding:6px 8px !important; }
+
+  /* ================= AJUSTES EXTRA: subir y compactar el sidebar ================ */
+  /* Reducimos el padding superior del contenedor del sidebar */
+  section[data-testid="stSidebar"] .block-container{
+    padding-top:6px !important;
+    padding-bottom:10px !important;
+  }
+  /* Un pelín menos de margen arriba del logo para “subir” todo */
+  section[data-testid="stSidebar"] .eni-logo-wrap{ margin-top:-6px !important; }
+
+  /* Compactar gaps verticales internos */
+  section[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{ gap:8px !important; }
+
+  /* Avatar: margen compacto y tamaño controlado por st.image, pero sin borde */
+  section[data-testid="stSidebar"] .avatar-wrap{ margin:6px 0 6px !important; }
+  section[data-testid="stSidebar"] .avatar-wrap img{
+    border-radius:9999px !important;
+  }
+
+  /* Evitar barra de scroll visual (el contenido ya está compactado) */
+  section[data-testid="stSidebar"]{ overflow-y:hidden !important; }
 </style>
 """, unsafe_allow_html=True)
 
