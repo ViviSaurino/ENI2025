@@ -650,7 +650,7 @@ def render(user: dict | None = None):
         except Exception as e:
             st.error(f"No pude generar Excel: {e}")
 
-    # --- Nuevo: SINCRONIZAR (Sheet → App) al costado de Exportar Excel ---
+    # --- SINCRONIZAR (Sheet → App) en la misma fila ---
     with b_sync:
         if st.button("🔄 Sincronizar", use_container_width=True, key="btn_sync_sheet"):
             try:
@@ -707,7 +707,6 @@ def render(user: dict | None = None):
             except Exception:
                 pass
             try:
-                # Reemplaza la función antigua por la oficial del Dashboard
                 push_user_slice_to_sheet()
             except Exception as e:
                 st.warning(f"No se pudo subir a Sheets: {e}")
