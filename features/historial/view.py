@@ -9,6 +9,7 @@ from datetime import datetime, time
 import pandas as pd
 import streamlit as st
 from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode, JsCode
+import streamlit.components.v1 as components  # ⬅️ NUEVO: para ocultar el botón fantasma
 
 # ===== Helpers para import perezoso (evita UI fantasma del Dashboard) =====
 def _get_dashboard_module():
@@ -343,7 +344,7 @@ def render(user: dict | None = None):
 
     df_view["Duración"] = df_view["Duración"].astype(str).fillna("")
     df_grid = df_view.reindex(columns=list(dict.fromkeys(target_cols)) + [c for c in df_view.columns if c not in target_cols + HIDDEN_COLS]).copy()
-    df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()
+    df_grid = df_grid.loc[:, ~df_view.columns.duplicated()].copy()
     df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
 
     # Remueve por completo ¿Eliminar?
@@ -666,17 +667,32 @@ def render(user: dict | None = None):
     # ✅ Cierro el contenedor de acciones
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # 🚫 Anti-botón fantasma: oculta cualquier stButton que Streamlit agregue
-    # DESPUÉS de la franja de acciones y colapsa su contenedor.
-    st.markdown('<div id="hist-end-anchor"></div>', unsafe_allow_html=True)
-    st.markdown("""
-    <style>
-      #hist-end-anchor ~ div [data-testid="stButton"]{ display:none !important; }
-      #hist-end-anchor ~ div .stButton{ display:none !important; }
-      #hist-end-anchor ~ div button{ display:none !important; }
-      #hist-end-anchor ~ div{
-        height:0 !important; margin:0 !important; padding:0 !important;
-        overflow:hidden !important; border:0 !important;
-      }
-    </style>
-    """, unsafe_allow_html=True)
+    # 🧹 Apagador del botón "Sincronizar" repetido (fuera de .hist-actions)
+    components.html(
+        """
+        <script>
+        (function(){
+          function hideDup(){
+            try{
+              const doc = window.parent.document;
+              const btns = Array.from(doc.querySelectorAll('button'));
+              btns.forEach(b=>{
+                const txt = (b.innerText || '').trim();
+                const inside = !!b.closest('.hist-actions');
+                if (/^Sincronizar$/i.test(txt) && !inside){
+                  b.style.display = 'none';
+                  const wrap = b.closest('div[data-testid="stHorizontalBlock"]') || b.parentElement;
+                  if (wrap){ wrap.style.display = 'none'; }
+                }
+              });
+            }catch(e){}
+          }
+          hideDup();
+          setTimeout(hideDup, 300);
+          setTimeout(hideDup, 900);
+          setTimeout(hideDup, 2000);
+        })();
+        </script>
+        """,
+        height=0,
+    )
