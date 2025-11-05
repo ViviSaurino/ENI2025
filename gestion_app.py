@@ -239,6 +239,15 @@ if section == "📘 Gestión de tareas":
 
     render_if_allowed(tab_key, _render_gestion)
 
+    # ===== FIX: Ocultar botón "Sincronizar" suelto que aparece debajo de la franja =====
+    # No toca la lógica ni los cuatro botones oficiales. Solo oculta cualquier botón
+    # renderizado COMO HERMANO POSTERIOR de .hist-actions (el fantasma).
+    st.markdown("""
+    <style>
+      .hist-actions ~ div .stButton { display:none !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
 elif section == "🗂️ Kanban":
     st.title("🗂️ Kanban")
 
