@@ -12,6 +12,90 @@ try:
 except Exception:
     acl = None  # Si aún no existe el módulo, no rompemos la vista.
 
+# ======= Google Sheets (push/pull) =======
+# Usa las utilidades creadas en utils/gsheets.py (fall-back seguro si no existen)
+try:
+    from utils.gsheets import open_sheet_by_url, read_df_from_worksheet, upsert_by_id
+except Exception:
+    open_sheet_by_url = None
+    read_df_from_worksheet = None
+    upsert_by_id = None
+
+SHEET_TAB = "TareasRecientes"  # nombre de la pestaña en Google Sheets
+
+def _ensure_user_cols(df: pd.DataFrame) -> pd.DataFrame:
+    """Asegura columna UserEmail en el slice del usuario (sin pisar otras)."""
+    out = df.copy()
+    email = st.session_state.get("user_email") or (st.session_state.get("user") or {}).get("email", "")
+    if "UserEmail" not in out.columns:
+        out["UserEmail"] = email
+    return out
+
+def push_user_slice_to_sheet():
+    """App → Sheet (solo mis tareas; upsert por Id)."""
+    if not (open_sheet_by_url and upsert_by_id):
+        st.error("Faltan utilidades de Google Sheets. Verifica utils/gsheets.py.")
+        return
+    try:
+        # URL del Sheet desde secrets (clave: gsheets_doc_url)
+        url = st.secrets["gsheets_doc_url"]
+        sh = open_sheet_by_url(url)
+
+        df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
+        display_name = st.session_state.get("user_display_name", "") or ""
+        email = st.session_state.get("user_email") or (st.session_state.get("user") or {}).get("email", "")
+
+        # Filtra SOLO lo del usuario (prioriza UserEmail; si no existe, usa Responsable)
+        if "UserEmail" in df_all.columns and email:
+            df_user = df_all[df_all["UserEmail"] == email].copy()
+        else:
+            df_user = df_all[df_all["Responsable"] == display_name].copy()
+
+        # Asegura columna UserEmail para trazabilidad en el Sheet
+        df_user = _ensure_user_cols(df_user)
+
+        # Upsert por Id en la pestaña SHEET_TAB
+        res = upsert_by_id(sh, SHEET_TAB, df_user, id_col="Id")
+        if res.get("ok"):
+            st.success("✅ Subido al Sheet (App → Sheet).")
+        else:
+            st.error(res.get("msg", "Error al subir."))
+    except KeyError:
+        st.error("Falta `gsheets_doc_url` o credenciales en st.secrets.")
+    except Exception as e:
+        st.error(f"No pude subir al Sheet: {e}")
+
+def pull_user_slice_from_sheet(replace_df_main: bool = True):
+    """Sheet → App (trae TODO, filtra mis tareas y refleja en df_main)."""
+    if not (open_sheet_by_url and read_df_from_worksheet):
+        st.error("Faltan utilidades de Google Sheets. Verifica utils/gsheets.py.")
+        return
+    try:
+        url = st.secrets["gsheets_doc_url"]
+        sh = open_sheet_by_url(url)
+        df_sheet = read_df_from_worksheet(sh, SHEET_TAB)
+
+        display_name = st.session_state.get("user_display_name", "") or ""
+        email = st.session_state.get("user_email") or (st.session_state.get("user") or {}).get("email", "")
+
+        if not df_sheet.empty:
+            if "UserEmail" in df_sheet.columns and email:
+                df_user = df_sheet[df_sheet["UserEmail"] == email].copy()
+            else:
+                df_user = df_sheet[df_sheet["Responsable"] == display_name].copy()
+        else:
+            df_user = pd.DataFrame()
+
+        if replace_df_main:
+            st.session_state["df_main"] = df_user.copy()
+
+        st.success("✅ Sincronizado desde Sheet (Sheet → App).")
+        st.rerun()
+    except KeyError:
+        st.error("Falta `gsheets_doc_url` o credenciales en st.secrets.")
+    except Exception as e:
+        st.error(f"No pude sincronizar desde Sheet: {e}")
+
 # ---------- Util: localizar la animación del héroe (se usa en portada si quisieras) ----------
 def _find_hero_asset() -> str | None:
     candidates = ("hero.webm", "hero.mp4", "hero.gif",
@@ -188,7 +272,7 @@ def render_all(user: dict | None = None):
                 user=user
             )
 
-    # 6) Tareas recientes
+    # 6) Tareas recientes + Botones de Sheets (push para todos; pull solo admins)
     with tabs[5]:
         with st.spinner("Cargando 'Tareas recientes'..."):
             _call_view(
@@ -196,3 +280,22 @@ def render_all(user: dict | None = None):
                 ("render", "render_recientes", "render_tabla", "render_view", "main", "app", "ui"),
                 user=user
             )
+
+        # Barra de acciones (no afecta la tabla)
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+
+        # Botón para TODOS: subir mis tareas
+        if st.button("⬆️ Subir mis tareas a Sheet", use_container_width=True, key="btn_push_sheet"):
+            push_user_slice_to_sheet()
+
+        # Botón SOLO para admins: sincronizar desde Sheet
+        email = st.session_state.get("user_email") or (st.session_state.get("user") or {}).get("email", "")
+        sync_admins = set(st.secrets.get("sync", {}).get("admins", []))  # lista de correos admins en secrets
+        IS_SYNC_ADMIN = (email in sync_admins) or bool(st.session_state.get("acl_user", {}).get("can_sync", False))
+
+        if IS_SYNC_ADMIN:
+            if st.button("🔄 Sincronizar desde Sheet (admin)", use_container_width=True, key="btn_pull_sheet"):
+                pull_user_slice_from_sheet(replace_df_main=True)
+        else:
+            # Mensaje discreto solo informativo
+            st.caption("Las actualizaciones desde Google Sheets las aplica Coordinación.")
