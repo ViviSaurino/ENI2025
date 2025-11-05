@@ -272,7 +272,7 @@ def render_all(user: dict | None = None):
                 user=user
             )
 
-    # 6) Tareas recientes — botones viven dentro de la sub-vista (historial)
+    # 6) Tareas recientes — sub-vista
     with tabs[5]:
         with st.spinner("Cargando 'Tareas recientes'..."):
             _call_view(
@@ -280,5 +280,16 @@ def render_all(user: dict | None = None):
                 ("render", "render_recientes", "render_tabla", "render_view", "main", "app", "ui"),
                 user=user
             )
-        # ⛔ Mini-ajuste: se removieron los botones locales de push/pull aquí
-        # para evitar duplicados. Todo vive ahora en features.historial.view.
+
+        # === Botón adicional: SINCRONIZAR (Sheet → App) ===
+        # Se agrega en el dashboard, al mismo nivel inferior, con ancho completo de su columna.
+        st.markdown("""
+        <style>
+          .sync-actions .stButton>button{height:40px;border-radius:10px;width:100%;}
+        </style>
+        """, unsafe_allow_html=True)
+        cols_sync = st.columns([1,1,1,1], gap="small")
+        # Ubicamos el botón en la tercera posición para quedar "al costado" de Exportar/Grabar si existen.
+        with cols_sync[2]:
+            if st.button("🔄 Sincronizar", key="btn_sync_sheet_pull", use_container_width=True):
+                pull_user_slice_from_sheet(replace_df_main=True)
