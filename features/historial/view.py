@@ -665,3 +665,18 @@ def render(user: dict | None = None):
 
     # ✅ Cierro el contenedor de acciones
     st.markdown('</div>', unsafe_allow_html=True)
+
+    # 🚫 Anti-botón fantasma: oculta cualquier stButton que Streamlit agregue
+    # DESPUÉS de la franja de acciones y colapsa su contenedor.
+    st.markdown('<div id="hist-end-anchor"></div>', unsafe_allow_html=True)
+    st.markdown("""
+    <style>
+      #hist-end-anchor ~ div [data-testid="stButton"]{ display:none !important; }
+      #hist-end-anchor ~ div .stButton{ display:none !important; }
+      #hist-end-anchor ~ div button{ display:none !important; }
+      #hist-end-anchor ~ div{
+        height:0 !important; margin:0 !important; padding:0 !important;
+        overflow:hidden !important; border:0 !important;
+      }
+    </style>
+    """, unsafe_allow_html=True)
