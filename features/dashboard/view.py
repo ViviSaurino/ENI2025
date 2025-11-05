@@ -272,7 +272,7 @@ def render_all(user: dict | None = None):
                 user=user
             )
 
-    # 6) Tareas recientes + Botones de Sheets (push para todos; pull solo admins)
+    # 6) Tareas recientes + Botones de Sheets (pull solo admins)
     with tabs[5]:
         with st.spinner("Cargando 'Tareas recientes'..."):
             _call_view(
@@ -283,10 +283,6 @@ def render_all(user: dict | None = None):
 
         # Barra de acciones (no afecta la tabla)
         st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-
-        # Botón para TODOS: subir mis tareas
-        if st.button("⬆️ Subir mis tareas a Sheet", use_container_width=True, key="btn_push_sheet"):
-            push_user_slice_to_sheet()
 
         # Botón SOLO para admins: sincronizar desde Sheet
         email = st.session_state.get("user_email") or (st.session_state.get("user") or {}).get("email", "")
