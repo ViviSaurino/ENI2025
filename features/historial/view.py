@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import importlib
 from io import BytesIO
 from datetime import datetime, time
 
@@ -9,20 +10,27 @@ import pandas as pd
 import streamlit as st
 from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode, JsCode
 
-# === Import de funciones Sheets (Dashboard) ===
-from features.dashboard.view import (
-    push_user_slice_to_sheet,
-    pull_user_slice_from_sheet,
-)
+# ===== Helpers para import perezoso (evita UI fantasma del Dashboard) =====
+def _get_dashboard_module():
+    try:
+        return importlib.import_module("features.dashboard.view")
+    except Exception:
+        return None
 
-# === Import para persistencia local (y columnas) ===
-try:
-    from features.dashboard.view import _save_local, COLS
-except Exception:
-    COLS = None
-    def _save_local(df: pd.DataFrame):
-        # Fallback mínimo (no persistente a disco, pero no rompe)
-        st.session_state["_df_main_local_backup"] = df.copy()
+def _get_sheet_funcs():
+    """
+    Importa perezosamente funciones y constantes del Dashboard SOLO cuando se necesitan.
+    Retorna: push_f, pull_f, save_local_f, cols_list
+    """
+    mod = _get_dashboard_module()
+    if mod is None:
+        return None, None, None, None
+    return (
+        getattr(mod, "push_user_slice_to_sheet", None),
+        getattr(mod, "pull_user_slice_from_sheet", None),
+        getattr(mod, "_save_local", None),
+        getattr(mod, "COLS", None),
+    )
 
 # ====== Soporte de exportación ======
 TAB_NAME = "Tareas"
@@ -581,10 +589,7 @@ def render(user: dict | None = None):
             drop_cols = [c for c in ("__DEL__", "DEL", "__SEL__", "¿Eliminar?") if c in df_xlsx.columns]
             if drop_cols:
                 df_xlsx.drop(columns=drop_cols, inplace=True, errors="ignore")
-            cols_order = globals().get("COLS_XLSX", []) or [c for c in target_cols if c not in ["__SEL__","__DEL__"]]
-            cols_order = [c for c in cols_order if c in df_xlsx.columns]
-            if cols_order:
-                df_xlsx = df_xlsx.reindex(columns=cols_order)
+            cols_order = []  # se toma de COLS_XLSX si existe (dentro de subir/grabar)
             xlsx_b = export_excel(df_xlsx, sheet_name=TAB_NAME)
             st.download_button(
                 "⬇️ Exportar Excel", data=xlsx_b,
@@ -597,10 +602,15 @@ def render(user: dict | None = None):
         except Exception as e:
             st.error(f"No pude generar Excel: {e}")
 
+    # --- SINCRONIZAR (Sheet → App) en la misma fila ---
     with b_sync:
         if st.button("🔄 Sincronizar", use_container_width=True, key="btn_sync_sheet"):
+            _, pull_f, _, _ = _get_sheet_funcs()
             try:
-                pull_user_slice_from_sheet(replace_df_main=True)
+                if pull_f:
+                    pull_f(replace_df_main=True)
+                else:
+                    st.warning("Sin función de sincronización disponible.")
             except Exception as e:
                 st.warning(f"No se pudo sincronizar: {e}")
 
@@ -613,39 +623,45 @@ def render(user: dict | None = None):
                 base["__DEL__"] = False
             st.session_state["df_main"] = base.reset_index(drop=True)
 
+            push_f, pull_f, save_local_f, cols_list = _get_sheet_funcs()
             try:
-                df_save = st.session_state["df_main"][COLS].copy() if COLS else st.session_state["df_main"].copy()
+                df_save = st.session_state["df_main"][cols_list].copy() if cols_list else st.session_state["df_main"].copy()
             except Exception:
                 df_save = st.session_state["df_main"].copy()
 
             try:
-                _save_local(df_save.copy())
-                st.success("Datos grabados localmente. Se mantendrán al volver a iniciar sesión.")
+                if save_local_f:
+                    save_local_f(df_save.copy())
+                    st.success("Datos grabados localmente. Se mantendrán al volver a iniciar sesión.")
+                else:
+                    # Respaldo mínimo (no persistente a disco)
+                    st.session_state["_df_main_local_backup"] = df_save.copy()
+                    st.info("Guardado en sesión (fallback).")
             except Exception as e:
                 st.warning(f"No se pudo grabar localmente: {e}")
 
     with b_save_sheets:
         if st.button("📤 Subir a Sheets", use_container_width=True):
+            push_f, _, save_local_f, cols_list = _get_sheet_funcs()
             df = st.session_state["df_main"].copy()
-            cols_order = globals().get("COLS_XLSX", []) or [c for c in target_cols if c not in ["__SEL__","__DEL__"]]
+            cols_order = globals().get("COLS_XLSX", []) or ([c for c in df.columns if c not in ["__SEL__","__DEL__"]])
             cols_order = [c for c in cols_order if c in df.columns]
             if cols_order:
                 df = df.reindex(columns=cols_order)
+
             try:
-                _save_local(df.copy())
+                if save_local_f:
+                    save_local_f(df.copy())
             except Exception:
                 pass
+
             try:
-                push_user_slice_to_sheet()
+                if push_f:
+                    push_f()
+                else:
+                    st.warning("Sin función para subir a Sheets disponible.")
             except Exception as e:
                 st.warning(f"No se pudo subir a Sheets: {e}")
 
-    # ✅ Cierro el contenedor de acciones (evita que Streamlit dibuje bloques sueltos)
+    # ✅ Cierro el contenedor de acciones
     st.markdown('</div>', unsafe_allow_html=True)
-
-    # 🧼 Oculta cualquier bloque inmediato que aparezca debajo de la franja (botón residual)
-    st.markdown("""
-    <style>
-      .hist-actions + div { display:none !important; }
-    </style>
-    """, unsafe_allow_html=True)
