@@ -310,7 +310,6 @@ def render(user: dict | None = None):
         df_view.loc[need_ini_tm, "Hora de inicio"] = _h_ini[need_ini_tm]
 
         need_fin_dt = _terminado & df_view["Fecha Terminado"].isna()
-        # 🔧 FIX aquí: usar .str.strip() en vez de .str.trim()
         need_fin_tm = _terminado & (df_view["Hora Terminado"].astype(str).str.strip() == "") if "Hora Terminado" in df_view.columns else False
         df_view.loc[need_fin_dt, "Fecha Terminado"]      = _mod[need_fin_dt]
         if "Hora Terminado" in df_view.columns:
@@ -658,29 +657,19 @@ def render(user: dict | None = None):
             except Exception as e:
                 st.warning(f"No se pudo sincronizar: {e}")
 
+    # ============ AJUSTE SOLICITADO: Grabar sin lógica de Eliminado ============
     with b_save_local:
         if st.button("💾 Grabar", use_container_width=True):
             base = st.session_state["df_main"].copy()
             base["Id"] = base["Id"].astype(str)
+
+            # Garantizamos columna __DEL__ pero NO la modificamos ni generamos fechas de eliminado.
             if "__DEL__" not in base.columns:
                 base["__DEL__"] = False
 
-            if "Estado" in base.columns:
-                mask_elim = base["Estado"].astype(str).str.strip() == "Eliminado"
-                base["__DEL__"] = mask_elim | base["__DEL__"].astype(bool)
-
-                if mask_elim.any():
-                    now = pd.Timestamp.now()
-                    if "Fecha Eliminado" in base.columns:
-                        fe = pd.to_datetime(base["Fecha Eliminado"], errors="coerce")
-                        base.loc[mask_elim & fe.isna(), "Fecha Eliminado"] = now.normalize()
-                    if "Hora Eliminado" in base.columns:
-                        he = base["Hora Eliminado"].astype(str).str.strip()
-                        base.loc[mask_elim & ((he=='')|(he=='nan')|(he=='NaN')), "Hora Eliminado"] = now.strftime("%H:%M")
-
             st.session_state["df_main"] = base.reset_index(drop=True)
 
-            # Si COLS no existe, evitamos romper
+            # Persistimos localmente (usa COLS si existe; si no, guarda todo)
             try:
                 df_save = st.session_state["df_main"][COLS].copy()  # noqa: F821
             except Exception:
@@ -690,10 +679,7 @@ def render(user: dict | None = None):
             except Exception:
                 pass
 
-            n_elim = int((st.session_state["df_main"].get("__DEL__", False)==True).sum()) if "__DEL__" in st.session_state["df_main"].columns else 0
-            st.success("Datos grabados en la tabla local (CSV).")
-            if n_elim:
-                st.info(f"Filas con Estado='Eliminado' (tachadas): {n_elim}")
+            st.success("Datos grabados localmente. Se mantendrán al volver a iniciar sesión.")
 
     with b_save_sheets:
         if st.button("📤 Subir a Sheets", use_container_width=True):
