@@ -71,9 +71,9 @@ def _render_initials_circle(name: str, size: int = 96):
     initials = _initials(name)
     st.markdown(
         f"""
-        <div class="avatar-wrap">
+        <div class="avatar-wrap" style="--avatar-size:{size}px;">
           <div style="
-            width:{size}px;height:{size}px;border-radius:9999px;
+            width:var(--avatar-size);height:var(--avatar-size);border-radius:9999px;
             display:flex;align-items:center;justify-content:center;
             background:#EDE9FE;color:#4C1D95;font-weight:700;
             font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial;
@@ -104,10 +104,14 @@ def show_avatar_above_greeting(
             """
             <style>
               .avatar-wrap{ display:flex; justify-content:center; margin-bottom:8px; }
+              /* Forzamos tamaño por variable CSS, para que no lo limite ningún estilo de Streamlit */
               .avatar-wrap img{
+                width:var(--avatar-size) !important;
+                height:var(--avatar-size) !important;
                 border-radius:9999px !important;   /* círculo */
                 box-shadow:none !important;        /* sin borde */
                 background:transparent !important; /* respeta PNG transparente */
+                object-fit:cover !important;
               }
             </style>
             """,
@@ -116,7 +120,9 @@ def show_avatar_above_greeting(
 
     src = _resolve_avatar(link)
     if src:
-        st.markdown('<div class="avatar-wrap">', unsafe_allow_html=True)
+        # El wrapper define el tamaño deseado vía variable CSS
+        st.markdown(f'<div class="avatar-wrap" style="--avatar-size:{size}px;">', unsafe_allow_html=True)
+        # Aun así pasamos width para que coincida con el CSS
         st.image(src, width=size, output_format="PNG")
         st.markdown("</div>", unsafe_allow_html=True)
     else:
