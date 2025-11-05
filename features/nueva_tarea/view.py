@@ -150,7 +150,7 @@ def render(user: dict | None = None):
 
             # ============================================================
             # AJUSTE: prellenar y bloquear "Responsable" con el nombre
-            # que ya aparece en la columna lila (roles.xlsx)
+            # y precargar "Área" desde roles.xlsx (ACL)
             # ============================================================
             _acl = st.session_state.get("acl_user", {}) or {}
             _display_name = (
@@ -163,11 +163,22 @@ def render(user: dict | None = None):
             # Si no existe nt_resp (o está vacío), fijarlo al nombre
             if not str(st.session_state.get("nt_resp", "")).strip():
                 st.session_state["nt_resp"] = _display_name
+
+            # Área por defecto desde ACL (columna 'area' o 'Área' en roles.xlsx)
+            _area_acl = (_acl.get("area") or _acl.get("Área") or _acl.get("area_name") or "").strip()
+            if _area_acl and _area_acl not in AREAS_OPC:
+                AREAS_OPC.insert(0, _area_acl)
+            _default_area_idx = 0
+            if _area_acl:
+                try:
+                    _default_area_idx = AREAS_OPC.index(_area_acl)
+                except ValueError:
+                    _default_area_idx = 0
             # ============================================================
 
             # ---------- FILA 1 ----------
             r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
-            area = r1c1.selectbox("Área", options=AREAS_OPC, index=0, key="nt_area")
+            area = r1c1.selectbox("Área", options=AREAS_OPC, index=_default_area_idx, key="nt_area")
             FASES = ["Capacitación","Post-capacitación","Pre-consistencia","Consistencia","Operación de campo"]
             fase = r1c2.selectbox("Fase", options=FASES, index=None, placeholder="Selecciona una fase", key="nt_fase")
             tarea = r1c3.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
