@@ -149,9 +149,7 @@ def render(user: dict | None = None):
             st.markdown('<span id="nt-card-sentinel"></span>', unsafe_allow_html=True)
 
             # ============================================================
-            # AJUSTE: bloquear Responsable y Área usando roles (ACL)
-            # - Responsable: del display_name / name
-            # - Área: del campo 'area'/'Área'/'area_name'; si falta, "Operación de campo"
+            # Bloquear Responsable y Área (organizacional) usando roles (ACL)
             # ============================================================
             _acl = st.session_state.get("acl_user", {}) or {}
             _display_name = (
@@ -166,29 +164,54 @@ def render(user: dict | None = None):
 
             _area_acl = (_acl.get("area") or _acl.get("Área") or _acl.get("area_name") or "").strip()
             area_fixed = _area_acl if _area_acl else "Operación de campo"
-            # Guardamos en session_state para que el resto del flujo lo use
             st.session_state["nt_area"] = area_fixed
             # ============================================================
 
             # ---------- FILA 1 ----------
-            r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
-            # Área fija, sin lista desplegable
-            r1c1.text_input("Área", value=area_fixed, key="nt_area_view", disabled=True)
-            FASES = ["Capacitación","Post-capacitación","Pre-consistencia","Consistencia","Operación de campo"]
-            fase = r1c2.selectbox("Fase", options=FASES, index=None, placeholder="Selecciona una fase", key="nt_fase")
-            tarea = r1c3.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
-            r1c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle")
-            # Responsable bloqueado
-            r1c5.text_input("Responsable", key="nt_resp", disabled=True)
-            ciclo_mejora = r1c6.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
+            # Opciones de "Área (actividad)" + 'Otros'
+            AREA_ACT_OPC = [
+                "Implementación del sistema de monitoreo",
+                "Uso del sistema de monitoreo",
+                "Uso del sistema de capacitación",
+                "Levantamiento en campo",
+                "Otros",
+            ]
+            area_act_sel = st.session_state.get("nt_area_act", None)
+            is_area_act_otros = (str(area_act_sel).strip() == "Otros")
+
+            if is_area_act_otros:
+                # 7 columnas para insertar el campo "Otros (especifique)" sin mover el resto
+                r1c1, r1c2, r1c2b, r1c3, r1c4, r1c5, r1c6 = st.columns(
+                    [A, Fw, 1.60, T, D, R, C], gap="medium"
+                )
+                r1c1.text_input("Área", value=area_fixed, key="nt_area_view", disabled=True)
+                r1c2.selectbox("Área (actividad)", options=AREA_ACT_OPC, key="nt_area_act", index=AREA_ACT_OPC.index("Otros"))
+                r1c2b.text_input("Otros (especifique)", key="nt_area_act_otro", placeholder="Describe el área/actividad")
+                r1c3.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
+                r1c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle")
+                r1c5.text_input("Responsable", key="nt_resp", disabled=True)
+                r1c6.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
+            else:
+                # Diseño original de 6 columnas (sin el campo "Otros")
+                r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
+                r1c1.text_input("Área", value=area_fixed, key="nt_area_view", disabled=True)
+                r1c2.selectbox("Área (actividad)", options=AREA_ACT_OPC, key="nt_area_act", index=0 if area_act_sel is None else AREA_ACT_OPC.index(area_act_sel))
+                r1c3.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
+                r1c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle")
+                r1c5.text_input("Responsable", key="nt_resp", disabled=True)
+                r1c6.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
+
+            # ---------- FILA 1.5: si la usuaria cambia a "Otros" en caliente, refrescamos layout
+            # (al cambiar el selectbox, Streamlit re-renderiza y toma el branch de arriba)
+            # Nada más que hacer aquí.
 
             # ---------- FILA 2 ----------
+            # Fase + resto tal cual
             if st.session_state.get("fi_d", "___MISSING___") is None:
                 st.session_state.pop("fi_d")
             if st.session_state.get("fi_t", "___MISSING___") is None:
                 st.session_state.pop("fi_t")
 
-            # >>> INICIALIZA fi_d si no existe (para que hoy no dependa de on_change)
             if "fi_d" not in st.session_state:
                 if st.session_state.get("nt_skip_date_init", False):
                     st.session_state.pop("nt_skip_date_init", None)
@@ -199,8 +222,8 @@ def render(user: dict | None = None):
 
             r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
 
-            # === Tipo de tarea: SOLO "Otros" y fijo ===
-            r2c1.selectbox("Tipo de tarea", options=["Otros"], index=0, key="nt_tipo", disabled=True)
+            FASES = ["Capacitación","Post-capacitación","Pre-consistencia","Consistencia","Operación de campo"]
+            r2c1.selectbox("Fase", options=FASES, index=None, placeholder="Selecciona una fase", key="nt_fase")
 
             r2c2.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
 
@@ -221,32 +244,14 @@ def render(user: dict | None = None):
                 st.session_state.get("nt_resp", "")
             ) if st.session_state.get("fi_d") else f"{prefix}_")
 
-            is_otros = (str(st.session_state.get("nt_tipo", "")).strip().lower() == "otros")
+            # === Tipo de tarea: SOLO "Otros" y fijo (sin cambios) ===
+            r2c3.selectbox("Tipo de tarea", options=["Otros"], index=0, key="nt_tipo", disabled=True)
 
-            if is_otros:
-                comp_opc = ["🟢 Baja", "🟡 Media", "🔴 Alta"]
-                r2c3.selectbox("Complejidad", options=comp_opc, index=0, key="nt_complejidad")
+            r2c4.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
+            _sync_time_from_date()
 
-                dur_labels = [f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)]
-                r2c4.selectbox("Duración", options=dur_labels, index=0, key="nt_duracion_label")
-
-                r2c5.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
-                _sync_time_from_date()
-
-                r2c6.text_input("Hora (auto)", key="fi_t_view", disabled=True,
-                                help="Se asigna al elegir la fecha")
-
-                r3c1, r3c2, r3c3, r3c4, r3c5, r3c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
-                r3c1.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
-
-            else:
-                r2c3.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
-                _sync_time_from_date()
-
-                r2c4.text_input("Hora (auto)", key="fi_t_view", disabled=True,
-                                help="Se asigna al elegir la fecha")
-                r2c5.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
-                # r2c6 vacío
+            r2c5.text_input("Hora (auto)", key="fi_t_view", disabled=True, help="Se asigna al elegir la fecha")
+            r2c6.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
 
         left_space, right_btn = st.columns([A + Fw + T + D + R, C], gap="medium")
         with right_btn:
@@ -286,9 +291,18 @@ def render(user: dict | None = None):
                 except Exception:
                     reg_hora_txt = str(reg_hora_obj) if reg_hora_obj is not None else ""
 
+                # Resolver "Área (actividad)" (si es 'Otros', usar lo tecleado)
+                area_act_value = st.session_state.get("nt_area_act", "")
+                area_act_otro = (st.session_state.get("nt_area_act_otro", "") or "").strip()
+                if str(area_act_value).strip() == "Otros":
+                    area_act_final = area_act_otro if area_act_otro else "Otros"
+                else:
+                    area_act_final = area_act_value
+
                 new = blank_row()
                 new.update({
                     "Área": st.session_state.get("nt_area", area_fixed),
+                    "Área (actividad)": area_act_final,
                     "Id": next_id_by_person(df, st.session_state.get("nt_area", area_fixed), st.session_state.get("nt_resp", "")),
                     "Tarea": st.session_state.get("nt_tarea", ""),
                     "Tipo": st.session_state.get("nt_tipo", ""),
@@ -331,7 +345,8 @@ def render(user: dict | None = None):
 
                 # >>> LIMPIEZA DE CAMPOS + MENSAJE + SALTO DE ESTADO
                 for k in [
-                    "nt_area","nt_fase","nt_tarea","nt_detalle","nt_resp",
+                    "nt_area","nt_area_view","nt_area_act","nt_area_act_otro",
+                    "nt_fase","nt_tarea","nt_detalle","nt_resp",
                     "nt_ciclo_mejora","nt_tipo","nt_complejidad","nt_duracion_label",
                     "fi_d","fi_t","fi_t_view","nt_id_preview"
                 ]:
