@@ -124,7 +124,9 @@ def render(user: dict | None = None):
     _NT_SPACE = 36
     st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
 
+    # anchos base (mantener alineación entre filas)
     A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
+
     c_pill, _, _, _, _, _ = st.columns([A, Fw, T, D, R, C], gap="medium")
     with c_pill:
         st.markdown('<div class="nt-pill"><span>📝 Nueva tarea</span></div>', unsafe_allow_html=True)
@@ -173,8 +175,7 @@ def render(user: dict | None = None):
                     _default_area_idx = 0
             # ============================================================
 
-            # ---------- FILA 1 ----------
-            # Fase: añade nuevas opciones y campo adyacente si es "Otros"
+            # ---------- FASES (incluye nuevas opciones) ----------
             FASES = [
                 "Capacitación",
                 "Post-capacitación",
@@ -188,58 +189,43 @@ def render(user: dict | None = None):
                 "Otros",
             ]
 
-            # Detectamos si 'Otros' está seleccionado para ajustar el layout
+            # Detectar si actualmente está seleccionada la opción "Otros"
             _fase_sel = st.session_state.get("nt_fase", None)
             _is_fase_otros = (str(_fase_sel).strip() == "Otros")
 
+            # ---------- FILA 1 ----------
             if _is_fase_otros:
-                # Insertamos una columna adicional junto a "Fase" sin romper el resto
-                r1c1, r1c2, r1c2b, r1c3, r1c4, r1c5, r1c6 = st.columns(
-                    [A, Fw, 1.60, T, D, R, C], gap="medium"
-                )
+                # Orden: Área, Fase, Otros, Tarea, Detalle, Responsable (6 celdas)
+                r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, C, T, D, R], gap="medium")
                 area = r1c1.selectbox("Área", options=AREAS_OPC, index=_default_area_idx, key="nt_area")
-                fase = r1c2.selectbox("Fase", options=FASES, key="nt_fase",
-                                      index=FASES.index("Otros"))
-                r1c2b.text_input("Otros (especifique)", key="nt_fase_otro", placeholder="Describe la fase")
-                tarea = r1c3.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
-                r1c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle")
-                r1c5.text_input("Responsable", key="nt_resp", disabled=True)
-                ciclo_mejora = r1c6.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
+                r1c2.selectbox("Fase", options=FASES, key="nt_fase", index=FASES.index("Otros"))
+                r1c3.text_input("Otros (especifique)", key="nt_fase_otro", placeholder="Describe la fase")
+                tarea = r1c4.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
+                r1c5.text_input("Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle")
+                r1c6.text_input("Responsable", key="nt_resp", disabled=True)
             else:
-                # Layout original (6 columnas)
+                # Layout original: Área, Fase, Tarea, Detalle, Responsable, Ciclo de mejora
                 r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
                 area = r1c1.selectbox("Área", options=AREAS_OPC, index=_default_area_idx, key="nt_area")
-                fase = r1c2.selectbox("Fase", options=FASES, index=None,
-                                      placeholder="Selecciona una fase", key="nt_fase")
+                r1c2.selectbox("Fase", options=FASES, index=None, placeholder="Selecciona una fase", key="nt_fase")
                 tarea = r1c3.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
                 r1c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle")
                 r1c5.text_input("Responsable", key="nt_resp", disabled=True)
                 ciclo_mejora = r1c6.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
 
-            # ---------- FILA 2 ----------
+            # ---------- Inicialización de fecha/hora ----------
             if st.session_state.get("fi_d", "___MISSING___") is None:
                 st.session_state.pop("fi_d")
             if st.session_state.get("fi_t", "___MISSING___") is None:
                 st.session_state.pop("fi_t")
-
-            # >>> INICIALIZA fi_d si no existe (para que hoy no dependa de on_change)
             if "fi_d" not in st.session_state:
                 if st.session_state.get("nt_skip_date_init", False):
-                    # mantenerla vacía solo en el primer render post-reset
                     st.session_state.pop("nt_skip_date_init", None)
                 else:
                     st.session_state["fi_d"] = _now_local().date()
-
-            # sincroniza hora si la fecha ya es hoy antes de pintar
             _sync_time_from_date()
 
-            r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
-
-            # === Tipo de tarea: SOLO "Otros" y fijo ===
-            tipo_sel = r2c1.selectbox("Tipo de tarea", options=["Otros"], index=0, key="nt_tipo", disabled=True)
-
-            r2c2.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
-
+            # Preparar hora como texto para la vista
             _t = st.session_state.get("fi_t")
             _t_txt = ""
             if _t is not None:
@@ -249,38 +235,48 @@ def render(user: dict | None = None):
                     _t_txt = str(_t)
             st.session_state["fi_t_view"] = _t_txt
 
+            # ID preview
             _df_tmp = st.session_state.get("df_main", pd.DataFrame()).copy() if "df_main" in st.session_state else pd.DataFrame()
             prefix = make_id_prefix(st.session_state.get("nt_area", area), st.session_state.get("nt_resp", ""))
-            id_preview = (next_id_by_person(_df_tmp, st.session_state.get("nt_area", area),
-                           st.session_state.get("nt_resp", "")) if st.session_state.get("fi_d") else f"{prefix}_")
+            id_preview = (next_id_by_person(
+                _df_tmp,
+                st.session_state.get("nt_area", area),
+                st.session_state.get("nt_resp", "")
+            ) if st.session_state.get("fi_d") else f"{prefix}_")
 
-            is_otros = (str(st.session_state.get("nt_tipo", "")).strip().lower() == "otros")
+            # ---------- FILA 2 ----------
+            if _is_fase_otros:
+                # Orden: Ciclo de mejora, Tipo de tarea, Estado, Complejidad, Duración, Fecha
+                r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
+                ciclo_mejora = r2c1.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
+                r2c2.selectbox("Tipo de tarea", options=["Otros"], index=0, key="nt_tipo", disabled=True)
+                r2c3.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
+                r2c4.selectbox("Complejidad", options=["🟢 Baja", "🟡 Media", "🔴 Alta"], index=0, key="nt_complejidad")
+                r2c5.selectbox("Duración", options=[f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)], index=0, key="nt_duracion_label")
+                r2c6.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
+                _sync_time_from_date()
 
-            if is_otros:
-                comp_opc = ["🟢 Baja", "🟡 Media", "🔴 Alta"]
-                r2c3.selectbox("Complejidad", options=comp_opc, index=0, key="nt_complejidad")
-
-                dur_labels = [f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)]
-                r2c4.selectbox("Duración", options=dur_labels, index=0, key="nt_duracion_label")
-
+                # ---------- FILA 3 ----------
+                r3c1, r3c2, r3c3, r3c4, r3c5, r3c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
+                r3c1.text_input("Hora (auto)", key="fi_t_view", disabled=True, help="Se asigna al elegir la fecha")
+                r3c2.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
+                # r3c3..r3c6 vacíos para mantener alineación
+            else:
+                # Layout original segunda fila
+                r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
+                r2c1.selectbox("Tipo de tarea", options=["Otros"], index=0, key="nt_tipo", disabled=True)
+                r2c2.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
+                r2c3.selectbox("Complejidad", options=["🟢 Baja", "🟡 Media", "🔴 Alta"], index=0, key="nt_complejidad")
+                r2c4.selectbox("Duración", options=[f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)], index=0, key="nt_duracion_label")
                 r2c5.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
-                _sync_time_from_date()  # re-sincroniza tras el date_input
+                _sync_time_from_date()
+                r2c6.text_input("Hora (auto)", key="fi_t_view", disabled=True, help="Se asigna al elegir la fecha")
 
-                r2c6.text_input("Hora (auto)", key="fi_t_view", disabled=True,
-                                help="Se asigna al elegir la fecha")
-
+                # Tercera fila: ID asignado (como estaba)
                 r3c1, r3c2, r3c3, r3c4, r3c5, r3c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
                 r3c1.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
 
-            else:
-                r2c3.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date)
-                _sync_time_from_date()  # re-sincroniza tras el date_input
-
-                r2c4.text_input("Hora (auto)", key="fi_t_view", disabled=True,
-                                help="Se asigna al elegir la fecha")
-                r2c5.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
-                # r2c6 vacío
-
+        # ---------- Botón agregar ----------
         left_space, right_btn = st.columns([A + Fw + T + D + R, C], gap="medium")
         with right_btn:
             st.markdown('<div class="nt-outbtn">', unsafe_allow_html=True)
@@ -319,7 +315,7 @@ def render(user: dict | None = None):
                 except Exception:
                     reg_hora_txt = str(reg_hora_obj) if reg_hora_obj is not None else ""
 
-                # Fase final: si es "Otros", usamos lo escrito
+                # Fase final: si es "Otros", usar lo escrito
                 fase_sel = st.session_state.get("nt_fase", "")
                 fase_otro = (st.session_state.get("nt_fase_otro", "") or "").strip()
                 fase_final = fase_otro if str(fase_sel).strip() == "Otros" else fase_sel
@@ -353,7 +349,7 @@ def render(user: dict | None = None):
                 df = _sanitize(df, COLS if "COLS" in globals() else None)
                 st.session_state["df_main"] = df.copy()
 
-                # ======== PERSISTENCIA controlada por ACL (respeta dry_run/save_scope) ========
+                # ======== PERSISTENCIA controlada por ACL ========
                 def _persist(_df: pd.DataFrame):
                     try:
                         os.makedirs("data", exist_ok=True)
@@ -365,7 +361,6 @@ def render(user: dict | None = None):
                 maybe_save = st.session_state.get("maybe_save")
                 res = maybe_save(_persist, df.copy()) if callable(maybe_save) else _persist(df.copy())
                 if not res.get("ok", False):
-                    # Ej.: DRY-RUN o guardado deshabilitado
                     st.info(res.get("msg", "Guardado deshabilitado."))
 
                 # >>> LIMPIEZA DE CAMPOS + MENSAJE + SALTO DE ESTADO
