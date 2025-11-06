@@ -61,7 +61,7 @@ def _gsheets_client():
     return ss, ws_name
 
 def pull_user_slice_from_sheet(replace_df_main: bool = True):
-    """Lee toda la hoja y opcionalmente reemplaza st.session_state['df_main'].""" 
+    """Lee toda la hoja y opcionalmente reemplaza st.session_state['df_main']."""
     ss, ws_name = _gsheets_client()
     try:
         ws = ss.worksheet(ws_name)
@@ -116,7 +116,7 @@ def render(user: dict | None = None):
     # ================== Historial ==================
     st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
 
-    # —— (alineaciones) ——
+    # —— (alineaciones globales) ——
     A_f, Fw_f, T_width_f, D_f, R_f, C_f = 1.80, 2.10, 3.00, 1.60, 1.40, 1.20
 
     # ---- TÍTULO EN PÍLDORA ----
@@ -146,14 +146,15 @@ def render(user: dict | None = None):
     st.markdown("""
     <style>
     :root{
-      --hist-card-bg:#FFE1DE;   /* color del rectángulo rosado */
-      --hist-card-bd:#F6B1AD;
+      /* Coral muy claro que armoniza con la píldora */
+      --hist-card-bg:#FFE7E6;
+      --hist-card-bd:#F3B6B1;
       --hist-card-fg:#7A2E2A;
       --hist-pad-x:16px; --hist-border-w:2px; --hist-border-c:#EF4444;
     }
 
-    /* ►► Truco del ancla: el CONTENEDOR inmediatamente después del anchor
-       se pinta como tarjeta rosada y encierra todo (texto + filtros + botón) */
+    /* ►► El contenedor inmediatamente después del anchor
+           se pinta como tarjeta coral e incluye texto + filtros + botón */
     #hist-card-anchor + div{
       background:var(--hist-card-bg)!important;
       border:1px solid var(--hist-card-bd)!important;
@@ -168,7 +169,12 @@ def render(user: dict | None = None):
       font-size:0.95rem;
     }
 
-    /* Botonera inferior (no tocada) */
+    /* Botón Buscar */
+    .hist-search .stButton>button{
+      height:38px!important; border-radius:10px!important; width:100%;
+    }
+
+    /* ===== Estilos de tabla y botonería inferior ===== */
     .ag-theme-balham .row-deleted .ag-cell {
       text-decoration: line-through; background-color:#FEE2E2 !important;
       color:#7F1D1D !important; opacity:.95;
@@ -182,6 +188,7 @@ def render(user: dict | None = None):
 
     :root{ --muted-bg:#ECEFF1; --muted-fg:#90A4AE; }
     .ag-theme-balham .ag-header-cell.muted-col .ag-header-cell-label{ color:var(--muted-fg)!important; }
+
     .ag-theme-balham .ag-header, .ag-theme-balham .ag-header-cell,
     .ag-theme-balham .ag-header-cell-label, .ag-theme-balham .ag-header-cell-text{
       white-space:normal!important; overflow:visible!important; text-overflow:clip!important; line-height:1.2!important;
@@ -200,18 +207,23 @@ def render(user: dict | None = None):
     # ===== Card (ancla + contenedor real) =====
     st.markdown('<div id="hist-card-anchor"></div>', unsafe_allow_html=True)
     with st.container():
-        # Texto de ayuda DENTRO del rectángulo
+        # Texto de ayuda DENTRO del rectángulo coral
         st.markdown(
             '<div class="hist-help">🕒 Filtra y guarda tus tareas. Tarea y Detalle solo se editan para correcciones. '
             'Excel: opcional · Sheets: obligatorio para que el avance quede en el historial.</div>',
             unsafe_allow_html=True
         )
 
-        # Proporciones de filtros
-        A_f, Fw_f, T_width_f, D_f, R_f = 1.80, 2.10, 3.00, 1.60, 1.40
+        # Proporciones para que TODO quepa en UNA sola fila
+        W_AREA   = 1.15
+        W_FASE   = 1.25
+        W_RESP   = 1.60  # ← Responsable más angosto
+        W_DESDE  = 1.05
+        W_HASTA  = 1.05
+        W_BUSCAR = W_HASTA  # mismo ancho que "Hasta"
 
-        cA, cF, cR, cD, cH = st.columns(
-            [A_f, Fw_f, T_width_f, D_f, R_f],
+        cA, cF, cR, cD, cH, cB = st.columns(
+            [W_AREA, W_FASE, W_RESP, W_DESDE, W_HASTA, W_BUSCAR],
             gap="medium",
             vertical_alignment="bottom"
         )
@@ -228,6 +240,7 @@ def render(user: dict | None = None):
         fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
         fase_sel = cF.selectbox("Fase", options=["Todas"] + fases_all, index=0, key="hist_fase")
 
+        # Responsable (angosto)
         df_resp_src = df_all.copy()
         if area_sel != "Todas":
             df_resp_src = df_resp_src[df_resp_src["Área"] == area_sel]
@@ -236,14 +249,14 @@ def render(user: dict | None = None):
         responsables = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
         resp_sel = cR.selectbox("Responsable", options=["Todos"] + responsables, index=0, key="hist_resp")
 
-        with cD:
-            f_desde = st.date_input("Desde", value=None, key="hist_desde")
+        f_desde = cD.date_input("Desde", value=None, key="hist_desde")
+        f_hasta = cH.date_input("Hasta",  value=None, key="hist_hasta")
 
-        # 👉 Botón dentro de la MISMA columna de 'Hasta' para que tenga su ancho exacto
-        with cH:
-            f_hasta = st.date_input("Hasta", value=None, key="hist_hasta")
-            st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+        # Botón a la derecha, misma fila y mismo ancho que "Hasta"
+        with cB:
+            st.markdown('<div class="hist-search">', unsafe_allow_html=True)
             hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
+            st.markdown('</div>', unsafe_allow_html=True)
 
     # Toggle mostrar/ocultar eliminadas
     show_deleted = st.toggle("Mostrar eliminadas (tachadas)", value=True, key="hist_show_deleted")
@@ -297,7 +310,7 @@ def render(user: dict | None = None):
         try:
             if isinstance(v, time):      return f"{v.hour:02d}:{v.minute:02d}"
             if isinstance(v, (pd.Timestamp, datetime)): return f"{v.hour:02d}:{v.minute:02d}"
-            s = str(v).strip()
+            s = str(v).trim() if hasattr(str(v), "trim") else str(v).strip()
             if not s or s.lower() in {"nan","nat","none","null"}: return ""
             m = re.match(r"^(\d{1,2}):(\d{2})", s)
             if m: return f"{int(m.group(1)):02d}:{int(m.group(2)):02d}"
@@ -650,7 +663,7 @@ def render(user: dict | None = None):
 
     # ---- Botonera alineada ----
     left_spacer = A_f + Fw_f + T_width_f
-    W_SHEETS = R_f + 0.8  # ⬅️ más ancho para que no haga salto de línea
+    W_SHEETS = R_f + 0.8  # un pelín más ancho
 
     st.markdown('<div class="hist-actions">', unsafe_allow_html=True)
     _spacer, b_xlsx, b_sync, b_save_local, b_save_sheets = st.columns(
