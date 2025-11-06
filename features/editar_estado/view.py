@@ -521,14 +521,21 @@ def render(user: dict | None = None):
             fit_columns_on_grid_load=True,
             enable_enterprise_modules=False,
             reload_data=False,
-            height=300,
+            height=260,
             allow_unsafe_jscode=True,
             theme="balham"
         )
 
         # === Adjuntar archivo cuando el estado es Terminado (fila seleccionada) ===
-        sel = (grid.get("selected_rows") or [])
-        if sel:
+        raw_sel = grid.get("selected_rows", None)
+        if isinstance(raw_sel, pd.DataFrame):
+            sel = raw_sel.to_dict("records")
+        elif isinstance(raw_sel, list):
+            sel = raw_sel
+        else:
+            sel = []
+
+        if len(sel) > 0:
             sel0 = sel[0]
             _sel_id = str(sel0.get("Id", "")).strip()
             est_now = str(sel0.get("Estado actual", "")).strip()
@@ -605,7 +612,7 @@ def render(user: dict | None = None):
                                 if need not in base.columns:
                                     base[need] = ""
 
-                            # ==== AHORA SÍ: hora Lima exacta para sellos ====
+                            # ==== Hora Lima exacta para sellos ====
                             _local_now = _now_lima_trimmed_local()
                             f_now = _local_now.strftime("%Y-%m-%d")
                             h_now = _local_now.strftime("%H:%M")
