@@ -145,32 +145,30 @@ def render(user: dict | None = None):
     # --- Estilos globales ---
     st.markdown("""
     <style>
-    /* ===== Card de filtros (rectángulo) ===== */
     :root{
-      --hist-card-bg:#FFE1DE;       /* mismo tono que el aviso */
+      --hist-card-bg:#FFE1DE;   /* color del rectángulo rosado */
       --hist-card-bd:#F6B1AD;
       --hist-card-fg:#7A2E2A;
       --hist-pad-x:16px; --hist-border-w:2px; --hist-border-c:#EF4444;
     }
-    .hist-card{
+
+    /* ►► Truco del ancla: el CONTENEDOR inmediatamente después del anchor
+       se pinta como tarjeta rosada y encierra todo (texto + filtros + botón) */
+    #hist-card-anchor + div{
       background:var(--hist-card-bg)!important;
       border:1px solid var(--hist-card-bd)!important;
-      border-radius:10px; padding:14px;
+      border-radius:10px;
+      padding:14px;
       box-shadow:0 0 0 1px rgba(0,0,0,0.02) inset;
       margin-bottom:6px;
     }
-    .hist-card .help{
-      color:var(--hist-card-fg)!important; margin-bottom:10px; font-size:0.95rem;
-    }
-    /* fila del botón dentro del card, pegado a la derecha */
-    .hist-card .hist-search-row [data-testid="column"] > div{
-      display:flex; justify-content:flex-end; align-items:end; height:42px;
-    }
-    .hist-card .stButton>button{
-      height:38px!important; border-radius:10px!important; min-width:160px;
+    #hist-card-anchor + div .hist-help{
+      color:var(--hist-card-fg)!important;
+      margin-bottom:10px;
+      font-size:0.95rem;
     }
 
-    /* ===== Estilos de tabla y botonería inferior ===== */
+    /* Botonera inferior (no tocada) */
     .ag-theme-balham .row-deleted .ag-cell {
       text-decoration: line-through; background-color:#FEE2E2 !important;
       color:#7F1D1D !important; opacity:.95;
@@ -184,7 +182,6 @@ def render(user: dict | None = None):
 
     :root{ --muted-bg:#ECEFF1; --muted-fg:#90A4AE; }
     .ag-theme-balham .ag-header-cell.muted-col .ag-header-cell-label{ color:var(--muted-fg)!important; }
-
     .ag-theme-balham .ag-header, .ag-theme-balham .ag-header-cell,
     .ag-theme-balham .ag-header-cell-label, .ag-theme-balham .ag-header-cell-text{
       white-space:normal!important; overflow:visible!important; text-overflow:clip!important; line-height:1.2!important;
@@ -200,45 +197,53 @@ def render(user: dict | None = None):
     # ====== DATA BASE ======
     df_all = st.session_state["df_main"].copy()
 
-    # ===== Card de filtros (todo dentro del rectángulo) =====
-    st.markdown('<div class="hist-card">', unsafe_allow_html=True)
-    st.markdown('<div class="help">🕒 Filtra y guarda tus tareas. Tarea y Detalle solo se editan para correcciones. Excel: opcional · Sheets: obligatorio para que el avance quede en el historial.</div>', unsafe_allow_html=True)
+    # ===== Card (ancla + contenedor real) =====
+    st.markdown('<div id="hist-card-anchor"></div>', unsafe_allow_html=True)
+    with st.container():
+        # Texto de ayuda DENTRO del rectángulo
+        st.markdown(
+            '<div class="hist-help">🕒 Filtra y guarda tus tareas. Tarea y Detalle solo se editan para correcciones. '
+            'Excel: opcional · Sheets: obligatorio para que el avance quede en el historial.</div>',
+            unsafe_allow_html=True
+        )
 
-    # Proporciones de filtros
-    A_f, Fw_f, T_width_f, D_f, R_f = 1.80, 2.10, 3.00, 1.60, 1.40
+        # Proporciones de filtros
+        A_f, Fw_f, T_width_f, D_f, R_f = 1.80, 2.10, 3.00, 1.60, 1.40
 
-    cA, cF, cR, cD, cH = st.columns([A_f, Fw_f, T_width_f, D_f, R_f], gap="medium", vertical_alignment="bottom")
+        cA, cF, cR, cD, cH = st.columns(
+            [A_f, Fw_f, T_width_f, D_f, R_f],
+            gap="medium",
+            vertical_alignment="bottom"
+        )
 
-    area_sel = cA.selectbox(
-        "Área",
-        options=["Todas"] + st.session_state.get(
-            "AREAS_OPC",
-            ["Jefatura","Gestión","Metodología","Base de datos","Monitoreo","Capacitación","Consistencia"]
-        ),
-        index=0, key="hist_area"
-    )
+        area_sel = cA.selectbox(
+            "Área",
+            options=["Todas"] + st.session_state.get(
+                "AREAS_OPC",
+                ["Jefatura","Gestión","Metodología","Base de datos","Monitoreo","Capacitación","Consistencia"]
+            ),
+            index=0, key="hist_area"
+        )
 
-    fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
-    fase_sel = cF.selectbox("Fase", options=["Todas"] + fases_all, index=0, key="hist_fase")
+        fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+        fase_sel = cF.selectbox("Fase", options=["Todas"] + fases_all, index=0, key="hist_fase")
 
-    df_resp_src = df_all.copy()
-    if area_sel != "Todas":
-        df_resp_src = df_resp_src[df_resp_src["Área"] == area_sel]
-    if fase_sel != "Todas" and "Fase" in df_resp_src.columns:
-        df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str) == fase_sel]
-    responsables = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
-    resp_sel = cR.selectbox("Responsable", options=["Todos"] + responsables, index=0, key="hist_resp")
+        df_resp_src = df_all.copy()
+        if area_sel != "Todas":
+            df_resp_src = df_resp_src[df_resp_src["Área"] == area_sel]
+        if fase_sel != "Todas" and "Fase" in df_resp_src.columns:
+            df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str) == fase_sel]
+        responsables = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+        resp_sel = cR.selectbox("Responsable", options=["Todos"] + responsables, index=0, key="hist_resp")
 
-    f_desde = cD.date_input("Desde", value=None, key="hist_desde")
-    f_hasta = cH.date_input("Hasta",  value=None, key="hist_hasta")
+        with cD:
+            f_desde = st.date_input("Desde", value=None, key="hist_desde")
 
-    # Botón "Buscar" DENTRO del card y A LA DERECHA
-    st.markdown('<div class="hist-search-row">', unsafe_allow_html=True)
-    _space, btn = st.columns([8, 1], gap="small", vertical_alignment="bottom")
-    with btn:
-        hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
-    st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)  # cierre .hist-card
+        # 👉 Botón dentro de la MISMA columna de 'Hasta' para que tenga su ancho exacto
+        with cH:
+            f_hasta = st.date_input("Hasta", value=None, key="hist_hasta")
+            st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+            hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
 
     # Toggle mostrar/ocultar eliminadas
     show_deleted = st.toggle("Mostrar eliminadas (tachadas)", value=True, key="hist_show_deleted")
@@ -693,7 +698,6 @@ def render(user: dict | None = None):
     with b_save_sheets:
         if st.button("📤 Subir a Sheets", use_container_width=True):
             try:
-                # ⚠️ Ya NO grabamos local aquí; solo empujamos a Sheets.
                 push_user_slice_to_sheet()
                 st.success("Enviado a Google Sheets.")
             except Exception as e:
