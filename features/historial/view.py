@@ -1,6 +1,7 @@
 # features/historial/view.py
 from __future__ import annotations
 
+import os
 import re
 from io import BytesIO
 from datetime import datetime, time
@@ -12,27 +13,55 @@ from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode
 # ================== Helpers propios (sin importar Dashboard) ==================
 TAB_NAME = "Tareas"
 
+# --- Guardado local: siempre a data/tareas.csv ---
+try:
+    from shared import save_local as _disk_save_local
+except Exception:  # fallback directo a CSV
+    def _disk_save_local(df: pd.DataFrame):
+        os.makedirs("data", exist_ok=True)
+        df.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig")
+
 def _save_local(df: pd.DataFrame):
-    """Fallback simple: guarda en sesión (no escribe a disco)."""
+    """Guarda SOLO en disco (data/tareas.csv). Mantengo un backup en sesión."""
+    _disk_save_local(df.copy())
     st.session_state["_df_main_local_backup"] = df.copy()
 
+# --- Cliente GSheets: acepta gsheets_doc_url o [gsheets]/[sheets] ---
 def _gsheets_client():
-    """Devuelve (spreadsheet, worksheet_name) usando secrets. No dibuja UI."""
-    if "gsheets" not in st.secrets or "gcp_service_account" not in st.secrets:
-        raise KeyError("Faltan 'gsheets' o 'gcp_service_account' en secrets.")
+    """
+    Devuelve (spreadsheet, worksheet_name) usando secrets:
+      - gsheets_doc_url (preferido)
+      - [gsheets].spreadsheet_url  o  [sheets].sheet_url
+      - worksheet: [gsheets].worksheet (si existe) o 'TareasRecientes'
+    Requiere [gcp_service_account].
+    """
+    if "gcp_service_account" not in st.secrets:
+        raise KeyError("Falta 'gcp_service_account' en secrets.")
+
+    # URL del spreadsheet (orden de prioridad)
+    url = st.secrets.get("gsheets_doc_url")
+    if not url:
+        gs = st.secrets.get("gsheets", {}) or {}
+        url = gs.get("spreadsheet_url")
+    if not url:
+        ss2 = st.secrets.get("sheets", {}) or {}
+        url = ss2.get("sheet_url")
+    if not url:
+        raise KeyError("No se encontró 'gsheets_doc_url' ni '[gsheets].spreadsheet_url' ni '[sheets].sheet_url'.")
+
+    # Worksheet (pestaña)
+    ws_name = (st.secrets.get("gsheets", {}) or {}).get("worksheet", "TareasRecientes")
+
     import gspread
     from google.oauth2.service_account import Credentials
     scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-    creds = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"], scopes=scopes
-    )
+    creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scopes)
     gc = gspread.authorize(creds)
-    ss = gc.open_by_url(st.secrets["gsheets"]["spreadsheet_url"])
-    ws_name = st.secrets["gsheets"].get("worksheet", "TareasRecientes")
+    ss = gc.open_by_url(url)
     return ss, ws_name
 
 def pull_user_slice_from_sheet(replace_df_main: bool = True):
-    """Lee la hoja y opcionalmente reemplaza st.session_state['df_main']."""
+    """Lee toda la hoja y opcionalmente reemplaza st.session_state['df_main'].""" 
     ss, ws_name = _gsheets_client()
     try:
         ws = ss.worksheet(ws_name)
@@ -491,7 +520,7 @@ def render(user: dict | None = None):
                                            "Fecha Pausado","Fecha Cancelado","Fecha Eliminado"] else
                     time_only_fmt if c in ["Hora Registro","Hora de inicio","Hora Pausado","Hora Cancelado","Hora Eliminado",
                                            "Hora Terminado","Hora de detección","Hora de corrección","Hora Vencimiento"] else
-                    date_time_fmt if c in ["Fecha Terminado","Fecha de detección","Fecha de corrección"] else
+                    date_time_fmt if c in ["Fecha Terminado","Fecha de detección","Hora de corrección"] else
                     (None if c in ["Calificación","Prioridad"] else fmt_dash)
                 ),
                 suppressMenu=True if c in ["Fecha Registro","Hora Registro","Fecha inicio","Hora de inicio",
@@ -641,19 +670,17 @@ def render(user: dict | None = None):
                 base["__DEL__"] = False
             st.session_state["df_main"] = base.reset_index(drop=True)
             try:
-                _save_local(st.session_state["df_main"].copy())
-                st.success("Datos grabados localmente. Se mantendrán al volver a iniciar sesión.")
+                _save_local(st.session_state["df_main"].copy())  # ← SOLO disco
+                st.success("Datos grabados en data/tareas.csv.")
             except Exception as e:
                 st.warning(f"No se pudo grabar localmente: {e}")
 
     with b_save_sheets:
         if st.button("📤 Subir a Sheets", use_container_width=True):
             try:
-                _save_local(st.session_state["df_main"].copy())
-            except Exception:
-                pass
-            try:
+                # ⚠️ Ya NO grabamos local aquí; solo empujamos a Sheets.
                 push_user_slice_to_sheet()
+                st.success("Enviado a Google Sheets.")
             except Exception as e:
                 st.warning(f"No se pudo subir a Sheets: {e}")
 
