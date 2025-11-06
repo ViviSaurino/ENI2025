@@ -16,9 +16,10 @@ from st_aggrid import (
 try:
     from shared import now_lima_trimmed
 except Exception:
-    from datetime import datetime
+    from datetime import datetime, timezone, timedelta
+    # Fallback robusto: siempre hora Lima (UTC-5) sin depender del TZ del servidor
     def now_lima_trimmed():
-        return datetime.now().replace(second=0, microsecond=0)
+        return (datetime.utcnow() - timedelta(hours=5)).replace(second=0, microsecond=0)
 
 # ========= Utilidades mínimas para zonas horarias (solo para Duración) =========
 try:
@@ -26,6 +27,18 @@ try:
     _TZ = ZoneInfo(st.secrets.get("local_tz", "America/Lima"))
 except Exception:
     _TZ = None
+
+def _now_lima_trimmed_local():
+    """Devuelve datetime (Lima) sin segundos/microsegundos, robusto a TZ del servidor."""
+    from datetime import datetime, timedelta
+    try:
+        if _TZ:
+            return datetime.now(_TZ).replace(second=0, microsecond=0)
+        # UTC-5 todo el año en Perú
+        return (datetime.utcnow() - timedelta(hours=5)).replace(second=0, microsecond=0)
+    except Exception:
+        # Último recurso
+        return now_lima_trimmed()
 
 def _to_naive_local_one(x):
     """Convierte x a datetime naive en hora local; tolera strings con/ sin tz."""
@@ -55,7 +68,7 @@ def _fmt_hhmm(v) -> str:
     if v is None or (isinstance(v, float) and pd.isna(v)):
         return ""
     try:
-        s = str(v).trim() if hasattr(str(v), "trim") else str(v).strip()
+        s = str(v).strip()
         if not s or s.lower() in {"nan","nat","none","null"}:
             return ""
         m = re.match(r"^(\d{1,2}):(\d{2})", s)
@@ -99,7 +112,7 @@ def _col_letter(n: int) -> str:
     return s
 
 def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
-    """Actualiza en Sheets por 'Id' estado + sellos y fechas/hours por estado."""
+    """Actualiza en Sheets por 'Id' estado + sellos, fechas/horas por estado y archivo."""
     try:
         ss, ws, ws_name = _gsheets_client()
     except Exception as e:
@@ -129,7 +142,7 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
         if id_idx < len(row):
             id_to_row[str(row[id_idx]).strip()] = r_i
 
-    # Además de estado y sellos, empujar fechas/horas por estado
+    # Empujar también "Archivo" si existe en la hoja
     cols_to_push = [
         "Estado",
         "Fecha estado actual","Hora estado actual",
@@ -140,6 +153,7 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
         "Fecha Pausado","Hora Pausado",
         "Fecha Cancelado","Hora Cancelado",
         "Fecha Eliminado","Hora Eliminado",
+        "Archivo",
     ]
     cols_to_push = [c for c in cols_to_push if c in col_map]
 
@@ -315,7 +329,8 @@ def render(user: dict | None = None):
         cols_out = [
             "Id", "Tarea",
             "Estado actual", "Fecha estado actual", "Hora estado actual",
-            "Estado modificado", "Fecha estado modificado", "Hora estado modificado"
+            "Estado modificado", "Fecha estado modificado", "Hora estado modificado",
+            "Archivo"  # ← nueva columna para adjunto
         ]
 
         df_view = pd.DataFrame(columns=cols_out)
@@ -330,7 +345,8 @@ def render(user: dict | None = None):
                 "Fecha Cancelado","Hora Cancelado",
                 "Fecha Eliminado","Hora Eliminado",
                 "Fecha estado actual","Hora estado actual",
-                "Estado modificado","Fecha estado modificado","Hora estado modificado"
+                "Estado modificado","Fecha estado modificado","Hora estado modificado",
+                "Archivo"
             ]:
                 if need not in base.columns:
                     base[need] = ""
@@ -404,6 +420,7 @@ def render(user: dict | None = None):
                 "Estado modificado":       base["Estado modificado"].astype(str),
                 "Fecha estado modificado": _fmt_date(base["Fecha estado modificado"]),
                 "Hora estado modificado":  _fmt_time(base["Hora estado modificado"]),
+                "Archivo":                 base["Archivo"].astype(str),
             })[cols_out].copy()
 
         # ========= editores y estilo =========
@@ -491,6 +508,7 @@ def render(user: dict | None = None):
         )
         gob.configure_column("Fecha estado modificado", editable=True, cellEditor=date_editor, minWidth=170)
         gob.configure_column("Hora estado modificado",  editable=False, minWidth=150)
+        gob.configure_column("Archivo", editable=False, minWidth=220)
 
         grid_opts = gob.build()
         grid_opts["onCellValueChanged"] = on_cell_changed.js_code
@@ -503,12 +521,58 @@ def render(user: dict | None = None):
             fit_columns_on_grid_load=True,
             enable_enterprise_modules=False,
             reload_data=False,
-            height=260,
+            height=300,
             allow_unsafe_jscode=True,
             theme="balham"
         )
 
-        # ===== Guardar cambios =====
+        # === Adjuntar archivo cuando el estado es Terminado (fila seleccionada) ===
+        sel = (grid.get("selected_rows") or [])
+        if sel:
+            sel0 = sel[0]
+            _sel_id = str(sel0.get("Id", "")).strip()
+            est_now = str(sel0.get("Estado actual", "")).strip()
+            est_mod = str(sel0.get("Estado modificado", "")).strip()
+            if _sel_id and (est_now == "Terminado" or est_mod == "Terminado"):
+                st.markdown("**📎 Adjuntar archivo (solo para estado _Terminado_)**")
+                up = st.file_uploader("Subir archivo para esta tarea", key=f"up_{_sel_id}")
+                if up is not None:
+                    try:
+                        # Guardar archivo en carpeta por Id
+                        save_dir = os.path.join("data", "files", _sel_id)
+                        os.makedirs(save_dir, exist_ok=True)
+                        save_path = os.path.join(save_dir, up.name)
+                        with open(save_path, "wb") as f:
+                            f.write(up.getbuffer())
+
+                        # Actualizar base en memoria
+                        base = st.session_state.get("df_main", pd.DataFrame()).copy()
+                        if not base.empty and "Id" in base.columns:
+                            base["Id"] = base["Id"].astype(str)
+                            if "Archivo" not in base.columns:
+                                base["Archivo"] = ""
+                            base.loc[base["Id"] == _sel_id, "Archivo"] = f"{_sel_id}/{up.name}"
+                            st.session_state["df_main"] = base.copy()
+
+                            # Guardar a disco
+                            try:
+                                os.makedirs("data", exist_ok=True)
+                                base.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig")
+                            except Exception:
+                                pass
+
+                            # Upsert a Sheets solo el registro afectado (si la columna existe en la hoja)
+                            try:
+                                _sheet_upsert_estado_by_id(base.copy(), [_sel_id])
+                            except Exception as _e:
+                                st.info(f"Archivo guardado localmente. No pude actualizar Sheets: {_e}")
+
+                        st.success("Archivo adjuntado a la tarea seleccionada.")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"No pude adjuntar el archivo: {e}")
+
+        # ===== Guardar cambios (estados/fechas/horas) =====
         u1, u2 = st.columns([A+Fw+T_width+D+R, C], gap="medium")
         with u2:
             if st.button("💾 Guardar", use_container_width=True, key="est_guardar_inline_v3"):
@@ -535,14 +599,14 @@ def render(user: dict | None = None):
                                 "Fecha Terminado","Hora Terminado",
                                 "Fecha Pausado","Hora Pausado",
                                 "Fecha Cancelado","Hora Cancelado",
-                                "Fecha Eliminado","Hora Eliminado"
+                                "Fecha Eliminado","Hora Eliminado",
+                                "Archivo"
                             ]:
                                 if need not in base.columns:
                                     base[need] = ""
 
-                            # ==== AHORA SÍ: hora local Lima para sellos ====
-                            from datetime import datetime as _dt
-                            _local_now = (_dt.now(_TZ) if _TZ else _dt.now()).replace(second=0, microsecond=0)
+                            # ==== AHORA SÍ: hora Lima exacta para sellos ====
+                            _local_now = _now_lima_trimmed_local()
                             f_now = _local_now.strftime("%Y-%m-%d")
                             h_now = _local_now.strftime("%H:%M")
 
@@ -614,8 +678,7 @@ def render(user: dict | None = None):
 
                             # ===== Duración robusta tz =====
                             if "Duración" in b_i.columns and "Fecha Registro" in b_i.columns:
-                                # usar un 'ahora' NAIVE en hora Lima para evitar tz-aware vs tz-naive
-                                ts_naive = (pd.Timestamp(_local_now).tz_localize(None) if _TZ else pd.Timestamp(_local_now))
+                                ts_naive = pd.Timestamp(_local_now).tz_localize(None)  # siempre Lima naive
                                 def _mins_since(fr_val):
                                     d = _to_naive_local_one(fr_val)
                                     if pd.isna(d): return 0
@@ -647,7 +710,7 @@ def render(user: dict | None = None):
                             maybe_save = st.session_state.get("maybe_save")
                             res = maybe_save(_persist, base.copy()) if callable(maybe_save) else _persist(base.copy())
 
-                            # Upsert a Sheets (incluye Fecha/Hora inicio/fin/pausa/cancelado/eliminado)
+                            # Upsert a Sheets (incluye Archivo si está en la hoja)
                             try:
                                 _sheet_upsert_estado_by_id(base.copy(), list(ids))
                             except Exception as ee:
