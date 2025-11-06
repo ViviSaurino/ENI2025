@@ -49,15 +49,38 @@ def _ensure_user_cols(df: pd.DataFrame) -> pd.DataFrame:
         out["UserEmail"] = email
     return out
 
+# ---- Helper: resolver URL y hoja desde secrets (doc_url o [gsheets]) ----
+def _resolve_sheet_target():
+    """
+    Devuelve (spreadsheet_handle, worksheet_name) resolviendo:
+    - gsheets_doc_url  (preferido)
+    - [gsheets].spreadsheet_url  (fallback)
+    y hoja:
+    - [gsheets].worksheet  (si existe)  o  SHEET_TAB por defecto
+    """
+    # URL del Sheet
+    url = st.secrets.get("gsheets_doc_url")
+    if not url:
+        gs = st.secrets.get("gsheets", {})
+        if isinstance(gs, dict):
+            url = gs.get("spreadsheet_url")
+        else:
+            url = None
+    if not url:
+        raise KeyError("No se encontró 'gsheets_doc_url' ni '[gsheets].spreadsheet_url' en secrets.")
+
+    # Abrimos Sheet y resolvemos nombre de hoja
+    sh = open_sheet_by_url(url)
+    ws_name = (st.secrets.get("gsheets", {}) or {}).get("worksheet", SHEET_TAB)
+    return sh, ws_name
+
 def push_user_slice_to_sheet():
-    """App → Sheet (solo mis tareas; upsert por Id)."""
+    """App → Sheet (solo mis tareas; upsert por Id). Acepta gsheets_doc_url o [gsheets].spreadsheet_url."""
     if not (open_sheet_by_url and upsert_by_id):
         st.error("Faltan utilidades de Google Sheets. Verifica utils/gsheets.py.")
         return
     try:
-        # URL del Sheet desde secrets (clave: gsheets_doc_url)
-        url = st.secrets["gsheets_doc_url"]
-        sh = open_sheet_by_url(url)
+        sh, ws_name = _resolve_sheet_target()
 
         df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
         display_name = st.session_state.get("user_display_name", "") or ""
@@ -72,26 +95,25 @@ def push_user_slice_to_sheet():
         # Asegura columna UserEmail para trazabilidad en el Sheet
         df_user = _ensure_user_cols(df_user)
 
-        # Upsert por Id en la pestaña SHEET_TAB
-        res = upsert_by_id(sh, SHEET_TAB, df_user, id_col="Id")
+        # Upsert por Id en la pestaña resuelta
+        res = upsert_by_id(sh, ws_name, df_user, id_col="Id")
         if res.get("ok"):
             st.success("✅ Subido al Sheet (App → Sheet).")
         else:
             st.error(res.get("msg", "Error al subir."))
-    except KeyError:
-        st.error("Falta `gsheets_doc_url` o credenciales en st.secrets.")
+    except KeyError as e:
+        st.error(f"Faltan claves en secrets: {e}")
     except Exception as e:
         st.error(f"No pude subir al Sheet: {e}")
 
 def pull_user_slice_from_sheet(replace_df_main: bool = True):
-    """Sheet → App (trae TODO, filtra mis tareas y refleja en df_main)."""
+    """Sheet → App (trae TODO, filtra mis tareas y refleja en df_main). Acepta gsheets_doc_url o [gsheets].spreadsheet_url."""
     if not (open_sheet_by_url and read_df_from_worksheet):
         st.error("Faltan utilidades de Google Sheets. Verifica utils/gsheets.py.")
         return
     try:
-        url = st.secrets["gsheets_doc_url"]
-        sh = open_sheet_by_url(url)
-        df_sheet = read_df_from_worksheet(sh, SHEET_TAB)
+        sh, ws_name = _resolve_sheet_target()
+        df_sheet = read_df_from_worksheet(sh, ws_name)
 
         display_name = st.session_state.get("user_display_name", "") or ""
         email = st.session_state.get("user_email") or (st.session_state.get("user") or {}).get("email", "")
@@ -109,8 +131,8 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
 
         st.success("✅ Sincronizado desde Sheet (Sheet → App).")
         st.rerun()
-    except KeyError:
-        st.error("Falta `gsheets_doc_url` o credenciales en st.secrets.")
+    except KeyError as e:
+        st.error(f"Faltan claves en secrets: {e}")
     except Exception as e:
         st.error(f"No pude sincronizar desde Sheet: {e}")
 
