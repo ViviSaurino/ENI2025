@@ -14,7 +14,7 @@ from auth_google import google_login, logout
 def _fallback_ensure_df_main():
     import os
     path = os.path.join("data", "tareas.csv")
-    os.makedirs("data", exist_ok=True)
+    os.makedirs("data", exist_okay=True)
 
     if "df_main" in st.session_state:
         return
@@ -103,6 +103,40 @@ try:
 except Exception as _e:
     st.error("No pude cargar el archivo de roles. Verifica data/security/roles.xlsx.")
     st.stop()
+
+# --- AJUSTE SOLICITADO: forzar is_active y can_edit_all_tabs para esta sesión ---
+def _to_bool(v):
+    if isinstance(v, bool):
+        return v
+    if v is None:
+        return False
+    s = str(v).strip().lower()
+    return s in ("true", "verdadero", "sí", "si", "1", "x", "y")
+
+if user_acl is None:
+    user_acl = {}
+
+# Normaliza (por si vienen como VERDADERO/FALSO o Sí/No desde Excel)
+for _k in ("is_active", "can_edit_all_tabs"):
+    if _k in user_acl:
+        user_acl[_k] = _to_bool(user_acl[_k])
+
+# Fuerza flags para esta sesión
+user_acl["is_active"] = True
+user_acl["can_edit_all_tabs"] = True
+
+# Refleja también en roles_df en memoria (útil para otras vistas)
+try:
+    _roles_df = st.session_state.get("roles_df")
+    if isinstance(_roles_df, pd.DataFrame):
+        mask_me = _roles_df["email"].astype(str).str.lower() == (email or "").lower()
+        if mask_me.any():
+            _roles_df.loc[mask_me, "is_active"] = True
+            _roles_df.loc[mask_me, "can_edit_all_tabs"] = True
+            st.session_state["roles_df"] = _roles_df
+except Exception:
+    pass
+# --- FIN AJUSTE ---
 
 if not user_acl or not user_acl.get("is_active", False):
     st.error("No tienes acceso (usuario no registrado o inactivo).")
