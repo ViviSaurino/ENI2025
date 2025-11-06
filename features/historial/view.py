@@ -143,15 +143,19 @@ def render(user: dict | None = None):
     # --- Estilos globales ---
     st.markdown("""
     <style>
+    /* ===== Paleta coral clara (como imagen 2) ===== */
     :root{
-      /* Coral MUY claro para la tarjeta */
-      --hist-card-bg:#FFEDEB;   /* fondo */
-      --hist-card-bd:#F3B6B1;   /* borde */
-      --hist-card-fg:#7A2E2A;   /* texto */
-      --hist-pad-x:16px; --hist-border-w:2px; --hist-border-c:#EF4444;
+      --hist-pill:#F28B85;              /* pastilla del título */
+      --hist-card-bg:#FFEDEB;           /* fondo del contenedor grande */
+      --hist-card-bd:#F3B6B1;           /* borde del contenedor grande */
+      --hist-help-bg:#FFE7E6;           /* franja de indicaciones */
+      --hist-help-border:#F3B6B1;       /* borde de la franja */
+      --hist-help-text:#7A2E2A;         /* texto de la franja */
+      --hist-pad-x:16px;
+      --hist-border-w:2px; --hist-border-c:#EF4444;
     }
 
-    /* Tarjeta coral que envuelve nota + filtros + botón */
+    /* Contenedor coral que envuelve indicaciones + filtros */
     #hist-card-anchor + div{
       background:var(--hist-card-bg)!important;
       border:1px solid var(--hist-card-bd)!important;
@@ -161,16 +165,24 @@ def render(user: dict | None = None):
       margin-bottom:6px;
     }
 
-    /* Nota / indicaciones (estilo banda, aún más claro) */
-    #hist-card-anchor + div .hist-note{
-      display:flex; align-items:flex-start; gap:8px;
-      background:#FFF6F5;
-      border:1px dashed var(--hist-card-bd);
-      color:var(--hist-card-fg)!important;
+    /* Franja de indicaciones (misma idea que Evaluación) */
+    .section-hist .help-strip-hist{
+      background: var(--hist-help-bg) !important;
+      color: var(--hist-help-text) !important;
+      border: 1px dashed var(--hist-help-border) !important;
+      box-shadow: 0 0 0 1px var(--hist-help-border) inset !important;
       border-radius:8px;
       padding:8px 12px;
       font-size:0.95rem;
-      margin-bottom:12px;
+    }
+
+    /* Rectángulo de las celdas/filtros */
+    #hist-card-anchor + div .form-card{
+      background:#ffffff;
+      border:1px solid var(--hist-card-bd);
+      border-radius:10px;
+      padding:12px;
+      margin-top:6px;
     }
 
     /* Botón Buscar */
@@ -211,11 +223,17 @@ def render(user: dict | None = None):
     # ===== Card (ancla + contenedor real) =====
     st.markdown('<div id="hist-card-anchor"></div>', unsafe_allow_html=True)
     with st.container():
-        # Nota / indicaciones DENTRO del rectángulo coral
+        # Wrapper UNIDO: help-strip + form-card (coral)
         st.markdown(
-            '<div class="hist-note">📌 <b>Filtra y guarda tus tareas.</b> '
-            '“Tarea” y “Detalle” solo se editan para correcciones. '
-            '<b>Excel:</b> opcional · <b>Sheets:</b> obligatorio para que el avance quede en el historial.</div>',
+            """
+            <div class="section-hist">
+              <div class="help-strip-hist" id="hist-help">
+                📌 <strong>Filtra y guarda tus tareas.</strong>
+                “Tarea” y “Detalle” solo se editan para correcciones.
+                <strong>Excel:</strong> opcional · <strong>Sheets:</strong> obligatorio para que el avance quede en el historial.
+              </div>
+              <div class="form-card">
+            """,
             unsafe_allow_html=True
         )
 
@@ -225,7 +243,7 @@ def render(user: dict | None = None):
         W_RESP   = 1.60  # Responsable más angosto
         W_DESDE  = 1.05
         W_HASTA  = 1.05
-        W_BUSCAR = W_HASTA  # mismo ancho que "Hasta"
+        W_BUSCAR = 1.05  # mismo ancho que "Hasta"
 
         cA, cF, cR, cD, cH, cB = st.columns(
             [W_AREA, W_FASE, W_RESP, W_DESDE, W_HASTA, W_BUSCAR],
@@ -262,6 +280,9 @@ def render(user: dict | None = None):
             st.markdown('<div class="hist-search">', unsafe_allow_html=True)
             hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
             st.markdown('</div>', unsafe_allow_html=True)
+
+        # Cierra form-card + section
+        st.markdown("</div></div>", unsafe_allow_html=True)
 
     # Toggle mostrar/ocultar eliminadas
     show_deleted = st.toggle("Mostrar eliminadas (tachadas)", value=True, key="hist_show_deleted")
