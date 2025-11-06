@@ -89,17 +89,8 @@ TAB_NAME = st.session_state.get("TAB_NAME", "Tareas")
 COLS_XLSX = [c for c in COLS if c not in ("__DEL__","DEL")]
 
 def _csv_path() -> str:
-    """Ruta legacy (compatibilidad): data/tareas.csv"""
+    """Ruta única de persistencia: data/tareas.csv"""
     return os.path.join(DATA_DIR, "tareas.csv")
-
-def _local_store_path() -> str:
-    """
-    Ruta principal de persistencia usada por features/dashboard/view._save_local:
-    data/local/df_main.csv
-    """
-    base_dir = os.path.join(DATA_DIR, "local")
-    os.makedirs(base_dir, exist_ok=True)
-    return os.path.join(base_dir, "df_main.csv")
 
 def _read_csv_safe(path: str, cols: list[str]) -> pd.DataFrame:
     if not os.path.exists(path) or os.path.getsize(path) == 0:
@@ -118,30 +109,16 @@ def _read_csv_safe(path: str, cols: list[str]) -> pd.DataFrame:
 
 def read_local() -> pd.DataFrame:
     """
-    Loader unificado:
-    1) Intenta leer del destino principal (data/local/df_main.csv).
-    2) Si no existe, cae a la ruta legacy (data/tareas.csv).
+    Loader: lee SIEMPRE desde data/tareas.csv (ruta única).
     """
-    primary = _local_store_path()
-    legacy = _csv_path()
-    if os.path.exists(primary) and os.path.getsize(primary) > 0:
-        return _read_csv_safe(primary, COLS)
-    return _read_csv_safe(legacy, COLS)
+    return _read_csv_safe(_csv_path(), COLS)
 
 def save_local(df: pd.DataFrame):
     """
-    Guardado unificado:
-    - Escribe SIEMPRE en data/local/df_main.csv (principal).
-    - Además duplica en data/tareas.csv (compatibilidad).
+    Guardado: escribe SIEMPRE en data/tareas.csv (ruta única).
     """
     try:
-        primary = _local_store_path()
-        df.to_csv(primary, index=False, encoding="utf-8-sig")
-    except Exception:
-        pass
-    try:
-        legacy = _csv_path()
-        df.to_csv(legacy, index=False, encoding="utf-8-sig")
+        df.to_csv(_csv_path(), index=False, encoding="utf-8-sig")
     except Exception:
         pass
 
@@ -151,9 +128,8 @@ def write_sheet_tab(df: pd.DataFrame):
 
 def ensure_df_main():
     """
-    Inicializa st.session_state['df_main'] desde almacenamiento local.
-    Lee del mismo archivo que escribe _save_local (data/local/df_main.csv),
-    con fallback a la ruta legacy.
+    Inicializa st.session_state['df_main'] leyendo y escribiendo
+    SIEMPRE en data/tareas.csv (misma ruta para lectura/escritura).
     """
     if "df_main" in st.session_state:
         return
