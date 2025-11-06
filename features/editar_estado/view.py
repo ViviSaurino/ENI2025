@@ -11,6 +11,7 @@ from st_aggrid import (
     JsCode,
 )
 
+# =================== Helpers de TZ y Sheets (ajustes mínimos) ===================
 # Hora Lima para sellado de cambios
 try:
     from shared import now_lima_trimmed
@@ -18,6 +19,171 @@ except Exception:
     from datetime import datetime
     def now_lima_trimmed():
         return datetime.now().replace(second=0, microsecond=0)
+
+# --- Normalización a datetime naive local (evita tz-naive vs tz-aware) ---
+try:
+    from zoneinfo import ZoneInfo
+    _TZ = ZoneInfo(st.secrets.get("local_tz", "America/Lima"))
+except Exception:
+    _TZ = None
+
+def _to_naive_local_series(s: pd.Series) -> pd.Series:
+    ser = pd.to_datetime(s, errors="coerce", utc=False)
+    try:
+        if getattr(ser.dt, "tz", None) is not None:
+            ser = (ser.dt.tz_convert(_TZ) if _TZ else ser).dt.tz_localize(None)
+    except Exception:
+        try:
+            ser = ser.dt.tz_localize(None)
+        except Exception:
+            pass
+    return ser
+
+def _fmt_hhmm(v) -> str:
+    if v is None or (isinstance(v, float) and pd.isna(v)):
+        return ""
+    try:
+        s = str(v).strip()
+        if not s or s.lower() in {"nan","nat","none","null"}:
+            return ""
+        import re as _re
+        m = _re.match(r"^(\d{1,2}):(\d{2})", s)
+        if m:
+            return f"{int(m.group(1)):02d}:{int(m.group(2)):02d}"
+        d = pd.to_datetime(s, errors="coerce", utc=False)
+        if pd.isna(d):
+            return ""
+        return f"{int(d.hour):02d}:{int(d.minute):02d}"
+    except Exception:
+        return ""
+
+# --- Cliente GSheets y upsert por Id (sólo columnas de estado) ---
+def _gsheets_client():
+    if "gcp_service_account" not in st.secrets:
+        raise KeyError("Falta 'gcp_service_account' en secrets.")
+    url = st.secrets.get("gsheets_doc_url") or \
+          (st.secrets.get("gsheets", {}) or {}).get("spreadsheet_url") or \
+          (st.secrets.get("sheets", {}) or {}).get("sheet_url")
+    if not url:
+        raise KeyError("No se encontró 'gsheets_doc_url' ni '[gsheets].spreadsheet_url' ni '[sheets].sheet_url'.")
+    ws_name = (st.secrets.get("gsheets", {}) or {}).get("worksheet", "TareasRecientes")
+
+    import gspread
+    from google.oauth2.service_account import Credentials
+    scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+    creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scopes)
+    gc = gspread.authorize(creds)
+    ss = gc.open_by_url(url)
+    try:
+        ws = ss.worksheet(ws_name)
+    except Exception:
+        # si no existe, lo creamos vacío con encabezados desde df cuando se use
+        ws = None
+    return ss, ws, ws_name
+
+def _col_letter(n: int) -> str:
+    s = ""
+    while n:
+        n, r = divmod(n - 1, 26)
+        s = chr(65 + r) + s
+    return s
+
+def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
+    """Actualiza en Sheets SOLO columnas de estado de las filas con esos Id.
+       Si la hoja no existe la crea con los headers de df_base."""
+    try:
+        ss, ws, ws_name = _gsheets_client()
+    except Exception as e:
+        st.info(f"Sheets no configurado: {e}")
+        return
+
+    # Si hoja no existe, crear con encabezados de df_base
+    if ws is None:
+        rows = str(max(1000, len(df_base) + 10))
+        cols = str(max(26, len(df_base.columns) + 5))
+        ws = ss.add_worksheet(title=ws_name, rows=rows, cols=cols)
+        ws.update("A1", [list(df_base.columns)])
+
+    values = ws.get_all_values() or []
+    if not values:
+        ws.update("A1", [list(df_base.columns)])
+        values = ws.get_all_values()
+
+    headers = values[0]
+    col_map = {h: i+1 for i, h in enumerate(headers)}
+    if "Id" not in col_map:
+        st.info("La hoja seleccionada no tiene columna 'Id'; no se puede actualizar por Id.")
+        return
+
+    # índice de filas por Id (1-based en Sheets)
+    id_idx = col_map["Id"] - 1
+    id_to_row = {}
+    for r_i, row in enumerate(values[1:], start=2):
+        if id_idx < len(row):
+            id_to_row[str(row[id_idx]).strip()] = r_i
+
+    # columnas a tocar
+    cols_to_push = [
+        "Estado",
+        "Fecha estado actual",
+        "Hora estado actual",
+        "Duración",
+        "Estado modificado",
+        "Fecha estado modificado",
+        "Hora estado modificado",
+    ]
+    cols_to_push = [c for c in cols_to_push if c in col_map]
+
+    # formateo por tipo
+    def _fmt_out(col, val):
+        low = str(col).lower()
+        if low.startswith("fecha"):
+            ser = _to_naive_local_series(pd.Series([val]))
+            s = ser.dt.strftime("%Y-%m-%d").fillna("").iloc[0]
+            return "" if pd.isna(s) else str(s)
+        if low.startswith("hora"):
+            return _fmt_hhmm(val)
+        return "" if (val is None or (isinstance(val, float) and pd.isna(val))) else str(val)
+
+    # hacemos update fila por fila, preservando otras columnas
+    last_col_letter = _col_letter(len(headers))
+    body = []
+    ranges = []
+
+    df_idx = df_base.set_index("Id")
+    for _id in changed_ids:
+        if _id not in df_idx.index:
+            continue
+        row_idx = id_to_row.get(str(_id))
+        if not row_idx:
+            # Si no existe el Id, se agrega al final con todos los campos disponibles
+            new_row = []
+            for h in headers:
+                v = df_idx.loc[_id, h] if h in df_idx.columns else ""
+                new_row.append(_fmt_out(h, v))
+            values.append(new_row)
+            ws.append_row(new_row, value_input_option="USER_ENTERED")
+            continue
+
+        # base actual de la fila en el sheet
+        current_row = values[row_idx-1].copy()
+        if len(current_row) < len(headers):
+            current_row += [""] * (len(headers) - len(current_row))
+
+        # aplicar solo columnas a empujar
+        for h in cols_to_push:
+            v = df_idx.loc[_id, h] if h in df_idx.columns else ""
+            current_row[col_map[h]-1] = _fmt_out(h, v)
+
+        ranges.append(f"A{row_idx}:{last_col_letter}{row_idx}")
+        body.append(current_row[:len(headers)])
+
+    if body and ranges:
+        # batch update en bloques contiguos de 1 fila por simplicidad
+        data = [{"range": rng, "values": [vals]} for rng, vals in zip(ranges, body)]
+        ws.batch_update({"valueInputOption": "USER_ENTERED", "data": data})
+
+# ===============================================================================
 
 def render(user: dict | None = None):
     # ================== EDITAR ESTADO ==================
@@ -244,7 +410,7 @@ def render(user: dict | None = None):
             fecha_estado_final = fecha_estado_exist.where(fecha_estado_exist.notna(), fecha_from_estado)
             hora_estado_final  = hora_estado_exist.where(hora_estado_exist.str.strip() != "", hora_from_estado)
 
-            # Fallback visual adicional solicitado: si aún está vacío, usar Fecha/Hora Registro (solo visual)
+            # Fallback visual adicional solicitado
             fecha_estado_final = fecha_estado_final.where(
                 fecha_estado_final.notna(), pd.to_datetime(base.get("Fecha Registro"), errors="coerce").dt.normalize()
             )
@@ -396,8 +562,8 @@ def render(user: dict | None = None):
                                 base["Estado"] = "No iniciado"
 
                             ts = now_lima_trimmed()
-                            f_now = ts.strftime("%Y-%m-%d")
-                            h_now = ts.strftime("%H:%M")
+                            f_now = pd.Timestamp(ts).strftime("%Y-%m-%d")
+                            h_now = pd.Timestamp(ts).strftime("%H:%M")
 
                             b_i = base.set_index("Id")
                             c_i = changes.set_index("Id")
@@ -410,8 +576,10 @@ def render(user: dict | None = None):
 
                             # (Opcional) Duración si existe columna y tenemos Fecha Registro
                             if "Duración" in b_i.columns and "Fecha Registro" in b_i.columns:
-                                fr = pd.to_datetime(b_i.loc[ids, "Fecha Registro"], errors="coerce")
-                                dur_min = ((ts - fr).dt.total_seconds() / 60).fillna(0).astype(int)
+                                fr = _to_naive_local_series(b_i.loc[ids, "Fecha Registro"])
+                                # ts naive -> Timestamp naive:
+                                ts_ts = pd.Timestamp(ts)
+                                dur_min = ((ts_ts - fr).dt.total_seconds() / 60).fillna(0).astype(int)
                                 try:
                                     b_i.loc[ids, "Duración"] = dur_min
                                 except Exception:
@@ -425,7 +593,7 @@ def render(user: dict | None = None):
                             base = b_i.reset_index()
                             st.session_state["df_main"] = base.copy()
 
-                            # ======== PERSISTIR con maybe_save ========
+                            # ======== PERSISTIR local ========
                             def _persist(_df: pd.DataFrame):
                                 try:
                                     os.makedirs("data", exist_ok=True)
@@ -436,6 +604,12 @@ def render(user: dict | None = None):
 
                             maybe_save = st.session_state.get("maybe_save")
                             res = maybe_save(_persist, base.copy()) if callable(maybe_save) else _persist(base.copy())
+
+                            # ======== PERSISTIR en Google Sheets por Id ========
+                            try:
+                                _sheet_upsert_estado_by_id(base.copy(), list(ids))
+                            except Exception as ee:
+                                st.info(f"Guardado local OK. No pude actualizar Sheets: {ee}")
 
                             if res.get("ok", False):
                                 st.success(res.get("msg", "Cambios guardados."))
