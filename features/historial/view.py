@@ -2,42 +2,75 @@
 from __future__ import annotations
 
 import re
-import importlib
 from io import BytesIO
 from datetime import datetime, time
 
 import pandas as pd
 import streamlit as st
 from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode, JsCode
-import streamlit.components.v1 as components  # para ocultar el botón fantasma
 
-# ===== Helpers para import perezoso (evita UI fantasma del Dashboard) =====
-def _get_dashboard_module():
-    try:
-        return importlib.import_module("features.dashboard.view")
-    except Exception:
-        return None
-
-def _get_sheet_funcs():
-    """
-    Importa perezosamente funciones y constantes del Dashboard SOLO cuando se necesitan.
-    Retorna: push_f, pull_f, save_local_f, cols_list
-    """
-    mod = _get_dashboard_module()
-    if mod is None:
-        return None, None, None, None
-    return (
-        getattr(mod, "push_user_slice_to_sheet", None),
-        getattr(mod, "pull_user_slice_from_sheet", None),
-        getattr(mod, "_save_local", None),
-        getattr(mod, "COLS", None),
-    )
-
-# ====== Soporte de exportación ======
+# ================== Helpers propios (sin importar Dashboard) ==================
 TAB_NAME = "Tareas"
 
+def _save_local(df: pd.DataFrame):
+    """Fallback simple: guarda en sesión (no escribe a disco)."""
+    st.session_state["_df_main_local_backup"] = df.copy()
+
+def _gsheets_client():
+    """Devuelve (spreadsheet, worksheet_name) usando secrets. No dibuja UI."""
+    if "gsheets" not in st.secrets or "gcp_service_account" not in st.secrets:
+        raise KeyError("Faltan 'gsheets' o 'gcp_service_account' en secrets.")
+    import gspread
+    from google.oauth2.service_account import Credentials
+    scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+    creds = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"], scopes=scopes
+    )
+    gc = gspread.authorize(creds)
+    ss = gc.open_by_url(st.secrets["gsheets"]["spreadsheet_url"])
+    ws_name = st.secrets["gsheets"].get("worksheet", "TareasRecientes")
+    return ss, ws_name
+
+def pull_user_slice_from_sheet(replace_df_main: bool = True):
+    """Lee la hoja y opcionalmente reemplaza st.session_state['df_main']."""
+    ss, ws_name = _gsheets_client()
+    try:
+        ws = ss.worksheet(ws_name)
+    except Exception:
+        # No existe la hoja => nada que leer
+        return
+    values = ws.get_all_values()
+    if not values:
+        return
+    headers = values[0]
+    rows = values[1:]
+    df = pd.DataFrame(rows, columns=headers)
+    # Tipos suaves: fechas a datetime cuando calzan patrón
+    for c in df.columns:
+        if c.lower().startswith("fecha"):
+            df[c] = pd.to_datetime(df[c], errors="coerce")
+    if replace_df_main:
+        st.session_state["df_main"] = df
+    return df
+
+def push_user_slice_to_sheet():
+    """Sube st.session_state['df_main'] a la hoja (crea si no existe)."""
+    ss, ws_name = _gsheets_client()
+    try:
+        ws = ss.worksheet(ws_name)
+    except Exception:
+        # crea con tamaño generoso
+        rows = str(max(1000, len(st.session_state["df_main"]) + 10))
+        cols = str(max(26, len(st.session_state["df_main"].columns) + 5))
+        ws = ss.add_worksheet(title=ws_name, rows=rows, cols=cols)
+
+    df_out = st.session_state["df_main"].copy()
+    df_out = df_out.fillna("").astype(str)
+    ws.clear()
+    ws.update("A1", [list(df_out.columns)] + df_out.values.tolist())
+
+# ====== Soporte de exportación (igual que tenías) ======
 def export_excel(df: pd.DataFrame, sheet_name: str = TAB_NAME) -> bytes:
-    """Devuelve un XLSX en bytes. Usa xlsxwriter y cae a openpyxl si no está."""
     try:
         buf = BytesIO()
         with pd.ExcelWriter(buf, engine="xlsxwriter") as writer:
@@ -54,7 +87,7 @@ def render(user: dict | None = None):
     # ================== Historial ==================
     st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
 
-    # —— (Para alinear el ancho del título con el select Área) ——
+    # —— (alineaciones) ——
     A_f, Fw_f, T_width_f, D_f, R_f, C_f = 1.80, 2.10, 3.00, 1.60, 1.40, 1.20
 
     # ---- TÍTULO EN PÍLDORA ----
@@ -322,19 +355,14 @@ def render(user: dict | None = None):
         "__SEL__","__DEL__"
     ]
 
-    # Ocultas en grid (no visibles)
     HIDDEN_COLS = [
-        "¿Eliminar?",
-        "Estado modificado",
+        "¿Eliminar?","Estado modificado",
         "Fecha estado modificado","Hora estado modificado",
         "Fecha estado actual","Hora estado actual",
-        "N° de alerta","Tipo de alerta",
-        "Fecha","Hora",
-        "Vencimiento",
+        "N° de alerta","Tipo de alerta","Fecha","Hora","Vencimiento",
         "__ts__","__DEL__","__SEL__"
     ]
 
-    # Asegurar columnas
     for c in target_cols:
         if c not in df_view.columns:
             if c in ["__SEL__","__DEL__"]:
@@ -343,11 +371,13 @@ def render(user: dict | None = None):
                 df_view[c] = ""
 
     df_view["Duración"] = df_view["Duración"].astype(str).fillna("")
-    df_grid = df_view.reindex(columns=list(dict.fromkeys(target_cols)) + [c for c in df_view.columns if c not in target_cols + HIDDEN_COLS]).copy()
-    df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()  # ✅ FIX correcto
+    df_grid = df_view.reindex(
+        columns=list(dict.fromkeys(target_cols)) +
+        [c for c in df_view.columns if c not in target_cols + HIDDEN_COLS]
+    ).copy()
+    df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()
     df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
 
-    # Remueve por completo ¿Eliminar?
     if "¿Eliminar?" in df_grid.columns:
         df_grid.drop(columns=["¿Eliminar?"], inplace=True, errors="ignore")
 
@@ -370,12 +400,10 @@ def render(user: dict | None = None):
         suppressHeaderVirtualisation=True,
     )
 
-    # Encabezados anclados
     gob.configure_column("Id", headerName="ID", editable=False, minWidth=110, pinned="left", suppressMovable=True)
     gob.configure_column("Área", headerName="Área", editable=False, minWidth=160, pinned="left", suppressMovable=True)
     gob.configure_column("Fase", headerName="Fase", editable=False, minWidth=140, pinned="left", suppressMovable=True)
     gob.configure_column("Responsable", editable=False, minWidth=200, pinned="left", suppressMovable=True)
-
     gob.configure_column("Estado", headerName="Estado actual")
     gob.configure_column("Fecha Vencimiento", headerName="Fecha límite")
     gob.configure_column("Fecha inicio", headerName="Fecha de inicio")
@@ -485,14 +513,12 @@ def render(user: dict | None = None):
         if cc in df_grid.columns:
             gob.configure_column(cc, headerClass="muted-col", cellStyle=MUTED_CELL_STYLE)
 
-    # === Editables: Tarea, Tipo, Detalle ===
     for c_edit, w in [("Tarea", colw.get("Tarea", 280)),
                       ("Tipo", colw.get("Tipo", 180)),
                       ("Detalle", colw.get("Detalle", 240))]:
         if c_edit in df_grid.columns:
             gob.configure_column(c_edit, editable=True, minWidth=w)
 
-    # ==== Reglas de clase por fila ====
     row_class_rules = {
         "row-deleted": JsCode("""
             function(params){
@@ -559,15 +585,13 @@ def render(user: dict | None = None):
     except Exception:
         pass
 
-    # --- Sincroniza edición de 3 campos ---
+    # Sincroniza edición de 3 campos
     if isinstance(grid, dict) and "data" in grid and grid["data"] is not None:
         try:
             edited = pd.DataFrame(grid["data"]).copy()
             edited["Id"] = edited["Id"].astype(str)
-
             base = st.session_state["df_main"].copy()
             base["Id"] = base["Id"].astype(str)
-
             b_i = base.set_index("Id")
             e_i = edited.set_index("Id")
             common = b_i.index.intersection(e_i.index)
@@ -576,8 +600,8 @@ def render(user: dict | None = None):
         except Exception:
             pass
 
-    # ---- Botones alineados EXACTAMENTE bajo "Desde | Hasta | Buscar" ----
-    left_spacer = A_f + Fw_f + T_width_f  # ocupa Área + Fase + Responsable
+    # ---- Botonera alineada ----
+    left_spacer = A_f + Fw_f + T_width_f
 
     st.markdown('<div class="hist-actions">', unsafe_allow_html=True)
     _spacer, b_xlsx, b_sync, b_save_local, b_save_sheets = st.columns(
@@ -590,7 +614,6 @@ def render(user: dict | None = None):
             drop_cols = [c for c in ("__DEL__", "DEL", "__SEL__", "¿Eliminar?") if c in df_xlsx.columns]
             if drop_cols:
                 df_xlsx.drop(columns=drop_cols, inplace=True, errors="ignore")
-            cols_order = []  # se toma de COLS_XLSX si existe (dentro de subir/grabar)
             xlsx_b = export_excel(df_xlsx, sheet_name=TAB_NAME)
             st.download_button(
                 "⬇️ Exportar Excel", data=xlsx_b,
@@ -599,23 +622,17 @@ def render(user: dict | None = None):
                 use_container_width=True
             )
         except ImportError:
-            st.error("No pude generar Excel: falta instalar 'xlsxwriter' u 'openpyxl' en el entorno.")
+            st.error("No pude generar Excel: falta 'xlsxwriter' u 'openpyxl'.")
         except Exception as e:
             st.error(f"No pude generar Excel: {e}")
 
-    # --- SINCRONIZAR (Sheet → App) en la misma fila ---
     with b_sync:
         if st.button("🔄 Sincronizar", use_container_width=True, key="btn_sync_sheet"):
-            _, pull_f, _, _ = _get_sheet_funcs()
             try:
-                if pull_f:
-                    pull_f(replace_df_main=True)
-                else:
-                    st.warning("Sin función de sincronización disponible.")
+                pull_user_slice_from_sheet(replace_df_main=True)
             except Exception as e:
                 st.warning(f"No se pudo sincronizar: {e}")
 
-    # ============ Grabar (persiste usando _save_local del Dashboard) ============
     with b_save_local:
         if st.button("💾 Grabar", use_container_width=True):
             base = st.session_state["df_main"].copy()
@@ -623,76 +640,21 @@ def render(user: dict | None = None):
             if "__DEL__" not in base.columns:
                 base["__DEL__"] = False
             st.session_state["df_main"] = base.reset_index(drop=True)
-
-            push_f, pull_f, save_local_f, cols_list = _get_sheet_funcs()
             try:
-                df_save = st.session_state["df_main"][cols_list].copy() if cols_list else st.session_state["df_main"].copy()
-            except Exception:
-                df_save = st.session_state["df_main"].copy()
-
-            try:
-                if save_local_f:
-                    save_local_f(df_save.copy())
-                    st.success("Datos grabados localmente. Se mantendrán al volver a iniciar sesión.")
-                else:
-                    # Respaldo mínimo (no persistente a disco)
-                    st.session_state["_df_main_local_backup"] = df_save.copy()
-                    st.info("Guardado en sesión (fallback).")
+                _save_local(st.session_state["df_main"].copy())
+                st.success("Datos grabados localmente. Se mantendrán al volver a iniciar sesión.")
             except Exception as e:
                 st.warning(f"No se pudo grabar localmente: {e}")
 
     with b_save_sheets:
         if st.button("📤 Subir a Sheets", use_container_width=True):
-            push_f, _, save_local_f, cols_list = _get_sheet_funcs()
-            df = st.session_state["df_main"].copy()
-            cols_order = globals().get("COLS_XLSX", []) or ([c for c in df.columns if c not in ["__SEL__","__DEL__"]])
-            cols_order = [c for c in cols_order if c in df.columns]
-            if cols_order:
-                df = df.reindex(columns=cols_order)
-
             try:
-                if save_local_f:
-                    save_local_f(df.copy())
+                _save_local(st.session_state["df_main"].copy())
             except Exception:
                 pass
-
             try:
-                if push_f:
-                    push_f()
-                else:
-                    st.warning("Sin función para subir a Sheets disponible.")
+                push_user_slice_to_sheet()
             except Exception as e:
                 st.warning(f"No se pudo subir a Sheets: {e}")
 
-    # ✅ Cierro el contenedor de acciones
     st.markdown('</div>', unsafe_allow_html=True)
-
-    # 🧹 Apagador del botón "Sincronizar" repetido (fuera de .hist-actions)
-    components.html(
-        """
-        <script>
-        (function(){
-          function hideDup(){
-            try{
-              const doc = window.parent.document;
-              const btns = Array.from(doc.querySelectorAll('button'));
-              btns.forEach(b=>{
-                const txt = (b.innerText || '').trim();
-                const inside = !!b.closest('.hist-actions');
-                if (/^Sincronizar$/i.test(txt) && !inside){
-                  b.style.display = 'none';
-                  const wrap = b.closest('div[data-testid="stHorizontalBlock"]') || b.parentElement;
-                  if (wrap){ wrap.style.display = 'none'; }
-                }
-              });
-            }catch(e){}
-          }
-          hideDup();
-          setTimeout(hideDup, 300);
-          setTimeout(hideDup, 900);
-          setTimeout(hideDup, 2000);
-        })();
-        </script>
-        """,
-        height=0,
-    )
