@@ -318,9 +318,14 @@ def render(user: dict | None = None):
                     new["Complejidad"] = st.session_state.get("nt_complejidad", "")
                     lbl = st.session_state.get("nt_duracion_label", "")
                     try:
-                        new["Duración"] = int(str(lbl).split()[0])
+                        _dur = int(str(lbl).split()[0])
                     except Exception:
-                        new["Duración"] = ""
+                        _dur = ""  # dejar vacío si no se puede parsear
+
+                    # Guardar también con el encabezado usado por "Tareas recientes"
+                    new["Duración (días)"] = _dur
+                    # Compatibilidad hacia atrás
+                    new["Duración"] = _dur
 
                 df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
                 df = _sanitize(df, COLS if "COLS" in globals() else None)
