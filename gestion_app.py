@@ -6,22 +6,56 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 import importlib
+import types
 
 from auth_google import google_login, logout
 
-# === Import robusto del módulo shared (evita SyntaxError por caracteres invisibles) ===
-_shared = importlib.import_module("shared")
-patch_streamlit_aggrid = getattr(_shared, "patch_streamlit_aggrid")
-inject_global_css      = getattr(_shared, "inject_global_css")
-ensure_df_main         = getattr(_shared, "ensure_df_main")
+# ===== Import robusto de shared con fallbacks =====
+def _fallback_ensure_df_main():
+    import os
+    path = os.path.join("data", "tareas.csv")
+    os.makedirs("data", exist_ok=True)
+
+    if "df_main" in st.session_state:
+        return
+
+    # columnas mínimas (mismas que vienes usando)
+    base_cols = ["Id","Área","Responsable","Tarea","Prioridad",
+                 "Evaluación","Fecha inicio","__DEL__"]
+    try:
+        if os.path.exists(path) and os.path.getsize(path) > 0:
+            df = pd.read_csv(path, encoding="utf-8-sig")
+        else:
+            df = pd.DataFrame([], columns=base_cols)
+    except Exception:
+        df = pd.DataFrame([], columns=base_cols)
+
+    if "__DEL__" not in df.columns:
+        df["__DEL__"] = False
+    df["__DEL__"] = df["__DEL__"].fillna(False).astype(bool)
+
+    if "Calificación" in df.columns:
+        df["Calificación"] = pd.to_numeric(df["Calificación"], errors="coerce").fillna(0).astype(int)
+
+    st.session_state["df_main"] = df
+
+try:
+    _shared = importlib.import_module("shared")
+    patch_streamlit_aggrid = getattr(_shared, "patch_streamlit_aggrid")
+    inject_global_css      = getattr(_shared, "inject_global_css")
+    ensure_df_main         = getattr(_shared, "ensure_df_main")
+except Exception:
+    # si shared.py tiene SyntaxError o falla el import, seguimos con stubs seguros
+    patch_streamlit_aggrid = lambda: None
+    inject_global_css      = lambda: None
+    ensure_df_main         = _fallback_ensure_df_main
 
 # 🔐 ACL / Roles
-from features.security import acl  # <-- NUEVO
-from utils.avatar import show_user_avatar_from_session  # <-- NUEVO (import avatar)
+from features.security import acl
+from utils.avatar import show_user_avatar_from_session
 
-# Ruta del logo (arriba, a la izquierda del sidebar)
 LOGO_PATH = Path("assets/branding/eni2025_logo.png")
-ROLES_XLSX = "data/security/roles.xlsx"  # <-- NUEVO
+ROLES_XLSX = "data/security/roles.xlsx"
 
 # ============ Config de página ============
 st.set_page_config(
@@ -38,34 +72,15 @@ inject_global_css()
 # 👉 Estilos específicos (banner + botón cerrar sesión + logo más a la izquierda)
 st.markdown("""
 <style>
-  .eni-banner{
-    margin:6px 0 14px;
-    font-weight:400;
-    font-size:16px;
-    color:#4B5563;
-  }
+  .eni-banner{ margin:6px 0 14px; font-weight:400; font-size:16px; color:#4B5563; }
   section[data-testid="stSidebar"] .stButton > button{
-    background:#C7A0FF !important;
-    color:#FFFFFF !important;
-    border:none !important;
-    border-radius:12px !important;
-    font-weight:700 !important;
+    background:#C7A0FF !important; color:#FFFFFF !important; border:none !important;
+    border-radius:12px !important; font-weight:700 !important;
     box-shadow:0 6px 14px rgba(199,160,255,.35) !important;
   }
   section[data-testid="stSidebar"] .stButton > button:hover{ filter:brightness(0.95); }
-
-  /* Logo un poco más a la izquierda */
-  section[data-testid="stSidebar"] .eni-logo-wrap{ margin-left:-28px; }
-
-  /* Radio de navegación: más compacto */
-  .eni-nav label{ padding:6px 8px !important; }
-
-  /* Compactar sidebar */
-  section[data-testid="stSidebar"] .block-container{
-    padding-top:6px !important;
-    padding-bottom:10px !important;
-  }
-  section[data-testid="stSidebar"] .eni-logo-wrap{ margin-top:-6px !important; }
+  section[data-testid="stSidebar"] .eni-logo-wrap{ margin-left:-28px; margin-top:-6px !important; }
+  section[data-testid="stSidebar"] .block-container{ padding-top:6px !important; padding-bottom:10px !important; }
   section[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{ gap:8px !important; }
   section[data-testid="stSidebar"] .avatar-wrap{ margin:6px 0 6px !important; }
   section[data-testid="stSidebar"] .avatar-wrap img{ border-radius:9999px !important; }
@@ -93,13 +108,11 @@ if not user_acl or not user_acl.get("is_active", False):
     st.error("No tienes acceso (usuario no registrado o inactivo).")
     st.stop()
 
-# Restringir por horario / fines de semana
 _ok, _msg = acl.can_access_now(user_acl)
 if not _ok:
     st.info(_msg)
     st.stop()
 
-# Helpers/flags para otras vistas
 st.session_state["acl_user"] = user_acl
 st.session_state["user_display_name"] = user_acl.get("display_name", email or "Usuario")
 st.session_state["user_dry_run"] = bool(user_acl.get("dry_run", False))
@@ -109,25 +122,19 @@ st.session_state["save_scope"] = user_acl.get("save_scope", "all")
 def _push_gsheets(df: pd.DataFrame):
     if "gsheets" not in st.secrets or "gcp_service_account" not in st.secrets:
         raise KeyError("Faltan 'gsheets' o 'gcp_service_account' en secrets.")
-
     import gspread
     from google.oauth2.service_account import Credentials
-
     scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-    creds = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"], scopes=scopes
-    )
+    creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scopes)
     gc = gspread.authorize(creds)
     ss = gc.open_by_url(st.secrets["gsheets"]["spreadsheet_url"])
     ws_name = st.secrets["gsheets"].get("worksheet", "TareasRecientes")
-
     try:
         ws = ss.worksheet(ws_name)
     except gspread.WorksheetNotFound:
         rows = str(max(1000, len(df) + 10))
         cols = str(max(26, len(df.columns) + 5))
         ws = ss.add_worksheet(title=ws_name, rows=rows, cols=cols)
-
     df_out = df.copy().fillna("").astype(str)
     values = [list(df_out.columns)] + df_out.values.tolist()
     ws.clear()
@@ -146,7 +153,6 @@ def _maybe_save_chain(persist_local_fn, df: pd.DataFrame):
     return res
 
 st.session_state["maybe_save"] = _maybe_save_chain
-# ========= FIN hook =========
 
 # Mapeo de claves de pestaña para permisos
 TAB_KEY_BY_SECTION = {
@@ -155,7 +161,6 @@ TAB_KEY_BY_SECTION = {
     "📅 Gantt": "gantt",
     "📊 Dashboard": "dashboard",
 }
-
 def render_if_allowed(tab_key: str, render_fn):
     if acl.can_see_tab(user_acl, tab_key):
         render_fn()
@@ -168,25 +173,12 @@ with st.sidebar:
         st.markdown("<div class='eni-logo-wrap'>", unsafe_allow_html=True)
         st.image(str(LOGO_PATH), width=120)
         st.markdown("</div>", unsafe_allow_html=True)
-
     st.markdown("<div class='eni-banner'>Esta es la plataforma unificada para gestión - ENI2025</div>", unsafe_allow_html=True)
 
     st.header("Secciones")
-    nav_labels = [
-        "📘 Gestión de tareas",
-        "🗂️ Kanban",
-        "📅 Gantt",
-        "📊 Dashboard",
-    ]
+    nav_labels = ["📘 Gestión de tareas","🗂️ Kanban","📅 Gantt","📊 Dashboard"]
     default_idx = nav_labels.index(st.session_state.get("nav_section", "📘 Gestión de tareas"))
-    nav_choice = st.radio(
-        "Navegación",
-        nav_labels,
-        index=default_idx,
-        label_visibility="collapsed",
-        key="nav_section",
-        horizontal=False,
-    )
+    nav_choice = st.radio("Navegación", nav_labels, index=default_idx, label_visibility="collapsed", key="nav_section", horizontal=False)
 
     st.divider()
     dn = st.session_state.get("user_display_name", email or "Usuario")
@@ -205,8 +197,6 @@ tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
 
 if section == "📘 Gestión de tareas":
     st.title("📘 Gestión de tareas")
-
-    # --- WRAPPER + CSS ANTI-BOTÓN FANTASMA ---
     st.markdown('<div class="eni-gestion-wrap">', unsafe_allow_html=True)
 
     def _render_gestion():
@@ -216,10 +206,8 @@ if section == "📘 Gestión de tareas":
         except Exception as e:
             st.info("Vista de Gestión de tareas pendiente.")
             st.exception(e)
-
     render_if_allowed(tab_key, _render_gestion)
 
-    # ✅ Oculta cualquier stButton fuera de .hist-actions (fila oficial) y .hist-search (Buscar)
     st.markdown("""
     <style>
       .eni-gestion-wrap .stButton{ display:none !important; }
@@ -227,12 +215,10 @@ if section == "📘 Gestión de tareas":
       .eni-gestion-wrap .hist-search .stButton{ display:inline-flex !important; }
     </style>
     """, unsafe_allow_html=True)
-
-    st.markdown('</div>', unsafe_allow_html=True)  # cierre del wrapper
+    st.markdown('</div>', unsafe_allow_html=True)
 
 elif section == "🗂️ Kanban":
     st.title("🗂️ Kanban")
-
     def _render_kanban():
         try:
             from features.kanban.view import render as render_kanban
@@ -240,12 +226,10 @@ elif section == "🗂️ Kanban":
         except Exception as e:
             st.info("Vista Kanban pendiente (features/kanban/view.py).")
             st.exception(e)
-
     render_if_allowed(tab_key, _render_kanban)
 
 elif section == "📅 Gantt":
     st.title("📅 Gantt")
-
     def _render_gantt():
         try:
             from features.gantt.view import render as render_gantt
@@ -253,14 +237,11 @@ elif section == "📅 Gantt":
         except Exception as e:
             st.info("Vista Gantt pendiente (features/gantt/view.py).")
             st.exception(e)
-
     render_if_allowed(tab_key, _render_gantt)
 
-else:  # "📊 Dashboard"
+else:
     st.title("📊 Dashboard")
-
     def _render_dashboard():
         st.caption("Próximamente: visualizaciones y KPIs del dashboard.")
         st.write("")
-
     render_if_allowed(tab_key, _render_dashboard)
