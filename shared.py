@@ -128,17 +128,60 @@ def write_sheet_tab(df: pd.DataFrame):
 
 def ensure_df_main():
     """
-    Inicializa st.session_state['df_main'] leyendo y escribiendo
-    SIEMPRE en data/tareas.csv (misma ruta para lectura/escritura).
+    Rehidrata st.session_state['df_main'] en este orden:
+    1) data/tareas.csv (persistencia local de 'Grabar')
+    2) Google Sheets pestaña 'TareasRecientes' (filtrando por usuario)
+    3) DataFrame vacío con columnas COLS
     """
     if "df_main" in st.session_state:
         return
+
+    # --- 1) Intento: archivo local ---
     base = read_local()
+
+    # --- 2) Fallback: Google Sheets (solo si local está vacío) ---
+    if base is None or base.empty:
+        try:
+            from utils.gsheets import open_sheet_by_url, read_df_from_worksheet  # type: ignore
+
+            # url desde secrets (admite ambas llaves)
+            url = st.secrets.get("gsheets_doc_url")
+            if not url:
+                try:
+                    url = st.secrets["sheets"]["sheet_url"]  # type: ignore
+                except Exception:
+                    url = None
+
+            if url and callable(open_sheet_by_url) and callable(read_df_from_worksheet):
+                sh = open_sheet_by_url(url)
+                df_sheet = read_df_from_worksheet(sh, "TareasRecientes")
+
+                email = st.session_state.get("user_email") or (st.session_state.get("user") or {}).get("email", "")
+                display_name = st.session_state.get("user_display_name", "") or ""
+
+                if isinstance(df_sheet, pd.DataFrame) and not df_sheet.empty:
+                    if "UserEmail" in df_sheet.columns and email:
+                        base = df_sheet[df_sheet["UserEmail"] == email].copy()
+                    elif "Responsable" in df_sheet.columns and display_name:
+                        base = df_sheet[df_sheet["Responsable"] == display_name].copy()
+                    else:
+                        base = df_sheet.copy()
+        except Exception:
+            # si no hay credenciales o utils/gsheets, seguimos al plan C
+            base = base if base is not None else pd.DataFrame()
+
+    # --- 3) Último recurso: DF vacío con columnas ---
+    if base is None or base.empty:
+        base = pd.DataFrame([], columns=COLS)
+
+    # Normalizaciones
+    base = base.loc[:, ~pd.Index(base.columns).duplicated()].copy()
     if "__DEL__" not in base.columns:
         base["__DEL__"] = False
     base["__DEL__"] = base["__DEL__"].fillna(False).astype(bool)
     if "Calificación" in base.columns:
         base["Calificación"] = pd.to_numeric(base["Calificación"], errors="coerce").fillna(0).astype(int)
+
     keep_cols = [c for c in COLS if c in base.columns] + (["__DEL__"] if "__DEL__" in base.columns else [])
     st.session_state["df_main"] = base[keep_cols].copy()
 
@@ -284,16 +327,5 @@ def inject_global_css():
 .form-card [data-testid="stHorizontalBlock"]:nth-of-type(2) > [data-testid="column"]:first-child [data-baseweb="select"] > div{ min-width:300px !important; }
 /* Topbar layout */
 .topbar, .topbar-ux, .topbar-na{ display:flex !important; align-items:center !important; gap:8px !important; }
-.topbar .stButton>button, .topbar-ux .stButton>button, .topbar-na .stButton>button{
-  height:var(--pill-h) !important; padding:0 16px !important; border-radius:10px !important; display:inline-flex !important; align-items:center !important;
-}
-/* PRIORIDAD / EVALUACIÓN */
-.topbar-pri, .topbar-eval{ display:flex !important; align-items:center !important; gap:8px !important; }
-.form-title-pri, .form-title-eval{
-  display:inline-flex !important; align-items:center !important; gap:.5rem !important; padding:6px 12px !important; border-radius:12px !important;
-  background:var(--pill-rosa) !important; border:1px solid var(--pill-rosa-bord) !important; color:#fff !important; font-weight:800 !important;
-  font-size:14px !important; letter-spacing:.2px !important; white-space:nowrap !important; margin:6px 0 10px 0 !important; width:var(--pill-width) !important;
-  justify-content:center !important; box-shadow:0 6px 16px rgba(214,154,194,.30) !important; min-height:var(--pill-h) !important; height:var(--pill-h) !important;
-}
-</style>
-""", unsafe_allow_html=True)
+topbar .stButton>button, .topbar-ux .stButton>button, .topbar-na .stButton>button{
+  height:var(--pill-h) !important; padding:0 16px !important; border-radius:10px !import
