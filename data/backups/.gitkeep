@@ -1,1 +1,4 @@
+# Ignorar backups generados, pero mantener la carpeta
+data/backups/*.csv
+!data/backups/.gitkeep
 
