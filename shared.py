@@ -81,12 +81,27 @@ def combine_dt(d, t):
 DATA_DIR = st.session_state.get("DATA_DIR", "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
+# Columnas base mínimas (no destructivo: luego preservamos extras)
 COLS = st.session_state.get(
     "COLS",
-    ["Id","Área","Responsable","Tarea","Prioridad","Evaluación","Fecha inicio","__DEL__"]
+    ["Id", "Área", "Responsable", "Tarea",
+     "Estado", "Prioridad", "Evaluación", "Calificación",
+     "Fase",
+     "Fecha inicio",
+     "Fecha Registro", "Hora Registro",
+     "Fecha estado actual", "Hora estado actual",
+     "__DEL__"]
 )
 TAB_NAME = st.session_state.get("TAB_NAME", "Tareas")
-COLS_XLSX = [c for c in COLS if c not in ("__DEL__","DEL")]
+COLS_XLSX = [c for c in COLS if c not in ("__DEL__", "DEL")]
+
+# Columnas de ALERTA que vamos a garantizar si la vista las usa
+ALERT_COLS = [
+    "¿Generó alerta?", "Nº alerta",
+    "Fecha de detección", "Hora de detección",
+    "¿Se corrigió?",
+    "Fecha de corrección", "Hora de corrección"
+]
 
 def _csv_path() -> str:
     """Ruta única de persistencia: data/tareas.csv"""
@@ -103,20 +118,16 @@ def _read_csv_safe(path: str, cols: list[str]) -> pd.DataFrame:
     for c in cols:
         if c not in df.columns:
             df[c] = None
-    # ordenar: primero las conocidas, luego el resto
+    # ordenar: primero las conocidas, luego el resto (preserva extras)
     df = df[[c for c in cols if c in df.columns] + [c for c in df.columns if c not in cols]]
     return df
 
 def read_local() -> pd.DataFrame:
-    """
-    Loader: lee SIEMPRE desde data/tareas.csv (ruta única).
-    """
+    """Lee SIEMPRE desde data/tareas.csv (ruta única)."""
     return _read_csv_safe(_csv_path(), COLS)
 
 def save_local(df: pd.DataFrame):
-    """
-    Guardado: escribe SIEMPRE en data/tareas.csv (ruta única).
-    """
+    """Escribe SIEMPRE en data/tareas.csv (ruta única)."""
     try:
         df.to_csv(_csv_path(), index=False, encoding="utf-8-sig")
     except Exception:
@@ -125,6 +136,59 @@ def save_local(df: pd.DataFrame):
 def write_sheet_tab(df: pd.DataFrame):
     """Placeholder si luego conectas a Google Sheets."""
     return False, "No conectado a Google Sheets (fallback activo)"
+
+def _ensure_defaults(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Normaliza default de columnas críticas SIN borrar ni reordenar otras columnas.
+    """
+    base = df.copy()
+
+    # Asegurar columnas base si faltan
+    ensure_map_str = {
+        "Estado": "No iniciado",
+        "Prioridad": "Media",
+        "Evaluación": "Sin evaluar",
+        "Fase": "",
+        "Fecha inicio": "",
+        "Fecha Registro": "",
+        "Hora Registro": "",
+        "Fecha estado actual": "",
+        "Hora estado actual": "",
+    }
+    for c, v in ensure_map_str.items():
+        if c not in base.columns:
+            base[c] = v
+        base[c] = base[c].fillna(v).replace({"nan": v})
+
+    # Calificación numérica segura 0..5
+    if "Calificación" not in base.columns:
+        base["Calificación"] = 0
+    base["Calificación"] = pd.to_numeric(base["Calificación"], errors="coerce").fillna(0).astype(int).clip(0, 5)
+
+    # Columna de marca de eliminación
+    if "__DEL__" not in base.columns:
+        base["__DEL__"] = False
+    base["__DEL__"] = base["__DEL__"].fillna(False).astype(bool)
+
+    # ===== Defaults para ALERTAS =====
+    if "¿Generó alerta?" not in base.columns:
+        base["¿Generó alerta?"] = "No"
+    base["¿Generó alerta?"] = base["¿Generó alerta?"].fillna("No").replace({"": "No"})
+
+    if "Nº alerta" not in base.columns:
+        base["Nº alerta"] = 0
+    base["Nº alerta"] = pd.to_numeric(base["Nº alerta"], errors="coerce").fillna(0).astype(int).clip(lower=0)
+
+    for c in ["Fecha de detección", "Hora de detección", "Fecha de corrección", "Hora de corrección"]:
+        if c not in base.columns:
+            base[c] = ""
+        base[c] = base[c].fillna("").replace({"nan": ""})
+
+    if "¿Se corrigió?" not in base.columns:
+        base["¿Se corrigió?"] = "No"
+    base["¿Se corrigió?"] = base["¿Se corrigió?"].fillna("No").replace({"": "No"})
+
+    return base
 
 def ensure_df_main():
     """
@@ -144,7 +208,6 @@ def ensure_df_main():
         try:
             from utils.gsheets import open_sheet_by_url, read_df_from_worksheet  # type: ignore
 
-            # url desde secrets (admite ambas llaves)
             url = st.secrets.get("gsheets_doc_url")
             if not url:
                 try:
@@ -174,16 +237,14 @@ def ensure_df_main():
     if base is None or base.empty:
         base = pd.DataFrame([], columns=COLS)
 
-    # Normalizaciones
+    # Normalizaciones + defaults sin perder columnas adicionales
     base = base.loc[:, ~pd.Index(base.columns).duplicated()].copy()
-    if "__DEL__" not in base.columns:
-        base["__DEL__"] = False
-    base["__DEL__"] = base["__DEL__"].fillna(False).astype(bool)
-    if "Calificación" in base.columns:
-        base["Calificación"] = pd.to_numeric(base["Calificación"], errors="coerce").fillna(0).astype(int)
+    base = _ensure_defaults(base)
 
-    keep_cols = [c for c in COLS if c in base.columns] + (["__DEL__"] if "__DEL__" in base.columns else [])
-    st.session_state["df_main"] = base[keep_cols].copy()
+    # Mantener orden: columnas base conocidas primero, luego el resto
+    keep_first = [c for c in COLS if c in base.columns]
+    others = [c for c in base.columns if c not in keep_first]
+    st.session_state["df_main"] = base[keep_first + others].copy()
 
 # --------- Fila en blanco ----------
 def blank_row():
