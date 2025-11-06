@@ -540,9 +540,11 @@ def render(user: dict | None = None):
                                 if need not in base.columns:
                                     base[need] = ""
 
-                            ts = now_lima_trimmed()
-                            f_now = pd.Timestamp(ts).strftime("%Y-%m-%d")
-                            h_now = pd.Timestamp(ts).strftime("%H:%M")
+                            # ==== AHORA SÍ: hora local Lima para sellos ====
+                            from datetime import datetime as _dt
+                            _local_now = (_dt.now(_TZ) if _TZ else _dt.now()).replace(second=0, microsecond=0)
+                            f_now = _local_now.strftime("%Y-%m-%d")
+                            h_now = _local_now.strftime("%H:%M")
 
                             b_i = base.set_index("Id")
                             c_i = changes.set_index("Id")
@@ -612,7 +614,8 @@ def render(user: dict | None = None):
 
                             # ===== Duración robusta tz =====
                             if "Duración" in b_i.columns and "Fecha Registro" in b_i.columns:
-                                ts_naive = pd.Timestamp(ts)
+                                # usar un 'ahora' NAIVE en hora Lima para evitar tz-aware vs tz-naive
+                                ts_naive = (pd.Timestamp(_local_now).tz_localize(None) if _TZ else pd.Timestamp(_local_now))
                                 def _mins_since(fr_val):
                                     d = _to_naive_local_one(fr_val)
                                     if pd.isna(d): return 0
