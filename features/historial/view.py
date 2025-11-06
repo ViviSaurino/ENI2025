@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 import re
 from io import BytesIO
-from datetime import datetime, time
+from datetime import datetime, time, date
 
 import pandas as pd
 import streamlit as st
@@ -263,17 +263,26 @@ def render(user: dict | None = None):
         fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
         fase_sel = cF.selectbox("Fase", options=["Todas"] + fases_all, index=0, key="hist_fase")
 
-        # Responsable (angosto)
+        # ========= AJUSTE 1: Responsable como MULTISELECT con placeholder =========
         df_resp_src = df_all.copy()
         if area_sel != "Todas":
             df_resp_src = df_resp_src[df_resp_src["Área"] == area_sel]
         if fase_sel != "Todas" and "Fase" in df_resp_src.columns:
             df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str) == fase_sel]
         responsables = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
-        resp_sel = cR.selectbox("Responsable", options=["Todos"] + responsables, index=0, key="hist_resp")
 
-        f_desde = cD.date_input("Desde", value=None, key="hist_desde")
-        f_hasta = cH.date_input("Hasta",  value=None, key="hist_hasta")
+        resp_multi = cR.multiselect(
+            "Responsable",
+            options=responsables,
+            default=[],
+            key="hist_resp",
+            placeholder="Selecciona responsable(s)"
+        )
+
+        # ========= AJUSTE 2: Fechas con valor por defecto HOY (como la imagen) =========
+        today = date.today()
+        f_desde = cD.date_input("Desde", value=today, key="hist_desde")
+        f_hasta = cH.date_input("Hasta",  value=today, key="hist_hasta")
 
         # Botón a la derecha, misma fila y mismo ancho que "Hasta"
         with cB:
@@ -296,8 +305,9 @@ def render(user: dict | None = None):
             df_view = df_view[df_view["Área"] == area_sel]
         if fase_sel != "Todas" and "Fase" in df_view.columns:
             df_view = df_view[df_view["Fase"].astype(str) == fase_sel]
-        if resp_sel != "Todos":
-            df_view = df_view[df_view["Responsable"].astype(str) == resp_sel]
+        # Responsable: si hay selección, filtra por cualquiera de los seleccionados
+        if resp_multi:
+            df_view = df_view[df_view["Responsable"].astype(str).isin(resp_multi)]
         if f_desde:
             df_view = df_view[df_view["Fecha inicio"].dt.date >= f_desde]
         if f_hasta:
