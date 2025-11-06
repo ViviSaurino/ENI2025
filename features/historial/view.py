@@ -27,7 +27,8 @@ DEFAULT_COLS = [
     "Cumplimiento","Evaluación","Calificación",
     "Fecha Pausado","Hora Pausado",
     "Fecha Cancelado","Hora Cancelado",
-    "Fecha Eliminado","Hora Eliminado"
+    "Fecha Eliminado","Hora Eliminado",
+    "Archivo"  # <<< NUEVO: asegurar presencia
 ]
 
 # ====== TZ helpers para evitar "tz-naive vs tz-aware" ======
@@ -515,7 +516,8 @@ def render(user: dict | None = None):
         "Fecha Pausado","Hora Pausado",
         "Fecha Cancelado","Hora Cancelado",
         "Fecha Eliminado","Hora Eliminado",
-        "__SEL__","__DEL__"
+        "__SEL__","__DEL__",
+        "Archivo"  # <<< NUEVO: la dejamos literalmente al final
     ]
     HIDDEN_COLS = [
         "¿Eliminar?","Estado modificado",
@@ -569,6 +571,20 @@ def render(user: dict | None = None):
     gob.configure_column("Fecha Vencimiento", headerName="Fecha límite")
     gob.configure_column("Fecha inicio", headerName="Fecha de inicio")
     gob.configure_column("Fecha Terminado", headerName="Fecha Terminado")
+
+    # <<< NUEVO: renderer visual para la columna Archivo >>>
+    archivo_renderer = JsCode("""
+    function(p){
+      const v = String(p.value||'').trim();
+      if(!v) return '—';
+      // chip visual; la descarga real se muestra al seleccionar la fila
+      return `<span style="display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border:1px solid #D0D7DE;border-radius:999px;cursor:pointer;">
+                📎 <span>Descargar</span>
+              </span>`;
+    }""")
+    if "Archivo" in df_grid.columns:
+        gob.configure_column("Archivo", headerName="Archivo", minWidth=160, flex=0,
+                             editable=False, cellRenderer=archivo_renderer)
 
     for ocultar in HIDDEN_COLS:
         if ocultar in df_grid.columns:
@@ -624,7 +640,8 @@ def render(user: dict | None = None):
         "Cumplimiento":180, "Evaluación":170, "Calificación":120,
         "Fecha Pausado":160, "Hora Pausado":140,
         "Fecha Cancelado":160, "Hora Cancelado":140,
-        "Fecha Eliminado":160, "Hora Eliminado":140
+        "Fecha Eliminado":160, "Hora Eliminado":140,
+        "Archivo":160
     }
 
     for c, fx in [("Tarea",3), ("Tipo",1), ("Detalle",2), ("Ciclo de mejora",1), ("Complejidad",1), ("Prioridad",1), ("Estado",1),
@@ -637,7 +654,8 @@ def render(user: dict | None = None):
                   ("Cumplimiento",1), ("Evaluación",1), ("Calificación",0),
                   ("Fecha Pausado",1), ("Hora Pausado",1),
                   ("Fecha Cancelado",1), ("Hora Cancelado",1),
-                  ("Fecha Eliminado",1), ("Hora Eliminado",1)]:
+                  ("Fecha Eliminado",1), ("Hora Eliminado",1),
+                  ("Archivo",0)]:
         if c in df_grid.columns:
             gob.configure_column(
                 c,
@@ -650,7 +668,7 @@ def render(user: dict | None = None):
                     time_only_fmt if c in ["Hora Registro","Hora de inicio","Hora Pausado","Hora Cancelado","Hora Eliminado",
                                            "Hora Terminado","Hora de detección","Hora de corrección","Hora Vencimiento"] else
                     date_time_fmt if c in ["Fecha Terminado","Fecha de detección","Hora de corrección"] else
-                    (None if c in ["Calificación","Prioridad"] else fmt_dash)
+                    (None if c in ["Calificación","Prioridad","Archivo"] else fmt_dash)
                 ),
                 suppressMenu=True if c in ["Fecha Registro","Hora Registro","Fecha inicio","Hora de inicio",
                                            "Fecha Vencimiento","Hora Vencimiento",
@@ -757,6 +775,65 @@ def render(user: dict | None = None):
             st.session_state["df_main"] = b_i.reset_index()
         except Exception:
             pass
+
+    # ============== DESCARGA DE ARCHIVOS (fila seleccionada) ==============
+    # <<< NUEVO: muestra botón(es) de descarga si hay "Archivo" en la(s) fila(s) seleccionada(s)
+    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+    sel_rows = []
+    try:
+        sel_rows = grid.get("selected_rows") or []
+    except Exception:
+        sel_rows = []
+    if isinstance(sel_rows, pd.DataFrame):
+        sel_rows = sel_rows.to_dict("records")
+
+    def _resolve_local_path(val: str, row_id: str) -> tuple[str, str] | None:
+        """Devuelve (path, filename) si existe; soporta rutas relativas/absolutas."""
+        if not val:
+            return None
+        v = str(val).strip()
+        # URL pública: muestro link en vez de download
+        if v.lower().startswith(("http://", "https://")):
+            return None
+        # Si ya es ruta existente
+        if os.path.isabs(v) and os.path.isfile(v):
+            return (v, os.path.basename(v))
+        if os.path.isfile(v):
+            return (v, os.path.basename(v))
+        # Heurísticas por convención: data/files/<Id>/<nombre>
+        base = os.path.basename(v)
+        candidates = [
+            os.path.join("data", "files", row_id, base),
+            os.path.join("data", "uploads", row_id, base),
+            os.path.join("data", base),
+        ]
+        for p in candidates:
+            if os.path.isfile(p):
+                return (p, os.path.basename(p))
+        return None
+
+    has_any_download = False
+    for r in sel_rows:
+        rid = str(r.get("Id","")).strip()
+        av  = str(r.get("Archivo","")).strip()
+        if not rid or not av:
+            continue
+        # Si es URL, muestro link; si es local, muestro download_button
+        if av.lower().startswith(("http://","https://")):
+            st.link_button(f"📎 Abrir archivo ({rid})", av, use_container_width=False)
+            has_any_download = True
+        else:
+            res = _resolve_local_path(av, rid)
+            if res:
+                path, fname = res
+                try:
+                    with open(path, "rb") as fh:
+                        st.download_button(f"⬇️ Descargar ({rid}) — {fname}", fh.read(), file_name=fname, use_container_width=False)
+                        has_any_download = True
+                except Exception:
+                    pass
+    if (sel_rows and not has_any_download):
+        st.info("La fila seleccionada tiene valor en “Archivo”, pero no encontré un archivo local ni URL válida.")
 
     # ---- Botonera alineada ----
     left_spacer = A_f + Fw_f + T_width_f
