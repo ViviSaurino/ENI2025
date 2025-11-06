@@ -61,12 +61,11 @@ def _gsheets_client():
     return ss, ws_name
 
 def pull_user_slice_from_sheet(replace_df_main: bool = True):
-    """Lee toda la hoja y opcionalmente reemplaza st.session_state['df_main']."""
+    """Lee toda la hoja y opcionalmente reemplaza st.session_state['df_main'].""" 
     ss, ws_name = _gsheets_client()
     try:
         ws = ss.worksheet(ws_name)
     except Exception:
-        # No existe la hoja => nada que leer
         return
     values = ws.get_all_values()
     if not values:
@@ -88,7 +87,6 @@ def push_user_slice_to_sheet():
     try:
         ws = ss.worksheet(ws_name)
     except Exception:
-        # crea con tamaño generoso
         rows = str(max(1000, len(st.session_state["df_main"]) + 10))
         cols = str(max(26, len(st.session_state["df_main"].columns) + 5))
         ws = ss.add_worksheet(title=ws_name, rows=rows, cols=cols)
@@ -98,7 +96,7 @@ def push_user_slice_to_sheet():
     ws.clear()
     ws.update("A1", [list(df_out.columns)] + df_out.values.tolist())
 
-# ====== Soporte de exportación (igual que tenías) ======
+# ====== Soporte de exportación ======
 def export_excel(df: pd.DataFrame, sheet_name: str = TAB_NAME) -> bytes:
     try:
         buf = BytesIO()
@@ -146,15 +144,14 @@ def render(user: dict | None = None):
     st.markdown("""
     <style>
     :root{
-      /* Coral muy claro que armoniza con la píldora */
-      --hist-card-bg:#FFE7E6;
-      --hist-card-bd:#F3B6B1;
-      --hist-card-fg:#7A2E2A;
+      /* Coral MUY claro para la tarjeta */
+      --hist-card-bg:#FFEDEB;   /* fondo */
+      --hist-card-bd:#F3B6B1;   /* borde */
+      --hist-card-fg:#7A2E2A;   /* texto */
       --hist-pad-x:16px; --hist-border-w:2px; --hist-border-c:#EF4444;
     }
 
-    /* ►► El contenedor inmediatamente después del anchor
-           se pinta como tarjeta coral e incluye texto + filtros + botón */
+    /* Tarjeta coral que envuelve nota + filtros + botón */
     #hist-card-anchor + div{
       background:var(--hist-card-bg)!important;
       border:1px solid var(--hist-card-bd)!important;
@@ -163,10 +160,17 @@ def render(user: dict | None = None):
       box-shadow:0 0 0 1px rgba(0,0,0,0.02) inset;
       margin-bottom:6px;
     }
-    #hist-card-anchor + div .hist-help{
+
+    /* Nota / indicaciones (estilo banda, aún más claro) */
+    #hist-card-anchor + div .hist-note{
+      display:flex; align-items:flex-start; gap:8px;
+      background:#FFF6F5;
+      border:1px dashed var(--hist-card-bd);
       color:var(--hist-card-fg)!important;
-      margin-bottom:10px;
+      border-radius:8px;
+      padding:8px 12px;
       font-size:0.95rem;
+      margin-bottom:12px;
     }
 
     /* Botón Buscar */
@@ -174,7 +178,7 @@ def render(user: dict | None = None):
       height:38px!important; border-radius:10px!important; width:100%;
     }
 
-    /* ===== Estilos de tabla y botonería inferior ===== */
+    /* ===== Tabla y botonería inferior ===== */
     .ag-theme-balham .row-deleted .ag-cell {
       text-decoration: line-through; background-color:#FEE2E2 !important;
       color:#7F1D1D !important; opacity:.95;
@@ -207,17 +211,18 @@ def render(user: dict | None = None):
     # ===== Card (ancla + contenedor real) =====
     st.markdown('<div id="hist-card-anchor"></div>', unsafe_allow_html=True)
     with st.container():
-        # Texto de ayuda DENTRO del rectángulo coral
+        # Nota / indicaciones DENTRO del rectángulo coral
         st.markdown(
-            '<div class="hist-help">🕒 Filtra y guarda tus tareas. Tarea y Detalle solo se editan para correcciones. '
-            'Excel: opcional · Sheets: obligatorio para que el avance quede en el historial.</div>',
+            '<div class="hist-note">📌 <b>Filtra y guarda tus tareas.</b> '
+            '“Tarea” y “Detalle” solo se editan para correcciones. '
+            '<b>Excel:</b> opcional · <b>Sheets:</b> obligatorio para que el avance quede en el historial.</div>',
             unsafe_allow_html=True
         )
 
         # Proporciones para que TODO quepa en UNA sola fila
         W_AREA   = 1.15
         W_FASE   = 1.25
-        W_RESP   = 1.60  # ← Responsable más angosto
+        W_RESP   = 1.60  # Responsable más angosto
         W_DESDE  = 1.05
         W_HASTA  = 1.05
         W_BUSCAR = W_HASTA  # mismo ancho que "Hasta"
@@ -310,7 +315,7 @@ def render(user: dict | None = None):
         try:
             if isinstance(v, time):      return f"{v.hour:02d}:{v.minute:02d}"
             if isinstance(v, (pd.Timestamp, datetime)): return f"{v.hour:02d}:{v.minute:02d}"
-            s = str(v).trim() if hasattr(str(v), "trim") else str(v).strip()
+            s = str(v).strip()
             if not s or s.lower() in {"nan","nat","none","null"}: return ""
             m = re.match(r"^(\d{1,2}):(\d{2})", s)
             if m: return f"{int(m.group(1)):02d}:{int(m.group(2)):02d}"
@@ -328,7 +333,7 @@ def render(user: dict | None = None):
             df_view["Estado"] = ""
         df_view.loc[mask_em, "Estado"] = _em[mask_em]
 
-    # 👉 Default para Estado si viene vacío
+    # Default Estado
     if "Estado" not in df_view.columns:
         df_view["Estado"] = ""
     df_view["Estado"] = df_view["Estado"].apply(lambda s: "No iniciado" if str(s).strip() in {"", "nan", "NaN"} else s)
@@ -436,7 +441,7 @@ def render(user: dict | None = None):
     df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()
     df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
 
-    # 🔧 Eliminar del GRID las columnas técnicas que causaban la "columna fantasma"
+    # Eliminar del GRID las columnas técnicas
     for tech_col in ["__SEL__", "__DEL__", "¿Eliminar?"]:
         if tech_col in df_grid.columns:
             df_grid.drop(columns=[tech_col], inplace=True, errors="ignore")
@@ -469,7 +474,7 @@ def render(user: dict | None = None):
     gob.configure_column("Fecha inicio", headerName="Fecha de inicio")
     gob.configure_column("Fecha Terminado", headerName="Fecha Terminado")
 
-    # 🔒 Oculta otras columnas técnicas si quedara alguna
+    # Oculta técnicas restantes
     for ocultar in HIDDEN_COLS:
         if ocultar in df_grid.columns:
             gob.configure_column(ocultar, hide=True, suppressMenu=True, filter=False, width=1, maxWidth=1, minWidth=1)
