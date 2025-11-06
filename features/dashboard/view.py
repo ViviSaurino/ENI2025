@@ -6,12 +6,16 @@ import types
 import pandas as pd
 import streamlit as st  # <-- IMPORT OK
 
-# ⛳ Carga del loader de arranque para rehidratar df_main
+# ⛳ Carga del loader de arranque para rehidratar df_main + hora Lima
 try:
-    from shared import ensure_df_main as _ensure_df_main
+    from shared import ensure_df_main as _ensure_df_main, now_lima_trimmed
 except Exception:
     def _ensure_df_main():
         pass
+    def now_lima_trimmed():
+        # fallback simple en caso extremo (sin TZ)
+        from datetime import datetime
+        return datetime.now().replace(second=0, microsecond=0)
 
 # 🔐 ACL (para marcar modo editor / solo lectura en tabs específicas)
 try:
@@ -224,6 +228,96 @@ def _call_view(mod_path: str, candidates: tuple[str, ...], **kwargs):
     except Exception as e:
         st.exception(e)
 
+# ---------- Semillas para "Nueva tarea" (se aplican después de la subvista) ----------
+def _apply_new_task_seeds(prev_ids: set[str]):
+    """
+    Detecta filas nuevas por Id y aplica:
+    - Estado = "No iniciado"
+    - Fase: si es "Otros" y hay texto en 'Detalle', usa ese texto
+    - Fecha/Hora Registro en hora Lima (minutos)
+    - Prioridad = "Media", Evaluación = "Sin evaluar", Calificación = 0
+    - Si Fecha inicio está vacía, la iguala a Fecha Registro
+    """
+    df = st.session_state.get("df_main")
+    if not isinstance(df, pd.DataFrame) or df.empty:
+        return
+
+    if "Id" not in df.columns:
+        return
+
+    cur_ids = df["Id"].astype(str).fillna("")
+    new_mask = ~cur_ids.isin(prev_ids)
+    if not new_mask.any():
+        return
+
+    ts = now_lima_trimmed()
+    fecha_reg = ts.date()
+    hora_reg = ts.strftime("%H:%M")
+
+    # Column helpers
+    def _ensure_col(name, default):
+        if name not in df.columns:
+            df[name] = default
+        df[name] = df[name].fillna(default)
+
+    _ensure_col("Estado", "No iniciado")
+    _ensure_col("Prioridad", "Media")
+    _ensure_col("Evaluación", "Sin evaluar")
+    if "Calificación" not in df.columns:
+        df["Calificación"] = 0
+    df["Calificación"] = pd.to_numeric(df["Calificación"], errors="coerce").fillna(0).astype(int)
+
+    if "Fecha Registro" not in df.columns:
+        df["Fecha Registro"] = ""
+    if "Hora Registro" not in df.columns:
+        df["Hora Registro"] = ""
+    if "Fecha inicio" not in df.columns:
+        df["Fecha inicio"] = ""
+
+    if "Fase" not in df.columns:
+        df["Fase"] = ""
+
+    # Posibles nombres de detalle capturados por la subvista
+    detalle_cols = [c for c in ("Detalle", "Detalle de tarea", "Detalle tarea") if c in df.columns]
+
+    for idx in df.index[new_mask]:
+        # Estado
+        if str(df.at[idx, "Estado"]).strip() == "" or str(df.at[idx, "Estado"]).lower() == "nan":
+            df.at[idx, "Estado"] = "No iniciado"
+
+        # Fase (si vino "Otros" y hay detalle)
+        fase_val = str(df.at[idx, "Fase"]).strip()
+        if fase_val.lower() == "otros":
+            detalle_txt = ""
+            for dc in detalle_cols:
+                val = str(df.at[idx, dc]).strip()
+                if val and val.lower() != "nan":
+                    detalle_txt = val
+                    break
+            if detalle_txt:
+                df.at[idx, "Fase"] = detalle_txt  # reemplaza "Otros" por el texto específico
+
+        # Huella de creación
+        if not str(df.at[idx, "Fecha Registro"]).strip():
+            df.at[idx, "Fecha Registro"] = fecha_reg
+        if not str(df.at[idx, "Hora Registro"]).strip():
+            df.at[idx, "Hora Registro"] = hora_reg
+        if not str(df.at[idx, "Fecha inicio"]).strip():
+            df.at[idx, "Fecha inicio"] = df.at[idx, "Fecha Registro"]
+
+        # Defaults útiles
+        if not str(df.at[idx, "Prioridad"]).strip():
+            df.at[idx, "Prioridad"] = "Media"
+        if not str(df.at[idx, "Evaluación"]).strip():
+            df.at[idx, "Evaluación"] = "Sin evaluar"
+        try:
+            df.at[idx, "Calificación"] = int(df.at[idx, "Calificación"])
+        except Exception:
+            df.at[idx, "Calificación"] = 0
+
+    # Persistimos en sesión (misma referencia, pero explícito para claridad)
+    st.session_state["df_main"] = df
+
 # ---------- Vista principal: arma las 6 secciones en pestañas ----------
 def render_all(user: dict | None = None):
     # ✅ Rehidratar df_main antes de pintar cualquier pestaña
@@ -231,18 +325,14 @@ def render_all(user: dict | None = None):
 
     email = (user or {}).get("email") or st.session_state.get("user_email", "")
 
-    # ⛔ Se elimina el subtítulo duplicado:
-    # st.subheader("🗂️ Gestión – ENI 2025")
-
     if email:
         st.caption(f"Sesión: {email}")
 
     # === ACL flags (editor / solo lectura) ===
     user_acl = st.session_state.get("acl_user", {}) if isinstance(st.session_state.get("acl_user", {}), dict) else {}
     IS_EDITOR = bool(user_acl.get("can_edit_all_tabs", False))
-    # Guardamos flags para que sub-vistas puedan leerlos sin romper firmas
     st.session_state["IS_EDITOR"] = IS_EDITOR
-    # Columnas de solo lectura según ACL (si existe helper; si no, set vacío)
+
     readonly_cols = set()
     if acl and hasattr(acl, "get_readonly_cols"):
         try:
@@ -251,16 +341,12 @@ def render_all(user: dict | None = None):
             readonly_cols = set()
     st.session_state["READONLY_COLS"] = readonly_cols
 
-    # Badge helper para indicar modo
     def _badge_readonly(msg: str = "🔒 Solo lectura. Puedes filtrar, pero no editar."):
         st.markdown(
             f"<div style='margin:2px 0 10px;padding:8px 10px;border-radius:10px;"
             f"background:#F1F5F9;color:#334155;font-size:13px;'>{msg}</div>",
             unsafe_allow_html=True
         )
-
-    # ⛔ Se elimina el banner azul informativo:
-    # st.info("La vista principal está lista para conectar tus tablas, filtros y gráficos.")
 
     tabs = st.tabs([
         "➕ Nueva tarea",
@@ -274,13 +360,20 @@ def render_all(user: dict | None = None):
     # 1) Nueva tarea
     with tabs[0]:
         with st.spinner("Cargando 'Nueva tarea'..."):
+            # snapshot de Ids antes de que la subvista agregue filas
+            df_before = st.session_state.get("df_main", pd.DataFrame())
+            ids_before = set(df_before["Id"].astype(str)) if isinstance(df_before, pd.DataFrame) and "Id" in df_before.columns else set()
+
             _call_view(
                 "features.nueva_tarea.view",
                 ("render", "render_view", "main", "app", "render_section", "ui"),
                 user=user
             )
 
-    # 2) Editar estado  (en tu repo la carpeta es 'editar_tarea')
+            # aplicar semillas a las filas nuevas creadas por la subvista
+            _apply_new_task_seeds(ids_before)
+
+    # 2) Editar estado
     with tabs[1]:
         with st.spinner("Cargando 'Editar estado'..."):
             _call_view(
@@ -300,11 +393,9 @@ def render_all(user: dict | None = None):
 
     # 4) Prioridad (solo lectura para no-editores, pero con filtros)
     with tabs[3]:
-        # Flag de solo lectura visible
         if not IS_EDITOR:
             _badge_readonly("🔒 Solo lectura en 'Prioridad'. Puedes filtrar, pero no editar ni guardar.")
         with st.spinner("Cargando 'Prioridad'..."):
-            # Sub-vista leerá st.session_state['IS_EDITOR'] y ['READONLY_COLS'] si lo deseas
             _call_view(
                 "features.prioridad.view",
                 ("render", "render_view", "main", "app", "ui"),
@@ -326,7 +417,7 @@ def render_all(user: dict | None = None):
     with tabs[5]:
         with st.spinner("Cargando 'Tareas recientes'..."):
             _call_view(
-                "features.historial.view",  # <- sub-vista con botones alineados
+                "features.historial.view",
                 ("render", "render_recientes", "render_tabla", "render_view", "main", "app", "ui"),
                 user=user
             )
