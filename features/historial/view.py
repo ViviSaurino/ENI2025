@@ -173,8 +173,11 @@ def render(user: dict | None = None):
       border-top:var(--hist-border-w) solid var(--hist-border-c);
     }
     .hist-actions [data-testid="column"] > div{ display:flex; align-items:center; height:46px; }
-    .hist-actions .stButton > button{ height:38px!important; border-radius:10px!important; width:100%; white-space:nowrap; } /* ⬅ no wrap */
-    .hist-search .stButton > button{ margin-top:28px!important; height:38px!important; } /* ⬅ alinea Buscar con los filtros */
+    .hist-actions .stButton > button{ height:38px!important; border-radius:10px!important; width:100%; white-space:nowrap; }
+
+    /* Botón Buscar abajo a la izquierda (fuera del recuadro de filtros) */
+    .hist-search-row{ margin-top:8px; }
+    .hist-search-row .stButton>button{ height:38px!important; border-radius:10px!important; }
 
     :root{ --muted-bg:#ECEFF1; --muted-fg:#90A4AE; }
     .ag-theme-balham .ag-header-cell.muted-col .ag-header-cell-label{ color:var(--muted-fg)!important; }
@@ -197,42 +200,42 @@ def render(user: dict | None = None):
     # ===== Proporciones de filtros =====
     A_f, Fw_f, T_width_f, D_f, R_f, C_f = 1.80, 2.10, 3.00, 1.60, 1.40, 1.20
 
-    # ===== FILA DE 5 FILTROS + Buscar =====
-    with st.form("hist_filtros_v1", clear_on_submit=False):
-        cA, cF, cR, cD, cH, cB = st.columns(
-            [A_f, Fw_f, T_width_f, D_f, R_f, C_f],
-            gap="medium",
-            vertical_alignment="bottom"
-        )
+    # ===== FILA DE 5 FILTROS =====
+    cA, cF, cR, cD, cH = st.columns(
+        [A_f, Fw_f, T_width_f, D_f, R_f],
+        gap="medium",
+        vertical_alignment="bottom"
+    )
 
-        area_sel = cA.selectbox(
-            "Área",
-            options=["Todas"] + st.session_state.get(
-                "AREAS_OPC",
-                ["Jefatura","Gestión","Metodología","Base de datos","Monitoreo","Capacitación","Consistencia"]
-            ),
-            index=0, key="hist_area"
-        )
+    area_sel = cA.selectbox(
+        "Área",
+        options=["Todas"] + st.session_state.get(
+            "AREAS_OPC",
+            ["Jefatura","Gestión","Metodología","Base de datos","Monitoreo","Capacitación","Consistencia"]
+        ),
+        index=0, key="hist_area"
+    )
 
-        fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
-        fase_sel = cF.selectbox("Fase", options=["Todas"] + fases_all, index=0, key="hist_fase")
+    fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+    fase_sel = cF.selectbox("Fase", options=["Todas"] + fases_all, index=0, key="hist_fase")
 
-        df_resp_src = df_all.copy()
-        if area_sel != "Todas":
-            df_resp_src = df_resp_src[df_resp_src["Área"] == area_sel]
-        if fase_sel != "Todas" and "Fase" in df_resp_src.columns:
-            df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str) == fase_sel]
-        responsables = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
-        resp_sel = cR.selectbox("Responsable", options=["Todos"] + responsables, index=0, key="hist_resp")
+    df_resp_src = df_all.copy()
+    if area_sel != "Todas":
+        df_resp_src = df_resp_src[df_resp_src["Área"] == area_sel]
+    if fase_sel != "Todas" and "Fase" in df_resp_src.columns:
+        df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str) == fase_sel]
+    responsables = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+    resp_sel = cR.selectbox("Responsable", options=["Todos"] + responsables, index=0, key="hist_resp")
 
-        f_desde = cD.date_input("Desde", value=None, key="hist_desde")
-        f_hasta = cH.date_input("Hasta",  value=None, key="hist_hasta")
+    f_desde = cD.date_input("Desde", value=None, key="hist_desde")
+    f_hasta = cH.date_input("Hasta",  value=None, key="hist_hasta")
 
-        # 🔧 Botón alineado con la fila
-        with cB:
-            st.markdown('<div class="hist-search">', unsafe_allow_html=True)
-            hist_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+    # ===== Botón Buscar ABAJO-IZQUIERDA (fuera del bloque de filtros) =====
+    st.markdown('<div class="hist-search-row">', unsafe_allow_html=True)
+    btn_left, _btn_spacer = st.columns([0.6, 6], gap="small")
+    with btn_left:
+        hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # Toggle mostrar/ocultar eliminadas
     show_deleted = st.toggle("Mostrar eliminadas (tachadas)", value=True, key="hist_show_deleted")
@@ -412,8 +415,10 @@ def render(user: dict | None = None):
     df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()
     df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
 
-    if "¿Eliminar?" in df_grid.columns:
-        df_grid.drop(columns=["¿Eliminar?"], inplace=True, errors="ignore")
+    # 🔧 Eliminar del GRID las columnas técnicas que causaban la "columna fantasma"
+    for tech_col in ["__SEL__", "__DEL__", "¿Eliminar?"]:
+        if tech_col in df_grid.columns:
+            df_grid.drop(columns=[tech_col], inplace=True, errors="ignore")
 
     # ================= GRID OPTIONS =================
     gob = GridOptionsBuilder.from_dataframe(df_grid)
@@ -443,7 +448,7 @@ def render(user: dict | None = None):
     gob.configure_column("Fecha inicio", headerName="Fecha de inicio")
     gob.configure_column("Fecha Terminado", headerName="Fecha Terminado")
 
-    # 🔒 Esconde columnas técnicas (y las fuerza a 1px para evitar "columna en blanco")
+    # 🔒 Oculta otras columnas técnicas si quedara alguna
     for ocultar in HIDDEN_COLS:
         if ocultar in df_grid.columns:
             gob.configure_column(ocultar, hide=True, suppressMenu=True, filter=False, width=1, maxWidth=1, minWidth=1)
