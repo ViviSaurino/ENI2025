@@ -318,6 +318,27 @@ def _apply_new_task_seeds(prev_ids: set[str]):
     # Persistimos en sesión (misma referencia, pero explícito para claridad)
     st.session_state["df_main"] = df
 
+# ---------- Preparar "Tareas recientes": asegurar columnas visibles y defaults ----------
+def _prepare_historial_for_display():
+    """
+    Asegura que df_main traiga las columnas que deben mostrarse en 'Tareas recientes'
+    y que 'Estado' tenga el default 'No iniciado' cuando esté vacío.
+    Además, deja una pista opcional para la subvista con las columnas a mostrar.
+    """
+    df = st.session_state.get("df_main", pd.DataFrame()).copy()
+    if not isinstance(df, pd.DataFrame):
+        df = pd.DataFrame()
+    for col in ["Fase", "Estado", "Fecha Registro", "Hora Registro"]:
+        if col not in df.columns:
+            df[col] = ""
+    # default de Estado
+    df["Estado"] = df["Estado"].astype(str).fillna("")
+    df.loc[df["Estado"].str.strip().isin(["", "nan"]), "Estado"] = "No iniciado"
+
+    st.session_state["df_main"] = df
+    # Pista para la subvista (si la usa): forzar estas columnas en la tabla
+    st.session_state["hist_force_cols"] = ["Id", "Responsable", "Tarea", "Fase", "Estado", "Fecha Registro", "Hora Registro"]
+
 # ---------- Vista principal: arma las 6 secciones en pestañas ----------
 def render_all(user: dict | None = None):
     # ✅ Rehidratar df_main antes de pintar cualquier pestaña
@@ -416,6 +437,8 @@ def render_all(user: dict | None = None):
     # 6) Tareas recientes — sub-vista
     with tabs[5]:
         with st.spinner("Cargando 'Tareas recientes'..."):
+            # ✅ asegurar columnas y defaults solicitados antes de pintar la subvista
+            _prepare_historial_for_display()
             _call_view(
                 "features.historial.view",
                 ("render", "render_recientes", "render_tabla", "render_view", "main", "app", "ui"),
