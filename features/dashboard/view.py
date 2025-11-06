@@ -23,6 +23,26 @@ except Exception:
 
 SHEET_TAB = "TareasRecientes"  # nombre de la pestaña en Google Sheets
 
+
+# ========= Persistencia local (para botón 💾 Grabar en Historial) =========
+# Guardamos un CSV simple en /data/local/df_main.csv para no requerir dependencias extra.
+def _local_store_path() -> str:
+    base_dir = os.path.join("data", "local")
+    os.makedirs(base_dir, exist_ok=True)
+    return os.path.join(base_dir, "df_main.csv")
+
+def _save_local(df: pd.DataFrame):
+    """
+    Persiste el DataFrame en disco para que sobreviva al cierre de sesión.
+    Se escribe en CSV UTF-8 (sin índice) en data/local/df_main.csv.
+    """
+    path = _local_store_path()
+    # Evitar objetos raros no serializables; CSV maneja bien strings/numéricas/fechas.
+    df_to_save = df.copy()
+    # (sin casting agresivo: respetamos tipos; pandas manejará NaN/NaT)
+    df_to_save.to_csv(path, index=False, encoding="utf-8")
+
+
 def _ensure_user_cols(df: pd.DataFrame) -> pd.DataFrame:
     """Asegura columna UserEmail en el slice del usuario (sin pisar otras)."""
     out = df.copy()
