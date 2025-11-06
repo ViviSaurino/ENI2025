@@ -11,6 +11,14 @@ from st_aggrid import (
     JsCode,
 )
 
+# Hora Lima para sellado de cambios
+try:
+    from shared import now_lima_trimmed
+except Exception:
+    from datetime import datetime
+    def now_lima_trimmed():
+        return datetime.now().replace(second=0, microsecond=0)
+
 def render(user: dict | None = None):
     # ================== EDITAR ESTADO ==================
     st.session_state.setdefault("est_visible", True)  # siempre visible
@@ -32,7 +40,7 @@ def render(user: dict | None = None):
           /* Encabezados más legibles: permiten salto de línea y mayor altura */
           #est-section .ag-header-cell-label{
             font-weight: 400 !important;
-            white-space: normal !important;   /* <-- permite que el título se parta en 2 líneas */
+            white-space: normal !important;
             line-height: 1.15 !important;
           }
           #est-section .ag-body-horizontal-scroll,
@@ -46,7 +54,7 @@ def render(user: dict | None = None):
             background:#A7C8F0; color:#ffffff; font-weight:700;
             box-shadow:0 6px 14px rgba(167,200,240,.35);
             user-select:none;
-            margin: 4px 0 16px;              /* <-- más separación respecto a las indicaciones */
+            margin: 4px 0 16px;
           }
           .est-pill span{ display:inline-flex; gap:8px; align-items:center; }
         </style>
@@ -178,7 +186,11 @@ def render(user: dict | None = None):
                 if need not in base.columns:
                     base[need] = ""
 
-            # Normalizaciones por estado
+            # === Defaults solicitados ===
+            base["Estado"] = base["Estado"].astype(str)
+            base.loc[base["Estado"].str.strip().isin(["", "nan"]), "Estado"] = "No iniciado"
+
+            # Normalizaciones por estado (solo visual; no se escriben en df_main)
             def _date_norm(col_main, col_fb=None):
                 s = pd.to_datetime(base[col_main], errors="coerce").dt.normalize()
                 if col_fb:
@@ -231,6 +243,13 @@ def render(user: dict | None = None):
 
             fecha_estado_final = fecha_estado_exist.where(fecha_estado_exist.notna(), fecha_from_estado)
             hora_estado_final  = hora_estado_exist.where(hora_estado_exist.str.strip() != "", hora_from_estado)
+
+            # Fallback visual adicional solicitado: si aún está vacío, usar Fecha/Hora Registro (solo visual)
+            fecha_estado_final = fecha_estado_final.where(
+                fecha_estado_final.notna(), pd.to_datetime(base.get("Fecha Registro"), errors="coerce").dt.normalize()
+            )
+            hora_reg_str = base.get("Hora Registro", pd.Series("", index=base.index)).astype(str)
+            hora_estado_final = hora_estado_final.where(hora_estado_final.str.strip() != "", hora_reg_str)
 
             df_view = pd.DataFrame({
                 "Id":   base["Id"].astype(str),
@@ -312,10 +331,9 @@ def render(user: dict | None = None):
             domLayout="normal",
             ensureDomOrder=True,
             rowHeight=38,
-            headerHeight=60,               # <-- más alto para que el texto envuelto no se corte
+            headerHeight=60,
             suppressHorizontalScroll=True
         )
-        # Encabezados con salto de línea automático
         gob.configure_default_column(wrapHeaderText=True, autoHeaderHeight=True)
 
         gob.configure_selection("single", use_checkbox=False)
@@ -358,26 +376,56 @@ def render(user: dict | None = None):
                         st.info("No hay cambios para guardar.")
                     else:
                         grid_data["Id"] = grid_data["Id"].astype(str)
+
+                        # Filas con nuevo estado propuesto
+                        changes = grid_data.loc[
+                            grid_data["Estado modificado"].astype(str).str.strip() != "",
+                            ["Id", "Estado modificado"]
+                        ].copy()
+
                         base = st.session_state.get("df_main", pd.DataFrame()).copy()
                         if base.empty:
                             st.warning("No hay base para actualizar.")
                         else:
                             base["Id"] = base["Id"].astype(str)
-                            cols_to_merge = ["Estado modificado","Fecha estado modificado","Hora estado modificado"]
-                            for c in cols_to_merge:
-                                if c not in base.columns:
-                                    base[c] = ""
-                            upd = grid_data[["Id"] + cols_to_merge].copy()
-                            base = base.merge(upd, on="Id", how="left", suffixes=("", "_NEW"))
-                            for c in cols_to_merge:
-                                n = f"{c}_NEW"
-                                if n in base.columns:
-                                    base[c] = base[n].where(base[n].notna() & (base[n] != ""), base[c])
-                                    base.drop(columns=[n], inplace=True)
+                            if "Fecha estado actual" not in base.columns:
+                                base["Fecha estado actual"] = ""
+                            if "Hora estado actual" not in base.columns:
+                                base["Hora estado actual"] = ""
+                            if "Estado" not in base.columns:
+                                base["Estado"] = "No iniciado"
 
+                            ts = now_lima_trimmed()
+                            f_now = ts.strftime("%Y-%m-%d")
+                            h_now = ts.strftime("%H:%M")
+
+                            b_i = base.set_index("Id")
+                            c_i = changes.set_index("Id")
+                            ids = b_i.index.intersection(c_i.index)
+
+                            # Actualizar estado y sellos de tiempo (Lima)
+                            b_i.loc[ids, "Estado"] = c_i.loc[ids, "Estado modificado"].values
+                            b_i.loc[ids, "Fecha estado actual"] = f_now
+                            b_i.loc[ids, "Hora estado actual"] = h_now
+
+                            # (Opcional) Duración si existe columna y tenemos Fecha Registro
+                            if "Duración" in b_i.columns and "Fecha Registro" in b_i.columns:
+                                fr = pd.to_datetime(b_i.loc[ids, "Fecha Registro"], errors="coerce")
+                                dur_min = ((ts - fr).dt.total_seconds() / 60).fillna(0).astype(int)
+                                try:
+                                    b_i.loc[ids, "Duración"] = dur_min
+                                except Exception:
+                                    pass
+
+                            # Limpiar campos auxiliares (si existen)
+                            for aux in ["Estado modificado","Fecha estado modificado","Hora estado modificado"]:
+                                if aux in b_i.columns:
+                                    b_i.loc[ids, aux] = ""
+
+                            base = b_i.reset_index()
                             st.session_state["df_main"] = base.copy()
 
-                            # ======== PERSISTIR con maybe_save (sin ACL de edición; todos pueden) ========
+                            # ======== PERSISTIR con maybe_save ========
                             def _persist(_df: pd.DataFrame):
                                 try:
                                     os.makedirs("data", exist_ok=True)
@@ -393,7 +441,6 @@ def render(user: dict | None = None):
                                 st.success(res.get("msg", "Cambios guardados."))
                                 st.rerun()
                             else:
-                                # Ej.: DRY-RUN o guardado deshabilitado por política
                                 st.info(res.get("msg", "Guardado deshabilitado."))
 
                 except Exception as e:
