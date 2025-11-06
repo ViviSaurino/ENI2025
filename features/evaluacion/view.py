@@ -38,6 +38,7 @@ def render(user: dict | None = None):
     # ---------- fin barra superior ----------
 
     if st.session_state["eva_visible"]:
+
         # --- contenedor local + css (botón, headers 600, colores y estrellas) ---
         st.markdown('<div id="eva-section">', unsafe_allow_html=True)
         st.markdown(
@@ -100,7 +101,6 @@ def render(user: dict | None = None):
             st.markdown('<div class="eva-pill"><span>📝&nbsp;Evaluación</span></div>', unsafe_allow_html=True)
 
         # ===== Wrapper UNIDO: help-strip + form-card =====
-        # (Incluye estilos inline para asegurar el color naranja)
         st.markdown(
             f"""
         <div class="section-eva">
@@ -338,20 +338,16 @@ def render(user: dict | None = None):
             key="grid_evaluacion",  # KEY ÚNICO
         )
 
-        # ===== 🔐 Acciones y guardado condicional =====
+        # ===== 🔐 Acción: solo botón Evaluar =====
         _sp_eva, _btns_eva = st.columns([A + Fw + T_width + D + R, C], gap="medium")
         with _btns_eva:
             if IS_EDITOR:
-                c1, c2 = st.columns(2, gap="small")
-                with c1:
-                    click_eval = st.button("✅ Evaluar", use_container_width=True, key="eva_guardar_v1")
-                with c2:
-                    click_save = st.button("💾 Guardar cambios", use_container_width=True, key="eva_guardar_v2")
+                click_eval = st.button("✅ Evaluar", use_container_width=True, key="eva_guardar_v1")
             else:
                 st.caption("🔒 Solo lectura. Puedes filtrar, pero no editar ni guardar.")
-                click_eval = click_save = False
+                click_eval = False
 
-        if IS_EDITOR and (click_eval or click_save):
+        if IS_EDITOR and click_eval:
             try:
                 edited = pd.DataFrame(grid_eval.get("data", []))
                 if edited.empty or "Id" not in edited.columns:
@@ -379,9 +375,9 @@ def render(user: dict | None = None):
                             # Mapear evaluación con/sin emoji -> texto limpio
                             eva_ui = str(row.get("Evaluación ajustada", "Sin evaluar")).strip()
                             eva_new = {
-                                "🟢 Aprobado":"Aprobado",
-                                "🔴 Desaprobado":"Desaprobado",
-                                "🟠 Observado":"Observado"
+                                "🟢 Aprobado": "Aprobado",
+                                "🔴 Desaprobado": "Desaprobado",
+                                "🟠 Observado": "Observado",
                             }.get(eva_ui, "Sin evaluar")
 
                             # Calificación segura 0..5
