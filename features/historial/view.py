@@ -173,8 +173,8 @@ def render(user: dict | None = None):
       border-top:var(--hist-border-w) solid var(--hist-border-c);
     }
     .hist-actions [data-testid="column"] > div{ display:flex; align-items:center; height:46px; }
-    .hist-actions .stButton > button{ height:38px!important; border-radius:10px!important; width:100%; }
-    .hist-search .stButton > button{ margin-top:12px!important; height:38px!important; }
+    .hist-actions .stButton > button{ height:38px!important; border-radius:10px!important; width:100%; white-space:nowrap; } /* ⬅ no wrap */
+    .hist-search .stButton > button{ margin-top:28px!important; height:38px!important; } /* ⬅ alinea Buscar con los filtros */
 
     :root{ --muted-bg:#ECEFF1; --muted-fg:#90A4AE; }
     .ag-theme-balham .ag-header-cell.muted-col .ag-header-cell-label{ color:var(--muted-fg)!important; }
@@ -303,6 +303,11 @@ def render(user: dict | None = None):
         if "Estado" not in df_view.columns:
             df_view["Estado"] = ""
         df_view.loc[mask_em, "Estado"] = _em[mask_em]
+
+    # 👉 Default para Estado si viene vacío
+    if "Estado" not in df_view.columns:
+        df_view["Estado"] = ""
+    df_view["Estado"] = df_view["Estado"].apply(lambda s: "No iniciado" if str(s).strip() in {"", "nan", "NaN"} else s)
 
     if "Fecha Registro" not in df_view.columns: df_view["Fecha Registro"] = pd.NaT
     if "Hora Registro"   not in df_view.columns: df_view["Hora Registro"]   = ""
@@ -438,9 +443,10 @@ def render(user: dict | None = None):
     gob.configure_column("Fecha inicio", headerName="Fecha de inicio")
     gob.configure_column("Fecha Terminado", headerName="Fecha Terminado")
 
+    # 🔒 Esconde columnas técnicas (y las fuerza a 1px para evitar "columna en blanco")
     for ocultar in HIDDEN_COLS:
         if ocultar in df_grid.columns:
-            gob.configure_column(ocultar, hide=True, suppressMenu=True, filter=False)
+            gob.configure_column(ocultar, hide=True, suppressMenu=True, filter=False, width=1, maxWidth=1, minWidth=1)
 
     fmt_dash = JsCode("""
     function(p){
@@ -631,10 +637,11 @@ def render(user: dict | None = None):
 
     # ---- Botonera alineada ----
     left_spacer = A_f + Fw_f + T_width_f
+    W_SHEETS = R_f + 0.8  # ⬅️ más ancho para que no haga salto de línea
 
     st.markdown('<div class="hist-actions">', unsafe_allow_html=True)
     _spacer, b_xlsx, b_sync, b_save_local, b_save_sheets = st.columns(
-        [left_spacer, D_f, R_f, R_f, C_f], gap="medium"
+        [left_spacer, D_f, R_f, R_f, W_SHEETS], gap="medium"
     )
 
     with b_xlsx:
