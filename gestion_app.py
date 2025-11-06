@@ -5,9 +5,15 @@
 import streamlit as st
 import pandas as pd
 from pathlib import Path
+import importlib
 
 from auth_google import google_login, logout
-from shared import patch_streamlit_aggrid, inject_global_css, ensure_df_main  # <-- (cambio: import en una sola línea)
+
+# === Import robusto del módulo shared (evita SyntaxError por caracteres invisibles) ===
+_shared = importlib.import_module("shared")
+patch_streamlit_aggrid = getattr(_shared, "patch_streamlit_aggrid")
+inject_global_css      = getattr(_shared, "inject_global_css")
+ensure_df_main         = getattr(_shared, "ensure_df_main")
 
 # 🔐 ACL / Roles
 from features.security import acl  # <-- NUEVO
