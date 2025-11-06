@@ -6,6 +6,13 @@ import types
 import pandas as pd
 import streamlit as st  # <-- IMPORT OK
 
+# ⛳ Carga del loader de arranque para rehidratar df_main
+try:
+    from shared import ensure_df_main as _ensure_df_main
+except Exception:
+    def _ensure_df_main():
+        pass
+
 # 🔐 ACL (para marcar modo editor / solo lectura en tabs específicas)
 try:
     from features.security import acl
@@ -219,6 +226,9 @@ def _call_view(mod_path: str, candidates: tuple[str, ...], **kwargs):
 
 # ---------- Vista principal: arma las 6 secciones en pestañas ----------
 def render_all(user: dict | None = None):
+    # ✅ Rehidratar df_main antes de pintar cualquier pestaña
+    _ensure_df_main()
+
     email = (user or {}).get("email") or st.session_state.get("user_email", "")
 
     # ⛔ Se elimina el subtítulo duplicado:
