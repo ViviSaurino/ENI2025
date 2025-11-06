@@ -286,10 +286,16 @@ def render(user: dict | None = None):
                 except Exception:
                     reg_hora_txt = str(reg_hora_obj) if reg_hora_obj is not None else ""
 
-                # Fase final (si es "Otros", usar lo escrito)
+                # Fase final:
+                # - Si es "Otros" y hay texto, guardamos "Otros — <texto>"
+                # - Si es "Otros" sin texto, guardamos "Otros"
+                # - En cualquier otro caso, guardamos el valor seleccionado
                 fase_sel = st.session_state.get("nt_fase", "")
                 fase_otro = (st.session_state.get("nt_fase_otro", "") or "").strip()
-                fase_final = fase_otro if str(fase_sel).strip() == "Otros" else fase_sel
+                if str(fase_sel).strip() == "Otros":
+                    fase_final = f"Otros — {fase_otro}" if fase_otro else "Otros"
+                else:
+                    fase_final = fase_sel
 
                 new = blank_row()
                 new.update({
