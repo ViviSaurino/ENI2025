@@ -30,6 +30,49 @@ DEFAULT_COLS = [
     "Fecha Eliminado","Hora Eliminado"
 ]
 
+# ====== TZ helpers para evitar "tz-naive vs tz-aware" ======
+try:
+    from zoneinfo import ZoneInfo
+    _TZ = ZoneInfo(st.secrets.get("local_tz", "America/Lima"))
+except Exception:
+    _TZ = None  # caerá a "quitar tz" si no hay zoneinfo
+
+
+def to_naive_local_series(s: pd.Series) -> pd.Series:
+    """Convierte una serie a datetime naive (local) de forma segura."""
+    ser = pd.to_datetime(s, errors="coerce", utc=False)
+    try:
+        # Si viene con tz, convertir a local (si se pudo cargar) y luego quitar tz
+        if getattr(ser.dt, "tz", None) is not None:
+            ser = (ser.dt.tz_convert(_TZ) if _TZ else ser).dt.tz_localize(None)
+    except Exception:
+        # Si no permite tz_convert, al menos quitar tz
+        try:
+            ser = ser.dt.tz_localize(None)
+        except Exception:
+            pass
+    return ser
+
+
+def _fmt_hhmm(v) -> str:
+    """Formatea cualquier cosa a HH:MM (string) o ''."""
+    if v is None or (isinstance(v, float) and pd.isna(v)):
+        return ""
+    try:
+        s = str(v).strip()
+        if not s or s.lower() in {"nan", "nat", "none", "null"}:
+            return ""
+        m = re.match(r"^(\d{1,2}):(\d{2})", s)
+        if m:
+            return f"{int(m.group(1)):02d}:{int(m.group(2)):02d}"
+        d = pd.to_datetime(s, errors="coerce", utc=False)
+        if pd.isna(d):
+            return ""
+        return f"{int(d.hour):02d}:{int(d.minute):02d}"
+    except Exception:
+        return ""
+
+
 # --- Guardado local: siempre a data/tareas.csv ---
 try:
     from shared import save_local as _disk_save_local
@@ -74,9 +117,10 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
     headers = values[0]
     rows = values[1:]
     df = pd.DataFrame(rows, columns=headers)
+    # Normalizar columnas que inician con "Fecha"
     for c in df.columns:
         if c.lower().startswith("fecha"):
-            df[c] = pd.to_datetime(df[c], errors="coerce")
+            df[c] = to_naive_local_series(df[c])
     if replace_df_main:
         st.session_state["df_main"] = df
     return df
@@ -90,7 +134,20 @@ def push_user_slice_to_sheet():
         cols = str(max(26, len(st.session_state["df_main"].columns) + 5))
         ws = ss.add_worksheet(title=ws_name, rows=rows, cols=cols)
 
-    df_out = st.session_state["df_main"].copy().fillna("").astype(str)
+    # ===== Formateo seguro de fechas/horas antes de subir =====
+    df_out = st.session_state["df_main"].copy()
+
+    # Fechas → YYYY-MM-DD (naive/local), Horas → HH:MM
+    for c in df_out.columns:
+        low = str(c).lower()
+        if low.startswith("fecha"):
+            ser = to_naive_local_series(df_out[c])
+            df_out[c] = ser.dt.strftime("%Y-%m-%d").fillna("")
+        elif low.startswith("hora"):
+            df_out[c] = df_out[c].apply(_fmt_hhmm).astype(str)
+
+    df_out = df_out.fillna("").astype(str)
+
     ws.clear()
     ws.update("A1", [list(df_out.columns)] + df_out.values.tolist())
 
@@ -231,6 +288,16 @@ def render(user: dict | None = None):
 
     df_all = st.session_state["df_main"].copy()
 
+    # Normalización a naive/local de columnas de fecha conocidas
+    TZ_DATE_COLS = [
+        "Fecha estado modificado","Fecha estado actual","Fecha inicio",
+        "Fecha Terminado","Fecha Registro","Fecha Vencimiento",
+        "Fecha Pausado","Fecha Cancelado","Fecha Eliminado",
+        "Fecha","Fecha de detección","Fecha de corrección"
+    ]
+    for c in [c for c in TZ_DATE_COLS if c in df_all.columns]:
+        df_all[c] = to_naive_local_series(df_all[c])
+
     # ===== Card (ancla + contenedor real) =====
     st.markdown('<div id="hist-card-anchor"></div>', unsafe_allow_html=True)
     with st.container():
@@ -320,7 +387,7 @@ def render(user: dict | None = None):
 
     # ---- Aplicar filtros sobre df_view SOLO si se presiona Buscar ----
     df_view = df_all.copy()
-    df_view["Fecha inicio"] = pd.to_datetime(df_view.get("Fecha inicio"), errors="coerce")
+    df_view["Fecha inicio"] = to_naive_local_series(df_view.get("Fecha inicio"))
 
     if hist_do_buscar:
         if area_sel != "Todas":
@@ -342,9 +409,9 @@ def render(user: dict | None = None):
     for c in ["Fecha estado modificado", "Fecha estado actual", "Fecha inicio"]:
         if c not in df_view.columns:
             df_view[c] = pd.NaT
-    ts_mod = pd.to_datetime(df_view["Fecha estado modificado"], errors="coerce")
-    ts_act = pd.to_datetime(df_view["Fecha estado actual"], errors="coerce")
-    ts_ini = pd.to_datetime(df_view["Fecha inicio"], errors="coerce")
+    ts_mod = to_naive_local_series(df_view["Fecha estado modificado"])
+    ts_act = to_naive_local_series(df_view["Fecha estado actual"])
+    ts_ini = to_naive_local_series(df_view["Fecha inicio"])
     df_view["__ts__"] = ts_mod.combine_first(ts_act).combine_first(ts_ini)
     df_view = df_view.sort_values("__ts__", ascending=False, na_position="last")
 
@@ -362,19 +429,7 @@ def render(user: dict | None = None):
         return d.normalize() if not pd.isna(d) else pd.NaT
 
     def _to_hhmm(v):
-        if v is None or (isinstance(v, float) and pd.isna(v)): return ""
-        try:
-            if isinstance(v, time):      return f"{v.hour:02d}:{v.minute:02d}"
-            if isinstance(v, (pd.Timestamp, datetime)): return f"{v.hour:02d}:{v.minute:02d}"
-            s = str(v).strip()
-            if not s or s.lower() in {"nan","nat","none","null"}: return ""
-            m = re.match(r"^(\d{1,2}):(\d{2})", s)
-            if m: return f"{int(m.group(1)):02d}:{int(m.group(2)):02d}"
-            d = pd.to_datetime(s, errors="coerce")
-            if not pd.isna(d): return f"{int(d.hour):02d}:{int(d.minute):02d}"
-        except Exception:
-            pass
-        return ""
+        return _fmt_hhmm(v)
 
     # ===== Semántica de tiempos / estado =====
     if "Estado modificado" in df_view.columns:
@@ -394,12 +449,12 @@ def render(user: dict | None = None):
     df_view["Fecha Registro"] = df_view["Fecha Registro"].apply(_to_date)
     df_view["Hora Registro"]  = df_view["Hora Registro"].apply(_to_hhmm)
 
-    _fr_fb = pd.to_datetime(df_view["Fecha"], errors="coerce").dt.normalize() if "Fecha" in df_view.columns else pd.Series(pd.NaT, index=df_view.index)
+    _fr_fb = to_naive_local_series(df_view["Fecha"]) if "Fecha" in df_view.columns else pd.Series(pd.NaT, index=df_view.index)
     _hr_fb = df_view["Hora"].apply(_to_hhmm) if "Hora" in df_view.columns else pd.Series([""]*len(df_view), index=df_view.index)
 
     mask_fr_missing = df_view["Fecha Registro"].isna()
     mask_hr_missing = (df_view["Hora Registro"].eq("")) | (df_view["Hora Registro"].eq("00:00"))
-    df_view.loc[mask_fr_missing, "Fecha Registro"] = _fr_fb[mask_fr_missing]
+    df_view.loc[mask_fr_missing, "Fecha Registro"] = _fr_fb[mask_fr_missing].dt.normalize()
     df_view.loc[mask_hr_missing, "Hora Registro"]  = _hr_fb[mask_hr_missing]
 
     if "Hora de inicio" not in df_view.columns: df_view["Hora de inicio"] = ""
@@ -407,11 +462,11 @@ def render(user: dict | None = None):
     if "Hora Terminado" not in df_view.columns: df_view["Hora Terminado"] = ""
 
     if "Fecha terminado" in df_view.columns:
-        _tmp_ft = pd.to_datetime(df_view["Fecha terminado"], errors="coerce")
+        _tmp_ft = to_naive_local_series(df_view["Fecha terminado"])
         df_view["Fecha Terminado"] = df_view["Fecha Terminado"].combine_first(_tmp_ft)
         df_view.drop(columns=["Fecha terminado"], inplace=True, errors="ignore")
 
-    _mod = pd.to_datetime(df_view.get("Fecha estado modificado"), errors="coerce")
+    _mod = to_naive_local_series(df_view.get("Fecha estado modificado"))
     _hmod = df_view["Hora estado modificado"].apply(_to_hhmm) if "Hora estado modificado" in df_view.columns else pd.Series([""]*len(df_view), index=df_view.index)
 
     if "Estado" in df_view.columns:
@@ -434,7 +489,7 @@ def render(user: dict | None = None):
     if "Fecha Vencimiento" not in df_view.columns: df_view["Fecha Vencimiento"] = pd.NaT
     if "Hora Vencimiento" not in df_view.columns:  df_view["Hora Vencimiento"]  = ""
     if "Vencimiento" in df_view.columns:
-        _vdt = pd.to_datetime(df_view["Vencimiento"], errors="coerce")
+        _vdt = to_naive_local_series(df_view["Vencimiento"])
         mask_fv = df_view["Fecha Vencimiento"].isna()
         df_view.loc[mask_fv, "Fecha Vencimiento"] = _vdt.dt.normalize()[mask_fv]
         hv_from = _vdt.dt.strftime("%H:%M")
