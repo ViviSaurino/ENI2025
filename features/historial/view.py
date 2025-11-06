@@ -142,42 +142,45 @@ def render(user: dict | None = None):
 
     st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
-    # ---- Franja de indicaciones ----
-    st.markdown("""
-    <style>
-      :root{
-        --hist-help-bg:#FFE1DE; --hist-help-border:#F6B1AD; --hist-help-text:#7A2E2A;
-      }
-      .hist-help-strip{
-        background:var(--hist-help-bg)!important; border:1px solid var(--hist-help-border)!important;
-        color:var(--hist-help-text)!important; padding:10px 14px; border-radius:10px; width:100%;
-        box-shadow:0 0 0 1px rgba(0,0,0,0.02) inset; margin:0 0 10px 0;
-      }
-    </style>
-    <div class="hist-help-strip">
-      🕒 Filtra y guarda tus tareas. Tarea y Detalle solo se editan para correcciones.
-      Excel: opcional · Sheets: obligatorio para que el avance quede en el historial.
-    </div>
-    """, unsafe_allow_html=True)
-
     # --- Estilos globales ---
     st.markdown("""
     <style>
+    /* ===== Card de filtros (rectángulo) ===== */
+    :root{
+      --hist-card-bg:#FFE1DE;       /* mismo tono que el aviso */
+      --hist-card-bd:#F6B1AD;
+      --hist-card-fg:#7A2E2A;
+      --hist-pad-x:16px; --hist-border-w:2px; --hist-border-c:#EF4444;
+    }
+    .hist-card{
+      background:var(--hist-card-bg)!important;
+      border:1px solid var(--hist-card-bd)!important;
+      border-radius:10px; padding:14px;
+      box-shadow:0 0 0 1px rgba(0,0,0,0.02) inset;
+      margin-bottom:6px;
+    }
+    .hist-card .help{
+      color:var(--hist-card-fg)!important; margin-bottom:10px; font-size:0.95rem;
+    }
+    /* fila del botón dentro del card, pegado a la derecha */
+    .hist-card .hist-search-row [data-testid="column"] > div{
+      display:flex; justify-content:flex-end; align-items:end; height:42px;
+    }
+    .hist-card .stButton>button{
+      height:38px!important; border-radius:10px!important; min-width:160px;
+    }
+
+    /* ===== Estilos de tabla y botonería inferior ===== */
     .ag-theme-balham .row-deleted .ag-cell {
       text-decoration: line-through; background-color:#FEE2E2 !important;
       color:#7F1D1D !important; opacity:.95;
     }
-    :root{ --hist-pad-x:16px; --hist-border-w:2px; --hist-border-c:#EF4444; }
     .hist-actions{
       padding-left:var(--hist-pad-x)!important; padding-right:var(--hist-pad-x)!important;
       border-top:var(--hist-border-w) solid var(--hist-border-c);
     }
     .hist-actions [data-testid="column"] > div{ display:flex; align-items:center; height:46px; }
     .hist-actions .stButton > button{ height:38px!important; border-radius:10px!important; width:100%; white-space:nowrap; }
-
-    /* Botón Buscar abajo a la izquierda (fuera del recuadro de filtros) */
-    .hist-search-row{ margin-top:8px; }
-    .hist-search-row .stButton>button{ height:38px!important; border-radius:10px!important; }
 
     :root{ --muted-bg:#ECEFF1; --muted-fg:#90A4AE; }
     .ag-theme-balham .ag-header-cell.muted-col .ag-header-cell-label{ color:var(--muted-fg)!important; }
@@ -194,18 +197,17 @@ def render(user: dict | None = None):
     </style>
     """, unsafe_allow_html=True)
 
-    # Base
+    # ====== DATA BASE ======
     df_all = st.session_state["df_main"].copy()
 
-    # ===== Proporciones de filtros =====
-    A_f, Fw_f, T_width_f, D_f, R_f, C_f = 1.80, 2.10, 3.00, 1.60, 1.40, 1.20
+    # ===== Card de filtros (todo dentro del rectángulo) =====
+    st.markdown('<div class="hist-card">', unsafe_allow_html=True)
+    st.markdown('<div class="help">🕒 Filtra y guarda tus tareas. Tarea y Detalle solo se editan para correcciones. Excel: opcional · Sheets: obligatorio para que el avance quede en el historial.</div>', unsafe_allow_html=True)
 
-    # ===== FILA DE 5 FILTROS =====
-    cA, cF, cR, cD, cH = st.columns(
-        [A_f, Fw_f, T_width_f, D_f, R_f],
-        gap="medium",
-        vertical_alignment="bottom"
-    )
+    # Proporciones de filtros
+    A_f, Fw_f, T_width_f, D_f, R_f = 1.80, 2.10, 3.00, 1.60, 1.40
+
+    cA, cF, cR, cD, cH = st.columns([A_f, Fw_f, T_width_f, D_f, R_f], gap="medium", vertical_alignment="bottom")
 
     area_sel = cA.selectbox(
         "Área",
@@ -230,12 +232,13 @@ def render(user: dict | None = None):
     f_desde = cD.date_input("Desde", value=None, key="hist_desde")
     f_hasta = cH.date_input("Hasta",  value=None, key="hist_hasta")
 
-    # ===== Botón Buscar ABAJO-IZQUIERDA (fuera del bloque de filtros) =====
+    # Botón "Buscar" DENTRO del card y A LA DERECHA
     st.markdown('<div class="hist-search-row">', unsafe_allow_html=True)
-    btn_left, _btn_spacer = st.columns([0.6, 6], gap="small")
-    with btn_left:
+    _space, btn = st.columns([8, 1], gap="small", vertical_alignment="bottom")
+    with btn:
         hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
     st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)  # cierre .hist-card
 
     # Toggle mostrar/ocultar eliminadas
     show_deleted = st.toggle("Mostrar eliminadas (tachadas)", value=True, key="hist_show_deleted")
