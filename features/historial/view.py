@@ -28,28 +28,13 @@ def _save_local(df: pd.DataFrame):
 
 # --- Cliente GSheets: acepta gsheets_doc_url o [gsheets]/[sheets] ---
 def _gsheets_client():
-    """
-    Devuelve (spreadsheet, worksheet_name) usando secrets:
-      - gsheets_doc_url (preferido)
-      - [gsheets].spreadsheet_url  o  [sheets].sheet_url
-      - worksheet: [gsheets].worksheet (si existe) o 'TareasRecientes'
-    Requiere [gcp_service_account].
-    """
     if "gcp_service_account" not in st.secrets:
         raise KeyError("Falta 'gcp_service_account' en secrets.")
-
-    # URL del spreadsheet (orden de prioridad)
-    url = st.secrets.get("gsheets_doc_url")
-    if not url:
-        gs = st.secrets.get("gsheets", {}) or {}
-        url = gs.get("spreadsheet_url")
-    if not url:
-        ss2 = st.secrets.get("sheets", {}) or {}
-        url = ss2.get("sheet_url")
+    url = st.secrets.get("gsheets_doc_url") or \
+          (st.secrets.get("gsheets", {}) or {}).get("spreadsheet_url") or \
+          (st.secrets.get("sheets", {}) or {}).get("sheet_url")
     if not url:
         raise KeyError("No se encontró 'gsheets_doc_url' ni '[gsheets].spreadsheet_url' ni '[sheets].sheet_url'.")
-
-    # Worksheet (pestaña)
     ws_name = (st.secrets.get("gsheets", {}) or {}).get("worksheet", "TareasRecientes")
 
     import gspread
@@ -61,7 +46,6 @@ def _gsheets_client():
     return ss, ws_name
 
 def pull_user_slice_from_sheet(replace_df_main: bool = True):
-    """Lee toda la hoja y opcionalmente reemplaza st.session_state['df_main'].""" 
     ss, ws_name = _gsheets_client()
     try:
         ws = ss.worksheet(ws_name)
@@ -73,7 +57,6 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
     headers = values[0]
     rows = values[1:]
     df = pd.DataFrame(rows, columns=headers)
-    # Tipos suaves: fechas a datetime cuando calzan patrón
     for c in df.columns:
         if c.lower().startswith("fecha"):
             df[c] = pd.to_datetime(df[c], errors="coerce")
@@ -82,7 +65,6 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
     return df
 
 def push_user_slice_to_sheet():
-    """Sube st.session_state['df_main'] a la hoja (crea si no existe)."""
     ss, ws_name = _gsheets_client()
     try:
         ws = ss.worksheet(ws_name)
@@ -91,8 +73,7 @@ def push_user_slice_to_sheet():
         cols = str(max(26, len(st.session_state["df_main"].columns) + 5))
         ws = ss.add_worksheet(title=ws_name, rows=rows, cols=cols)
 
-    df_out = st.session_state["df_main"].copy()
-    df_out = df_out.fillna("").astype(str)
+    df_out = st.session_state["df_main"].copy().fillna("").astype(str)
     ws.clear()
     ws.update("A1", [list(df_out.columns)] + df_out.values.tolist())
 
@@ -143,14 +124,13 @@ def render(user: dict | None = None):
     # --- Estilos globales ---
     st.markdown("""
     <style>
-    /* ===== Paleta coral clara (como imagen 2) ===== */
     :root{
-      --hist-pill:#F28B85;              /* pastilla del título */
-      --hist-card-bg:#FFEDEB;           /* fondo del contenedor grande */
-      --hist-card-bd:#F3B6B1;           /* borde del contenedor grande */
-      --hist-help-bg:#FFE7E6;           /* franja de indicaciones */
-      --hist-help-border:#F3B6B1;       /* borde de la franja */
-      --hist-help-text:#7A2E2A;         /* texto de la franja */
+      --hist-pill:#F28B85;
+      --hist-card-bg:#FFEDEB;
+      --hist-card-bd:#F3B6B1;
+      --hist-help-bg:#FFE7E6;
+      --hist-help-border:#F3B6B1;
+      --hist-help-text:#7A2E2A;
       --hist-pad-x:16px;
       --hist-border-w:2px; --hist-border-c:#EF4444;
     }
@@ -165,7 +145,7 @@ def render(user: dict | None = None):
       margin-bottom:6px;
     }
 
-    /* Franja de indicaciones (misma idea que Evaluación) */
+    /* Franja de indicaciones */
     .section-hist .help-strip-hist{
       background: var(--hist-help-bg) !important;
       color: var(--hist-help-text) !important;
@@ -176,7 +156,7 @@ def render(user: dict | None = None):
       font-size:0.95rem;
     }
 
-    /* Rectángulo de las celdas/filtros */
+    /* Rectángulo que envuelve TODA la fila de filtros */
     #hist-card-anchor + div .form-card{
       background:#ffffff;
       border:1px solid var(--hist-card-bd);
@@ -184,6 +164,17 @@ def render(user: dict | None = None):
       padding:12px;
       margin-top:6px;
     }
+
+    /* ========= NUEVO: rectángulo alrededor de CADA campo ========= */
+    .form-card .field-wrap{
+      background:#F5F7FA;                 /* gris claro como en la imagen */
+      border:1px solid #E3E8EF;           /* borde suave */
+      border-radius:10px;
+      padding:6px 10px;                   /* respiro alrededor del widget */
+      box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
+    }
+    /* elimina márgenes extra del label para que el rectángulo abrace todo compacto */
+    .form-card .field-wrap label{ margin-bottom:6px !important; }
 
     /* Botón Buscar */
     .hist-search .stButton>button{
@@ -202,7 +193,7 @@ def render(user: dict | None = None):
     .hist-actions [data-testid="column"] > div{ display:flex; align-items:center; height:46px; }
     .hist-actions .stButton > button{ height:38px!important; border-radius:10px!important; width:100%; white-space:nowrap; }
 
-    :root{ --muted-bg:#ECEFF1; --muted-fg:#90A4AE; }
+    :root{ --muted-fg:#90A4AE; }
     .ag-theme-balham .ag-header-cell.muted-col .ag-header-cell-label{ color:var(--muted-fg)!important; }
 
     .ag-theme-balham .ag-header, .ag-theme-balham .ag-header-cell,
@@ -223,7 +214,6 @@ def render(user: dict | None = None):
     # ===== Card (ancla + contenedor real) =====
     st.markdown('<div id="hist-card-anchor"></div>', unsafe_allow_html=True)
     with st.container():
-        # Wrapper UNIDO: help-strip + form-card (coral)
         st.markdown(
             """
             <div class="section-hist">
@@ -237,33 +227,35 @@ def render(user: dict | None = None):
             unsafe_allow_html=True
         )
 
-        # Proporciones para que TODO quepa en UNA sola fila
-        W_AREA   = 1.15
-        W_FASE   = 1.25
-        W_RESP   = 1.60  # Responsable más angosto
-        W_DESDE  = 1.05
-        W_HASTA  = 1.05
-        W_BUSCAR = 1.05  # mismo ancho que "Hasta"
-
+        # Proporciones (misma fila)
+        W_AREA, W_FASE, W_RESP, W_DESDE, W_HASTA, W_BUSCAR = 1.15, 1.25, 1.60, 1.05, 1.05, 1.05
         cA, cF, cR, cD, cH, cB = st.columns(
             [W_AREA, W_FASE, W_RESP, W_DESDE, W_HASTA, W_BUSCAR],
             gap="medium",
             vertical_alignment="bottom"
         )
 
-        area_sel = cA.selectbox(
-            "Área",
-            options=["Todas"] + st.session_state.get(
-                "AREAS_OPC",
-                ["Jefatura","Gestión","Metodología","Base de datos","Monitoreo","Capacitación","Consistencia"]
-            ),
-            index=0, key="hist_area"
-        )
+        # === Campo: Área
+        with cA:
+            st.markdown('<div class="field-wrap">', unsafe_allow_html=True)
+            area_sel = st.selectbox(
+                "Área",
+                options=["Todas"] + st.session_state.get(
+                    "AREAS_OPC",
+                    ["Jefatura","Gestión","Metodología","Base de datos","Monitoreo","Capacitación","Consistencia"]
+                ),
+                index=0, key="hist_area"
+            )
+            st.markdown('</div>', unsafe_allow_html=True)
 
+        # === Campo: Fase
         fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
-        fase_sel = cF.selectbox("Fase", options=["Todas"] + fases_all, index=0, key="hist_fase")
+        with cF:
+            st.markdown('<div class="field-wrap">', unsafe_allow_html=True)
+            fase_sel = st.selectbox("Fase", options=["Todas"] + fases_all, index=0, key="hist_fase")
+            st.markdown('</div>', unsafe_allow_html=True)
 
-        # ========= AJUSTE 1: Responsable como MULTISELECT con placeholder =========
+        # === Campo: Responsable (multiselect con placeholder)
         df_resp_src = df_all.copy()
         if area_sel != "Todas":
             df_resp_src = df_resp_src[df_resp_src["Área"] == area_sel]
@@ -271,20 +263,30 @@ def render(user: dict | None = None):
             df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str) == fase_sel]
         responsables = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
 
-        resp_multi = cR.multiselect(
-            "Responsable",
-            options=responsables,
-            default=[],
-            key="hist_resp",
-            placeholder="Selecciona responsable(s)"
-        )
+        with cR:
+            st.markdown('<div class="field-wrap">', unsafe_allow_html=True)
+            resp_multi = st.multiselect(
+                "Responsable",
+                options=responsables,
+                default=[],
+                key="hist_resp",
+                placeholder="Selecciona responsable(s)"
+            )
+            st.markdown('</div>', unsafe_allow_html=True)
 
-        # ========= AJUSTE 2: Fechas con valor por defecto HOY (como la imagen) =========
+        # === Campo: Fechas (default hoy)
         today = date.today()
-        f_desde = cD.date_input("Desde", value=today, key="hist_desde")
-        f_hasta = cH.date_input("Hasta",  value=today, key="hist_hasta")
+        with cD:
+            st.markdown('<div class="field-wrap">', unsafe_allow_html=True)
+            f_desde = st.date_input("Desde", value=today, key="hist_desde")
+            st.markdown('</div>', unsafe_allow_html=True)
 
-        # Botón a la derecha, misma fila y mismo ancho que "Hasta"
+        with cH:
+            st.markdown('<div class="field-wrap">', unsafe_allow_html=True)
+            f_hasta = st.date_input("Hasta",  value=today, key="hist_hasta")
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        # === Botón Buscar (sin wrapper para que mantenga el estilo de botón)
         with cB:
             st.markdown('<div class="hist-search">', unsafe_allow_html=True)
             hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
@@ -305,7 +307,6 @@ def render(user: dict | None = None):
             df_view = df_view[df_view["Área"] == area_sel]
         if fase_sel != "Todas" and "Fase" in df_view.columns:
             df_view = df_view[df_view["Fase"].astype(str) == fase_sel]
-        # Responsable: si hay selección, filtra por cualquiera de los seleccionados
         if resp_multi:
             df_view = df_view[df_view["Responsable"].astype(str).isin(resp_multi)]
         if f_desde:
@@ -321,7 +322,6 @@ def render(user: dict | None = None):
     for c in ["Fecha estado modificado", "Fecha estado actual", "Fecha inicio"]:
         if c not in df_view.columns:
             df_view[c] = pd.NaT
-
     ts_mod = pd.to_datetime(df_view["Fecha estado modificado"], errors="coerce")
     ts_act = pd.to_datetime(df_view["Fecha estado actual"], errors="coerce")
     ts_ini = pd.to_datetime(df_view["Fecha inicio"], errors="coerce")
@@ -364,7 +364,6 @@ def render(user: dict | None = None):
             df_view["Estado"] = ""
         df_view.loc[mask_em, "Estado"] = _em[mask_em]
 
-    # Default Estado
     if "Estado" not in df_view.columns:
         df_view["Estado"] = ""
     df_view["Estado"] = df_view["Estado"].apply(lambda s: "No iniciado" if str(s).strip() in {"", "nan", "NaN"} else s)
@@ -380,7 +379,6 @@ def render(user: dict | None = None):
 
     mask_fr_missing = df_view["Fecha Registro"].isna()
     mask_hr_missing = (df_view["Hora Registro"].eq("")) | (df_view["Hora Registro"].eq("00:00"))
-
     df_view.loc[mask_fr_missing, "Fecha Registro"] = _fr_fb[mask_fr_missing]
     df_view.loc[mask_hr_missing, "Hora Registro"]  = _hr_fb[mask_hr_missing]
 
@@ -415,7 +413,6 @@ def render(user: dict | None = None):
     # 3.b) VENCIMIENTO
     if "Fecha Vencimiento" not in df_view.columns: df_view["Fecha Vencimiento"] = pd.NaT
     if "Hora Vencimiento" not in df_view.columns:  df_view["Hora Vencimiento"]  = ""
-
     if "Vencimiento" in df_view.columns:
         _vdt = pd.to_datetime(df_view["Vencimiento"], errors="coerce")
         mask_fv = df_view["Fecha Vencimiento"].isna()
@@ -424,7 +421,6 @@ def render(user: dict | None = None):
         hv_now = df_view["Hora Vencimiento"].astype(str).str.strip()
         mask_hv = hv_now.eq("") | hv_now.eq("00:00")
         df_view.loc[mask_hv, "Hora Vencimiento"] = hv_from[mask_hv]
-
     df_view["Fecha Vencimiento"] = df_view["Fecha Vencimiento"].apply(_to_date)
     df_view["Hora Vencimiento"]  = df_view["Hora Vencimiento"].apply(_to_hhmm)
     df_view.loc[df_view["Hora Vencimiento"] == "", "Hora Vencimiento"] = "17:00"
@@ -433,14 +429,12 @@ def render(user: dict | None = None):
     target_cols = [
         "Id","Área","Fase","Responsable",
         "Tarea","Tipo","Detalle","Ciclo de mejora","Complejidad","Prioridad",
-        "Estado",
-        "Duración",
+        "Estado","Duración",
         "Fecha Registro","Hora Registro",
         "Fecha inicio","Hora de inicio",
         "Fecha Vencimiento","Hora Vencimiento",
         "Fecha Terminado","Hora Terminado",
-        "¿Generó alerta?",
-        "Fecha de detección","Hora de detección",
+        "¿Generó alerta?","Fecha de detección","Hora de detección",
         "¿Se corrigió?","Fecha de corrección","Hora de corrección",
         "Cumplimiento","Evaluación","Calificación",
         "Fecha Pausado","Hora Pausado",
@@ -448,7 +442,6 @@ def render(user: dict | None = None):
         "Fecha Eliminado","Hora Eliminado",
         "__SEL__","__DEL__"
     ]
-
     HIDDEN_COLS = [
         "¿Eliminar?","Estado modificado",
         "Fecha estado modificado","Hora estado modificado",
@@ -459,10 +452,7 @@ def render(user: dict | None = None):
 
     for c in target_cols:
         if c not in df_view.columns:
-            if c in ["__SEL__","__DEL__"]:
-                df_view[c] = False
-            else:
-                df_view[c] = ""
+            df_view[c] = False if c in ["__SEL__","__DEL__"] else ""
 
     df_view["Duración"] = df_view["Duración"].astype(str).fillna("")
     df_grid = df_view.reindex(
@@ -505,7 +495,6 @@ def render(user: dict | None = None):
     gob.configure_column("Fecha inicio", headerName="Fecha de inicio")
     gob.configure_column("Fecha Terminado", headerName="Fecha Terminado")
 
-    # Oculta técnicas restantes
     for ocultar in HIDDEN_COLS:
         if ocultar in df_grid.columns:
             gob.configure_column(ocultar, hide=True, suppressMenu=True, filter=False, width=1, maxWidth=1, minWidth=1)
@@ -517,7 +506,6 @@ def render(user: dict | None = None):
       if(s===''||s==='nan'||s==='nat'||s==='none'||s==='null') return '—';
       return String(p.value);
     }""")
-
     date_time_fmt = JsCode("""
     function(p){
       if(p.value===null||p.value===undefined) return '—';
@@ -525,7 +513,6 @@ def render(user: dict | None = None):
       const pad=n=>String(n).padStart(2,'0');
       return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes());
     }""")
-
     date_only_fmt = JsCode("""
     function(p){
       if(p.value===null||p.value===undefined) return '—';
@@ -536,7 +523,6 @@ def render(user: dict | None = None):
       const pad=n=>String(n).padStart(2,'0');
       return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
     }""")
-
     time_only_fmt = JsCode(r"""
     function(p){
       const v = String(p.value||'').trim();
@@ -552,9 +538,9 @@ def render(user: dict | None = None):
     }""")
 
     colw = {
-        "Tarea":280, "Tipo":180,
-        "Detalle":240, "Ciclo de mejora":140, "Complejidad":130, "Prioridad":130,
-        "Estado":130, "Duración":110, "Fecha Registro":160, "Hora Registro":140,
+        "Tarea":280, "Tipo":180, "Detalle":240, "Ciclo de mejora":140,
+        "Complejidad":130, "Prioridad":130, "Estado":130, "Duración":110,
+        "Fecha Registro":160, "Hora Registro":140,
         "Fecha inicio":160, "Hora de inicio":140,
         "Fecha Vencimiento":160, "Hora Vencimiento":140,
         "Fecha Terminado":160, "Hora Terminado":140,
@@ -699,7 +685,7 @@ def render(user: dict | None = None):
 
     # ---- Botonera alineada ----
     left_spacer = A_f + Fw_f + T_width_f
-    W_SHEETS = R_f + 0.8  # un pelín más ancho
+    W_SHEETS = R_f + 0.8
 
     st.markdown('<div class="hist-actions">', unsafe_allow_html=True)
     _spacer, b_xlsx, b_sync, b_save_local, b_save_sheets = st.columns(
@@ -739,7 +725,7 @@ def render(user: dict | None = None):
                 base["__DEL__"] = False
             st.session_state["df_main"] = base.reset_index(drop=True)
             try:
-                _save_local(st.session_state["df_main"].copy())  # ← SOLO disco
+                _save_local(st.session_state["df_main"].copy())
                 st.success("Datos grabados en data/tareas.csv.")
             except Exception as e:
                 st.warning(f"No se pudo grabar localmente: {e}")
