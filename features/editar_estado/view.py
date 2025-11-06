@@ -28,24 +28,18 @@ except Exception:
     _TZ = None
 
 def _to_naive_local_one(x):
-    """
-    Convierte un valor fecha/hora (string o Timestamp) a datetime *naive* en hora local.
-    - Si viene con tz (p.ej. '2025-11-06T16:12:00-05:00'): convierte a local y elimina tz.
-    - Si viene sin tz (naive): lo deja tal cual (se asume ya está en hora local).
-    """
+    """Convierte x a datetime naive en hora local; tolera strings con/ sin tz."""
     if x is None or (isinstance(x, float) and pd.isna(x)):
         return pd.NaT
     try:
-        # Si ya es Timestamp
         if isinstance(x, pd.Timestamp):
             if x.tz is not None:
                 d = x.tz_convert(_TZ or x.tz).tz_localize(None) if _TZ else x.tz_localize(None)
                 return d
-            return x  # ya es naive
+            return x
         s = str(x).strip()
-        if not s or s.lower() in {"nan", "nat", "none", "null"}:
+        if not s or s.lower() in {"nan","nat","none","null"}:
             return pd.NaT
-        # Detecta indicios de tz en el string (Z, +hh:mm, -hh:mm)
         if re.search(r'(Z|[+-]\d{2}:?\d{2})$', s):
             d = pd.to_datetime(s, errors="coerce", utc=True)
             if pd.isna(d):
@@ -53,7 +47,6 @@ def _to_naive_local_one(x):
             if _TZ:
                 d = d.tz_convert(_TZ)
             return d.tz_localize(None)
-        # Caso naive: parse directo y se mantiene naive (local)
         return pd.to_datetime(s, errors="coerce")
     except Exception:
         return pd.NaT
@@ -62,7 +55,7 @@ def _fmt_hhmm(v) -> str:
     if v is None or (isinstance(v, float) and pd.isna(v)):
         return ""
     try:
-        s = str(v).strip()
+        s = str(v).trim() if hasattr(str(v), "trim") else str(v).strip()
         if not s or s.lower() in {"nan","nat","none","null"}:
             return ""
         m = re.match(r"^(\d{1,2}):(\d{2})", s)
@@ -75,7 +68,7 @@ def _fmt_hhmm(v) -> str:
     except Exception:
         return ""
 
-# --- Cliente GSheets y upsert por Id (se mantiene igual que antes) ---
+# --- Cliente GSheets y upsert por Id ---
 def _gsheets_client():
     if "gcp_service_account" not in st.secrets:
         raise KeyError("Falta 'gcp_service_account' en secrets.")
@@ -106,6 +99,7 @@ def _col_letter(n: int) -> str:
     return s
 
 def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
+    """Actualiza en Sheets por 'Id' estado + sellos y fechas/hours por estado."""
     try:
         ss, ws, ws_name = _gsheets_client()
     except Exception as e:
@@ -135,14 +129,17 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
         if id_idx < len(row):
             id_to_row[str(row[id_idx]).strip()] = r_i
 
+    # Además de estado y sellos, empujar fechas/horas por estado
     cols_to_push = [
         "Estado",
-        "Fecha estado actual",
-        "Hora estado actual",
+        "Fecha estado actual","Hora estado actual",
         "Duración",
-        "Estado modificado",
-        "Fecha estado modificado",
-        "Hora estado modificado",
+        "Estado modificado","Fecha estado modificado","Hora estado modificado",
+        "Fecha inicio","Hora de inicio",
+        "Fecha Terminado","Hora Terminado",
+        "Fecha Pausado","Hora Pausado",
+        "Fecha Cancelado","Hora Cancelado",
+        "Fecha Eliminado","Hora Eliminado",
     ]
     cols_to_push = [c for c in cols_to_push if c in col_map]
 
@@ -156,10 +153,9 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
         return "" if (val is None or (isinstance(val, float) and pd.isna(val))) else str(val)
 
     last_col_letter = _col_letter(len(headers))
-    body = []
-    ranges = []
-
+    body, ranges = [], []
     df_idx = df_base.set_index("Id")
+
     for _id in changed_ids:
         if _id not in df_idx.index:
             continue
@@ -192,16 +188,13 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
 
 def render(user: dict | None = None):
     # ================== EDITAR ESTADO ==================
-    st.session_state.setdefault("est_visible", True)  # siempre visible
+    st.session_state.setdefault("est_visible", True)
 
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
     if st.session_state["est_visible"]:
-
-        # === Proporciones (igual que los filtros; A = ancho de "Área") ===
         A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
-        # --- Contenedor + CSS local ---
         st.markdown('<div id="est-section">', unsafe_allow_html=True)
         st.markdown("""
         <style>
@@ -253,8 +246,7 @@ def render(user: dict | None = None):
         dates_all = _first_valid_date_series(df_all)
         if dates_all.empty:
             today = pd.Timestamp.today().normalize().date()
-            min_date = today
-            max_date = today
+            min_date = today; max_date = today
         else:
             min_date = dates_all.min().date()
             max_date = dates_all.max().date()
@@ -263,18 +255,15 @@ def render(user: dict | None = None):
         with st.form("est_filtros_v3", clear_on_submit=False):
             c_area, c_fase, c_resp, c_desde, c_hasta, c_buscar = st.columns([A, Fw, T_width, D, R, C], gap="medium")
 
-            # Área
             AREAS_OPC = st.session_state.get(
                 "AREAS_OPC",
                 sorted([x for x in df_all.get("Área", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
             ) or []
             est_area = c_area.selectbox("Área", ["Todas"] + AREAS_OPC, index=0)
 
-            # Fase
             fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
             est_fase = c_fase.selectbox("Fase", ["Todas"] + fases_all, index=0)
 
-            # Responsable
             df_resp_src = df_all.copy()
             if est_area != "Todas" and "Área" in df_resp_src.columns:
                 df_resp_src = df_resp_src[df_resp_src["Área"].astype(str) == est_area]
@@ -283,7 +272,6 @@ def render(user: dict | None = None):
             responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
             est_resp = c_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0)
 
-            # Rango de fechas
             est_desde = c_desde.date_input("Desde", value=min_date, min_value=min_date, max_value=max_date, key="est_desde")
             est_hasta = c_hasta.date_input("Hasta", value=max_date, min_value=min_date, max_value=max_date, key="est_hasta")
 
@@ -541,12 +529,16 @@ def render(user: dict | None = None):
                             st.warning("No hay base para actualizar.")
                         else:
                             base["Id"] = base["Id"].astype(str)
-                            if "Fecha estado actual" not in base.columns:
-                                base["Fecha estado actual"] = ""
-                            if "Hora estado actual" not in base.columns:
-                                base["Hora estado actual"] = ""
-                            if "Estado" not in base.columns:
-                                base["Estado"] = "No iniciado"
+                            for need in [
+                                "Estado","Fecha estado actual","Hora estado actual",
+                                "Fecha inicio","Hora de inicio",
+                                "Fecha Terminado","Hora Terminado",
+                                "Fecha Pausado","Hora Pausado",
+                                "Fecha Cancelado","Hora Cancelado",
+                                "Fecha Eliminado","Hora Eliminado"
+                            ]:
+                                if need not in base.columns:
+                                    base[need] = ""
 
                             ts = now_lima_trimmed()
                             f_now = pd.Timestamp(ts).strftime("%Y-%m-%d")
@@ -556,21 +548,76 @@ def render(user: dict | None = None):
                             c_i = changes.set_index("Id")
                             ids = b_i.index.intersection(c_i.index)
 
-                            b_i.loc[ids, "Estado"] = c_i.loc[ids, "Estado modificado"].values
+                            # Actualizar estado + sello actual
+                            new_state = c_i.loc[ids, "Estado modificado"].astype(str)
+                            b_i.loc[ids, "Estado"] = new_state.values
                             b_i.loc[ids, "Fecha estado actual"] = f_now
                             b_i.loc[ids, "Hora estado actual"] = h_now
 
-                            # ===== Duración (ajuste robusto tz) =====
+                            # === Sellos por estado (solo si vacíos) ===
+                            def _is_blank_dt(s):  # fecha vacía
+                                return pd.to_datetime(s, errors="coerce").isna()
+                            def _is_blank_tm(s):  # hora vacía
+                                return s.astype(str).str.strip().isin(["", "00:00", "nan", "NaN"])
+
+                            # En curso -> Fecha/Hora inicio
+                            if "Fecha inicio" in b_i.columns and "Hora de inicio" in b_i.columns:
+                                m = new_state.eq("En curso")
+                                to_fix = ids[m]
+                                if len(to_fix) > 0:
+                                    mask_f = _is_blank_dt(b_i.loc[to_fix, "Fecha inicio"])
+                                    mask_h = _is_blank_tm(b_i.loc[to_fix, "Hora de inicio"])
+                                    b_i.loc[to_fix[mask_f], "Fecha inicio"] = f_now
+                                    b_i.loc[to_fix[mask_h], "Hora de inicio"] = h_now
+
+                            # Terminado
+                            if "Fecha Terminado" in b_i.columns and "Hora Terminado" in b_i.columns:
+                                m = new_state.eq("Terminado")
+                                to_fix = ids[m]
+                                if len(to_fix) > 0:
+                                    mask_f = _is_blank_dt(b_i.loc[to_fix, "Fecha Terminado"])
+                                    mask_h = _is_blank_tm(b_i.loc[to_fix, "Hora Terminado"])
+                                    b_i.loc[to_fix[mask_f], "Fecha Terminado"] = f_now
+                                    b_i.loc[to_fix[mask_h], "Hora Terminado"] = h_now
+
+                            # Pausado
+                            if "Fecha Pausado" in b_i.columns and "Hora Pausado" in b_i.columns:
+                                m = new_state.eq("Pausado")
+                                to_fix = ids[m]
+                                if len(to_fix) > 0:
+                                    mask_f = _is_blank_dt(b_i.loc[to_fix, "Fecha Pausado"])
+                                    mask_h = _is_blank_tm(b_i.loc[to_fix, "Hora Pausado"])
+                                    b_i.loc[to_fix[mask_f], "Fecha Pausado"] = f_now
+                                    b_i.loc[to_fix[mask_h], "Hora Pausado"] = h_now
+
+                            # Cancelado
+                            if "Fecha Cancelado" in b_i.columns and "Hora Cancelado" in b_i.columns:
+                                m = new_state.eq("Cancelado")
+                                to_fix = ids[m]
+                                if len(to_fix) > 0:
+                                    mask_f = _is_blank_dt(b_i.loc[to_fix, "Fecha Cancelado"])
+                                    mask_h = _is_blank_tm(b_i.loc[to_fix, "Hora Cancelado"])
+                                    b_i.loc[to_fix[mask_f], "Fecha Cancelado"] = f_now
+                                    b_i.loc[to_fix[mask_h], "Hora Cancelado"] = h_now
+
+                            # Eliminado
+                            if "Fecha Eliminado" in b_i.columns and "Hora Eliminado" in b_i.columns:
+                                m = new_state.eq("Eliminado")
+                                to_fix = ids[m]
+                                if len(to_fix) > 0:
+                                    mask_f = _is_blank_dt(b_i.loc[to_fix, "Fecha Eliminado"])
+                                    mask_h = _is_blank_tm(b_i.loc[to_fix, "Hora Eliminado"])
+                                    b_i.loc[to_fix[mask_f], "Fecha Eliminado"] = f_now
+                                    b_i.loc[to_fix[mask_h], "Hora Eliminado"] = h_now
+
+                            # ===== Duración robusta tz =====
                             if "Duración" in b_i.columns and "Fecha Registro" in b_i.columns:
-                                ts_naive = pd.Timestamp(ts)  # naive
+                                ts_naive = pd.Timestamp(ts)
                                 def _mins_since(fr_val):
                                     d = _to_naive_local_one(fr_val)
-                                    if pd.isna(d):
-                                        return 0
-                                    try:
-                                        return int((ts_naive - d).total_seconds() / 60)
-                                    except Exception:
-                                        return 0
+                                    if pd.isna(d): return 0
+                                    try: return int((ts_naive - d).total_seconds() / 60)
+                                    except Exception: return 0
                                 dur_min = b_i.loc[ids, "Fecha Registro"].apply(_mins_since)
                                 try:
                                     b_i.loc[ids, "Duración"] = dur_min
@@ -585,6 +632,7 @@ def render(user: dict | None = None):
                             base = b_i.reset_index()
                             st.session_state["df_main"] = base.copy()
 
+                            # Guardado local
                             def _persist(_df: pd.DataFrame):
                                 try:
                                     os.makedirs("data", exist_ok=True)
@@ -596,6 +644,7 @@ def render(user: dict | None = None):
                             maybe_save = st.session_state.get("maybe_save")
                             res = maybe_save(_persist, base.copy()) if callable(maybe_save) else _persist(base.copy())
 
+                            # Upsert a Sheets (incluye Fecha/Hora inicio/fin/pausa/cancelado/eliminado)
                             try:
                                 _sheet_upsert_estado_by_id(base.copy(), list(ids))
                             except Exception as ee:
