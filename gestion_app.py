@@ -7,11 +7,7 @@ import pandas as pd
 from pathlib import Path
 
 from auth_google import google_login, logout
-from shared import (
-    patch_streamlit_aggrid,
-    inject_global_css,
-    ensure_df_main,
-)
+from shared import patch_streamlit_aggrid, inject_global_css, ensure_df_main  # <-- (cambio: import en una sola línea)
 
 # 🔐 ACL / Roles
 from features.security import acl  # <-- NUEVO
