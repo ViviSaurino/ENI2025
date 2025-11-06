@@ -279,57 +279,54 @@ def render(user: dict | None = None):
             key="grid_prioridad",
         )
 
-        # ===== 🔐 Acciones y guardado condicional =====
+        # ===== 🔐 Acciones y guardado: SOLO "Dar prioridad" =====
         _sp_pri, _btns_pri = st.columns([A+Fw+T_width+D+R, C], gap="medium")
         with _btns_pri:
             if IS_EDITOR:
-                c1, c2 = st.columns(2, gap="small")
-                with c1:
-                    st.button("⭐ Dar prioridad", use_container_width=True)
-                with c2:
-                    if st.button("💾 Guardar cambios", use_container_width=True, key="pri_guardar_v2"):
-                        try:
-                            edited = pd.DataFrame(grid_pri.get("data", []))
-                            if edited.empty:
-                                st.info("No hay filas para actualizar.")
+                click_apply = st.button("⭐ Dar prioridad", use_container_width=True, key="pri_aplicar")
+                if click_apply:
+                    try:
+                        edited = pd.DataFrame(grid_pri.get("data", []))
+                        if edited.empty:
+                            st.info("No hay filas para actualizar.")
+                        else:
+                            df_base = st.session_state.get("df_main", pd.DataFrame()).copy()
+                            if "Prioridad" not in df_base.columns:
+                                df_base["Prioridad"] = "Media"
+
+                            # Merge por Id
+                            df_base["Id"] = df_base["Id"].astype(str)
+                            edited["Id"] = edited["Id"].astype(str)
+
+                            b_i = df_base.set_index("Id")
+                            e_i = edited.set_index("Id")
+                            common = b_i.index.intersection(e_i.index)
+
+                            # Toma 'Prioridad a ajustar' (sin emoji)
+                            if "Prioridad a ajustar" in e_i.columns:
+                                map_clean = {"🔵 Baja":"Baja","🟡 Media":"Media","🔴 Alta":"Alta"}
+                                src_vals = e_i["Prioridad a ajustar"].map(lambda v: map_clean.get(str(v), str(v)))
+                                b_i.loc[common, "Prioridad"] = src_vals.loc[common]
+
+                            new_df = b_i.reset_index()
+                            st.session_state["df_main"] = new_df
+
+                            # Persistencia con políticas (dry_run/save_scope)
+                            def _persist(df):
+                                _save_local(df)
+                                return {"ok": True, "msg": "Prioridades guardadas."}
+
+                            maybe_save = st.session_state.get("maybe_save")
+                            if callable(maybe_save):
+                                res = maybe_save(_persist, new_df)
                             else:
-                                df_base = st.session_state.get("df_main", pd.DataFrame()).copy()
-                                if "Prioridad" not in df_base.columns:
-                                    df_base["Prioridad"] = "Media"
+                                _save_local(new_df)
+                                res = {"ok": True, "msg": "Prioridades guardadas (local)."}
 
-                                # Merge por Id
-                                df_base["Id"] = df_base["Id"].astype(str)
-                                edited["Id"] = edited["Id"].astype(str)
-
-                                b_i = df_base.set_index("Id")
-                                e_i = edited.set_index("Id")
-                                common = b_i.index.intersection(e_i.index)
-
-                                # Toma 'Prioridad a ajustar' (sin emoji)
-                                if "Prioridad a ajustar" in e_i.columns:
-                                    map_clean = {"🔵 Baja":"Baja","🟡 Media":"Media","🔴 Alta":"Alta"}
-                                    src_vals = e_i["Prioridad a ajustar"].map(lambda v: map_clean.get(str(v), str(v)))
-                                    b_i.loc[common, "Prioridad"] = src_vals.loc[common]
-
-                                new_df = b_i.reset_index()
-                                st.session_state["df_main"] = new_df
-
-                                # Persistencia con políticas (dry_run/save_scope)
-                                def _persist(df):
-                                    _save_local(df)
-                                    return {"ok": True, "msg": "Prioridades guardadas."}
-
-                                maybe_save = st.session_state.get("maybe_save")
-                                if callable(maybe_save):
-                                    res = maybe_save(_persist, new_df)
-                                else:
-                                    _save_local(new_df)
-                                    res = {"ok": True, "msg": "Prioridades guardadas (local)."}
-
-                                st.success(res.get("msg", "Listo."))
-                                st.rerun()
-                        except Exception as e:
-                            st.error(f"No pude guardar los cambios de prioridad: {e}")
+                            st.success(res.get("msg", "Listo."))
+                            st.rerun()
+                    except Exception as e:
+                        st.error(f"No pude guardar los cambios de prioridad: {e}")
             else:
                 st.caption("🔒 Solo lectura. Puedes filtrar, pero no editar ni guardar.")
 
