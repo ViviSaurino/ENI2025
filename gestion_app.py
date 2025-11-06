@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # ============================  
 # Gestión — ENI2025 (App única)
 # ============================
@@ -6,7 +7,11 @@ import pandas as pd
 from pathlib import Path
 
 from auth_google import google_login, logout
-from shared import ensure_df_main, inject_global_css, patch_streamlit_aggrid  # ✅ import seguro
+from shared import (
+    patch_streamlit_aggrid,
+    inject_global_css,
+    ensure_df_main,
+)
 
 # 🔐 ACL / Roles
 from features.security import acl  # <-- NUEVO
