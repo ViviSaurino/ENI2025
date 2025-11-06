@@ -13,6 +13,23 @@ from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode
 # ================== Helpers propios (sin importar Dashboard) ==================
 TAB_NAME = "Tareas"
 
+# Columnas mínimas para inicialización segura de df_main
+DEFAULT_COLS = [
+    "Id","Área","Fase","Responsable",
+    "Tarea","Tipo","Detalle","Ciclo de mejora","Complejidad","Prioridad",
+    "Estado","Duración",
+    "Fecha Registro","Hora Registro",
+    "Fecha inicio","Hora de inicio",
+    "Fecha Vencimiento","Hora Vencimiento",
+    "Fecha Terminado","Hora Terminado",
+    "¿Generó alerta?","Fecha de detección","Hora de detección",
+    "¿Se corrigió?","Fecha de corrección","Hora de corrección",
+    "Cumplimiento","Evaluación","Calificación",
+    "Fecha Pausado","Hora Pausado",
+    "Fecha Cancelado","Hora Cancelado",
+    "Fecha Eliminado","Hora Eliminado"
+]
+
 # --- Guardado local: siempre a data/tareas.csv ---
 try:
     from shared import save_local as _disk_save_local
@@ -121,7 +138,7 @@ def render(user: dict | None = None):
 
     st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
-    # --- Estilos globales ---
+    # --- Estilos globales (SOLO rectángulo por .field-wrap) ---
     st.markdown("""
     <style>
     :root{
@@ -165,7 +182,7 @@ def render(user: dict | None = None):
       margin-top:6px;
     }
 
-    /* ========= Rectángulo alrededor de CADA campo (tu wrapper) ========= */
+    /* ========= Rectángulo alrededor de CADA campo ========= */
     .form-card .field-wrap{
       background:#F5F7FA;                 /* gris claro */
       border:1px solid #E3E8EF;           /* borde suave */
@@ -174,22 +191,6 @@ def render(user: dict | None = None):
       box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
     }
     .form-card .field-wrap label{ margin-bottom:6px !important; }
-
-    /* ========= Refuerzo: rectángulo directo al widget por data-testid ========= */
-    #hist-card-anchor + div .form-card [data-testid="stSelectbox"],
-    #hist-card-anchor + div .form-card [data-testid="stMultiSelect"],
-    #hist-card-anchor + div .form-card [data-testid="stDateInput"]{
-      background:#F5F7FA;
-      border:1px solid var(--hist-card-bd);
-      border-radius:10px;
-      padding:8px 10px;
-      box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
-    }
-    #hist-card-anchor + div .form-card [data-testid="stSelectbox"] label,
-    #hist-card-anchor + div .form-card [data-testid="stMultiSelect"] label,
-    #hist-card-anchor + div .form-card [data-testid="stDateInput"] label{
-      margin-bottom:6px !important;
-    }
 
     /* Botón Buscar */
     .hist-search .stButton>button{
@@ -224,6 +225,10 @@ def render(user: dict | None = None):
     """, unsafe_allow_html=True)
 
     # ====== DATA BASE ======
+    # Inicialización segura de la sesión para evitar errores al cargar
+    if "df_main" not in st.session_state or not isinstance(st.session_state["df_main"], pd.DataFrame):
+        st.session_state["df_main"] = pd.DataFrame(columns=DEFAULT_COLS)
+
     df_all = st.session_state["df_main"].copy()
 
     # ===== Card (ancla + contenedor real) =====
