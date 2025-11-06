@@ -28,7 +28,7 @@ DEFAULT_COLS = [
     "Fecha Pausado","Hora Pausado",
     "Fecha Cancelado","Hora Cancelado",
     "Fecha Eliminado","Hora Eliminado",
-    "Archivo"  # <<< NUEVO: asegurar presencia
+    "Archivo"  # asegurar presencia
 ]
 
 # ====== TZ helpers para evitar "tz-naive vs tz-aware" ======
@@ -467,24 +467,37 @@ def render(user: dict | None = None):
         df_view["Fecha Terminado"] = df_view["Fecha Terminado"].combine_first(_tmp_ft)
         df_view.drop(columns=["Fecha terminado"], inplace=True, errors="ignore")
 
-    _mod = to_naive_local_series(df_view.get("Fecha estado modificado"))
+    # ===== Fuente de sellos: modificado y (fallback) actual =====
+    _mod  = to_naive_local_series(df_view.get("Fecha estado modificado"))
     _hmod = df_view["Hora estado modificado"].apply(_to_hhmm) if "Hora estado modificado" in df_view.columns else pd.Series([""]*len(df_view), index=df_view.index)
+
+    _fact = to_naive_local_series(df_view.get("Fecha estado actual"))
+    _hact = df_view["Hora estado actual"].apply(_to_hhmm) if "Hora estado actual" in df_view.columns else pd.Series([""]*len(df_view), index=df_view.index)
 
     if "Estado" in df_view.columns:
         _en_curso   = df_view["Estado"].astype(str) == "En curso"
         _terminado  = df_view["Estado"].astype(str) == "Terminado"
 
-        _h_ini = _hmod.where(_hmod != "", _mod.dt.strftime("%H:%M"))
+        # INICIO (prefer: modificado; fallback: actual)
+        _src_ini_dt = _mod.combine_first(_fact)
+        _src_ini_tm = _hmod.where(_hmod != "", _src_ini_dt.dt.strftime("%H:%M"))
+        _src_ini_tm = _src_ini_tm.where(_src_ini_tm != "", _hact)
+
         need_ini_dt = _en_curso & df_view["Fecha inicio"].isna()
         need_ini_tm = _en_curso & (df_view["Hora de inicio"].astype(str).str.strip() == "")
-        df_view.loc[need_ini_dt, "Fecha inicio"]   = _mod.dt.normalize()[need_ini_dt]
-        df_view.loc[need_ini_tm, "Hora de inicio"] = _h_ini[need_ini_tm]
+        df_view.loc[need_ini_dt, "Fecha inicio"]   = _src_ini_dt.dt.normalize()[need_ini_dt]
+        df_view.loc[need_ini_tm, "Hora de inicio"] = _src_ini_tm[need_ini_tm]
+
+        # TERMINADO (prefer: modificado; fallback: actual)
+        _src_fin_dt = _mod.combine_first(_fact)
+        _src_fin_tm = _hmod.where(_hmod != "", _src_fin_dt.dt.strftime("%H:%M"))
+        _src_fin_tm = _src_fin_tm.where(_src_fin_tm != "", _hact)
 
         need_fin_dt = _terminado & df_view["Fecha Terminado"].isna()
         need_fin_tm = _terminado & (df_view["Hora Terminado"].astype(str).str.strip() == "") if "Hora Terminado" in df_view.columns else False
-        df_view.loc[need_fin_dt, "Fecha Terminado"]      = _mod[need_fin_dt]
+        df_view.loc[need_fin_dt, "Fecha Terminado"] = _src_fin_dt[need_fin_dt]
         if "Hora Terminado" in df_view.columns:
-            df_view.loc[need_fin_tm, "Hora Terminado"] = _hmod.where(_hmod != "", _mod.dt.strftime("%H:%M"))[need_fin_tm]
+            df_view.loc[need_fin_tm, "Hora Terminado"] = _src_fin_tm[need_fin_tm]
 
     # 3.b) VENCIMIENTO
     if "Fecha Vencimiento" not in df_view.columns: df_view["Fecha Vencimiento"] = pd.NaT
@@ -517,7 +530,7 @@ def render(user: dict | None = None):
         "Fecha Cancelado","Hora Cancelado",
         "Fecha Eliminado","Hora Eliminado",
         "__SEL__","__DEL__",
-        "Archivo"  # <<< NUEVO: la dejamos literalmente al final
+        "Archivo"  # la dejamos literalmente al final
     ]
     HIDDEN_COLS = [
         "¿Eliminar?","Estado modificado",
@@ -572,7 +585,7 @@ def render(user: dict | None = None):
     gob.configure_column("Fecha inicio", headerName="Fecha de inicio")
     gob.configure_column("Fecha Terminado", headerName="Fecha Terminado")
 
-    # <<< NUEVO: renderer visual para la columna Archivo >>>
+    # Renderer visual para la columna Archivo
     archivo_renderer = JsCode("""
     function(p){
       const v = String(p.value||'').trim();
@@ -664,10 +677,10 @@ def render(user: dict | None = None):
                 flex=fx,
                 valueFormatter=(
                     date_only_fmt if c in ["Fecha Registro","Fecha inicio","Fecha Vencimiento",
-                                           "Fecha Pausado","Fecha Cancelado","Fecha Eliminado"] else
+                                           "Fecha Pausado","Fecha Cancelado","Fecha Eliminado","Fecha Terminado"] else
                     time_only_fmt if c in ["Hora Registro","Hora de inicio","Hora Pausado","Hora Cancelado","Hora Eliminado",
                                            "Hora Terminado","Hora de detección","Hora de corrección","Hora Vencimiento"] else
-                    date_time_fmt if c in ["Fecha Terminado","Fecha de detección","Hora de corrección"] else
+                    date_time_fmt if c in ["Fecha de detección","Hora de corrección"] else
                     (None if c in ["Calificación","Prioridad","Archivo"] else fmt_dash)
                 ),
                 suppressMenu=True if c in ["Fecha Registro","Hora Registro","Fecha inicio","Hora de inicio",
@@ -777,7 +790,6 @@ def render(user: dict | None = None):
             pass
 
     # ============== DESCARGA DE ARCHIVOS (fila seleccionada) ==============
-    # <<< NUEVO: muestra botón(es) de descarga si hay "Archivo" en la(s) fila(s) seleccionada(s)
     st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
     sel_rows = []
     try:
