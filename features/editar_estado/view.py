@@ -1,6 +1,7 @@
 # features/editar_estado/view.py
 from __future__ import annotations
 import os
+import re
 import pandas as pd
 import streamlit as st
 from st_aggrid import (
@@ -11,7 +12,6 @@ from st_aggrid import (
     JsCode,
 )
 
-# =================== Helpers de TZ y Sheets (ajustes mínimos) ===================
 # Hora Lima para sellado de cambios
 try:
     from shared import now_lima_trimmed
@@ -20,24 +20,43 @@ except Exception:
     def now_lima_trimmed():
         return datetime.now().replace(second=0, microsecond=0)
 
-# --- Normalización a datetime naive local (evita tz-naive vs tz-aware) ---
+# ========= Utilidades mínimas para zonas horarias (solo para Duración) =========
 try:
     from zoneinfo import ZoneInfo
     _TZ = ZoneInfo(st.secrets.get("local_tz", "America/Lima"))
 except Exception:
     _TZ = None
 
-def _to_naive_local_series(s: pd.Series) -> pd.Series:
-    ser = pd.to_datetime(s, errors="coerce", utc=False)
+def _to_naive_local_one(x):
+    """
+    Convierte un valor fecha/hora (string o Timestamp) a datetime *naive* en hora local.
+    - Si viene con tz (p.ej. '2025-11-06T16:12:00-05:00'): convierte a local y elimina tz.
+    - Si viene sin tz (naive): lo deja tal cual (se asume ya está en hora local).
+    """
+    if x is None or (isinstance(x, float) and pd.isna(x)):
+        return pd.NaT
     try:
-        if getattr(ser.dt, "tz", None) is not None:
-            ser = (ser.dt.tz_convert(_TZ) if _TZ else ser).dt.tz_localize(None)
+        # Si ya es Timestamp
+        if isinstance(x, pd.Timestamp):
+            if x.tz is not None:
+                d = x.tz_convert(_TZ or x.tz).tz_localize(None) if _TZ else x.tz_localize(None)
+                return d
+            return x  # ya es naive
+        s = str(x).strip()
+        if not s or s.lower() in {"nan", "nat", "none", "null"}:
+            return pd.NaT
+        # Detecta indicios de tz en el string (Z, +hh:mm, -hh:mm)
+        if re.search(r'(Z|[+-]\d{2}:?\d{2})$', s):
+            d = pd.to_datetime(s, errors="coerce", utc=True)
+            if pd.isna(d):
+                return pd.NaT
+            if _TZ:
+                d = d.tz_convert(_TZ)
+            return d.tz_localize(None)
+        # Caso naive: parse directo y se mantiene naive (local)
+        return pd.to_datetime(s, errors="coerce")
     except Exception:
-        try:
-            ser = ser.dt.tz_localize(None)
-        except Exception:
-            pass
-    return ser
+        return pd.NaT
 
 def _fmt_hhmm(v) -> str:
     if v is None or (isinstance(v, float) and pd.isna(v)):
@@ -46,8 +65,7 @@ def _fmt_hhmm(v) -> str:
         s = str(v).strip()
         if not s or s.lower() in {"nan","nat","none","null"}:
             return ""
-        import re as _re
-        m = _re.match(r"^(\d{1,2}):(\d{2})", s)
+        m = re.match(r"^(\d{1,2}):(\d{2})", s)
         if m:
             return f"{int(m.group(1)):02d}:{int(m.group(2)):02d}"
         d = pd.to_datetime(s, errors="coerce", utc=False)
@@ -57,7 +75,7 @@ def _fmt_hhmm(v) -> str:
     except Exception:
         return ""
 
-# --- Cliente GSheets y upsert por Id (sólo columnas de estado) ---
+# --- Cliente GSheets y upsert por Id (se mantiene igual que antes) ---
 def _gsheets_client():
     if "gcp_service_account" not in st.secrets:
         raise KeyError("Falta 'gcp_service_account' en secrets.")
@@ -77,7 +95,6 @@ def _gsheets_client():
     try:
         ws = ss.worksheet(ws_name)
     except Exception:
-        # si no existe, lo creamos vacío con encabezados desde df cuando se use
         ws = None
     return ss, ws, ws_name
 
@@ -89,15 +106,12 @@ def _col_letter(n: int) -> str:
     return s
 
 def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
-    """Actualiza en Sheets SOLO columnas de estado de las filas con esos Id.
-       Si la hoja no existe la crea con los headers de df_base."""
     try:
         ss, ws, ws_name = _gsheets_client()
     except Exception as e:
         st.info(f"Sheets no configurado: {e}")
         return
 
-    # Si hoja no existe, crear con encabezados de df_base
     if ws is None:
         rows = str(max(1000, len(df_base) + 10))
         cols = str(max(26, len(df_base.columns) + 5))
@@ -115,14 +129,12 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
         st.info("La hoja seleccionada no tiene columna 'Id'; no se puede actualizar por Id.")
         return
 
-    # índice de filas por Id (1-based en Sheets)
     id_idx = col_map["Id"] - 1
     id_to_row = {}
     for r_i, row in enumerate(values[1:], start=2):
         if id_idx < len(row):
             id_to_row[str(row[id_idx]).strip()] = r_i
 
-    # columnas a tocar
     cols_to_push = [
         "Estado",
         "Fecha estado actual",
@@ -134,18 +146,15 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
     ]
     cols_to_push = [c for c in cols_to_push if c in col_map]
 
-    # formateo por tipo
     def _fmt_out(col, val):
         low = str(col).lower()
         if low.startswith("fecha"):
-            ser = _to_naive_local_series(pd.Series([val]))
-            s = ser.dt.strftime("%Y-%m-%d").fillna("").iloc[0]
-            return "" if pd.isna(s) else str(s)
+            d = _to_naive_local_one(val)
+            return "" if pd.isna(d) else d.strftime("%Y-%m-%d")
         if low.startswith("hora"):
             return _fmt_hhmm(val)
         return "" if (val is None or (isinstance(val, float) and pd.isna(val))) else str(val)
 
-    # hacemos update fila por fila, preservando otras columnas
     last_col_letter = _col_letter(len(headers))
     body = []
     ranges = []
@@ -156,7 +165,6 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
             continue
         row_idx = id_to_row.get(str(_id))
         if not row_idx:
-            # Si no existe el Id, se agrega al final con todos los campos disponibles
             new_row = []
             for h in headers:
                 v = df_idx.loc[_id, h] if h in df_idx.columns else ""
@@ -165,12 +173,10 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
             ws.append_row(new_row, value_input_option="USER_ENTERED")
             continue
 
-        # base actual de la fila en el sheet
         current_row = values[row_idx-1].copy()
         if len(current_row) < len(headers):
             current_row += [""] * (len(headers) - len(current_row))
 
-        # aplicar solo columnas a empujar
         for h in cols_to_push:
             v = df_idx.loc[_id, h] if h in df_idx.columns else ""
             current_row[col_map[h]-1] = _fmt_out(h, v)
@@ -179,7 +185,6 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
         body.append(current_row[:len(headers)])
 
     if body and ranges:
-        # batch update en bloques contiguos de 1 fila por simplicidad
         data = [{"range": rng, "values": [vals]} for rng, vals in zip(ranges, body)]
         ws.batch_update({"valueInputOption": "USER_ENTERED", "data": data})
 
@@ -189,9 +194,7 @@ def render(user: dict | None = None):
     # ================== EDITAR ESTADO ==================
     st.session_state.setdefault("est_visible", True)  # siempre visible
 
-    # ---------- (sin píldora superior duplicada) ----------
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-    # ---------- fin ----------
 
     if st.session_state["est_visible"]:
 
@@ -203,7 +206,6 @@ def render(user: dict | None = None):
         st.markdown("""
         <style>
           #est-section .stButton > button { width: 100% !important; }
-          /* Encabezados más legibles: permiten salto de línea y mayor altura */
           #est-section .ag-header-cell-label{
             font-weight: 400 !important;
             white-space: normal !important;
@@ -212,8 +214,6 @@ def render(user: dict | None = None):
           #est-section .ag-body-horizontal-scroll,
           #est-section .ag-center-cols-viewport { overflow-x: hidden !important; }
           .section-est .help-strip + .form-card{ margin-top: 6px !important; }
-
-          /* Píldora local para Editar estado (mismo estilo/anchura que "Área") */
           .est-pill{
             width:100%; height:38px; border-radius:12px;
             display:flex; align-items:center; justify-content:center;
@@ -226,12 +226,10 @@ def render(user: dict | None = None):
         </style>
         """, unsafe_allow_html=True)
 
-        # ===== Píldora alineada al ancho de "Área" =====
         c_pill, _, _, _, _, _ = st.columns([A, Fw, T_width, D, R, C], gap="medium")
         with c_pill:
             st.markdown('<div class="est-pill"><span>✏️&nbsp;Editar estado</span></div>', unsafe_allow_html=True)
 
-        # ===== Wrapper UNIDO: help-strip + form-card =====
         st.markdown("""
         <div class="section-est">
           <div class="help-strip">
@@ -285,11 +283,10 @@ def render(user: dict | None = None):
             responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
             est_resp = c_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0)
 
-            # Rango de fechas (siempre visible; por defecto = min–max del dataset)
+            # Rango de fechas
             est_desde = c_desde.date_input("Desde", value=min_date, min_value=min_date, max_value=max_date, key="est_desde")
             est_hasta = c_hasta.date_input("Hasta", value=max_date, min_value=min_date, max_value=max_date, key="est_hasta")
 
-            # Alineación del botón Buscar a la misma altura que los campos
             with c_buscar:
                 st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
                 est_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
@@ -304,7 +301,6 @@ def render(user: dict | None = None):
             if est_resp != "Todos" and "Responsable" in df_tasks.columns:
                 df_tasks = df_tasks[df_tasks["Responsable"].astype(str) == est_resp]
 
-            # aplicar rango (prioridad: Fecha inicio -> Fecha Registro -> Fecha)
             if "Fecha inicio" in df_tasks.columns:
                 fcol = pd.to_datetime(df_tasks["Fecha inicio"], errors="coerce")
             elif "Fecha Registro" in df_tasks.columns:
@@ -337,7 +333,6 @@ def render(user: dict | None = None):
         df_view = pd.DataFrame(columns=cols_out)
         if not df_tasks.empty:
             base = df_tasks.copy()
-            # Asegurar presencia de columnas usadas
             for need in [
                 "Id","Tarea","Estado",
                 "Fecha Registro","Hora Registro","Fecha","Hora",
@@ -352,11 +347,9 @@ def render(user: dict | None = None):
                 if need not in base.columns:
                     base[need] = ""
 
-            # === Defaults solicitados ===
             base["Estado"] = base["Estado"].astype(str)
             base.loc[base["Estado"].str.strip().isin(["", "nan"]), "Estado"] = "No iniciado"
 
-            # Normalizaciones por estado (solo visual; no se escriben en df_main)
             def _date_norm(col_main, col_fb=None):
                 s = pd.to_datetime(base[col_main], errors="coerce").dt.normalize()
                 if col_fb:
@@ -385,7 +378,6 @@ def render(user: dict | None = None):
 
             estado_now = base["Estado"].astype(str)
 
-            # Inicializar finales
             fecha_from_estado = pd.Series(pd.NaT, index=base.index, dtype="datetime64[ns]")
             hora_from_estado  = pd.Series("", index=base.index, dtype="object")
 
@@ -403,14 +395,12 @@ def render(user: dict | None = None):
             fecha_from_estado[m4] = fr_can[m4];   hora_from_estado[m4] = hr_can[m4]
             fecha_from_estado[m5] = fr_eli[m5];   hora_from_estado[m5] = hr_eli[m5]
 
-            # Respetar valores existentes
             fecha_estado_exist = pd.to_datetime(base["Fecha estado actual"], errors="coerce").dt.normalize()
             hora_estado_exist  = base["Hora estado actual"].astype(str)
 
             fecha_estado_final = fecha_estado_exist.where(fecha_estado_exist.notna(), fecha_from_estado)
             hora_estado_final  = hora_estado_exist.where(hora_estado_exist.str.strip() != "", hora_from_estado)
 
-            # Fallback visual adicional solicitado
             fecha_estado_final = fecha_estado_final.where(
                 fecha_estado_final.notna(), pd.to_datetime(base.get("Fecha Registro"), errors="coerce").dt.normalize()
             )
@@ -428,7 +418,7 @@ def render(user: dict | None = None):
                 "Hora estado modificado":  _fmt_time(base["Hora estado modificado"]),
             })[cols_out].copy()
 
-        # ========= editores y estilo seguro =========
+        # ========= editores y estilo =========
         estados_editables = ["En curso","Terminado","Pausado","Cancelado","Eliminado"]
 
         date_editor = JsCode("""
@@ -490,7 +480,6 @@ def render(user: dict | None = None):
           }
         }""")
 
-        # --- AgGrid ---
         gob = GridOptionsBuilder.from_dataframe(df_view)
         gob.configure_grid_options(
             suppressMovableColumns=True,
@@ -501,7 +490,6 @@ def render(user: dict | None = None):
             suppressHorizontalScroll=True
         )
         gob.configure_default_column(wrapHeaderText=True, autoHeaderHeight=True)
-
         gob.configure_selection("single", use_checkbox=False)
 
         gob.configure_column(
@@ -543,7 +531,6 @@ def render(user: dict | None = None):
                     else:
                         grid_data["Id"] = grid_data["Id"].astype(str)
 
-                        # Filas con nuevo estado propuesto
                         changes = grid_data.loc[
                             grid_data["Estado modificado"].astype(str).str.strip() != "",
                             ["Id", "Estado modificado"]
@@ -569,23 +556,28 @@ def render(user: dict | None = None):
                             c_i = changes.set_index("Id")
                             ids = b_i.index.intersection(c_i.index)
 
-                            # Actualizar estado y sellos de tiempo (Lima)
                             b_i.loc[ids, "Estado"] = c_i.loc[ids, "Estado modificado"].values
                             b_i.loc[ids, "Fecha estado actual"] = f_now
                             b_i.loc[ids, "Hora estado actual"] = h_now
 
-                            # (Opcional) Duración si existe columna y tenemos Fecha Registro
+                            # ===== Duración (ajuste robusto tz) =====
                             if "Duración" in b_i.columns and "Fecha Registro" in b_i.columns:
-                                fr = _to_naive_local_series(b_i.loc[ids, "Fecha Registro"])
-                                # ts naive -> Timestamp naive:
-                                ts_ts = pd.Timestamp(ts)
-                                dur_min = ((ts_ts - fr).dt.total_seconds() / 60).fillna(0).astype(int)
+                                ts_naive = pd.Timestamp(ts)  # naive
+                                def _mins_since(fr_val):
+                                    d = _to_naive_local_one(fr_val)
+                                    if pd.isna(d):
+                                        return 0
+                                    try:
+                                        return int((ts_naive - d).total_seconds() / 60)
+                                    except Exception:
+                                        return 0
+                                dur_min = b_i.loc[ids, "Fecha Registro"].apply(_mins_since)
                                 try:
                                     b_i.loc[ids, "Duración"] = dur_min
                                 except Exception:
                                     pass
 
-                            # Limpiar campos auxiliares (si existen)
+                            # Limpiar auxiliares
                             for aux in ["Estado modificado","Fecha estado modificado","Hora estado modificado"]:
                                 if aux in b_i.columns:
                                     b_i.loc[ids, aux] = ""
@@ -593,7 +585,6 @@ def render(user: dict | None = None):
                             base = b_i.reset_index()
                             st.session_state["df_main"] = base.copy()
 
-                            # ======== PERSISTIR local ========
                             def _persist(_df: pd.DataFrame):
                                 try:
                                     os.makedirs("data", exist_ok=True)
@@ -605,7 +596,6 @@ def render(user: dict | None = None):
                             maybe_save = st.session_state.get("maybe_save")
                             res = maybe_save(_persist, base.copy()) if callable(maybe_save) else _persist(base.copy())
 
-                            # ======== PERSISTIR en Google Sheets por Id ========
                             try:
                                 _sheet_upsert_estado_by_id(base.copy(), list(ids))
                             except Exception as ee:
@@ -620,6 +610,5 @@ def render(user: dict | None = None):
                 except Exception as e:
                     st.error(f"No pude guardar: {e}")
 
-        # Cerrar form-card + section + contenedor
         st.markdown('</div></div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
