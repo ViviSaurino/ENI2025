@@ -89,27 +89,59 @@ TAB_NAME = st.session_state.get("TAB_NAME", "Tareas")
 COLS_XLSX = [c for c in COLS if c not in ("__DEL__","DEL")]
 
 def _csv_path() -> str:
+    """Ruta legacy (compatibilidad): data/tareas.csv"""
     return os.path.join(DATA_DIR, "tareas.csv")
 
-def read_local() -> pd.DataFrame:
-    path = _csv_path()
+def _local_store_path() -> str:
+    """
+    Ruta principal de persistencia usada por features/dashboard/view._save_local:
+    data/local/df_main.csv
+    """
+    base_dir = os.path.join(DATA_DIR, "local")
+    os.makedirs(base_dir, exist_ok=True)
+    return os.path.join(base_dir, "df_main.csv")
+
+def _read_csv_safe(path: str, cols: list[str]) -> pd.DataFrame:
     if not os.path.exists(path) or os.path.getsize(path) == 0:
-        return pd.DataFrame([], columns=COLS)
+        return pd.DataFrame([], columns=cols)
     try:
         df = pd.read_csv(path, encoding="utf-8-sig")
     except (pd.errors.EmptyDataError, ValueError):
-        return pd.DataFrame([], columns=COLS)
-    # asegurar columnas
-    for c in COLS:
+        return pd.DataFrame([], columns=cols)
+    # asegurar columnas mínimas
+    for c in cols:
         if c not in df.columns:
             df[c] = None
-    # ordenar
-    df = df[[c for c in COLS if c in df.columns] + [c for c in df.columns if c not in COLS]]
+    # ordenar: primero las conocidas, luego el resto
+    df = df[[c for c in cols if c in df.columns] + [c for c in df.columns if c not in cols]]
     return df
 
+def read_local() -> pd.DataFrame:
+    """
+    Loader unificado:
+    1) Intenta leer del destino principal (data/local/df_main.csv).
+    2) Si no existe, cae a la ruta legacy (data/tareas.csv).
+    """
+    primary = _local_store_path()
+    legacy = _csv_path()
+    if os.path.exists(primary) and os.path.getsize(primary) > 0:
+        return _read_csv_safe(primary, COLS)
+    return _read_csv_safe(legacy, COLS)
+
 def save_local(df: pd.DataFrame):
+    """
+    Guardado unificado:
+    - Escribe SIEMPRE en data/local/df_main.csv (principal).
+    - Además duplica en data/tareas.csv (compatibilidad).
+    """
     try:
-        df.to_csv(_csv_path(), index=False, encoding="utf-8-sig")
+        primary = _local_store_path()
+        df.to_csv(primary, index=False, encoding="utf-8-sig")
+    except Exception:
+        pass
+    try:
+        legacy = _csv_path()
+        df.to_csv(legacy, index=False, encoding="utf-8-sig")
     except Exception:
         pass
 
@@ -118,6 +150,11 @@ def write_sheet_tab(df: pd.DataFrame):
     return False, "No conectado a Google Sheets (fallback activo)"
 
 def ensure_df_main():
+    """
+    Inicializa st.session_state['df_main'] desde almacenamiento local.
+    Lee del mismo archivo que escribe _save_local (data/local/df_main.csv),
+    con fallback a la ruta legacy.
+    """
     if "df_main" in st.session_state:
         return
     base = read_local()
