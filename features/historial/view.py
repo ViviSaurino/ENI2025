@@ -165,16 +165,31 @@ def render(user: dict | None = None):
       margin-top:6px;
     }
 
-    /* ========= NUEVO: rectángulo alrededor de CADA campo ========= */
+    /* ========= Rectángulo alrededor de CADA campo (tu wrapper) ========= */
     .form-card .field-wrap{
-      background:#F5F7FA;                 /* gris claro como en la imagen */
+      background:#F5F7FA;                 /* gris claro */
       border:1px solid #E3E8EF;           /* borde suave */
       border-radius:10px;
       padding:6px 10px;                   /* respiro alrededor del widget */
       box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
     }
-    /* elimina márgenes extra del label para que el rectángulo abrace todo compacto */
     .form-card .field-wrap label{ margin-bottom:6px !important; }
+
+    /* ========= Refuerzo: rectángulo directo al widget por data-testid ========= */
+    #hist-card-anchor + div .form-card [data-testid="stSelectbox"],
+    #hist-card-anchor + div .form-card [data-testid="stMultiSelect"],
+    #hist-card-anchor + div .form-card [data-testid="stDateInput"]{
+      background:#F5F7FA;
+      border:1px solid var(--hist-card-bd);
+      border-radius:10px;
+      padding:8px 10px;
+      box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
+    }
+    #hist-card-anchor + div .form-card [data-testid="stSelectbox"] label,
+    #hist-card-anchor + div .form-card [data-testid="stMultiSelect"] label,
+    #hist-card-anchor + div .form-card [data-testid="stDateInput"] label{
+      margin-bottom:6px !important;
+    }
 
     /* Botón Buscar */
     .hist-search .stButton>button{
