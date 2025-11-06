@@ -148,13 +148,14 @@ def ensure_df_main():
             url = st.secrets.get("gsheets_doc_url")
             if not url:
                 try:
-                    url = st.secrets["sheets"]["sheet_url"]  # type: ignore
+                    url = st.secrets["gsheets"]["spreadsheet_url"]  # type: ignore
                 except Exception:
                     url = None
 
             if url and callable(open_sheet_by_url) and callable(read_df_from_worksheet):
                 sh = open_sheet_by_url(url)
-                df_sheet = read_df_from_worksheet(sh, "TareasRecientes")
+                ws_name = (st.secrets.get("gsheets", {}) or {}).get("worksheet", "TareasRecientes")
+                df_sheet = read_df_from_worksheet(sh, ws_name)
 
                 email = st.session_state.get("user_email") or (st.session_state.get("user") or {}).get("email", "")
                 display_name = st.session_state.get("user_display_name", "") or ""
@@ -167,7 +168,6 @@ def ensure_df_main():
                     else:
                         base = df_sheet.copy()
         except Exception:
-            # si no hay credenciales o utils/gsheets, seguimos al plan C
             base = base if base is not None else pd.DataFrame()
 
     # --- 3) Último recurso: DF vacío con columnas ---
@@ -327,5 +327,8 @@ def inject_global_css():
 .form-card [data-testid="stHorizontalBlock"]:nth-of-type(2) > [data-testid="column"]:first-child [data-baseweb="select"] > div{ min-width:300px !important; }
 /* Topbar layout */
 .topbar, .topbar-ux, .topbar-na{ display:flex !important; align-items:center !important; gap:8px !important; }
-topbar .stButton>button, .topbar-ux .stButton>button, .topbar-na .stButton>button{
-  height:var(--pill-h) !important; padding:0 16px !important; border-radius:10px !import
+.topbar .stButton>button, .topbar-ux .stButton>button, .topbar-na .stButton>button{
+  height:var(--pill-h) !important; padding:0 16px !important; border-radius:10px !important; display:inline-flex !important; align-items:center !important;
+}
+</style>
+""", unsafe_allow_html=True)
