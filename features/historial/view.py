@@ -21,7 +21,7 @@ DEFAULT_COLS = [
     "Fecha inicio","Hora de inicio",
     "Fecha Vencimiento","Hora Vencimiento",
     "Fecha Terminado","Hora Terminado",
-    "¿Generó alerta?","Fecha de detección","Hora de detección",
+    "¿Generó alerta?","N° de alerta","Fecha de detección","Hora de detección",
     "¿Se corrigió?","Fecha de corrección","Hora de corrección",
     "Cumplimiento","Evaluación","Calificación",
     "Fecha Pausado","Hora Pausado",
@@ -120,6 +120,13 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
     for cc in [c for c in df.columns if "archivo" in c.lower()]:
         df[cc] = df[cc].map(_strip_html)
 
+    # Unificar "N° alerta" -> "N° de alerta" (y quitar duplicados al final)
+    if "N° de alerta" not in df.columns and "N° alerta" in df.columns:
+        df.rename(columns={"N° alerta": "N° de alerta"}, inplace=True)
+    dup_alert_cols = [c for c in df.columns if c.strip().lower() in {"n° alerta","n alerta","nº alerta"} and c != "N° de alerta"]
+    for c in dup_alert_cols:
+        df.drop(columns=c, inplace=True, errors="ignore")
+
     if replace_df_main:
         st.session_state["df_main"] = df
     return df
@@ -164,7 +171,6 @@ def export_excel(df: pd.DataFrame, sheet_name: str = TAB_NAME) -> bytes:
 _EXT_RE = re.compile(r"\.(pdf|docx?|xlsx?|pptx?|png|jpe?g|csv|zip|rar)$", re.I)
 
 def _pick_first_token(av: str) -> str:
-    """De un valor 'Archivo' con varios items, devuelve el que parece archivo/URL."""
     raw = (av or "").strip()
     if not raw:
         return ""
@@ -345,6 +351,13 @@ def render(user: dict | None = None):
                     )
                     break
 
+    # Unificar/ubicar "N° de alerta" al costado de "¿Generó alerta?"
+    if "N° de alerta" not in df_view.columns and "N° alerta" in df_view.columns:
+        df_view.rename(columns={"N° alerta": "N° de alerta"}, inplace=True)
+    # Eliminar duplicados de esa columna (caso imagen 2)
+    to_drop_dups = [c for c in df_view.columns if c != "N° de alerta" and c.strip().lower() in {"n° alerta","n alerta","nº alerta"}]
+    df_view.drop(columns=to_drop_dups, inplace=True, errors="ignore")
+
     # ========= GRID =========
     target_cols = [
         "Id","Área","Fase","Responsable",
@@ -354,27 +367,26 @@ def render(user: dict | None = None):
         "Fecha inicio","Hora de inicio",
         "Fecha Vencimiento","Hora Vencimiento",
         "Fecha Terminado","Hora Terminado",
-        "¿Generó alerta?","Fecha de detección","Hora de detección",
+        "¿Generó alerta?","N° de alerta","Fecha de detección","Hora de detección",
         "¿Se corrigió?","Fecha de corrección","Hora de corrección",
         "Cumplimiento","Evaluación","Calificación",
         "Fecha Pausado","Hora Pausado",
         "Fecha Cancelado","Hora Cancelado",
         "Fecha Eliminado","Hora Eliminado",
-        "Archivo",
-        "__Descargar__"   # acción a la derecha
+        "Archivo","__Pick__",   # checkbox al costado
+        "__Descargar__"         # acción a la derecha
     ]
     HIDDEN_COLS = [
         "¿Eliminar?","Estado modificado",
         "Fecha estado modificado","Hora estado modificado",
         "Fecha estado actual","Hora estado actual",
-        "N° de alerta","Tipo de alerta","Fecha","Hora","Vencimiento",
+        "N° alerta","Tipo de alerta","Fecha","Hora","Vencimiento",
         "__ts__","__SEL__","__DEL__"
     ]
     for c in target_cols:
         if c not in df_view.columns:
             df_view[c] = ""
 
-    # Construir df del grid sin columnas ocultas
     df_grid = df_view.reindex(
         columns=list(dict.fromkeys(target_cols)) +
         [c for c in df_view.columns if c not in target_cols + HIDDEN_COLS]
@@ -385,7 +397,7 @@ def render(user: dict | None = None):
     gob = GridOptionsBuilder.from_dataframe(df_grid)
     gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, editable=False)
 
-    # Selección SIN checkbox (para no crear la columna extra)
+    # Usamos selección "single" + checkbox propio al lado de Archivo
     gob.configure_selection(selection_mode="single", use_checkbox=False)
     gob.configure_grid_options(
         rowSelection="single",
@@ -403,7 +415,8 @@ def render(user: dict | None = None):
     )
 
     # ----- Columnas base visibles -----
-    gob.configure_column("Id", headerName="ID", editable=False, minWidth=110, pinned="left", suppressMovable=True)
+    gob.configure_column("Id", headerName="ID", editable=False, width=110, pinned="left",
+                         suppressMovable=True, suppressSizeToFit=True)
     gob.configure_column("Área", headerName="Área", editable=False, minWidth=160, pinned="left", suppressMovable=True)
     gob.configure_column("Fase", headerName="Fase", editable=False, minWidth=140, pinned="left", suppressMovable=True)
     gob.configure_column("Responsable", editable=False, minWidth=200, pinned="left", suppressMovable=True)
@@ -458,6 +471,30 @@ def render(user: dict | None = None):
         cellStyle={"cursor":"pointer","textDecoration":"underline","color":"#0A66C2"}
     )
 
+    # ==== Checkbox junto a Archivo (controla la selección de la fila) ====
+    pick_renderer = JsCode(r"""
+    class SelRenderer{
+      init(params){
+        this.eGui = document.createElement('input');
+        this.eGui.type = 'checkbox';
+        this.eGui.checked = params.node.isSelected();
+        this.eGui.addEventListener('change', (ev)=>{
+          try{ params.node.setSelected(ev.target.checked, true); }catch(_){}
+        });
+      }
+      getGui(){ return this.eGui; }
+      refresh(p){ this.eGui.checked = p.node.isSelected(); return true; }
+    }
+    """)
+    gob.configure_column(
+        "__Pick__",
+        headerName="",
+        minWidth=60, maxWidth=70, flex=0,
+        editable=False, pinned=None,
+        cellRenderer=pick_renderer,
+        cellStyle={"textAlign":"center"}
+    )
+
     # ==== Columna Descargar (pinned right) ====
     desc_value_getter = JsCode(r"""
     function(p){
@@ -483,7 +520,7 @@ def render(user: dict | None = None):
         cellStyle={"cursor":"pointer","textDecoration":"underline","color":"#0A66C2","textAlign":"center"}
     )
 
-    # Formatos cortos (solo dejan '—' para nulos)
+    # Formatos cortos
     fmt_dash = JsCode("""
     function(p){
       if(p.value===null||p.value===undefined) return '—';
@@ -491,11 +528,9 @@ def render(user: dict | None = None):
       if(s===''||s==='nan'||s==='nat'||s==='none'||s==='null') return '—';
       return String(p.value);
     }""")
-
-    # Anchuras por defecto (no tocamos lo demás)
     for c in df_grid.columns:
-        if c in ["Archivo","__Descargar__","Id","Área","Fase","Responsable","Estado",
-                 "Fecha Vencimiento","Fecha inicio","Fecha Terminado"]:
+        if c in ["Archivo","__Descargar__","__Pick__","Id","Área","Fase","Responsable","Estado",
+                 "Fecha Vencimiento","Fecha inicio","Fecha Terminado","¿Generó alerta?","N° de alerta"]:
             continue
         gob.configure_column(c, valueFormatter=fmt_dash)
 
@@ -503,15 +538,20 @@ def render(user: dict | None = None):
     autosize_on_ready = JsCode("""
     function(params){
       const all = params.columnApi.getAllDisplayedColumns();
-      params.columnApi.autoSizeColumns(all, true);
+      const skip = all.filter(c => (c.getColId && c.getColId() !== 'Id'));
+      params.columnApi.autoSizeColumns(skip, true);
+      try{ params.columnApi.setColumnWidth('Id', 110); }catch(_){}
     }""")
     autosize_on_data = JsCode("""
     function(params){
       if (params.api && params.api.getDisplayedRowCount() > 0){
         const all = params.columnApi.getAllDisplayedColumns();
-        params.columnApi.autoSizeColumns(all, true);
+        const skip = all.filter(c => (c.getColId && c.getColId() !== 'Id'));
+        params.columnApi.autoSizeColumns(skip, true);
+        try{ params.columnApi.setColumnWidth('Id', 110); }catch(_){}
       }
     }""")
+
     # Clic en Archivo o en Descargar
     on_click_archivo = JsCode(r"""
     function(e){
@@ -522,7 +562,6 @@ def render(user: dict | None = None):
       const raw0 = (e && e.data && e.data['Archivo'] != null) ? String(e.data['Archivo']).trim() : '';
       if(!raw0) return;
 
-      // elegir token
       const parts = raw0.split(/[\n,;|]+/).map(s=>s.trim()).filter(Boolean);
       let raw = parts[0] || '';
       for (let s of parts){
@@ -534,7 +573,6 @@ def render(user: dict | None = None):
         try{ window.open(encodeURI(raw), '_blank', 'noopener'); }catch(err){}
         return;
       }
-      // Local => asegurar selección para que Python muestre el botón de descarga
       try{
         const node = e.node;
         if(node){ node.setSelected(true, true); }
@@ -561,7 +599,7 @@ def render(user: dict | None = None):
         allow_unsafe_jscode=True, theme="balham",
     )
 
-    # ===== Zona de descarga (al seleccionar fila) =====
+    # ===== Selección actual (para descarga) =====
     st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
     sel_rows = []
     try:
@@ -571,44 +609,19 @@ def render(user: dict | None = None):
     if isinstance(sel_rows, pd.DataFrame):
         sel_rows = sel_rows.to_dict("records")
 
-    if sel_rows:
-        r = sel_rows[0]
-        rid = str(r.get("Id","")).strip()
-        av  = str(r.get("Archivo","")).strip()
-        token = _pick_first_token(av)
-        if rid and token:
-            if token.lower().startswith(("http://","https://")):
-                st.link_button("🌐 Abrir archivo", token, use_container_width=False)
-            else:
-                res = _resolve_local_path(token, rid)
-                if res:
-                    path, fname = res
-                    try:
-                        with open(path, "rb") as fh:
-                            st.download_button(
-                                f"⬇️ Descargar — {fname}",
-                                fh.read(),
-                                file_name=fname,
-                                use_container_width=False
-                            )
-                    except Exception:
-                        st.info("No logré leer el archivo local para descargar.")
-                else:
-                    st.info("No encontré el archivo local para esa fila. Verifica la ruta en “Archivo”.")
-
     # ---- Botonera ----
     left_spacer = A_f + Fw_f + T_width_f
     W_SHEETS = R_f + 0.8
 
     st.markdown('<div class="hist-actions">', unsafe_allow_html=True)
-    _spacer, b_xlsx, b_sync, b_save_local, b_save_sheets = st.columns(
-        [left_spacer, D_f, R_f, R_f, W_SHEETS], gap="medium"
+    _spacer, b_xlsx, b_download_file, b_sync, b_save_local, b_save_sheets = st.columns(
+        [left_spacer, D_f, R_f, R_f, R_f, W_SHEETS], gap="medium"
     )
 
     with b_xlsx:
         try:
             df_xlsx = st.session_state["df_main"].copy()
-            for c in ["__Descargar__","__SEL__","__DEL__","¿Eliminar?"]:
+            for c in ["__Descargar__","__Pick__","__SEL__","__DEL__","¿Eliminar?"]:
                 if c in df_xlsx.columns:
                     df_xlsx.drop(columns=[c], inplace=True, errors="ignore")
             xlsx_b = export_excel(df_xlsx, sheet_name=TAB_NAME)
@@ -622,6 +635,37 @@ def render(user: dict | None = None):
             st.error("No pude generar Excel: falta 'xlsxwriter' u 'openpyxl'.")
         except Exception as e:
             st.error(f"No pude generar Excel: {e}")
+
+    # === DESCARGAR ARCHIVO (botón principal) ===
+    with b_download_file:
+        did_render = False
+        if sel_rows:
+            r = sel_rows[0]
+            rid = str(r.get("Id","")).strip()
+            av  = str(r.get("Archivo","")).strip()
+            token = _pick_first_token(av)
+            if rid and token:
+                if token.lower().startswith(("http://","https://")):
+                    st.link_button("🌐 Abrir archivo", token, use_container_width=True)
+                    did_render = True
+                else:
+                    res = _resolve_local_path(token, rid)
+                    if res:
+                        path, fname = res
+                        try:
+                            with open(path, "rb") as fh:
+                                st.download_button(
+                                    f"⬇️ Descargar archivo — {fname}",
+                                    fh.read(),
+                                    file_name=fname,
+                                    use_container_width=True
+                                )
+                                did_render = True
+                        except Exception:
+                            pass
+        if not did_render:
+            st.button("⬇️ Descargar archivo", use_container_width=True, disabled=True,
+                      help="Selecciona una fila con un archivo válido.")
 
     with b_sync:
         if st.button("🔄 Sincronizar", use_container_width=True, key="btn_sync_sheet"):
