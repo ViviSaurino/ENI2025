@@ -35,8 +35,25 @@ except Exception:
     _TZ = None
 
 def to_naive_local_series(s: pd.Series) -> pd.Series:
+    """
+    Convierte a datetime (naive, hora local). Soporta:
+    - ISO strings
+    - Objetos datetime con/ sin tz
+    - Epoch en milisegundos (strings/nums de 12–13 dígitos)
+    """
     ser = pd.to_datetime(s, errors="coerce", utc=False)
+
+    # Reprocesa valores que vengan como epoch-ms (solo dígitos 12–13)
     try:
+        raw = pd.Series(s, copy=False)
+        mask_ms = raw.astype(str).str.fullmatch(r"\d{12,13}")
+        if mask_ms.any():
+            ser.loc[mask_ms] = pd.to_datetime(raw.loc[mask_ms].astype("int64"), unit="ms", utc=True)
+    except Exception:
+        pass
+
+    try:
+        # A local y sin tz
         if getattr(ser.dt, "tz", None) is not None:
             ser = (ser.dt.tz_convert(_TZ) if _TZ else ser).dt.tz_localize(None)
     except Exception:
@@ -103,7 +120,7 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
     headers, rows = values[0], values[1:]
     df = pd.DataFrame(rows, columns=headers)
 
-    # normaliza fechas
+    # normaliza fechas (incluye epoch-ms)
     for c in df.columns:
         if c.lower().startswith("fecha"): df[c] = to_naive_local_series(df[c])
 
@@ -132,9 +149,7 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
 
         base_idx = base.set_index("Id")
         upd_idx = df.set_index("Id")
-        # Actualiza valores existentes
         base_idx.update(upd_idx)
-        # Agrega nuevos Id del Sheet
         merged = base_idx.combine_first(upd_idx).reset_index()
         st.session_state["df_main"] = merged
     else:
@@ -310,6 +325,26 @@ def render(user: dict | None = None):
     if "Calificación" in df_grid.columns:
         df_grid["Calificación"] = pd.to_numeric(df_grid["Calificación"], errors="coerce").fillna(0)
 
+    # === Ajuste 3: Duración en días 1–5 (nunca minutos) ===
+    if "Duración" in df_grid.columns:
+        dur = pd.to_numeric(df_grid["Duración"], errors="coerce")
+        # Solo acepto 1..5; si no, intento derivar de fechas; si no, vacío
+        ok = dur.where(dur.between(1,5))
+        if ok.isna().any():
+            try:
+                fi = to_naive_local_series(df_grid.get("Fecha inicio", pd.Series([], dtype=object)))
+                fv = to_naive_local_series(df_grid.get("Fecha Vencimiento", pd.Series([], dtype=object)))
+                approx = (fv - fi).dt.days.clip(lower=1, upper=5)
+                ok = ok.fillna(approx)
+            except Exception:
+                pass
+        df_grid["Duración"] = ok.where(ok.between(1,5)).fillna("").astype(object)
+
+    # === Ajuste 4: Hora límite por defecto 17:00 cuando esté vacía ===
+    if "Hora Vencimiento" in df_grid.columns:
+        hv = df_grid["Hora Vencimiento"].apply(_fmt_hhmm).astype(str)
+        df_grid["Hora Vencimiento"] = hv.mask(hv.str.strip()=="", "17:00")
+
     # ==== Opciones AG Grid ====
     gob = GridOptionsBuilder.from_dataframe(df_grid)
 
@@ -362,15 +397,31 @@ def render(user: dict | None = None):
     # Fuerza sin filtro/menú en "Fecha inicio"
     gob.configure_column("Fecha inicio", filter=False, floatingFilter=False, sortable=False, suppressMenu=True)
 
-    # Formato fecha (dd/mm/aaaa)
+    # Formato fecha (dd/mm/aaaa) – soporta epoch-ms
     date_only_fmt = JsCode(r"""
     function(p){
       const v = p.value;
       if(v===null || v===undefined) return '—';
-      const s = String(v).trim(); if(!s || ['nan','nat','null'].includes(s.toLowerCase())) return '—';
-      let y,m,d; const m1 = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      const s = String(v).trim();
+      if(!s || ['nan','nat','null'].includes(s.toLowerCase())) return '—';
+      let y,m,d;
+
+      // 1) YYYY-MM-DD
+      const m1 = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
       if(m1){ y=+m1[1]; m=+m1[2]; d=+m1[3]; }
-      else{ const dt = new Date(s); if(!isNaN(dt)){ y=dt.getFullYear(); m=dt.getMonth()+1; d=dt.getDate(); } }
+
+      // 2) epoch-ms (solo dígitos largos)
+      if(!y && /^\d{12,13}$/.test(s)){
+        const dt = new Date(Number(s));
+        if(!isNaN(dt)){ y=dt.getFullYear(); m=dt.getMonth()+1; d=dt.getDate(); }
+      }
+
+      // 3) Fallback: Date(s)
+      if(!y){
+        const dt = new Date(s);
+        if(!isNaN(dt)){ y=dt.getFullYear(); m=dt.getMonth()+1; d=dt.getDate(); }
+      }
+
       if(!y) return s.split(' ')[0];
       return String(d).padStart(2,'0') + '/' + String(m).padStart(2,'0') + '/' + y;
     }""")
@@ -385,10 +436,10 @@ def render(user: dict | None = None):
     function(p){
       const raw0 = (p && p.data && p.data['Archivo']!=null) ? String(p.data['Archivo']).trim() : '';
       if(!raw0) return '';
-      const parts = raw0 split(/[\n,;|]+/).map(s=>s.trim()).filter(Boolean);
+      const parts = raw0.split(/[\n,;|]+/).map(s=>s.trim()).filter(Boolean);
       for (let s of parts){ if(/^https?:\/\//i.test(s)) return s; }
       return '';
-    }""".replace(" raw0 split", " raw0.split"))  # evita error de pegado
+    }""")
     link_renderer = JsCode(r"""
     class LinkRenderer{
       init(params){
@@ -450,36 +501,4 @@ def render(user: dict | None = None):
 
     # ===== Botonera =====
     st.markdown('<div style="padding:0 16px; border-top:2px solid #EF4444">', unsafe_allow_html=True)
-    _sp, b_xlsx, b_sync, b_save_local, b_save_sheets = st.columns([4.9,1.6,1.4,1.4,2.2], gap="medium")
-
-    with b_xlsx:
-        try:
-            base = st.session_state["df_main"].copy()
-            for c in ["__SEL__","__DEL__","¿Eliminar?"]:
-                if c in base.columns: base.drop(columns=[c], inplace=True, errors="ignore")
-            xlsx_b = export_excel(base, sheet_name=TAB_NAME)
-            st.download_button("⬇️ Exportar Excel", data=xlsx_b,
-                               file_name="tareas.xlsx",
-                               mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                               use_container_width=True)
-        except Exception as e:
-            st.warning(f"No pude generar Excel: {e}")
-
-    with b_sync:
-        if st.button("🔄 Sincronizar", use_container_width=True, key="btn_sync_sheet"):
-            try:
-                pull_user_slice_from_sheet(replace_df_main=False)  # merge por Id
-            except Exception as e:
-                st.warning(f"No se pudo sincronizar: {e}")
-
-    with b_save_local:
-        if st.button("💾 Grabar", use_container_width=True):
-            try: _save_local(st.session_state["df_main"].copy()); st.success("Datos grabados en data/tareas.csv.")
-            except Exception as e: st.warning(f"No se pudo grabar localmente: {e}")
-
-    with b_save_sheets:
-        if st.button("📤 Subir a Sheets", use_container_width=True):
-            try: push_user_slice_to_sheet(); st.success("Enviado a Google Sheets.")
-            except Exception as e: st.warning(f"No se pudo subir a Sheets: {e}")
-
-    st.markdown('</div>', unsafe_allow_html=True)
+    _sp, b_xlsx, b_sync, b_save_local, b_save
