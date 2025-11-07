@@ -516,12 +516,420 @@ def render(user: dict | None = None):
     gob.configure_column("Fecha inicio", headerName="Fecha de inicio")
     gob.configure_column("Fecha Terminado", headerName="Fecha Terminado")
 
-    # ==== Archivo: renderer textual + click handler para URLs ====
-    archivo_renderer = JsCode("""
+    # ===== Exportación =====
+def export_excel(df: pd.DataFrame, sheet_name: str = TAB_NAME) -> bytes:
+    try:
+        buf = BytesIO()
+        with pd.ExcelWriter(buf, engine="xlsxwriter") as writer:
+            df.to_excel(writer, index=False, sheet_name=sheet_name)
+        return buf.getvalue()
+    except Exception:
+        buf = BytesIO()
+        with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False, sheet_name=sheet_name)
+        return buf.getvalue()
+
+def render(user: dict | None = None):
+    st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+
+    # Alineaciones
+    A_f, Fw_f, T_width_f, D_f, R_f, C_f = 1.80, 2.10, 3.00, 1.60, 1.40, 1.20
+
+    # Título
+    title_cA, _t2, _t3, _t4, _t5, _t6 = st.columns(
+        [A_f, Fw_f, T_width_f, D_f, R_f, C_f],
+        gap="medium",
+        vertical_alignment="center"
+    )
+    with title_cA:
+        st.markdown("""
+        <style>
+        :root{ --pill-salmon:#F28B85; }
+        .hist-title-pill{
+          display:flex; align-items:center; gap:8px;
+          padding:10px 16px; width:100%;
+          border-radius:10px; background: var(--pill-salmon);
+          color:#fff; font-weight:600; font-size:1.10rem; line-height:1;
+          box-shadow: inset 0 -2px 0 rgba(0,0,0,0.06);
+        }
+        </style>
+        <div class="hist-title-pill">📝 Tareas recientes</div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
+
+    # Estilos
+    st.markdown("""
+    <style>
+    :root{
+      --hist-pill:#F28B85;
+      --hist-card-bg:#FFEDEB;
+      --hist-card-bd:#F3B6B1;
+      --hist-help-bg:#FFE7E6;
+      --hist-help-border:#F3B6B1;
+      --hist-help-text:#7A2E2A;
+      --hist-pad-x:16px;
+      --hist-border-w:2px; --hist-border-c:#EF4444;
+      --muted-fg:#90A4AE;
+    }
+    #hist-card-anchor + div{
+      background:var(--hist-card-bg)!important; border:1px solid var(--hist-card-bd)!important;
+      border-radius:10px; padding:14px; box-shadow:0 0 0 1px rgba(0,0,0,0.02) inset; margin-bottom:6px;
+    }
+    .section-hist .help-strip-hist{
+      background:var(--hist-help-bg)!important; color:var(--hist-help-text)!important;
+      border:1px dashed var(--hist-help-border)!important; box-shadow:0 0 0 1px var(--hist-help-border) inset!important;
+      border-radius:8px; padding:8px 12px; font-size:0.95rem;
+    }
+    #hist-card-anchor + div .form-card{ background:#fff; border:1px solid var(--hist-card-bd); border-radius:10px; padding:12px; margin-top:6px; }
+    .form-card .field-wrap{ background:#F5F7FA; border:1px solid #E3E8EF; border-radius:10px; padding:6px 10px; box-shadow: inset 0 1px 0 rgba(0,0,0,0.02); }
+    .form-card .field-wrap label{ margin-bottom:6px !important; }
+    .hist-search .stButton>button{ height:38px!important; border-radius:10px!important; width:100%; }
+    .ag-theme-balham .row-deleted .ag-cell {
+      text-decoration: line-through; background-color:#FEE2E2 !important; color:#7F1D1D !important; opacity:.95;
+    }
+    .hist-actions{ padding-left:var(--hist-pad-x)!important; padding-right:var(--hist-pad-x)!important; border-top:var(--hist-border-w) solid var(--hist-border-c); }
+    .hist-actions [data-testid="column"] > div{ display:flex; align-items:center; height:46px; }
+    .hist-actions .stButton > button{ height:38px!important; border-radius:10px!important; width:100%; white-space:nowrap; }
+    .ag-theme-balham .ag-header-cell.muted-col .ag-header-cell-label{ color:var(--muted-fg)!important; }
+    .ag-theme-balham .ag-header, .ag-theme-balham .ag-header-cell,
+    .ag-theme-balham .ag-header-cell-label, .ag-theme-balham .ag-header-cell-text{
+      white-space:normal!important; overflow:visible!important; text-overflow:clip!important; line-height:1.2!important;
+    }
+    .ag-theme-balham .ag-pinned-left-header .ag-header-cell,
+    .ag-theme-balham .ag-pinned-left-header .ag-header-cell-label,
+    .ag-theme-balham .ag-pinned-left-header .ag-header-cell-text{
+      white-space:normal!important; overflow:visible!important; text-overflow:clip!important; line-height:1.2!important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # ====== DATA BASE ======
+    if "df_main" not in st.session_state or not isinstance(st.session_state["df_main"], pd.DataFrame):
+        st.session_state["df_main"] = pd.DataFrame(columns=DEFAULT_COLS)
+
+    df_all = st.session_state["df_main"].copy()
+
+    TZ_DATE_COLS = [
+        "Fecha estado modificado","Fecha estado actual","Fecha inicio",
+        "Fecha Terminado","Fecha Registro","Fecha Vencimiento",
+        "Fecha Pausado","Fecha Cancelado","Fecha Eliminado",
+        "Fecha","Fecha de detección","Fecha de corrección"
+    ]
+    for c in [c for c in TZ_DATE_COLS if c in df_all.columns]:
+        df_all[c] = to_naive_local_series(df_all[c])
+
+    # ===== Card filtros =====
+    st.markdown('<div id="hist-card-anchor"></div>', unsafe_allow_html=True)
+    with st.container():
+        st.markdown(
+            """
+            <div class="section-hist">
+              <div class="help-strip-hist" id="hist-help">
+                📌 <strong>Filtra y guarda tus tareas.</strong>
+                “Tarea” y “Detalle” solo se editan para correcciones.
+                <strong>Excel:</strong> opcional · <strong>Sheets:</strong> obligatorio para que el avance quede en el historial.
+              </div>
+              <div class="form-card">
+            """,
+            unsafe_allow_html=True
+        )
+
+        W_AREA, W_FASE, W_RESP, W_DESDE, W_HASTA, W_BUSCAR = 1.15, 1.25, 1.60, 1.05, 1.05, 1.05
+        cA, cF, cR, cD, cH, cB = st.columns(
+            [W_AREA, W_FASE, W_RESP, W_DESDE, W_HASTA, W_BUSCAR],
+            gap="medium",
+            vertical_alignment="bottom"
+        )
+
+        with cA:
+            st.markdown('<div class="field-wrap">', unsafe_allow_html=True)
+            area_sel = st.selectbox(
+                "Área",
+                options=["Todas"] + st.session_state.get(
+                    "AREAS_OPC",
+                    ["Jefatura","Gestión","Metodología","Base de datos","Monitoreo","Capacitación","Consistencia"]
+                ),
+                index=0, key="hist_area"
+            )
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+        with cF:
+            st.markdown('<div class="field-wrap">', unsafe_allow_html=True)
+            fase_sel = st.selectbox("Fase", options=["Todas"] + fases_all, index=0, key="hist_fase")
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        df_resp_src = df_all.copy()
+        if area_sel != "Todas":
+            df_resp_src = df_resp_src[df_resp_src["Área"] == area_sel]
+        if fase_sel != "Todas" and "Fase" in df_resp_src.columns:
+            df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str) == fase_sel]
+        responsables = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+
+        with cR:
+            st.markdown('<div class="field-wrap">', unsafe_allow_html=True)
+            resp_multi = st.multiselect(
+                "Responsable",
+                options=responsables,
+                default=[],
+                key="hist_resp",
+                placeholder="Selecciona responsable(s)"
+            )
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        today = date.today()
+        with cD:
+            st.markdown('<div class="field-wrap">', unsafe_allow_html=True)
+            f_desde = st.date_input("Desde", value=today, key="hist_desde")
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        with cH:
+            st.markdown('<div class="field-wrap">', unsafe_allow_html=True)
+            f_hasta = st.date_input("Hasta",  value=today, key="hist_hasta")
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        with cB:
+            st.markdown('<div class="hist-search">', unsafe_allow_html=True)
+            hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        st.markdown("</div></div>", unsafe_allow_html=True)
+
+    show_deleted = st.toggle("Mostrar eliminadas (tachadas)", value=True, key="hist_show_deleted")
+
+    # ---- Filtros ----
+    df_view = df_all.copy()
+    df_view["Fecha inicio"] = to_naive_local_series(df_view.get("Fecha inicio"))
+
+    if hist_do_buscar:
+        if area_sel != "Todas":
+            df_view = df_view[df_view["Área"] == area_sel]
+        if fase_sel != "Todas" and "Fase" in df_view.columns:
+            df_view = df_view[df_view["Fase"].astype(str) == fase_sel]
+        if resp_multi:
+            df_view = df_view[df_view["Responsable"].astype(str).isin(resp_multi)]
+        if f_desde:
+            df_view = df_view[df_view["Fecha inicio"].dt.date >= f_desde]
+        if f_hasta:
+            df_view = df_view[df_view["Fecha inicio"].dt.date <= f_hasta]
+
+    if not show_deleted and "Estado" in df_view.columns:
+        df_view = df_view[df_view["Estado"].astype(str).str.strip() != "Eliminado"]
+
+    # Orden
+    for c in ["Fecha estado modificado", "Fecha estado actual", "Fecha inicio"]:
+        if c not in df_view.columns:
+            df_view[c] = pd.NaT
+    ts_mod = to_naive_local_series(df_view["Fecha estado modificado"])
+    ts_act = to_naive_local_series(df_view["Fecha estado actual"])
+    ts_ini = to_naive_local_series(df_view["Fecha inicio"])
+    df_view["__ts__"] = ts_mod.combine_first(ts_act).combine_first(ts_ini)
+    df_view = df_view.sort_values("__ts__", ascending=False, na_position="last")
+
+    st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
+
+    # Fix duplicadas
+    df_view = df_view.loc[:, ~df_view.columns.duplicated()].copy()
+    df_view.columns = df_view.columns.astype(str)
+
+    # Helpers
+    def _to_date(v):
+        if pd.isna(v): return pd.NaT
+        if isinstance(v, (pd.Timestamp, datetime)): return pd.Timestamp(v).normalize()
+        d = pd.to_datetime(str(v), errors="coerce")
+        return d.normalize() if not pd.isna(d) else pd.NaT
+
+    def _to_hhmm(v):
+        return _fmt_hhmm(v)
+
+    # Estado modificado → Estado
+    if "Estado modificado" in df_view.columns:
+        _em = df_view["Estado modificado"].astype(str).str.strip()
+        mask_em = _em.notna() & _em.ne("") & _em.ne("nan")
+        if "Estado" not in df_view.columns:
+            df_view["Estado"] = ""
+        df_view.loc[mask_em, "Estado"] = _em[mask_em]
+
+    if "Estado" not in df_view.columns:
+        df_view["Estado"] = ""
+    df_view["Estado"] = df_view["Estado"].apply(lambda s: "No iniciado" if str(s).strip() in {"", "nan", "NaN"} else s)
+
+    if "Fecha Registro" not in df_view.columns: df_view["Fecha Registro"] = pd.NaT
+    if "Hora Registro"   not in df_view.columns: df_view["Hora Registro"]   = ""
+
+    df_view["Fecha Registro"] = df_view["Fecha Registro"].apply(_to_date)
+    df_view["Hora Registro"]  = df_view["Hora Registro"].apply(_to_hhmm)
+
+    _fr_fb = to_naive_local_series(df_view["Fecha"]) if "Fecha" in df_view.columns else pd.Series(pd.NaT, index=df_view.index)
+    _hr_fb = df_view["Hora"].apply(_to_hhmm) if "Hora" in df_view.columns else pd.Series([""]*len(df_view), index=df_view.index)
+
+    mask_fr_missing = df_view["Fecha Registro"].isna()
+    mask_hr_missing = (df_view["Hora Registro"].eq("")) | (df_view["Hora Registro"].eq("00:00"))
+    df_view.loc[mask_fr_missing, "Fecha Registro"] = _fr_fb[mask_fr_missing].dt.normalize()
+    df_view.loc[mask_hr_missing, "Hora Registro"]  = _hr_fb[mask_hr_missing]
+
+    if "Hora de inicio" not in df_view.columns: df_view["Hora de inicio"] = ""
+    if "Fecha Terminado" not in df_view.columns: df_view["Fecha Terminado"] = pd.NaT
+    if "Hora Terminado" not in df_view.columns: df_view["Hora Terminado"] = ""
+
+    if "Fecha terminado" in df_view.columns:
+        _tmp_ft = to_naive_local_series(df_view["Fecha terminado"])
+        df_view["Fecha Terminado"] = df_view["Fecha Terminado"].combine_first(_tmp_ft)
+        df_view.drop(columns=["Fecha terminado"], inplace=True, errors="ignore")
+
+    # Sellos de estado (prefer modificado; fallback actual)
+    _mod  = to_naive_local_series(df_view.get("Fecha estado modificado"))
+    _hmod = df_view["Hora estado modificado"].apply(_to_hhmm) if "Hora estado modificado" in df_view.columns else pd.Series([""]*len(df_view), index=df_view.index)
+
+    _fact = to_naive_local_series(df_view.get("Fecha estado actual"))
+    _hact = df_view["Hora estado actual"].apply(_to_hhmm) if "Hora estado actual" in df_view.columns else pd.Series([""]*len(df_view), index=df_view.index)
+
+    if "Estado" in df_view.columns:
+        _estado_norm = df_view["Estado"].astype(str).str.lower().str.strip()
+        _en_curso  = _estado_norm.isin(["en curso","en progreso","progreso"])
+        _terminado = _estado_norm.isin(["terminado","terminada","finalizado","finalizada","completado","completada"])
+
+        _src_ini_dt = _mod.combine_first(_fact)
+        _src_ini_tm = _hmod.where(_hmod != "", _src_ini_dt.dt.strftime("%H:%M")).where(lambda s: s != "", _hact)
+
+        need_ini_dt = _en_curso & df_view["Fecha inicio"].isna()
+        need_ini_tm = _en_curso & (df_view["Hora de inicio"].astype(str).str.strip() == "")
+        df_view.loc[need_ini_dt, "Fecha inicio"]   = _src_ini_dt.dt.normalize()[need_ini_dt]
+        df_view.loc[need_ini_tm, "Hora de inicio"] = _src_ini_tm[need_ini_tm]
+
+        _src_fin_dt = _mod.combine_first(_fact)
+        _src_fin_tm = _hmod.where(_hmod != "", _src_fin_dt.dt.strftime("%H:%M")).where(lambda s: s != "", _hact)
+
+        need_fin_dt = _terminado & df_view["Fecha Terminado"].isna()
+        need_fin_tm = _terminado & (df_view["Hora Terminado"].astype(str).str.strip() == "") if "Hora Terminado" in df_view.columns else False
+        df_view.loc[need_fin_dt, "Fecha Terminado"] = _src_fin_dt[need_fin_dt]
+        if "Hora Terminado" in df_view.columns:
+            df_view.loc[need_fin_tm, "Hora Terminado"] = _src_fin_tm[need_fin_tm]
+
+    # Vencimiento
+    if "Fecha Vencimiento" not in df_view.columns: df_view["Fecha Vencimiento"] = pd.NaT
+    if "Hora Vencimiento" not in df_view.columns:  df_view["Hora Vencimiento"]  = ""
+    if "Vencimiento" in df_view.columns:
+        _vdt = to_naive_local_series(df_view["Vencimiento"])
+        mask_fv = df_view["Fecha Vencimiento"].isna()
+        df_view.loc[mask_fv, "Fecha Vencimiento"] = _vdt.dt.normalize()[mask_fv]
+        hv_from = _vdt.dt.strftime("%H:%M")
+        hv_now = df_view["Hora Vencimiento"].astype(str).str.strip()
+        mask_hv = hv_now.eq("") | hv_now.eq("00:00")
+        df_view.loc[mask_hv, "Hora Vencimiento"] = hv_from[mask_hv]
+    df_view["Fecha Vencimiento"] = df_view["Fecha Vencimiento"].apply(_to_date)
+    df_view["Hora Vencimiento"]  = df_view["Hora Vencimiento"].apply(_to_hhmm)
+    df_view.loc[df_view["Hora Vencimiento"] == "", "Hora Vencimiento"] = "17:00"
+
+    # Orden y presencia de columnas
+    target_cols = [
+        "Id","Área","Fase","Responsable",
+        "Tarea","Tipo","Detalle","Ciclo de mejora","Complejidad","Prioridad",
+        "Estado","Duración",
+        "Fecha Registro","Hora Registro",
+        "Fecha inicio","Hora de inicio",
+        "Fecha Vencimiento","Hora Vencimiento",
+        "Fecha Terminado","Hora Terminado",
+        "¿Generó alerta?","Fecha de detección","Hora de detección",
+        "¿Se corrigió?","Fecha de corrección","Hora de corrección",
+        "Cumplimiento","Evaluación","Calificación",
+        "Fecha Pausado","Hora Pausado",
+        "Fecha Cancelado","Hora Cancelado",
+        "Fecha Eliminado","Hora Eliminado",
+        "__SEL__","__DEL__",
+        "Archivo"
+    ]
+    HIDDEN_COLS = [
+        "¿Eliminar?","Estado modificado",
+        "Fecha estado modificado","Hora estado modificado",
+        "Fecha estado actual","Hora estado actual",
+        "N° de alerta","Tipo de alerta","Fecha","Hora","Vencimiento",
+        "__ts__","__DEL__","__SEL__"
+    ]
+
+    for c in target_cols:
+        if c not in df_view.columns:
+            df_view[c] = False if c in ["__SEL__","__DEL__"] else ""
+
+    df_view["Duración"] = df_view["Duración"].astype(str).fillna("")
+    df_grid = df_view.reindex(
+        columns=list(dict.fromkeys(target_cols)) +
+        [c for c in df_view.columns if c not in target_cols + HIDDEN_COLS]
+    ).copy()
+    df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()
+    df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
+
+    for tech_col in ["__SEL__", "__DEL__", "¿Eliminar?"]:
+        if tech_col in df_grid.columns:
+            df_grid.drop(columns=[tech_col], inplace=True, errors="ignore")
+
+    # =============== GRID OPTIONS ===============
+    gob = GridOptionsBuilder.from_dataframe(df_grid)
+    gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, editable=False)
+    gob.configure_selection(selection_mode="multiple", use_checkbox=False)
+    gob.configure_grid_options(
+        rowSelection="multiple",
+        rowMultiSelectWithClick=True,
+        suppressRowClickSelection=False,
+        domLayout="normal",
+        rowHeight=30,
+        wrapHeaderText=True, autoHeaderHeight=True, headerHeight=56,
+        enableRangeSelection=True, enableCellTextSelection=True,
+        singleClickEdit=False, stopEditingWhenCellsLoseFocus=True,
+        undoRedoCellEditing=False, enterMovesDown=False,
+        suppressMovableColumns=False,
+        getRowId=JsCode("function(p){ return (p.data && (p.data.Id || p.data['Id'])) + ''; }"),
+        suppressHeaderVirtualisation=True,
+    )
+
+    gob.configure_column("Id", headerName="ID", editable=False, minWidth=110, pinned="left", suppressMovable=True)
+    gob.configure_column("Área", headerName="Área", editable=False, minWidth=160, pinned="left", suppressMovable=True)
+    gob.configure_column("Fase", headerName="Fase", editable=False, minWidth=140, pinned="left", suppressMovable=True)
+    gob.configure_column("Responsable", editable=False, minWidth=200, pinned="left", suppressMovable=True)
+    gob.configure_column("Estado", headerName="Estado actual")
+    gob.configure_column("Fecha Vencimiento", headerName="Fecha límite")
+    gob.configure_column("Fecha inicio", headerName="Fecha de inicio")
+    gob.configure_column("Fecha Terminado", headerName="Fecha Terminado")
+
+    # ==== Archivo: renderer DOM (abre link si es URL; selecciona fila si es local) ====
+    archivo_renderer = JsCode(r"""
     function(p){
       const raw = (p && p.value != null) ? String(p.value).trim() : '';
       if(!raw) return '—';
-      return '📎 Descargar'; // Texto; el click se maneja con onCellClicked
+
+      const wrap = document.createElement('span');
+      wrap.style.display = 'inline-flex';
+      wrap.style.alignItems = 'center';
+      wrap.style.gap = '6px';
+
+      const pin = document.createElement('span');
+      pin.textContent = '📎';
+      wrap.appendChild(pin);
+
+      if(/^https?:\/\//i.test(raw)){
+        const a = document.createElement('a');
+        a.href = encodeURI(raw);
+        a.textContent = 'Descargar';
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.style.textDecoration = 'none';
+        wrap.appendChild(a);
+      } else {
+        const s = document.createElement('span');
+        s.textContent = 'Descargar';
+        s.style.textDecoration = 'underline';
+        s.style.cursor = 'pointer';
+        s.title = raw;
+        s.addEventListener('click', ()=>{
+          const node = p && p.node;
+          if(node && !node.isSelected()){
+            node.setSelected(true, true);
+          }
+        });
+        wrap.appendChild(s);
+      }
+      return wrap;
     }
     """)
 
@@ -681,7 +1089,7 @@ def render(user: dict | None = None):
     }
     """)
 
-    # -- NUEVO: abrir URL al hacer clic en la celda "Archivo"
+    # (Se mantiene como respaldo: abrir URL también si se hace clic en la celda)
     open_url_on_click = JsCode("""
     function(e){
       if(!e || !e.colDef || e.colDef.field !== 'Archivo') return;
@@ -690,13 +1098,10 @@ def render(user: dict | None = None):
       if(/^https?:\\/\\//i.test(raw)){
         try{ window.open(raw, '_blank', 'noopener'); }catch(err){}
       }else{
-        // Selecciona la fila para mostrar el botón de descarga inferior
-        try{
-          const node = e.node;
-          if(node && !node.isSelected()){
-            node.setSelected(true, true);
-          }
-        }catch(err){}
+        const node = e.node;
+        if(node && !node.isSelected()){
+          node.setSelected(true, true);
+        }
       }
     }
     """)
@@ -707,7 +1112,7 @@ def render(user: dict | None = None):
     grid_opts["onFirstDataRendered"] = autosize_on_data.js_code
     grid_opts["onColumnEverythingChanged"] = autosize_on_data.js_code
     grid_opts["onSelectionChanged"] = sync_selection.js_code
-    grid_opts["onCellClicked"] = open_url_on_click.js_code   # <<< NUEVO
+    grid_opts["onCellClicked"] = open_url_on_click.js_code
     grid_opts["rowSelection"] = "multiple"
     grid_opts["rowMultiSelectWithClick"] = True
     grid_opts["rememberSelection"] = True
