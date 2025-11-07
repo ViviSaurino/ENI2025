@@ -1,4 +1,4 @@
-# features/historial/view.py
+# features/historial/view.py 
 from __future__ import annotations
 
 import os
@@ -113,12 +113,18 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
         if c.lower().startswith("fecha"):
             df[c] = to_naive_local_series(df[c])
 
-    # Limpieza de HTML residual en Archivo y variantes
-    def _strip_html(x):
+    # ====== LIMPIEZA Archivo: conservar href si existe ======
+    def _extract_archivo(x):
         s = str(x) if x is not None else ""
-        return re.sub(r"<[^>]+>", "", s)
+        # si hay <a href="...">, usa ese enlace
+        m = re.search(r'href=["\']([^"\']+)["\']', s, flags=re.I)
+        if m:
+            return m.group(1).strip()
+        # si no, quita etiquetas y deja el texto
+        return re.sub(r"<[^>]+>", "", s).strip()
+
     for cc in [c for c in df.columns if "archivo" in c.lower()]:
-        df[cc] = df[cc].map(_strip_html)
+        df[cc] = df[cc].map(_extract_archivo)
 
     # Unificar "N° alerta" -> "N° de alerta"
     if "N° de alerta" not in df.columns and "N° alerta" in df.columns:
@@ -233,7 +239,11 @@ def render(user: dict | None = None):
           box-shadow: inset 0 -2px 0 rgba(0,0,0,0.06);
         }
         .hist-actions{ padding:0 16px; border-top:2px solid #EF4444; }
-        .hist-actions .stButton > button{ height:38px!important; border-radius:10px!important; width:100%; }
+        /* ===== Botones en una sola línea ===== */
+        .hist-actions .stButton > button{
+          height:38px!important; border-radius:10px!important; width:100%;
+          white-space:nowrap!important; overflow:hidden; text-overflow:ellipsis;
+        }
         .ag-theme-balham .ag-header-cell.muted-col .ag-header-cell-label{ color:#90A4AE!important; }
         </style>
         <div class="hist-title-pill">📝 Tareas recientes</div>
