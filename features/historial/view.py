@@ -1,4 +1,4 @@
-# features/historial/view.py 
+# features/historial/view.py
 from __future__ import annotations
 
 import os
@@ -103,26 +103,71 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
         ws = ss.worksheet(ws_name)
     except Exception:
         return
+
+    # 1) Traigo los valores "vistos" (para headers/shape)
     values = ws.get_all_values()
     if not values:
         return
     headers = values[0]
     rows = values[1:]
     df = pd.DataFrame(rows, columns=headers)
+
+    # 2) Intento traer fórmulas para extraer =HYPERLINK()
+    try:
+        from gspread.utils import rowcol_to_a1
+        n_rows = len(values)
+        n_cols = len(headers)
+        if n_rows and n_cols:
+            rng = f"A1:{rowcol_to_a1(n_rows, n_cols)}"
+            # value_render_option='FORMULA' devuelve =HYPERLINK("url","nombre")
+            formulas = ws.get(rng, value_render_option="FORMULA")
+        else:
+            formulas = None
+    except Exception:
+        formulas = None  # si falla, seguimos con values
+
+    # 3) Normalizo fechas
     for c in df.columns:
         if c.lower().startswith("fecha"):
             df[c] = to_naive_local_series(df[c])
 
-    # ====== LIMPIEZA Archivo: conservar href si existe ======
-    def _extract_archivo(x):
-        s = str(x) if x is not None else ""
-        m = re.search(r'href=["\']([^"\']+)["\']', s, flags=re.I)  # usa href si viene <a>
+    # 4) Archivo: priorizo URL desde =HYPERLINK() si existe
+    def _from_hyperlink_formula(txt: str) -> str | None:
+        if not txt:
+            return None
+        s = str(txt).strip()
+        m = re.match(r'^=HYPERLINK\(\s*"([^"]+)"\s*,\s*"(?:[^"]*)"\s*\)$', s, flags=re.I)
         if m:
             return m.group(1).strip()
-        return re.sub(r"<[^>]+>", "", s).strip()  # sino, texto plano
+        # a veces viene solo URL como fórmula
+        if s.startswith("http://") or s.startswith("https://"):
+            return s
+        return None
 
-    for cc in [c for c in df.columns if "archivo" in c.lower()]:
-        df[cc] = df[cc].map(_extract_archivo)
+    # Limpieza básica html si viniera (fallback)
+    def _strip_html(x):
+        s = str(x) if x is not None else ""
+        return re.sub(r"<[^>]+>", "", s)
+
+    if formulas:
+        # formulas[0] = headers con FORMULA; formulas[1:] = filas
+        for j, col in enumerate(headers):
+            if "archivo" in str(col).lower():
+                col_vals = []
+                for i in range(1, len(formulas)):
+                    fcell = formulas[i][j] if j < len(formulas[i]) else ""
+                    url = _from_hyperlink_formula(fcell)
+                    if url:
+                        col_vals.append(url)
+                    else:
+                        # si no hay fórmula/URL, usamos el texto limpio
+                        row_txt = values[i][j] if j < len(values[i]) else ""
+                        col_vals.append(_strip_html(row_txt).strip())
+                df[col] = col_vals
+    else:
+        # Sin soporte de fórmulas, al menos removemos html
+        for cc in [c for c in df.columns if "archivo" in c.lower()]:
+            df[cc] = df[cc].map(_strip_html).map(lambda s: s.strip())
 
     # Unificar "N° alerta" -> "N° de alerta"
     if "N° de alerta" not in df.columns and "N° alerta" in df.columns:
@@ -237,11 +282,12 @@ def render(user: dict | None = None):
           box-shadow: inset 0 -2px 0 rgba(0,0,0,0.06);
         }
         .hist-actions{ padding:0 16px; border-top:2px solid #EF4444; }
-        /* ===== Botones en una sola línea (incluye disabled) ===== */
+        /* ===== Botones en una sola línea (incluye <a> de link_button) ===== */
         .hist-actions .stButton > button,
-        .hist-actions button{
-          height:38px!important; border-radius:10px!important; width:100%;
+        .hist-actions a{
+          height:38px!important; border-radius:10px!important; width:100%!important;
           white-space:nowrap!important; overflow:hidden!important; text-overflow:ellipsis!important;
+          display:inline-block!important; line-height:38px!important;
         }
         .ag-theme-balham .ag-header-cell.muted-col .ag-header-cell-label{ color:#90A4AE!important; }
         </style>
@@ -395,7 +441,6 @@ def render(user: dict | None = None):
         if c not in df_view.columns:
             df_view[c] = ""
 
-    # columna oculta con el valor crudo para descargar
     df_grid = df_view.reindex(
         columns=list(dict.fromkeys(target_cols)) +
         [c for c in df_view.columns if c not in target_cols + HIDDEN_COLS]
@@ -421,6 +466,7 @@ def render(user: dict | None = None):
         undoRedoCellEditing=False, enterMovesDown=False,
         suppressMovableColumns=False,
         suppressHeaderVirtualisation=True,
+        getRowId=JsCode("function(p){ return (p.data && (p.data.Id || p.data['Id'])) + ''; }"),
     )
 
     # ----- Columnas base visibles -----
@@ -655,7 +701,6 @@ def render(user: dict | None = None):
         if sel_rows:
             r = sel_rows[0]
             rid = str(r.get("Id","")).strip()
-            # usar SIEMPRE el crudo
             av  = str(r.get("__ArchivoRaw__","") or r.get("Archivo","")).strip()
             token = _pick_first_token(av)
             if rid and token:
