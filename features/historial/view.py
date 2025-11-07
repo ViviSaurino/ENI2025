@@ -209,9 +209,7 @@ def render(user: dict | None = None):
     .form-card .field-wrap{ background:#F5F7FA; border:1px solid #E3E8EF; border-radius:10px; padding:6px 10px; box-shadow: inset 0 1px 0 rgba(0,0,0,0.02); }
     .form-card .field-wrap label{ margin-bottom:6px !important; }
     .hist-search .stButton>button{ height:38px!important; border-radius:10px!important; width:100%; }
-    .ag-theme-balham .row-deleted .ag-cell {
-      text-decoration: line-through; background-color:#FEE2E2 !important; color:#7F1D1D !important; opacity:.95;
-    }
+    .ag-theme-balham .row-deleted .ag-cell { text-decoration: line-through; background-color:#FEE2E2 !important; color:#7F1D1D !important; opacity:.95; }
     .hist-actions{ padding-left:var(--hist-pad-x)!important; padding-right:var(--hist-pad-x)!important; border-top:var(--hist-border-w) solid var(--hist-border-c); }
     .hist-actions [data-testid="column"] > div{ display:flex; align-items:center; height:46px; }
     .hist-actions .stButton > button{ height:38px!important; border-radius:10px!important; width:100%; white-space:nowrap; }
@@ -369,7 +367,7 @@ def render(user: dict | None = None):
 
     # Estado modificado → Estado
     if "Estado modificado" in df_view.columns:
-        _em = df_view["Estado modificado"].astype(str).str.trim()
+        _em = df_view["Estado modificado"].astype(str).str.strip()
         mask_em = _em.notna() & _em.ne("") & _em.ne("nan")
         if "Estado" not in df_view.columns:
             df_view["Estado"] = ""
@@ -402,12 +400,29 @@ def render(user: dict | None = None):
         df_view["Fecha Terminado"] = df_view["Fecha Terminado"].combine_first(_tmp_ft)
         df_view.drop(columns=["Fecha terminado"], inplace=True, errors="ignore")
 
+    # === Columna Archivo: si no existe, intenta alternativas conocidas ===
+    if "Archivo" not in df_view.columns:
+        for alt in ["Archivo estado modificado", "Archivo modificado", "Archivo adjunto"]:
+            if alt in df_view.columns:
+                df_view["Archivo"] = df_view[alt]
+                break
+    else:
+        # si viene vacía pero existe alguna alternativa con datos, complétala
+        if df_view["Archivo"].astype(str).str.strip().eq("").all():
+            for alt in ["Archivo estado modificado", "Archivo modificado", "Archivo adjunto"]:
+                if alt in df_view.columns and df_view[alt].astype(str).str.strip().ne("").any():
+                    df_view["Archivo"] = df_view["Archivo"].where(
+                        df_view["Archivo"].astype(str).str.strip().ne(""),
+                        df_view[alt]
+                    )
+                    break
+
     # Sellos de estado
     _mod  = to_naive_local_series(df_view.get("Fecha estado modificado"))
     _hmod = df_view["Hora estado modificado"].apply(_to_hhmm) if "Hora estado modificado" in df_view.columns else pd.Series([""]*len(df_view), index=df_view.index)
 
     _fact = to_naive_local_series(df_view.get("Fecha estado actual"))
-    _hact = df_view["Hora estado actual"].apply(_to_hhmm) if "Hora estado actual" in df_view.columns else pd.Series([""]*len[df_view.index])
+    _hact = df_view["Hora estado actual"].apply(_to_hhmm) if "Hora estado actual" in df_view.columns else pd.Series([""]*len(df_view), index=df_view.index)
 
     if "Estado" in df_view.columns:
         _estado_norm = df_view["Estado"].astype(str).str.lower().str.strip()
@@ -516,16 +531,27 @@ def render(user: dict | None = None):
     gob.configure_column("Fecha inicio", headerName="Fecha de inicio")
     gob.configure_column("Fecha Terminado", headerName="Fecha Terminado")
 
-    # ==== Archivo: ahora renderiza <a> si es URL; si no, muestra texto ====
+    # ==== Archivo: renderer seguro (DOM real). URL -> <a>, local -> <span> ====
     archivo_renderer = JsCode("""
     function(p){
       const raw = (p && p.data && p.data['Archivo'] != null) ? String(p.data['Archivo']).trim() : '';
       if(!raw) return '—';
       if(/^https?:\\/\\//i.test(raw)){
-        const safe = encodeURI(raw);
-        return '<a href="'+safe+'" target="_blank" rel="noopener">📎 Descargar</a>';
+        const a = document.createElement('a');
+        a.href = encodeURI(raw);
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.textContent = '📎 Descargar';
+        a.style.textDecoration = 'underline';
+        a.style.color = '#0A66C2';
+        return a;
       }
-      return '<span class="file-local">📎 Descargar</span>';
+      const s = document.createElement('span');
+      s.className = 'file-local';
+      s.textContent = '📎 Descargar';
+      s.style.textDecoration = 'underline';
+      s.style.color = '#0A66C2';
+      return s;
     }
     """)
     if "Archivo" in df_grid.columns:
@@ -537,7 +563,7 @@ def render(user: dict | None = None):
             editable=False,
             cellRenderer=archivo_renderer,
             tooltipField="Archivo",
-            cellStyle={"cursor":"pointer","textDecoration":"underline","color":"#0A66C2"}
+            cellStyle={"cursor":"pointer"}
         )
 
     # Fmt
@@ -685,20 +711,16 @@ def render(user: dict | None = None):
     }
     """)
 
-    # Clic en "Archivo": si es URL, el <a> ya abre; si es ruta local, selecciona fila
+    # Clic en "Archivo": si es URL, abre por el <a>; si es local, selecciona fila para botón de abajo
     open_url_on_click = JsCode("""
     function(e){
       if(!e || !e.colDef || e.colDef.field !== 'Archivo') return;
       const raw = (e && e.data && e.data['Archivo'] != null) ? String(e.data['Archivo']).trim() : '';
       if(!raw) return;
-      if(/^https?:\\/\\//i.test(raw)){
-        return; // el <a> del renderer se encarga
-      }
+      if(/^https?:\\/\\//i.test(raw)){ return; }  // <a> del renderer se encarga
       try{
         const node = e.node;
-        if(node && !node.isSelected()){
-          node.setSelected(true, true);
-        }
+        if(node && !node.isSelected()){ node.setSelected(true, true); }
       }catch(err){}
     }
     """)
@@ -855,4 +877,3 @@ def render(user: dict | None = None):
                 st.warning(f"No se pudo subir a Sheets: {e}")
 
     st.markdown('</div>', unsafe_allow_html=True)
-    
