@@ -369,7 +369,7 @@ def render(user: dict | None = None):
 
     # Estado modificado → Estado
     if "Estado modificado" in df_view.columns:
-        _em = df_view["Estado modificado"].astype(str).str.strip()
+        _em = df_view["Estado modificado"].astype(str).str.trim()
         mask_em = _em.notna() & _em.ne("") & _em.ne("nan")
         if "Estado" not in df_view.columns:
             df_view["Estado"] = ""
@@ -407,7 +407,7 @@ def render(user: dict | None = None):
     _hmod = df_view["Hora estado modificado"].apply(_to_hhmm) if "Hora estado modificado" in df_view.columns else pd.Series([""]*len(df_view), index=df_view.index)
 
     _fact = to_naive_local_series(df_view.get("Fecha estado actual"))
-    _hact = df_view["Hora estado actual"].apply(_to_hhmm) if "Hora estado actual" in df_view.columns else pd.Series([""]*len(df_view), index=df_view.index)
+    _hact = df_view["Hora estado actual"].apply(_to_hhmm) if "Hora estado actual" in df_view.columns else pd.Series([""]*len[df_view.index])
 
     if "Estado" in df_view.columns:
         _estado_norm = df_view["Estado"].astype(str).str.lower().str.strip()
@@ -516,12 +516,16 @@ def render(user: dict | None = None):
     gob.configure_column("Fecha inicio", headerName="Fecha de inicio")
     gob.configure_column("Fecha Terminado", headerName="Fecha Terminado")
 
-    # ==== Archivo: renderer textual (sin DOM nodes) + estilo de link ====
+    # ==== Archivo: ahora renderiza <a> si es URL; si no, muestra texto ====
     archivo_renderer = JsCode("""
     function(p){
-      const raw = (p && p.value != null) ? String(p.value).trim() : '';
+      const raw = (p && p.data && p.data['Archivo'] != null) ? String(p.data['Archivo']).trim() : '';
       if(!raw) return '—';
-      return '📎 Descargar';  // El click se maneja abajo (onCellClicked)
+      if(/^https?:\\/\\//i.test(raw)){
+        const safe = encodeURI(raw);
+        return '<a href="'+safe+'" target="_blank" rel="noopener">📎 Descargar</a>';
+      }
+      return '<span class="file-local">📎 Descargar</span>';
     }
     """)
     if "Archivo" in df_grid.columns:
@@ -681,22 +685,21 @@ def render(user: dict | None = None):
     }
     """)
 
-    # >>> FIX: usar el valor REAL desde e.data['Archivo'] (no el texto renderizado)
+    # Clic en "Archivo": si es URL, el <a> ya abre; si es ruta local, selecciona fila
     open_url_on_click = JsCode("""
     function(e){
       if(!e || !e.colDef || e.colDef.field !== 'Archivo') return;
       const raw = (e && e.data && e.data['Archivo'] != null) ? String(e.data['Archivo']).trim() : '';
       if(!raw) return;
       if(/^https?:\\/\\//i.test(raw)){
-        try{ window.open(encodeURI(raw), '_blank', 'noopener'); }catch(err){}
-      }else{
-        try{
-          const node = e.node;
-          if(node && !node.isSelected()){
-            node.setSelected(true, true);
-          }
-        }catch(err){}
+        return; // el <a> del renderer se encarga
       }
+      try{
+        const node = e.node;
+        if(node && !node.isSelected()){
+          node.setSelected(true, true);
+        }
+      }catch(err){}
     }
     """)
 
@@ -852,3 +855,4 @@ def render(user: dict | None = None):
                 st.warning(f"No se pudo subir a Sheets: {e}")
 
     st.markdown('</div>', unsafe_allow_html=True)
+    
