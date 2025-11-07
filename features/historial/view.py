@@ -247,6 +247,11 @@ def render(user: dict | None = None):
     df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
     if "Link de descarga" not in df_grid.columns: df_grid["Link de descarga"] = ""
 
+    # --- Quitar SOLO estas dos columnas ---
+    for _col in ["Cumplimiento", "Evaluación"]:
+        if _col in df_grid.columns:
+            df_grid.drop(columns=[_col], inplace=True, errors="ignore")
+
     # ==== Opciones AG Grid ====
     gob = GridOptionsBuilder.from_dataframe(df_grid)
 
@@ -270,7 +275,7 @@ def render(user: dict | None = None):
         "¿Generó alerta?": 160, "N° de alerta": 130,
         "Fecha de detección": 170, "Hora de detección": 150,
         "¿Se corrigió?": 140, "Fecha de corrección": 170, "Hora de corrección": 150,
-        "Cumplimiento": 150, "Evaluación": 150, "Calificación": 140,
+        "Calificación": 140,
         "Fecha Pausado": 150, "Hora Pausado": 130,
         "Fecha Cancelado": 150, "Hora Cancelado": 130,
         "Fecha Eliminado": 150, "Hora Eliminado": 130,
@@ -356,7 +361,6 @@ def render(user: dict | None = None):
     )
 
     grid_opts = gob.build()
-    # NO autosize agresivo (dejamos minWidth + scroll horizontal)
     grid_opts["rememberSelection"] = True
     grid_opts["floatingFilter"] = False
 
@@ -367,12 +371,12 @@ def render(user: dict | None = None):
         gridOptions=grid_opts,
         theme="balham",
         height=500,
-        fit_columns_on_grid_load=False,   # importante para scroll horizontal
+        fit_columns_on_grid_load=False,
         data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
         update_mode=(GridUpdateMode.MODEL_CHANGED
                      | GridUpdateMode.FILTERING_CHANGED
                      | GridUpdateMode.SORTING_CHANGED
-                     | GridUpdateMode.VALUE_CHANGED),  # capturar ediciones
+                     | GridUpdateMode.VALUE_CHANGED),
         allow_unsafe_jscode=True,
     )
 
