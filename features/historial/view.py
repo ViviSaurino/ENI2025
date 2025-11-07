@@ -269,12 +269,13 @@ def render(user: dict | None = None):
         --hint-bg:#FFE7E3;     /* coral muy claro */
         --hint-border:#F28B85;
       }
+      /* 🔻 Rectángulo de filtros: borrado visual (sin borde/fondo/padding) */
       .hist-card{
-        border:1px solid var(--card-border);
-        background:var(--card-bg);
-        border-radius:12px;
-        padding:14px 16px 12px 16px;
-        margin: 8px 0 12px 0;
+        border:0 !important;
+        background:transparent !important;
+        border-radius:0 !important;
+        padding:0 !important;
+        margin:0 0 8px 0 !important;
       }
       .hist-title-pill{
         display:inline-flex; align-items:center; gap:8px;
@@ -294,7 +295,7 @@ def render(user: dict | None = None):
         font-size:0.95rem;
       }
 
-      /* === Ocultar input "huérfano" entre indicaciones y filtros === */
+      /* Ocultar input "huérfano" entre indicaciones y filtros */
       .hist-hint + div[data-testid="stTextInput"]{ display:none !important; }
       .hist-hint + div:has(> div[data-testid="stTextInput"]){ display:none !important; }
       .hist-hint + div:has(input[type="text"]){ display:none !important; }
@@ -351,10 +352,9 @@ def render(user: dict | None = None):
         unsafe_allow_html=True
     )
 
-    # ===== Card: SOLO filtros =====
+    # ===== Card: SOLO filtros (sin rectángulo visual) =====
     st.markdown('<div class="hist-card">', unsafe_allow_html=True)
     with st.container():
-        # una sola fila
         c1, c2, c3, c4, c5, c6 = st.columns([1.05, 1.10, 1.70, 1.05, 1.05, 0.90], gap="medium")
         with c1:
             area_sel = st.selectbox(
@@ -387,7 +387,7 @@ def render(user: dict | None = None):
             st.markdown('<div class="hist-search">', unsafe_allow_html=True)
             hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
             st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)  # /hist-card SOLO filtros
+    st.markdown('</div>', unsafe_allow_html=True)
 
     show_deleted = st.toggle("Mostrar eliminadas (tachadas)", value=True, key="hist_show_deleted")
 
@@ -484,10 +484,35 @@ def render(user: dict | None = None):
                 df_grid["Fecha Vencimiento"] = pd.NaT
             df_grid.loc[mask_set, "Fecha Vencimiento"] = fv_calc.loc[mask_set]
 
-    # === Ajuste 4: Hora límite por defecto 17:00 (sin .strip en Series) ===
+    # === Ajuste 4: Hora límite por defecto 17:00 ===
     if "Hora Vencimiento" in df_grid.columns:
         hv = df_grid["Hora Vencimiento"].apply(_fmt_hhmm).astype(str)
         df_grid["Hora Vencimiento"] = hv.mask(hv.str.strip()=="", "17:00")
+
+    # === Ajuste 5: Cumplimiento automático (emojis + color) ===
+    if "Cumplimiento" in df_grid.columns:
+        fv = to_naive_local_series(df_grid.get("Fecha Vencimiento", pd.Series([], dtype=object)))
+        ft = to_naive_local_series(df_grid.get("Fecha Terminado", pd.Series([], dtype=object)))
+        today_ts = pd.Timestamp(date.today())
+        fv_n = fv.dt.normalize()
+        ft_n = ft.dt.normalize()
+
+        has_fv = ~fv_n.isna()
+        has_ft = ~ft_n.isna()
+
+        delivered_on_time = has_fv & has_ft & (ft_n <= fv_n)
+        delivered_late    = has_fv & has_ft & (ft_n >  fv_n)
+
+        days_left = (fv_n - today_ts).dt.days
+        no_delivered = has_fv & (~has_ft) & (days_left < 0)
+        risk         = has_fv & (~has_ft) & (days_left >= 1) & (days_left <= 2)
+
+        out = pd.Series("", index=df_grid.index, dtype="object")
+        out[delivered_on_time] = "✅ Entregado a tiempo"
+        out[delivered_late]    = "⏰ Entregado fuera de tiempo"
+        out[no_delivered]      = "❌ No entregado"
+        out[risk]              = "⚠️ En riesgo de retrasos"
+        df_grid["Cumplimiento"] = out
 
     # ==== Opciones AG Grid ====
     gob = GridOptionsBuilder.from_dataframe(df_grid)
@@ -509,7 +534,7 @@ def render(user: dict | None = None):
         "¿Generó alerta?": 160, "N° alerta": 130,
         "Fecha de detección": 170, "Hora de detección": 150,
         "¿Se corrigió?": 140, "Fecha de corrección": 170, "Hora de corrección": 150,
-        "Cumplimiento": 150, "Evaluación": 150, "Calificación": 140,
+        "Cumplimiento": 200, "Evaluación": 150, "Calificación": 140,
         "Fecha Pausado": 150, "Hora Pausado": 130,
         "Fecha Cancelado": 150, "Hora Cancelado": 130,
         "Fecha Eliminado": 150, "Hora Eliminado": 130,
@@ -601,6 +626,31 @@ def render(user: dict | None = None):
                          tooltipField="Link de descarga",
                          minWidth=width_map["Link de descarga"],
                          flex=1)
+
+    # Cumplimiento: estilos por estado (píldora con color)
+    cumplimiento_style = JsCode(r"""
+    function(p){
+      const v = (p.value || '').toLowerCase();
+      if(!v) return {};
+      if(v.includes('a tiempo')){
+        return {backgroundColor:'#DCFCE7', color:'#065F46', fontWeight:'600',
+                borderRadius:'12px', padding:'4px 8px', textAlign:'center'};
+      }
+      if(v.includes('fuera de tiempo')){
+        return {backgroundColor:'#FFE4E6', color:'#9F1239', fontWeight:'600',
+                borderRadius:'12px', padding:'4px 8px', textAlign:'center'};
+      }
+      if(v.includes('no entregado')){
+        return {backgroundColor:'#FEE2E2', color:'#7F1D1D', fontWeight:'600',
+                borderRadius:'12px', padding:'4px 8px', textAlign:'center'};
+      }
+      if(v.includes('riesgo')){
+        return {backgroundColor:'#FEF9C3', color:'#92400E', fontWeight:'600',
+                borderRadius:'12px', padding:'4px 8px', textAlign:'center'};
+      }
+      return {};
+    }""")
+    gob.configure_column("Cumplimiento", cellStyle=cumplimiento_style)
 
     # Sin menú/filtro en "Fecha inicio"
     gob.configure_column("Fecha inicio", filter=False, floatingFilter=False, sortable=False, suppressMenu=True)
