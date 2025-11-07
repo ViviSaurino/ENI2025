@@ -132,7 +132,7 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
         if c.lower().startswith("fecha"):
             df[c] = to_naive_local_series(df[c])
 
-    # limpia HTML en "Archivo"
+    # limpia HTML en columnas que contengan "archivo"
     def _strip_html(x): return re.sub(r"<[^>]+>", "", str(x) if x is not None else "")
     for cc in [c for c in df.columns if "archivo" in c.lower()]:
         df[cc] = df[cc].map(_strip_html)
@@ -307,14 +307,14 @@ def render(user: dict | None = None):
         if need not in df_view.columns:
             df_view[need] = "" if "Hora" in need else pd.NaT
 
-    if "Archivo" not in df_view.columns:
-        df_view["Archivo"] = ""
-    # Fallback silencioso: si existe "Link de archivo", úsalo cuando "Archivo" esté vacío
-    if "Link de archivo" in df_view.columns:
-        df_view["Archivo"] = df_view["Archivo"].astype(str)
-        df_view["Archivo"] = df_view["Archivo"].where(
-            df_view["Archivo"].str.strip() != "",
-            df_view["Link de archivo"].astype(str)
+    # Asegura columna 'Link de archivo' y copia desde 'Archivo' solo si está vacía
+    if "Link de archivo" not in df_view.columns:
+        df_view["Link de archivo"] = ""
+    if "Archivo" in df_view.columns:
+        df_view["Link de archivo"] = df_view["Link de archivo"].astype(str)
+        df_view["Link de archivo"] = df_view["Link de archivo"].where(
+            df_view["Link de archivo"].str.strip() != "",
+            df_view["Archivo"].astype(str)
         )
 
     # ===== GRID =====
@@ -475,14 +475,18 @@ def render(user: dict | None = None):
         if col in df_grid.columns:
             gob.configure_column(col, valueFormatter=date_only_fmt)
 
-    # Link de descarga (lee de "Archivo")
+    # Link de descarga (lee de "Link de archivo", y cae a "Archivo" si no hay)
     link_value_getter = JsCode(r"""
     function(p){
-      const raw0 = (p && p.data && p.data['Archivo']!=null) ? String(p.data['Archivo']).trim() : '';
-      if(!raw0) return '';
-      const parts = raw0.split(/[\n,;|]+/).map(s=>s.trim()).filter(Boolean);
-      for (let s of parts){ if(/^https?:\/\//i.test(s)) return s; }
-      return '';
+      const pickUrl = (raw) => {
+        const parts = String(raw || '').split(/[\n,;|]+/).map(s=>s.trim()).filter(Boolean);
+        for (let s of parts){ if(/^https?:\/\//i.test(s)) return s; }
+        return '';
+      };
+      const v1 = p && p.data ? pickUrl(p.data['Link de archivo']) : '';
+      if (v1) return v1;
+      const v0 = p && p.data ? pickUrl(p.data['Archivo']) : '';
+      return v0 || '';
     }""")
     link_renderer = JsCode(r"""
     class LinkRenderer{
@@ -533,13 +537,27 @@ def render(user: dict | None = None):
         allow_unsafe_jscode=True,
     )
 
-    # Guardar ediciones en sesión
+    # Guardar ediciones en sesión (preserva columnas ocultas como 'Link de archivo')
     try:
         edited = grid_resp["data"]
+        new_df = None
         if isinstance(edited, list):
-            st.session_state["df_main"] = pd.DataFrame(edited)
+            new_df = pd.DataFrame(edited)
         elif hasattr(grid_resp, "data"):
-            st.session_state["df_main"] = pd.DataFrame(grid_resp.data)
+            new_df = pd.DataFrame(grid_resp.data)
+
+        if new_df is not None:
+            base = st.session_state.get("df_main", pd.DataFrame()).copy()
+            if "Id" in base.columns and "Id" in new_df.columns:
+                base["Id"] = base["Id"].astype(str)
+                new_df["Id"] = new_df["Id"].astype(str)
+                base_idx = base.set_index("Id")
+                new_idx  = new_df.set_index("Id")
+                cols_to_update = [c for c in new_idx.columns if c in base_idx.columns]
+                base_idx.update(new_idx[cols_to_update])
+                st.session_state["df_main"] = base_idx.reset_index()
+            else:
+                st.session_state["df_main"] = new_df
     except Exception:
         pass
 
