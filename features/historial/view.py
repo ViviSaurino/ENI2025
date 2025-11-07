@@ -235,20 +235,21 @@ def render(user: dict | None = None):
         .hist-actions{ padding:0 16px; border-top:2px solid #EF4444; }
         .hist-actions .stButton > button{ height:38px!important; border-radius:10px!important; width:100%; }
 
-        /* ===== Celda horizontal (una línea con ‘…’) ===== */
+        /* ===== Celdas en una línea (con ‘…’) ===== */
         .ag-theme-balham .ag-cell{
           white-space: nowrap !important;
           overflow: hidden !important;
           text-overflow: ellipsis !important;
         }
 
-        /* ===== Encabezados: nombre completo (wrap) y sin iconos de filtro/menú ===== */
+        /* ===== Encabezados: multilinea y sin iconos (filtros/menú/sort) ===== */
         .ag-theme-balham .ag-header-cell-label{
           white-space: normal !important;
           line-height: 1.2 !important;
         }
-        .ag-theme-balham .ag-header-cell .ag-icon-menu,
-        .ag-theme-balham .ag-header-cell .ag-icon-filter{
+        .ag-theme-balham .ag-header-cell .ag-icon,
+        .ag-theme-balham .ag-floating-filter,
+        .ag-theme-balham .ag-header-cell-menu-button{
           display: none !important;
         }
         </style>
@@ -445,6 +446,35 @@ def render(user: dict | None = None):
     gob.configure_column("Fecha inicio", headerName="Fecha de inicio", minWidth=140, suppressMenu=True)
     gob.configure_column("Fecha Terminado", headerName="Fecha Terminado", minWidth=150, suppressMenu=True)
 
+    # ==== SOLO FECHA (dd/mm/aaaa) en columnas de fecha visibles ====
+    date_only_fmt = JsCode(r"""
+    function(p){
+      const v = p.value;
+      if(v===null || v===undefined) return '—';
+      const s = String(v).trim();
+      if(!s || s.toLowerCase()==='nan' || s.toLowerCase()==='nat' || s.toLowerCase()==='null') return '—';
+      // intenta YYYY-MM-DD o ISO
+      let y,m,d;
+      const m1 = s.match(/^(\d{4})-(\d{2})-(\d{2})/); // 2025-11-06...
+      if(m1){
+        y = +m1[1]; m = +m1[2]; d = +m1[3];
+      }else{
+        // fallback: crea Date y toma componentes locales
+        const dt = new Date(s);
+        if(!isNaN(dt.getTime())){ y = dt.getFullYear(); m = dt.getMonth()+1; d = dt.getDate(); }
+      }
+      if(!y){ return s.split(' ')[0]; }
+      const dd = String(d).padStart(2,'0');
+      const mm = String(m).padStart(2,'0');
+      return dd + '/' + mm + '/' + y;
+    }
+    """)
+    for col in ["Fecha Registro","Fecha inicio","Fecha Vencimiento",
+                "Fecha Terminado","Fecha Pausado","Fecha Cancelado",
+                "Fecha Eliminado","Fecha de detección","Fecha de corrección"]:
+        if col in df_grid.columns:
+            gob.configure_column(col, valueFormatter=date_only_fmt, suppressMenu=True)
+
     # ==== Link de descarga (extrae el primer http/https de 'Archivo') ====
     link_value_getter = JsCode(r"""
     function(p){
@@ -498,7 +528,9 @@ def render(user: dict | None = None):
     }""")
     for c in df_grid.columns:
         if c in ["Link de descarga","Id","Área","Fase","Responsable","Estado",
-                 "Fecha Vencimiento","Fecha inicio","Fecha Terminado","¿Generó alerta?","N° de alerta"]:
+                 "Fecha Vencimiento","Fecha inicio","Fecha Terminado","¿Generó alerta?","N° de alerta",
+                 "Fecha Registro","Fecha Pausado","Fecha Cancelado","Fecha Eliminado",
+                 "Fecha de detección","Fecha de corrección"]:
             continue
         gob.configure_column(c, valueFormatter=fmt_dash, suppressMenu=True)
 
