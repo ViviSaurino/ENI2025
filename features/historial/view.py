@@ -259,7 +259,7 @@ def _add_business_days(start_dates: pd.Series, days: pd.Series) -> pd.Series:
 def render(user: dict | None = None):
     st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-    # ====== CSS (card + pill + aviso coral punteado + botón buscar más bajo) ======
+    # ====== CSS (píldora, aviso punteado y card SOLO para filtros) ======
     st.markdown("""
     <style>
       :root{
@@ -335,17 +335,18 @@ def render(user: dict | None = None):
         except Exception:
             pass
 
-    # ===== Píldora arriba (fuera del rectángulo) =====
+    # ===== Píldora arriba =====
     st.markdown('<div class="hist-title-pill">📝 Tareas recientes</div>', unsafe_allow_html=True)
 
-    # ===== Card: Aviso + Filtros en una fila =====
-    st.markdown('<div class="hist-card">', unsafe_allow_html=True)
+    # ===== Indicaciones (punteado) — FUERA del rectángulo =====
     st.markdown(
         '<div class="hist-hint">Aquí puedes editar <b>Tarea</b> y <b>Detalle de tarea</b>. '
         'Opcional: descargar en Excel. <b>Obligatorio:</b> Grabar y después Subir a Sheets.</div>',
         unsafe_allow_html=True
     )
 
+    # ===== Card: SOLO filtros =====
+    st.markdown('<div class="hist-card">', unsafe_allow_html=True)
     with st.container():
         # una sola fila
         c1, c2, c3, c4, c5, c6 = st.columns([1.05, 1.10, 1.70, 1.05, 1.05, 0.90], gap="medium")
@@ -380,7 +381,7 @@ def render(user: dict | None = None):
             st.markdown('<div class="hist-search">', unsafe_allow_html=True)
             hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
             st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)  # /hist-card
+    st.markdown('</div>', unsafe_allow_html=True)  # /hist-card SOLO filtros
 
     show_deleted = st.toggle("Mostrar eliminadas (tachadas)", value=True, key="hist_show_deleted")
 
@@ -572,7 +573,7 @@ def render(user: dict | None = None):
     link_renderer = JsCode(r"""
     class LinkRenderer{
       init(params){
-        const url = params && params.value ? String(params.value) : '';
+        const url = params y params.value ? String(params.value) : '';
         this.eGui = document.createElement('a');
         if(url){
           this.eGui.href = encodeURI(url);
@@ -644,7 +645,7 @@ def render(user: dict | None = None):
             base = st.session_state.get("df_main", pd.DataFrame()).copy()
             base = _canonicalize_link_column(base)
             new_df = _canonicalize_link_column(new_df)
-            if "Id" in base.columns and "Id" in new_df.columns:
+            if "Id" in base.columns y "Id" in new_df.columns:
                 base["Id"] = base["Id"].astype(str)
                 new_df["Id"] = new_df["Id"].astype(str)
                 base_idx = base.set_index("Id")
