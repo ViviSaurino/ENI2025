@@ -43,7 +43,7 @@ def to_naive_local_series(s: pd.Series) -> pd.Series:
     """
     ser = pd.to_datetime(s, errors="coerce", utc=False)
 
-    # Reprocesa valores que vengan como epoch-ms (solo dígitos 12–13)
+    # Reprocesa epoch-ms (12–13 dígitos)
     try:
         raw = pd.Series(s, copy=False)
         mask_ms = raw.astype(str).str.fullmatch(r"\d{12,13}")
@@ -53,23 +53,28 @@ def to_naive_local_series(s: pd.Series) -> pd.Series:
         pass
 
     try:
-        # A local y sin tz
         if getattr(ser.dt, "tz", None) is not None:
             ser = (ser.dt.tz_convert(_TZ) if _TZ else ser).dt.tz_localize(None)
     except Exception:
-        try: ser = ser.dt.tz_localize(None)
-        except Exception: pass
+        try:
+            ser = ser.dt.tz_localize(None)
+        except Exception:
+            pass
     return ser
 
 def _fmt_hhmm(v) -> str:
-    if v is None or (isinstance(v, float) and pd.isna(v)): return ""
+    if v is None or (isinstance(v, float) and pd.isna(v)):
+        return ""
     try:
         s = str(v).strip()
-        if not s or s.lower() in {"nan","nat","none","null"}: return ""
+        if not s or s.lower() in {"nan","nat","none","null"}:
+            return ""
         m = re.match(r"^(\d{1,2}):(\d{2})", s)
-        if m: return f"{int(m.group(1)):02d}:{int(m.group(2)):02d}"
+        if m:
+            return f"{int(m.group(1)):02d}:{int(m.group(2)):02d}"
         d = pd.to_datetime(s, errors="coerce", utc=False)
-        if pd.isna(d): return ""
+        if pd.isna(d):
+            return ""
         return f"{int(d.hour):02d}:{int(d.minute):02d}"
     except Exception:
         return ""
@@ -81,6 +86,7 @@ except Exception:
     def _disk_save_local(df: pd.DataFrame):
         os.makedirs("data", exist_ok=True)
         df.to_csv(os.path.join("data","tareas.csv"), index=False, encoding="utf-8-sig")
+
 def _save_local(df: pd.DataFrame):
     _disk_save_local(df.copy())
     st.session_state["_df_main_local_backup"] = df.copy()
@@ -92,7 +98,8 @@ def _gsheets_client():
     url = (st.secrets.get("gsheets_doc_url")
            or (st.secrets.get("gsheets",{}) or {}).get("spreadsheet_url")
            or (st.secrets.get("sheets",{}) or {}).get("sheet_url"))
-    if not url: raise KeyError("No se encontró URL de Sheets.")
+    if not url:
+        raise KeyError("No se encontró URL de Sheets.")
     ws_name = (st.secrets.get("gsheets",{}) or {}).get("worksheet","TareasRecientes")
     import gspread
     from google.oauth2.service_account import Credentials
@@ -122,11 +129,13 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
 
     # normaliza fechas (incluye epoch-ms)
     for c in df.columns:
-        if c.lower().startswith("fecha"): df[c] = to_naive_local_series(df[c])
+        if c.lower().startswith("fecha"):
+            df[c] = to_naive_local_series(df[c])
 
     # limpia HTML en "Archivo"
     def _strip_html(x): return re.sub(r"<[^>]+>", "", str(x) if x is not None else "")
-    for cc in [c for c in df.columns if "archivo" in c.lower()]: df[cc] = df[cc].map(_strip_html)
+    for cc in [c for c in df.columns if "archivo" in c.lower()]:
+        df[cc] = df[cc].map(_strip_html)
 
     # Unifica/normaliza "N° alerta" y elimina duplicadas
     alerta_pat = re.compile(r"^\s*n[°º]?\s*(de\s*)?alerta\s*$", re.I)
@@ -159,10 +168,11 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
 
 def push_user_slice_to_sheet():
     ss, ws_name = _gsheets_client()
-    try: ws = ss.worksheet(ws_name)
+    try:
+        ws = ss.worksheet(ws_name)
     except Exception:
-        rows = str(max(1000, len(st.session_state["df_main"])+10))
-        cols = str(max(26, len(st.session_state["df_main"].columns)+5))
+        rows = str(max(1000, len(st.session_state["df_main"]) + 10))
+        cols = str(max(26, len(st.session_state["df_main"].columns) + 5))
         ws = ss.add_worksheet(title=ws_name, rows=rows, cols=cols)
     df_out = st.session_state["df_main"].copy()
     for c in df_out.columns:
@@ -173,22 +183,26 @@ def push_user_slice_to_sheet():
         elif low.startswith("hora"):
             df_out[c] = df_out[c].apply(_fmt_hhmm).astype(str)
     df_out = df_out.fillna("").astype(str)
-    ws.clear(); ws.update("A1", [list(df_out.columns)] + df_out.values.tolist())
+    ws.clear()
+    ws.update("A1", [list(df_out.columns)] + df_out.values.tolist())
 
 # ===== Exportación =====
 def export_excel(df: pd.DataFrame, sheet_name: str = TAB_NAME) -> bytes:
     try:
         buf = BytesIO()
-        with pd.ExcelWriter(buf, engine="xlsxwriter") as w: df.to_excel(w, index=False, sheet_name=sheet_name)
+        with pd.ExcelWriter(buf, engine="xlsxwriter") as w:
+            df.to_excel(w, index=False, sheet_name=sheet_name)
         return buf.getvalue()
     except Exception:
         buf = BytesIO()
-        with pd.ExcelWriter(buf, engine="openpyxl") as w: df.to_excel(w, index=False, sheet_name=sheet_name)
+        with pd.ExcelWriter(buf, engine="openpyxl") as w:
+            df.to_excel(w, index=False, sheet_name=sheet_name)
         return buf.getvalue()
 
 # ===== Normalizadores de visual =====
 def _yesno(v) -> str:
-    if v is None or (isinstance(v, float) and pd.isna(v)): return "No"
+    if v is None or (isinstance(v, float) and pd.isna(v)):
+        return "No"
     s = str(v).strip().lower()
     return "Sí" if s in {"1","si","sí","true","t","y","s","x"} else "No"
 
@@ -240,41 +254,68 @@ def render(user: dict | None = None):
     with st.container():
         c1,c2,c3,c4,c5,c6 = st.columns([1.15,1.25,1.60,1.05,1.05,1.05], gap="medium")
         with c1:
-            area_sel = st.selectbox("Área",
-                options=["Todas"] + st.session_state.get("AREAS_OPC",
-                    ["Jefatura","Gestión","Metodología","Base de datos","Monitoreo","Capacitación","Consistencia"]),
-                index=0, key="hist_area")
+            area_sel = st.selectbox(
+                "Área",
+                options=["Todas"] + st.session_state.get(
+                    "AREAS_OPC",
+                    ["Jefatura","Gestión","Metodología","Base de datos","Monitoreo","Capacitación","Consistencia"]
+                ),
+                index=0, key="hist_area"
+            )
         fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x!="nan"])
-        with c2: fase_sel = st.selectbox("Fase", options=["Todas"]+fases_all, index=0, key="hist_fase")
+        with c2:
+            fase_sel = st.selectbox("Fase", options=["Todas"]+fases_all, index=0, key="hist_fase")
         df_resp_src = df_all.copy()
-        if area_sel!="Todas": df_resp_src = df_resp_src[df_resp_src["Área"]==area_sel]
+        if area_sel!="Todas":
+            df_resp_src = df_resp_src[df_resp_src["Área"]==area_sel]
         if fase_sel!="Todas" and "Fase" in df_resp_src.columns:
             df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str)==fase_sel]
         responsables = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x!="nan"])
-        with c3: resp_multi = st.multiselect("Responsable", options=responsables, default=[], key="hist_resp", placeholder="Selecciona responsable(s)")
+        with c3:
+            resp_multi = st.multiselect("Responsable", options=responsables, default=[], key="hist_resp",
+                                        placeholder="Selecciona responsable(s)")
         today = date.today()
-        with c4: f_desde = st.date_input("Desde", value=today, key="hist_desde")
-        with c5: f_hasta = st.date_input("Hasta", value=today, key="hist_hasta")
-        with c6: hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
+        with c4:
+            f_desde = st.date_input("Desde", value=today, key="hist_desde")
+        with c5:
+            f_hasta = st.date_input("Hasta", value=today, key="hist_hasta")
+        with c6:
+            hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
 
     show_deleted = st.toggle("Mostrar eliminadas (tachadas)", value=True, key="hist_show_deleted")
 
     # ---- Aplicar filtros ----
     df_view = df_all.copy()
-    if "Fecha inicio" in df_view.columns: df_view["Fecha inicio"] = to_naive_local_series(df_view["Fecha inicio"])
+    if "Fecha inicio" in df_view.columns:
+        df_view["Fecha inicio"] = to_naive_local_series(df_view["Fecha inicio"])
     if hist_do_buscar:
-        if area_sel!="Todas": df_view = df_view[df_view["Área"]==area_sel]
-        if fase_sel!="Todas" and "Fase" in df_view.columns: df_view = df_view[df_view["Fase"].astype(str)==fase_sel]
-        if resp_multi: df_view = df_view[df_view["Responsable"].astype(str).isin(resp_multi)]
-        if f_desde is not None: df_view = df_view[df_view["Fecha inicio"].dt.date >= f_desde]
-        if f_hasta is not None: df_view = df_view[df_view["Fecha inicio"].dt.date <= f_hasta]
+        if area_sel!="Todas":
+            df_view = df_view[df_view["Área"]==area_sel]
+        if fase_sel!="Todas" and "Fase" in df_view.columns:
+            df_view = df_view[df_view["Fase"].astype(str)==fase_sel]
+        if resp_multi:
+            df_view = df_view[df_view["Responsable"].astype(str).isin(resp_multi)]
+        if f_desde is not None:
+            df_view = df_view[df_view["Fecha inicio"].dt.date >= f_desde]
+        if f_hasta is not None:
+            df_view = df_view[df_view["Fecha inicio"].dt.date <= f_hasta]
     if not show_deleted and "Estado" in df_view.columns:
         df_view = df_view[df_view["Estado"].astype(str).str.strip()!="Eliminado"]
 
     # ===== Normalizaciones mínimas =====
     for need in ["Estado","Hora de inicio","Fecha Terminado","Hora Terminado"]:
-        if need not in df_view.columns: df_view[need] = "" if "Hora" in need else pd.NaT
-    if "Archivo" not in df_view.columns: df_view["Archivo"] = ""
+        if need not in df_view.columns:
+            df_view[need] = "" if "Hora" in need else pd.NaT
+
+    if "Archivo" not in df_view.columns:
+        df_view["Archivo"] = ""
+    # Fallback silencioso: si existe "Link de archivo", úsalo cuando "Archivo" esté vacío
+    if "Link de archivo" in df_view.columns:
+        df_view["Archivo"] = df_view["Archivo"].astype(str)
+        df_view["Archivo"] = df_view["Archivo"].where(
+            df_view["Archivo"].str.strip() != "",
+            df_view["Link de archivo"].astype(str)
+        )
 
     # ===== GRID =====
     target_cols = [
@@ -293,18 +334,23 @@ def render(user: dict | None = None):
         "Fecha Eliminado","Hora Eliminado",
         "Link de descarga"
     ]
-    hidden_cols = ["Archivo","__ts__","__SEL__","__DEL__","¿Eliminar?","Tipo de alerta",
-                   "Fecha estado modificado","Hora estado modificado","Fecha estado actual","Hora estado actual",
-                   "Fecha","Hora","Vencimiento"]
+    hidden_cols = [
+        "Archivo","Link de archivo","__ts__","__SEL__","__DEL__","¿Eliminar?","Tipo de alerta",
+        "Fecha estado modificado","Hora estado modificado","Fecha estado actual","Hora estado actual",
+        "Fecha","Hora","Vencimiento"
+    ]
 
     for c in target_cols:
-        if c not in df_view.columns: df_view[c] = ""
+        if c not in df_view.columns:
+            df_view[c] = ""
 
-    df_grid = df_view.reindex(columns=list(dict.fromkeys(target_cols)) +
-                              [c for c in df_view.columns if c not in target_cols + hidden_cols]).copy()
+    df_grid = df_view.reindex(
+        columns=list(dict.fromkeys(target_cols)) + [c for c in df_view.columns if c not in target_cols + hidden_cols]
+    ).copy()
     df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()
     df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
-    if "Link de descarga" not in df_grid.columns: df_grid["Link de descarga"] = ""
+    if "Link de descarga" not in df_grid.columns:
+        df_grid["Link de descarga"] = ""
 
     # --- Dedup/renombre seguro de N° alerta ---
     alerta_pat = re.compile(r"^\s*n[°º]?\s*(de\s*)?alerta\s*$", re.I)
@@ -328,7 +374,6 @@ def render(user: dict | None = None):
     # === Ajuste 3: Duración en días 1–5 (nunca minutos) ===
     if "Duración" in df_grid.columns:
         dur = pd.to_numeric(df_grid["Duración"], errors="coerce")
-        # Solo acepto 1..5; si no, intento derivar de fechas; si no, vacío
         ok = dur.where(dur.between(1,5))
         if ok.isna().any():
             try:
@@ -347,7 +392,6 @@ def render(user: dict | None = None):
 
     # ==== Opciones AG Grid ====
     gob = GridOptionsBuilder.from_dataframe(df_grid)
-
     gob.configure_default_column(
         resizable=True, editable=False, filter=False, floatingFilter=False,
         sortable=False, suppressMenu=True, wrapText=False, autoHeight=False,
@@ -410,13 +454,13 @@ def render(user: dict | None = None):
       const m1 = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
       if(m1){ y=+m1[1]; m=+m1[2]; d=+m1[3]; }
 
-      // 2) epoch-ms (solo dígitos largos)
+      // 2) epoch-ms
       if(!y && /^\d{12,13}$/.test(s)){
         const dt = new Date(Number(s));
         if(!isNaN(dt)){ y=dt.getFullYear(); m=dt.getMonth()+1; d=dt.getDate(); }
       }
 
-      // 3) Fallback: Date(s)
+      // 3) Fallback Date(s)
       if(!y){
         const dt = new Date(s);
         if(!isNaN(dt)){ y=dt.getFullYear(); m=dt.getMonth()+1; d=dt.getDate(); }
@@ -431,7 +475,7 @@ def render(user: dict | None = None):
         if col in df_grid.columns:
             gob.configure_column(col, valueFormatter=date_only_fmt)
 
-    # Link de descarga
+    # Link de descarga (lee de "Archivo")
     link_value_getter = JsCode(r"""
     function(p){
       const raw0 = (p && p.data && p.data['Archivo']!=null) ? String(p.data['Archivo']).trim() : '';
@@ -501,4 +545,46 @@ def render(user: dict | None = None):
 
     # ===== Botonera =====
     st.markdown('<div style="padding:0 16px; border-top:2px solid #EF4444">', unsafe_allow_html=True)
-    _sp, b_xlsx, b_sync, b_save_local, b_save
+    _sp, b_xlsx, b_sync, b_save_local, b_save_sheets = st.columns([4.9, 1.6, 1.4, 1.4, 2.2], gap="medium")
+
+    with b_xlsx:
+        try:
+            base = st.session_state["df_main"].copy()
+            for c in ["__SEL__","__DEL__","¿Eliminar?"]:
+                if c in base.columns:
+                    base.drop(columns=[c], inplace=True, errors="ignore")
+            xlsx_b = export_excel(base, sheet_name=TAB_NAME)
+            st.download_button(
+                "⬇️ Exportar Excel",
+                data=xlsx_b,
+                file_name="tareas.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
+        except Exception as e:
+            st.warning(f"No pude generar Excel: {e}")
+
+    with b_sync:
+        if st.button("🔄 Sincronizar", use_container_width=True, key="btn_sync_sheet"):
+            try:
+                pull_user_slice_from_sheet(replace_df_main=False)  # merge por Id
+            except Exception as e:
+                st.warning(f"No se pudo sincronizar: {e}")
+
+    with b_save_local:
+        if st.button("💾 Grabar", use_container_width=True):
+            try:
+                _save_local(st.session_state["df_main"].copy())
+                st.success("Datos grabados en data/tareas.csv.")
+            except Exception as e:
+                st.warning(f"No se pudo grabar localmente: {e}")
+
+    with b_save_sheets:
+        if st.button("📤 Subir a Sheets", use_container_width=True):
+            try:
+                push_user_slice_to_sheet()
+                st.success("Enviado a Google Sheets.")
+            except Exception as e:
+                st.warning(f"No se pudo subir a Sheets: {e}")
+
+    st.markdown('</div>', unsafe_allow_html=True)
