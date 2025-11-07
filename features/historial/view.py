@@ -242,16 +242,19 @@ def render(user: dict | None = None):
           text-overflow: ellipsis !important;
         }
 
-        /* ===== Encabezados: multilinea y sin iconos (filtros/menú/sort) ===== */
+        /* ===== Encabezados: multilínea, sin íconos ni fila de filtro ===== */
         .ag-theme-balham .ag-header-cell-label{
           white-space: normal !important;
           line-height: 1.2 !important;
+          overflow: visible !important;
+          text-overflow: clip !important;
         }
-        .ag-theme-balham .ag-header-cell .ag-icon,
+        .ag-theme-balham .ag-header .ag-icon{ display:none !important; }
         .ag-theme-balham .ag-floating-filter,
-        .ag-theme-balham .ag-header-cell-menu-button{
-          display: none !important;
+        .ag-theme-balham .ag-header-row.ag-header-row-column-filter{
+          display:none !important;
         }
+        .ag-theme-balham .ag-header-cell-menu-button{ display:none !important; }
         </style>
         <div class="hist-title-pill">📝 Tareas recientes</div>
         """, unsafe_allow_html=True)
@@ -273,7 +276,7 @@ def render(user: dict | None = None):
     for c in [c for c in TZ_DATE_COLS if c in df_all.columns]:
         df_all[c] = to_naive_local_series(df_all[c])
 
-    # ===== Filtros =====
+    # ===== Filtros (externos) =====
     with st.container():
         W_AREA, W_FASE, W_RESP, W_DESDE, W_HASTA, W_BUSCAR = 1.15, 1.25, 1.60, 1.05, 1.05, 1.05
         cA, cF, cR, cD, cH, cB = st.columns(
@@ -413,14 +416,19 @@ def render(user: dict | None = None):
         df_grid["Link de descarga"] = ""
 
     gob = GridOptionsBuilder.from_dataframe(df_grid)
-    # Horizontal y sin filtros/menú por defecto
+
+    # ======= Sin filtros/menús/ordenamiento y texto en una línea =======
     gob.configure_default_column(
-        resizable=True, editable=False,
-        wrapText=False, autoHeight=False,
-        filter=False, floatingFilter=False, suppressMenu=True,
+        resizable=True,
+        editable=False,
+        wrapText=False,
+        autoHeight=False,
+        filter=False,
+        floatingFilter=False,
+        sortable=False,
+        suppressMenu=True,
         cellStyle={"white-space":"nowrap","overflow":"hidden","textOverflow":"ellipsis"}
     )
-
     gob.configure_grid_options(
         domLayout="normal",
         rowHeight=34,
@@ -432,19 +440,19 @@ def render(user: dict | None = None):
         suppressHeaderVirtualisation=True,
     )
 
-    # ----- Columnas base visibles -----
-    gob.configure_column("Id", headerName="ID", editable=False, width=110, pinned="left",
-                         suppressMovable=True, suppressSizeToFit=True, suppressMenu=True)
-    gob.configure_column("Área", headerName="Área", editable=False, minWidth=160, pinned="left",
-                         suppressMovable=True, suppressMenu=True)
-    gob.configure_column("Fase", headerName="Fase", editable=False, minWidth=180, pinned="left",
-                         suppressMovable=True, suppressMenu=True)
-    gob.configure_column("Responsable", editable=False, minWidth=220, pinned="left",
-                         suppressMovable=True, suppressMenu=True)
-    gob.configure_column("Estado", headerName="Estado actual", minWidth=150, suppressMenu=True)
-    gob.configure_column("Fecha Vencimiento", headerName="Fecha límite", minWidth=140, suppressMenu=True)
-    gob.configure_column("Fecha inicio", headerName="Fecha de inicio", minWidth=140, suppressMenu=True)
-    gob.configure_column("Fecha Terminado", headerName="Fecha Terminado", minWidth=150, suppressMenu=True)
+    # ----- Encabezados completos (incluye renombres) -----
+    header_map = {
+        "Detalle": "Detalle de tarea",
+        "Fecha Vencimiento": "Fecha límite",
+        "Hora Vencimiento": "Hora límite",
+        "Fecha inicio": "Fecha de inicio",
+        "Hora de inicio": "Hora de inicio",
+        "Fecha Registro": "Fecha de registro",
+        "Hora Registro": "Hora de registro",
+        "Link de descarga": "Link de descarga",
+    }
+    for col in df_grid.columns:
+        gob.configure_column(col, headerName=header_map.get(col, col), suppressMenu=True)
 
     # ==== SOLO FECHA (dd/mm/aaaa) en columnas de fecha visibles ====
     date_only_fmt = JsCode(r"""
@@ -453,15 +461,12 @@ def render(user: dict | None = None):
       if(v===null || v===undefined) return '—';
       const s = String(v).trim();
       if(!s || s.toLowerCase()==='nan' || s.toLowerCase()==='nat' || s.toLowerCase()==='null') return '—';
-      // intenta YYYY-MM-DD o ISO
       let y,m,d;
-      const m1 = s.match(/^(\d{4})-(\d{2})-(\d{2})/); // 2025-11-06...
-      if(m1){
-        y = +m1[1]; m = +m1[2]; d = +m1[3];
-      }else{
-        // fallback: crea Date y toma componentes locales
+      const m1 = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if(m1){ y=+m1[1]; m=+m1[2]; d=+m1[3]; }
+      else{
         const dt = new Date(s);
-        if(!isNaN(dt.getTime())){ y = dt.getFullYear(); m = dt.getMonth()+1; d = dt.getDate(); }
+        if(!isNaN(dt.getTime())){ y=dt.getFullYear(); m=dt.getMonth()+1; d=dt.getDate(); }
       }
       if(!y){ return s.split(' ')[0]; }
       const dd = String(d).padStart(2,'0');
@@ -518,22 +523,6 @@ def render(user: dict | None = None):
         tooltipField="Link de descarga"
     )
 
-    # Formatos cortos para demás columnas
-    fmt_dash = JsCode("""
-    function(p){
-      if(p.value===null||p.value===undefined) return '—';
-      const s=String(p.value).trim().toLowerCase();
-      if(s===''||s==='nan'||s==='nat'||s==='none'||s==='null') return '—';
-      return String(p.value);
-    }""")
-    for c in df_grid.columns:
-        if c in ["Link de descarga","Id","Área","Fase","Responsable","Estado",
-                 "Fecha Vencimiento","Fecha inicio","Fecha Terminado","¿Generó alerta?","N° de alerta",
-                 "Fecha Registro","Fecha Pausado","Fecha Cancelado","Fecha Eliminado",
-                 "Fecha de detección","Fecha de corrección"]:
-            continue
-        gob.configure_column(c, valueFormatter=fmt_dash, suppressMenu=True)
-
     # === Autosize eventos ===
     autosize_on_ready = JsCode("""
     function(params){
@@ -557,6 +546,7 @@ def render(user: dict | None = None):
     grid_opts["onFirstDataRendered"] = autosize_on_data.js_code
     grid_opts["onColumnEverythingChanged"] = autosize_on_data.js_code
     grid_opts["rememberSelection"] = True
+    grid_opts["floatingFilter"] = False  # refuerzo por si acaso
 
     AgGrid(
         df_grid, key="grid_historial",
