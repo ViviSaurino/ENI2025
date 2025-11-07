@@ -517,43 +517,32 @@ def render(user: dict | None = None):
     gob.configure_column("Fecha inicio", headerName="Fecha de inicio")
     gob.configure_column("Fecha Terminado", headerName="Fecha Terminado")
 
-    # ==== Archivo: renderer DOM (no HTML string) ====
-    archivo_renderer = JsCode("""
+    # ==== Archivo: renderer HTML-string (compatible con React) ====
+    archivo_renderer = JsCode(r"""
     function(p){
-      const v = String(p.value||'').trim();
-      if(!v) return '—';
-      const isUrl = /^https?:\\/\\//i.test(v);
+      const raw = p && p.value != null ? String(p.value).trim() : '';
+      if(!raw) return '—';
 
-      const chip = document.createElement('span');
-      chip.style.display='inline-flex';
-      chip.style.alignItems='center';
-      chip.style.gap='6px';
-      chip.style.padding='2px 8px';
-      chip.style.border='1px solid #D0D7DE';
-      chip.style.borderRadius='999px';
-      chip.style.cursor='pointer';
-      chip.title = isUrl ? v : 'Selecciona la fila para descargar';
+      const isUrl = /^https?:\/\//i.test(raw);
 
-      const paper = document.createElement('span');
-      paper.textContent = '📎';
-      chip.appendChild(paper);
+      // Sanitizar un poco para atributos HTML
+      const esc = s => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
+      let inner = '';
       if(isUrl){
-        const a = document.createElement('a');
-        a.href = v;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        a.textContent = 'Descargar';
-        a.style.textDecoration = 'none';
-        chip.appendChild(a);
+        const href = encodeURI(raw);
+        inner = '<a href="'+href+'" target="_blank" rel="noopener noreferrer" style="text-decoration:none">Descargar</a>';
       }else{
-        const t = document.createElement('span');
-        t.textContent = 'Descargar';
-        chip.appendChild(t);
+        inner = '<span>Descargar</span>'; // ruta local; botón de descarga aparece abajo al seleccionar fila
       }
-      return chip;
+
+      return (
+        '<span style="display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border:1px solid #D0D7DE;border-radius:999px;cursor:pointer;" '+
+        'title="'+esc(raw)+'">📎 ' + inner + '</span>'
+      );
     }
     """)
+
     if "Archivo" in df_grid.columns:
         gob.configure_column(
             "Archivo",
