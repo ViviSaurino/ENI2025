@@ -388,11 +388,10 @@ def render(user: dict | None = None):
         "Fecha Pausado","Hora Pausado",
         "Fecha Cancelado","Hora Cancelado",
         "Fecha Eliminado","Hora Eliminado",
-        "__Pick__",
         "Link de descarga"   # última columna visible
     ]
     HIDDEN_COLS = [
-        "Archivo",  # mantenemos el dato para construir el link, pero oculto
+        "Archivo",  # lo usamos para construir el link
         "¿Eliminar?","Estado modificado",
         "Fecha estado modificado","Hora estado modificado",
         "Fecha estado actual","Hora estado actual",
@@ -402,7 +401,7 @@ def render(user: dict | None = None):
     for c in target_cols:
         if c not in df_view.columns:
             df_view[c] = ""
-    # construir grid y asegurar que "Link de descarga" exista
+
     df_grid = df_view.reindex(
         columns=list(dict.fromkeys(target_cols)) +
         [c for c in df_view.columns if c not in target_cols + HIDDEN_COLS]
@@ -413,7 +412,7 @@ def render(user: dict | None = None):
         df_grid["Link de descarga"] = ""
 
     gob = GridOptionsBuilder.from_dataframe(df_grid)
-    # === Horizontal (sin wrap) y sin filtros/menú por defecto ===
+    # Horizontal y sin filtros/menú por defecto
     gob.configure_default_column(
         resizable=True, editable=False,
         wrapText=False, autoHeight=False,
@@ -421,12 +420,7 @@ def render(user: dict | None = None):
         cellStyle={"white-space":"nowrap","overflow":"hidden","textOverflow":"ellipsis"}
     )
 
-    # Selección "single" + checkbox propio
-    gob.configure_selection(selection_mode="single", use_checkbox=False)
     gob.configure_grid_options(
-        rowSelection="single",
-        rowMultiSelectWithClick=False,
-        suppressRowClickSelection=False,
         domLayout="normal",
         rowHeight=34,
         wrapHeaderText=True, autoHeaderHeight=True, headerHeight=64,
@@ -434,7 +428,6 @@ def render(user: dict | None = None):
         singleClickEdit=False, stopEditingWhenCellsLoseFocus=True,
         undoRedoCellEditing=False, enterMovesDown=False,
         suppressMovableColumns=False,
-        getRowId=JsCode("function(p){ return (p.data && (p.data.Id || p.data['Id'])) + ''; }"),
         suppressHeaderVirtualisation=True,
     )
 
@@ -451,30 +444,6 @@ def render(user: dict | None = None):
     gob.configure_column("Fecha Vencimiento", headerName="Fecha límite", minWidth=140, suppressMenu=True)
     gob.configure_column("Fecha inicio", headerName="Fecha de inicio", minWidth=140, suppressMenu=True)
     gob.configure_column("Fecha Terminado", headerName="Fecha Terminado", minWidth=150, suppressMenu=True)
-
-    # ==== Checkbox (selección de fila) ====
-    pick_renderer = JsCode(r"""
-    class SelRenderer{
-      init(params){
-        this.eGui = document.createElement('input');
-        this.eGui.type = 'checkbox';
-        this.eGui.checked = params.node.isSelected();
-        this.eGui.addEventListener('change', (ev)=>{
-          try{ params.node.setSelected(ev.target.checked, true); }catch(_){}
-        });
-      }
-      getGui(){ return this.eGui; }
-      refresh(p){ this.eGui.checked = p.node.isSelected(); return true; }
-    }
-    """)
-    gob.configure_column(
-        "__Pick__",
-        headerName="",
-        minWidth=60, maxWidth=70, flex=0,
-        editable=False, pinned=None, suppressMenu=True,
-        cellRenderer=pick_renderer,
-        cellStyle={"textAlign":"center"}
-    )
 
     # ==== Link de descarga (extrae el primer http/https de 'Archivo') ====
     link_value_getter = JsCode(r"""
@@ -528,7 +497,7 @@ def render(user: dict | None = None):
       return String(p.value);
     }""")
     for c in df_grid.columns:
-        if c in ["Link de descarga","__Pick__","Id","Área","Fase","Responsable","Estado",
+        if c in ["Link de descarga","Id","Área","Fase","Responsable","Estado",
                  "Fecha Vencimiento","Fecha inicio","Fecha Terminado","¿Generó alerta?","N° de alerta"]:
             continue
         gob.configure_column(c, valueFormatter=fmt_dash, suppressMenu=True)
@@ -557,13 +526,12 @@ def render(user: dict | None = None):
     grid_opts["onColumnEverythingChanged"] = autosize_on_data.js_code
     grid_opts["rememberSelection"] = True
 
-    grid = AgGrid(
+    AgGrid(
         df_grid, key="grid_historial",
         gridOptions=grid_opts, height=500,
         fit_columns_on_grid_load=False,
         data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
         update_mode=(GridUpdateMode.MODEL_CHANGED
-                     | GridUpdateMode.SELECTION_CHANGED
                      | GridUpdateMode.FILTERING_CHANGED
                      | GridUpdateMode.SORTING_CHANGED),
         allow_unsafe_jscode=True, theme="balham",
@@ -581,7 +549,7 @@ def render(user: dict | None = None):
     with b_xlsx:
         try:
             df_xlsx = st.session_state["df_main"].copy()
-            for c in ["__Pick__","__SEL__","__DEL__","¿Eliminar?"]:
+            for c in ["__SEL__","__DEL__","¿Eliminar?"]:
                 if c in df_xlsx.columns:
                     df_xlsx.drop(columns=[c], inplace=True, errors="ignore")
             xlsx_b = export_excel(df_xlsx, sheet_name=TAB_NAME)
