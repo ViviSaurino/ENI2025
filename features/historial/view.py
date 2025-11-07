@@ -407,10 +407,9 @@ def render(user: dict | None = None):
     _hmod = df_view["Hora estado modificado"].apply(_to_hhmm) if "Hora estado modificado" in df_view.columns else pd.Series([""]*len(df_view), index=df_view.index)
 
     _fact = to_naive_local_series(df_view.get("Fecha estado actual"))
-    _hact = df_view["Hora estado actual"].apply(_to_hhmm) if "Hora estado actual" in df_view.columns else pd.Series([""]*len(df_view), index=df_view.index)
+    _hact = df_view["Hora estado actual"].apply(_to_hhmm) if "Hora estado actual" in df_view.columns else pd.Series([""]*len[df_view], index=df_view.index)  # noqa
 
     if "Estado" in df_view.columns:
-        # normaliza estado (por si llega "Terminada", etc.)
         _estado_norm = df_view["Estado"].astype(str).str.lower().str.strip()
         _en_curso  = _estado_norm.isin(["en curso","en progreso","progreso"])
         _terminado = _estado_norm.isin(["terminado","terminada","finalizado","finalizada","completado","completada"])
@@ -517,29 +516,12 @@ def render(user: dict | None = None):
     gob.configure_column("Fecha inicio", headerName="Fecha de inicio")
     gob.configure_column("Fecha Terminado", headerName="Fecha Terminado")
 
-    # ==== Archivo: renderer HTML-string (compatible con React) ====
-    archivo_renderer = JsCode(r"""
+    # ==== Archivo: renderer textual + click handler para URLs ====
+    archivo_renderer = JsCode("""
     function(p){
-      const raw = p && p.value != null ? String(p.value).trim() : '';
+      const raw = (p && p.value != null) ? String(p.value).trim() : '';
       if(!raw) return '—';
-
-      const isUrl = /^https?:\/\//i.test(raw);
-
-      // Sanitizar un poco para atributos HTML
-      const esc = s => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-
-      let inner = '';
-      if(isUrl){
-        const href = encodeURI(raw);
-        inner = '<a href="'+href+'" target="_blank" rel="noopener noreferrer" style="text-decoration:none">Descargar</a>';
-      }else{
-        inner = '<span>Descargar</span>'; // ruta local; botón de descarga aparece abajo al seleccionar fila
-      }
-
-      return (
-        '<span style="display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border:1px solid #D0D7DE;border-radius:999px;cursor:pointer;" '+
-        'title="'+esc(raw)+'">📎 ' + inner + '</span>'
-      );
+      return '📎 Descargar'; // Texto; el click se maneja con onCellClicked
     }
     """)
 
@@ -699,12 +681,33 @@ def render(user: dict | None = None):
     }
     """)
 
+    # -- NUEVO: abrir URL al hacer clic en la celda "Archivo"
+    open_url_on_click = JsCode("""
+    function(e){
+      if(!e || !e.colDef || e.colDef.field !== 'Archivo') return;
+      const raw = (e.value != null) ? String(e.value).trim() : '';
+      if(!raw) return;
+      if(/^https?:\\/\\//i.test(raw)){
+        try{ window.open(raw, '_blank', 'noopener'); }catch(err){}
+      }else{
+        // Selecciona la fila para mostrar el botón de descarga inferior
+        try{
+          const node = e.node;
+          if(node && !node.isSelected()){
+            node.setSelected(true, true);
+          }
+        }catch(err){}
+      }
+    }
+    """)
+
     grid_opts = gob.build()
     grid_opts["rowClassRules"] = row_class_rules
     grid_opts["onGridReady"] = autosize_on_ready.js_code
     grid_opts["onFirstDataRendered"] = autosize_on_data.js_code
     grid_opts["onColumnEverythingChanged"] = autosize_on_data.js_code
     grid_opts["onSelectionChanged"] = sync_selection.js_code
+    grid_opts["onCellClicked"] = open_url_on_click.js_code   # <<< NUEVO
     grid_opts["rowSelection"] = "multiple"
     grid_opts["rowMultiSelectWithClick"] = True
     grid_opts["rememberSelection"] = True
