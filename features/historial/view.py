@@ -681,11 +681,11 @@ def render(user: dict | None = None):
     }
     """)
 
-    # Clic en "Archivo": abre URL (si lo es) o selecciona fila para botón local
+    # >>> FIX: usar el valor REAL desde e.data['Archivo'] (no el texto renderizado)
     open_url_on_click = JsCode("""
     function(e){
       if(!e || !e.colDef || e.colDef.field !== 'Archivo') return;
-      const raw = (e.value != null) ? String(e.value).trim() : '';
+      const raw = (e && e.data && e.data['Archivo'] != null) ? String(e.data['Archivo']).trim() : '';
       if(!raw) return;
       if(/^https?:\\/\\//i.test(raw)){
         try{ window.open(encodeURI(raw), '_blank', 'noopener'); }catch(err){}
