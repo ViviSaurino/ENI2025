@@ -259,17 +259,41 @@ def _add_business_days(start_dates: pd.Series, days: pd.Series) -> pd.Series:
 def render(user: dict | None = None):
     st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-    # ====== CSS (píldora ajustada) ======
+    # ====== CSS (card + pill + aviso coral) ======
     st.markdown("""
     <style>
-      :root{ --pill-salmon:#F28B85; --hist-pill-w: 232px; }
+      :root{
+        --pill-salmon:#F28B85;
+        --card-border:#E5E7EB;
+        --card-bg:#FFFFFF;
+        --hint-bg:#FFE7E3;     /* coral muy claro */
+        --hint-border:#F28B85;
+      }
+      .hist-card{
+        border:1px solid var(--card-border);
+        background:var(--card-bg);
+        border-radius:12px;
+        padding:14px 16px 12px 16px;
+        margin-bottom:12px;
+      }
       .hist-title-pill{
-        display:flex; align-items:center; gap:8px;
-        padding:10px 16px; width:var(--hist-pill-w);
+        display:inline-flex; align-items:center; gap:8px;
+        padding:10px 16px;
         border-radius:10px; background: var(--pill-salmon);
         color:#fff; font-weight:600; font-size:1.05rem; line-height:1.1;
         box-shadow: inset 0 -2px 0 rgba(0,0,0,0.06);
+        margin-bottom:10px;
       }
+      .hist-hint{
+        background:var(--hint-bg);
+        border:1px solid var(--hint-border);
+        border-radius:10px;
+        padding:10px 12px;
+        color:#7F1D1D;
+        margin: 2px 0 12px 0;
+        font-size:0.95rem;
+      }
+      /* AG Grid ajustes de texto */
       .ag-theme-balham .ag-cell{
         white-space: nowrap !important;
         overflow: hidden !important;
@@ -308,11 +332,19 @@ def render(user: dict | None = None):
         except Exception:
             pass
 
-    # ===== Filtros + Título =====
+    # ===== Card: Píldora + Aviso coral + Filtros en una fila =====
+    st.markdown('<div class="hist-card">', unsafe_allow_html=True)
+    st.markdown('<div class="hist-title-pill">📝 Tareas recientes</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="hist-hint">Aquí puedes editar <b>Tarea</b> y <b>Detalle de tarea</b>. '
+        'Opcional: descargar en Excel. <b>Obligatorio:</b> Grabar y después Subir a Sheets.</div>',
+        unsafe_allow_html=True
+    )
+
     with st.container():
-        c1,c2,c3,c4,c5,c6 = st.columns([1.15,1.25,1.60,1.05,1.05,1.05], gap="medium")
+        # una sola fila
+        c1, c2, c3, c4, c5, c6 = st.columns([1.05, 1.10, 1.70, 1.05, 1.05, 0.90], gap="medium")
         with c1:
-            st.markdown('<div class="hist-title-pill">📝 Tareas recientes</div>', unsafe_allow_html=True)
             area_sel = st.selectbox(
                 "Área",
                 options=["Todas"] + st.session_state.get(
@@ -341,6 +373,7 @@ def render(user: dict | None = None):
             f_hasta = st.date_input("Hasta", value=today, key="hist_hasta")
         with c6:
             hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
+    st.markdown('</div>', unsafe_allow_html=True)  # /hist-card
 
     show_deleted = st.toggle("Mostrar eliminadas (tachadas)", value=True, key="hist_show_deleted")
 
@@ -383,8 +416,8 @@ def render(user: dict | None = None):
         "Fecha Pausado","Hora Pausado",
         "Fecha Cancelado","Hora Cancelado",
         "Fecha Eliminado","Hora Eliminado",
-        _LINK_CANON,               # <<--- incluir en rowData (oculta)
-        "Link de descarga"         # visible
+        _LINK_CANON,
+        "Link de descarga"
     ]
     hidden_cols = [
         "Archivo","__ts__","__SEL__","__DEL__","¿Eliminar?","Tipo de alerta",
@@ -526,7 +559,6 @@ def render(user: dict | None = None):
     function(p){
       const text = String((p && p.data && p.data['Link de archivo']) || '').trim();
       if(!text) return '';
-      // Primer http/https que aparezca
       const m = text.match(/https?:\/\/\S+/i);
       return m ? m[0].replace(/[),.]+$/, '') : '';
     }""")
