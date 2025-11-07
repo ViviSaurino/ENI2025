@@ -259,7 +259,7 @@ def _add_business_days(start_dates: pd.Series, days: pd.Series) -> pd.Series:
 def render(user: dict | None = None):
     st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-    # ====== CSS (card + pill + aviso coral) ======
+    # ====== CSS (card + pill + aviso coral punteado + botón buscar más bajo) ======
     st.markdown("""
     <style>
       :root{
@@ -274,7 +274,7 @@ def render(user: dict | None = None):
         background:var(--card-bg);
         border-radius:12px;
         padding:14px 16px 12px 16px;
-        margin-bottom:12px;
+        margin: 8px 0 12px 0;
       }
       .hist-title-pill{
         display:inline-flex; align-items:center; gap:8px;
@@ -286,13 +286,16 @@ def render(user: dict | None = None):
       }
       .hist-hint{
         background:var(--hint-bg);
-        border:1px solid var(--hint-border);
+        border:2px dotted var(--hint-border); /* punteado */
         border-radius:10px;
         padding:10px 12px;
         color:#7F1D1D;
         margin: 2px 0 12px 0;
         font-size:0.95rem;
       }
+      /* Bajar ligeramente el botón Buscar */
+      .hist-search .stButton>button{ margin-top:8px; }
+
       /* AG Grid ajustes de texto */
       .ag-theme-balham .ag-cell{
         white-space: nowrap !important;
@@ -332,9 +335,11 @@ def render(user: dict | None = None):
         except Exception:
             pass
 
-    # ===== Card: Píldora + Aviso coral + Filtros en una fila =====
-    st.markdown('<div class="hist-card">', unsafe_allow_html=True)
+    # ===== Píldora arriba (fuera del rectángulo) =====
     st.markdown('<div class="hist-title-pill">📝 Tareas recientes</div>', unsafe_allow_html=True)
+
+    # ===== Card: Aviso + Filtros en una fila =====
+    st.markdown('<div class="hist-card">', unsafe_allow_html=True)
     st.markdown(
         '<div class="hist-hint">Aquí puedes editar <b>Tarea</b> y <b>Detalle de tarea</b>. '
         'Opcional: descargar en Excel. <b>Obligatorio:</b> Grabar y después Subir a Sheets.</div>',
@@ -372,7 +377,9 @@ def render(user: dict | None = None):
         with c5:
             f_hasta = st.date_input("Hasta", value=today, key="hist_hasta")
         with c6:
+            st.markdown('<div class="hist-search">', unsafe_allow_html=True)
             hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
+            st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)  # /hist-card
 
     show_deleted = st.toggle("Mostrar eliminadas (tachadas)", value=True, key="hist_show_deleted")
