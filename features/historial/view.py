@@ -86,11 +86,20 @@ def _gsheets_client():
     return ss, ws_name
 
 def pull_user_slice_from_sheet(replace_df_main: bool = True):
+    """
+    Lee del Sheet y ACTUALIZA df_main por 'Id':
+      - Si 'Id' existe en ambos, se actualizan los valores desde el Sheet.
+      - Si 'Id' existe solo en el Sheet, se agrega.
+      - Si 'Id' no existe en el Sheet, se conserva lo local.
+    """
     ss, ws_name = _gsheets_client()
-    try: ws = ss.worksheet(ws_name)
-    except Exception: return
+    try:
+        ws = ss.worksheet(ws_name)
+    except Exception:
+        return
     values = ws.get_all_values()
-    if not values: return
+    if not values:
+        return
     headers, rows = values[0], values[1:]
     df = pd.DataFrame(rows, columns=headers)
 
@@ -102,19 +111,35 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
     def _strip_html(x): return re.sub(r"<[^>]+>", "", str(x) if x is not None else "")
     for cc in [c for c in df.columns if "archivo" in c.lower()]: df[cc] = df[cc].map(_strip_html)
 
-    # Unificar nombre a "N° alerta" y eliminar duplicados similares
+    # Unifica/normaliza "N° alerta" y elimina duplicadas
     alerta_pat = re.compile(r"^\s*n[°º]?\s*(de\s*)?alerta\s*$", re.I)
     alerta_cols = [c for c in df.columns if alerta_pat.match(str(c))]
     if alerta_cols:
         keep = alerta_cols[0]
-        # renombra la primera a "N° alerta"
         if keep != "N° alerta":
             df.rename(columns={keep: "N° alerta"}, inplace=True)
-        # elimina el resto
         for c in alerta_cols[1:]:
             df.drop(columns=c, inplace=True, errors="ignore")
 
-    if replace_df_main: st.session_state["df_main"] = df
+    # Merge por Id si existe base local y columna Id
+    if "Id" in df.columns and isinstance(st.session_state.get("df_main"), pd.DataFrame) and "Id" in st.session_state["df_main"].columns:
+        base = st.session_state["df_main"].copy()
+        base["Id"] = base["Id"].astype(str)
+        df["Id"] = df["Id"].astype(str)
+        all_cols = list(dict.fromkeys(list(base.columns) + list(df.columns)))
+        base = base.reindex(columns=all_cols)
+        df = df.reindex(columns=all_cols)
+
+        base_idx = base.set_index("Id")
+        upd_idx = df.set_index("Id")
+        # Actualiza valores existentes
+        base_idx.update(upd_idx)
+        # Agrega nuevos Id del Sheet
+        merged = base_idx.combine_first(upd_idx).reset_index()
+        st.session_state["df_main"] = merged
+    else:
+        if replace_df_main:
+            st.session_state["df_main"] = df
     return df
 
 def push_user_slice_to_sheet():
@@ -146,6 +171,12 @@ def export_excel(df: pd.DataFrame, sheet_name: str = TAB_NAME) -> bytes:
         with pd.ExcelWriter(buf, engine="openpyxl") as w: df.to_excel(w, index=False, sheet_name=sheet_name)
         return buf.getvalue()
 
+# ===== Normalizadores de visual =====
+def _yesno(v) -> str:
+    if v is None or (isinstance(v, float) and pd.isna(v)): return "No"
+    s = str(v).strip().lower()
+    return "Sí" if s in {"1","si","sí","true","t","y","s","x"} else "No"
+
 # =======================================================
 #                       RENDER
 # =======================================================
@@ -174,7 +205,6 @@ def render(user: dict | None = None):
       overflow: visible !important;
       text-overflow: clip !important;
     }
-    /* oculta iconos de header (filtro, menú, sort) */
     .ag-theme-balham .ag-header .ag-icon,
     .ag-theme-balham .ag-header-cell .ag-icon,
     .ag-theme-balham .ag-header-cell-menu-button,
@@ -261,7 +291,7 @@ def render(user: dict | None = None):
     df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
     if "Link de descarga" not in df_grid.columns: df_grid["Link de descarga"] = ""
 
-    # --- Unifica/deduplica columnas tipo "N° alerta" (deja SOLO una y con ese nombre) ---
+    # --- Dedup/renombre seguro de N° alerta ---
     alerta_pat = re.compile(r"^\s*n[°º]?\s*(de\s*)?alerta\s*$", re.I)
     alerta_cols = [c for c in df_grid.columns if alerta_pat.match(str(c))]
     if alerta_cols:
@@ -270,6 +300,15 @@ def render(user: dict | None = None):
             df_grid.rename(columns={first: "N° alerta"}, inplace=True)
         for c in alerta_cols[1:]:
             df_grid.drop(columns=c, inplace=True, errors="ignore")
+
+    # === Ajuste 1: Sí/No en "¿Generó alerta?" y "¿Se corrigió?" ===
+    for bcol in ["¿Generó alerta?","¿Se corrigió?"]:
+        if bcol in df_grid.columns:
+            df_grid[bcol] = df_grid[bcol].map(_yesno)
+
+    # === Ajuste 2: Calificación = 0 por defecto si vacío/invalid ===
+    if "Calificación" in df_grid.columns:
+        df_grid["Calificación"] = pd.to_numeric(df_grid["Calificación"], errors="coerce").fillna(0)
 
     # ==== Opciones AG Grid ====
     gob = GridOptionsBuilder.from_dataframe(df_grid)
@@ -320,7 +359,7 @@ def render(user: dict | None = None):
             filter=False, floatingFilter=False, sortable=False
         )
 
-    # Fuerza explícitamente sin filtro/menú en "Fecha inicio"
+    # Fuerza sin filtro/menú en "Fecha inicio"
     gob.configure_column("Fecha inicio", filter=False, floatingFilter=False, sortable=False, suppressMenu=True)
 
     # Formato fecha (dd/mm/aaaa)
@@ -346,10 +385,10 @@ def render(user: dict | None = None):
     function(p){
       const raw0 = (p && p.data && p.data['Archivo']!=null) ? String(p.data['Archivo']).trim() : '';
       if(!raw0) return '';
-      const parts = raw0.split(/[\n,;|]+/).map(s=>s.trim()).filter(Boolean);
+      const parts = raw0 split(/[\n,;|]+/).map(s=>s.trim()).filter(Boolean);
       for (let s of parts){ if(/^https?:\/\//i.test(s)) return s; }
       return '';
-    }""")
+    }""".replace(" raw0 split", " raw0.split"))  # evita error de pegado
     link_renderer = JsCode(r"""
     class LinkRenderer{
       init(params){
@@ -428,8 +467,10 @@ def render(user: dict | None = None):
 
     with b_sync:
         if st.button("🔄 Sincronizar", use_container_width=True, key="btn_sync_sheet"):
-            try: pull_user_slice_from_sheet(replace_df_main=True)
-            except Exception as e: st.warning(f"No se pudo sincronizar: {e}")
+            try:
+                pull_user_slice_from_sheet(replace_df_main=False)  # merge por Id
+            except Exception as e:
+                st.warning(f"No se pudo sincronizar: {e}")
 
     with b_save_local:
         if st.button("💾 Grabar", use_container_width=True):
