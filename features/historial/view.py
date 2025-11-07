@@ -242,19 +242,21 @@ def render(user: dict | None = None):
           text-overflow: ellipsis !important;
         }
 
-        /* ===== Encabezados: multilínea, sin íconos ni fila de filtro ===== */
+        /* ===== Encabezados: multilínea y SIN iconos ===== */
         .ag-theme-balham .ag-header-cell-label{
           white-space: normal !important;
           line-height: 1.2 !important;
           overflow: visible !important;
           text-overflow: clip !important;
         }
-        .ag-theme-balham .ag-header .ag-icon{ display:none !important; }
+        /* oculta íconos de menú, filtro y ordenamiento */
+        .ag-theme-balham .ag-header-cell .ag-icon-menu,
+        .ag-theme-balham .ag-header-cell .ag-icon-filter,
+        .ag-theme-balham .ag-header-cell .ag-icon-asc,
+        .ag-theme-balham .ag-header-cell .ag-icon-desc{ display:none !important; }
+        /* oculta fila de filtros flotantes */
         .ag-theme-balham .ag-floating-filter,
-        .ag-theme-balham .ag-header-row.ag-header-row-column-filter{
-          display:none !important;
-        }
-        .ag-theme-balham .ag-header-cell-menu-button{ display:none !important; }
+        .ag-theme-balham .ag-header-row.ag-header-row-column-filter{ display:none !important; }
         </style>
         <div class="hist-title-pill">📝 Tareas recientes</div>
         """, unsafe_allow_html=True)
@@ -392,11 +394,10 @@ def render(user: dict | None = None):
         "Fecha Pausado","Hora Pausado",
         "Fecha Cancelado","Hora Cancelado",
         "Fecha Eliminado","Hora Eliminado",
-        "Link de descarga"   # última columna visible
+        "Link de descarga"
     ]
     HIDDEN_COLS = [
-        "Archivo",  # lo usamos para construir el link
-        "¿Eliminar?","Estado modificado",
+        "Archivo","¿Eliminar?","Estado modificado",
         "Fecha estado modificado","Hora estado modificado",
         "Fecha estado actual","Hora estado actual",
         "Tipo de alerta","Fecha","Hora","Vencimiento",
@@ -419,13 +420,9 @@ def render(user: dict | None = None):
 
     # ======= Sin filtros/menús/ordenamiento y texto en una línea =======
     gob.configure_default_column(
-        resizable=True,
-        editable=False,
-        wrapText=False,
-        autoHeight=False,
-        filter=False,
-        floatingFilter=False,
-        sortable=False,
+        resizable=True, editable=False,
+        wrapText=False, autoHeight=False,
+        filter=False, floatingFilter=False, sortable=False,
         suppressMenu=True,
         cellStyle={"white-space":"nowrap","overflow":"hidden","textOverflow":"ellipsis"}
     )
@@ -438,9 +435,10 @@ def render(user: dict | None = None):
         undoRedoCellEditing=False, enterMovesDown=False,
         suppressMovableColumns=False,
         suppressHeaderVirtualisation=True,
+        floatingFilter=False
     )
 
-    # ----- Encabezados completos (incluye renombres) -----
+    # ----- Encabezados completos (renombres) -----
     header_map = {
         "Detalle": "Detalle de tarea",
         "Fecha Vencimiento": "Fecha límite",
@@ -454,21 +452,21 @@ def render(user: dict | None = None):
     for col in df_grid.columns:
         gob.configure_column(col, headerName=header_map.get(col, col), suppressMenu=True)
 
-    # ==== SOLO FECHA (dd/mm/aaaa) en columnas de fecha visibles ====
+    # ==== SOLO FECHA (dd/mm/aaaa) ====
     date_only_fmt = JsCode(r"""
     function(p){
       const v = p.value;
       if(v===null || v===undefined) return '—';
-      const s = String(v).trim();
-      if(!s || s.toLowerCase()==='nan' || s.toLowerCase()==='nat' || s.toLowerCase()==='null') return '—';
+      const s = String(v).trim().toLowerCase();
+      if(!s || s==='nan' || s==='nat' || s==='null') return '—';
       let y,m,d;
-      const m1 = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      const m1 = String(p.value).match(/^(\d{4})-(\d{2})-(\d{2})/);
       if(m1){ y=+m1[1]; m=+m1[2]; d=+m1[3]; }
       else{
-        const dt = new Date(s);
+        const dt = new Date(p.value);
         if(!isNaN(dt.getTime())){ y=dt.getFullYear(); m=dt.getMonth()+1; d=dt.getDate(); }
       }
-      if(!y){ return s.split(' ')[0]; }
+      if(!y){ return String(p.value).split(' ')[0]; }
       const dd = String(d).padStart(2,'0');
       const mm = String(m).padStart(2,'0');
       return dd + '/' + mm + '/' + y;
@@ -480,7 +478,7 @@ def render(user: dict | None = None):
         if col in df_grid.columns:
             gob.configure_column(col, valueFormatter=date_only_fmt, suppressMenu=True)
 
-    # ==== Link de descarga (primer http/https de 'Archivo') ====
+    # ==== Link de descarga ====
     link_value_getter = JsCode(r"""
     function(p){
       const raw0 = (p && p.data && p.data['Archivo'] != null) ? String(p.data['Archivo']).trim() : '';
@@ -511,7 +509,7 @@ def render(user: dict | None = None):
         }
       }
       getGui(){ return this.eGui; }
-      refresh(p){ return false; }
+      refresh(){ return false; }
     }
     """)
     gob.configure_column(
@@ -523,20 +521,18 @@ def render(user: dict | None = None):
         tooltipField="Link de descarga"
     )
 
-    # === Autosize eventos ===
+    # === Autosize basado en ENCABEZADOS (arreglo clave) ===
     autosize_on_ready = JsCode("""
     function(params){
-      const all = params.columnApi.getAllDisplayedColumns();
-      const skip = all.filter(c => (c.getColId && c.getColId() !== 'Id'));
-      params.columnApi.autoSizeColumns(skip, true);
+      const cols = params.columnApi.getAllDisplayedColumns();
+      params.columnApi.autoSizeColumns(cols, false); // usa encabezados
       try{ params.columnApi.setColumnWidth('Id', 110); }catch(_){}
     }""")
     autosize_on_data = JsCode("""
     function(params){
       if (params.api && params.api.getDisplayedRowCount() > 0){
-        const all = params.columnApi.getAllDisplayedColumns();
-        const skip = all.filter(c => (c.getColId && c.getColId() !== 'Id'));
-        params.columnApi.autoSizeColumns(skip, true);
+        const cols = params.columnApi.getAllDisplayedColumns();
+        params.columnApi.autoSizeColumns(cols, false); // usa encabezados
         try{ params.columnApi.setColumnWidth('Id', 110); }catch(_){}
       }
     }""")
@@ -546,7 +542,7 @@ def render(user: dict | None = None):
     grid_opts["onFirstDataRendered"] = autosize_on_data.js_code
     grid_opts["onColumnEverythingChanged"] = autosize_on_data.js_code
     grid_opts["rememberSelection"] = True
-    grid_opts["floatingFilter"] = False  # refuerzo por si acaso
+    grid_opts["floatingFilter"] = False
 
     AgGrid(
         df_grid, key="grid_historial",
@@ -565,7 +561,7 @@ def render(user: dict | None = None):
 
     st.markdown('<div class="hist-actions">', unsafe_allow_html=True)
     _spacer, b_xlsx, b_sync, b_save_local, b_save_sheets = st.columns(
-        [left_spacer, D_f, R_f, R_f, W_SHEETS], gap="medium"
+        [left_spacer, 1.60, 1.40, 1.40, W_SHEETS], gap="medium"
     )
 
     with b_xlsx:
