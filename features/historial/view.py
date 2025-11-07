@@ -116,12 +116,10 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
     # ====== LIMPIEZA Archivo: conservar href si existe ======
     def _extract_archivo(x):
         s = str(x) if x is not None else ""
-        # si hay <a href="...">, usa ese enlace
-        m = re.search(r'href=["\']([^"\']+)["\']', s, flags=re.I)
+        m = re.search(r'href=["\']([^"\']+)["\']', s, flags=re.I)  # usa href si viene <a>
         if m:
             return m.group(1).strip()
-        # si no, quita etiquetas y deja el texto
-        return re.sub(r"<[^>]+>", "", s).strip()
+        return re.sub(r"<[^>]+>", "", s).strip()  # sino, texto plano
 
     for cc in [c for c in df.columns if "archivo" in c.lower()]:
         df[cc] = df[cc].map(_extract_archivo)
@@ -239,10 +237,11 @@ def render(user: dict | None = None):
           box-shadow: inset 0 -2px 0 rgba(0,0,0,0.06);
         }
         .hist-actions{ padding:0 16px; border-top:2px solid #EF4444; }
-        /* ===== Botones en una sola línea ===== */
-        .hist-actions .stButton > button{
+        /* ===== Botones en una sola línea (incluye disabled) ===== */
+        .hist-actions .stButton > button,
+        .hist-actions button{
           height:38px!important; border-radius:10px!important; width:100%;
-          white-space:nowrap!important; overflow:hidden; text-overflow:ellipsis;
+          white-space:nowrap!important; overflow:hidden!important; text-overflow:ellipsis!important;
         }
         .ag-theme-balham .ag-header-cell.muted-col .ag-header-cell-label{ color:#90A4AE!important; }
         </style>
@@ -382,9 +381,10 @@ def render(user: dict | None = None):
         "Fecha Pausado","Hora Pausado",
         "Fecha Cancelado","Hora Cancelado",
         "Fecha Eliminado","Hora Eliminado",
-        "Archivo","__Pick__"   # checkbox al costado
+        "Archivo","__ArchivoRaw__","__Pick__"
     ]
     HIDDEN_COLS = [
+        "__ArchivoRaw__",
         "¿Eliminar?","Estado modificado",
         "Fecha estado modificado","Hora estado modificado",
         "Fecha estado actual","Hora estado actual",
@@ -395,12 +395,14 @@ def render(user: dict | None = None):
         if c not in df_view.columns:
             df_view[c] = ""
 
+    # columna oculta con el valor crudo para descargar
     df_grid = df_view.reindex(
         columns=list(dict.fromkeys(target_cols)) +
         [c for c in df_view.columns if c not in target_cols + HIDDEN_COLS]
     ).copy()
     df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()
     df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
+    df_grid["__ArchivoRaw__"] = df_view["Archivo"].astype(str).fillna("")
 
     gob = GridOptionsBuilder.from_dataframe(df_grid)
     gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, editable=False)
@@ -418,7 +420,6 @@ def render(user: dict | None = None):
         singleClickEdit=False, stopEditingWhenCellsLoseFocus=True,
         undoRedoCellEditing=False, enterMovesDown=False,
         suppressMovableColumns=False,
-        getRowId=JsCode("function(p){ return (p.data && (p.data.Id || p.data['Id'])) + ''; }"),
         suppressHeaderVirtualisation=True,
     )
 
@@ -432,11 +433,12 @@ def render(user: dict | None = None):
     gob.configure_column("Fecha Vencimiento", headerName="Fecha límite")
     gob.configure_column("Fecha inicio", headerName="Fecha de inicio")
     gob.configure_column("Fecha Terminado", headerName="Fecha Terminado")
+    gob.configure_column("__ArchivoRaw__", hide=True)
 
-    # ==== Archivo: nombre real (sin HTML) ====
+    # ==== Archivo visible (nombre legible) ====
     archivo_value_getter = JsCode(r"""
     function(p){
-      const raw0 = (p && p.data && p.data['Archivo'] != null) ? String(p.data['Archivo']).trim() : '';
+      const raw0 = (p && p.data && p.data['__ArchivoRaw__'] != null) ? String(p.data['__ArchivoRaw__']).trim() : '';
       if(!raw0) return '';
       const parts = raw0.split(/[\n,;|]+/).map(s=>s.trim()).filter(Boolean);
       let pick = parts[0] || '';
@@ -475,11 +477,11 @@ def render(user: dict | None = None):
         editable=False,
         valueGetter=archivo_value_getter,
         cellRenderer=archivo_renderer,
-        tooltipField="Archivo",
+        tooltipField="__ArchivoRaw__",
         cellStyle={"cursor":"pointer","textDecoration":"underline","color":"#0A66C2"}
     )
 
-    # ==== Checkbox junto a Archivo (controla la selección de la fila) ====
+    # ==== Checkbox junto a Archivo ====
     pick_renderer = JsCode(r"""
     class SelRenderer{
       init(params){
@@ -512,7 +514,7 @@ def render(user: dict | None = None):
       return String(p.value);
     }""")
     for c in df_grid.columns:
-        if c in ["Archivo","__Pick__","Id","Área","Fase","Responsable","Estado",
+        if c in ["Archivo","__ArchivoRaw__","__Pick__","Id","Área","Fase","Responsable","Estado",
                  "Fecha Vencimiento","Fecha inicio","Fecha Terminado","¿Generó alerta?","N° de alerta"]:
             continue
         gob.configure_column(c, valueFormatter=fmt_dash)
@@ -542,7 +544,7 @@ def render(user: dict | None = None):
       const f = e.colDef.field || '';
       if(f !== 'Archivo') return;
 
-      const raw0 = (e && e.data && e.data['Archivo'] != null) ? String(e.data['Archivo']).trim() : '';
+      const raw0 = (e && e.data && e.data['__ArchivoRaw__'] != null) ? String(e.data['__ArchivoRaw__']).trim() : '';
       if(!raw0) return;
 
       const parts = raw0.split(/[\n,;|]+/).map(s=>s.trim()).filter(Boolean);
@@ -604,7 +606,7 @@ def render(user: dict | None = None):
     with b_xlsx:
         try:
             df_xlsx = st.session_state["df_main"].copy()
-            for c in ["__Pick__","__SEL__","__DEL__","¿Eliminar?"]:
+            for c in ["__Pick__","__ArchivoRaw__","__SEL__","__DEL__","¿Eliminar?"]:
                 if c in df_xlsx.columns:
                     df_xlsx.drop(columns=[c], inplace=True, errors="ignore")
             xlsx_b = export_excel(df_xlsx, sheet_name=TAB_NAME)
@@ -647,13 +649,14 @@ def render(user: dict | None = None):
             except Exception as e:
                 st.warning(f"No se pudo subir a Sheets: {e}")
 
-    # === DESCARGAR ARCHIVO (al final de la fila) ===
+    # === DESCARGAR ARCHIVO (al final) ===
     with b_download_file:
         did_render = False
         if sel_rows:
             r = sel_rows[0]
             rid = str(r.get("Id","")).strip()
-            av  = str(r.get("Archivo","")).strip()
+            # usar SIEMPRE el crudo
+            av  = str(r.get("__ArchivoRaw__","") or r.get("Archivo","")).strip()
             token = _pick_first_token(av)
             if rid and token:
                 if token.lower().startswith(("http://","https://")):
