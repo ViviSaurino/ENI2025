@@ -112,7 +112,7 @@ def _col_letter(n: int) -> str:
     return s
 
 def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
-    """Actualiza en Sheets por 'Id' estado + sellos, fechas/horas por estado y archivo."""
+    """Actualiza en Sheets por 'Id' estado + sellos, fechas/horas por estado y link de archivo."""
     try:
         ss, ws, ws_name = _gsheets_client()
     except Exception as e:
@@ -142,7 +142,7 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
         if id_idx < len(row):
             id_to_row[str(row[id_idx]).strip()] = r_i
 
-    # Empujar también "Archivo" si existe en la hoja
+    # Empujar también Link de archivo / Archivo si existen en la hoja
     cols_to_push = [
         "Estado",
         "Fecha estado actual","Hora estado actual",
@@ -153,7 +153,8 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
         "Fecha Pausado","Hora Pausado",
         "Fecha Cancelado","Hora Cancelado",
         "Fecha Eliminado","Hora Eliminado",
-        "Archivo",
+        "Link de archivo",  # preferente
+        "Archivo",          # compatibilidad
     ]
     cols_to_push = [c for c in cols_to_push if c in col_map]
 
@@ -330,7 +331,7 @@ def render(user: dict | None = None):
             "Id", "Tarea",
             "Estado actual", "Fecha estado actual", "Hora estado actual",
             "Estado modificado", "Fecha estado modificado", "Hora estado modificado",
-            "Archivo"  # ← nueva columna para adjunto
+            "Link de archivo"  # ← ahora editable como link
         ]
 
         df_view = pd.DataFrame(columns=cols_out)
@@ -346,10 +347,16 @@ def render(user: dict | None = None):
                 "Fecha Eliminado","Hora Eliminado",
                 "Fecha estado actual","Hora estado actual",
                 "Estado modificado","Fecha estado modificado","Hora estado modificado",
-                "Archivo"
+                "Link de archivo","Archivo"
             ]:
                 if need not in base.columns:
                     base[need] = ""
+
+            # Si aún existe solo "Archivo", úsalo como fuente para "Link de archivo"
+            base["Link de archivo"] = base["Link de archivo"].where(
+                base["Link de archivo"].astype(str).str.strip() != "",
+                base["Archivo"].astype(str)
+            )
 
             base["Estado"] = base["Estado"].astype(str)
             base.loc[base["Estado"].str.strip().isin(["", "nan"]), "Estado"] = "No iniciado"
@@ -420,7 +427,7 @@ def render(user: dict | None = None):
                 "Estado modificado":       base["Estado modificado"].astype(str),
                 "Fecha estado modificado": _fmt_date(base["Fecha estado modificado"]),
                 "Hora estado modificado":  _fmt_time(base["Hora estado modificado"]),
-                "Archivo":                 base["Archivo"].astype(str),
+                "Link de archivo":         base["Link de archivo"].astype(str),
             })[cols_out].copy()
 
         # ========= editores y estilo =========
@@ -508,7 +515,8 @@ def render(user: dict | None = None):
         )
         gob.configure_column("Fecha estado modificado", editable=True, cellEditor=date_editor, minWidth=170)
         gob.configure_column("Hora estado modificado",  editable=False, minWidth=150)
-        gob.configure_column("Archivo", editable=False, minWidth=220)
+        # ← Ahora el link es editable (texto)
+        gob.configure_column("Link de archivo", editable=True, minWidth=260)
 
         grid_opts = gob.build()
         grid_opts["onCellValueChanged"] = on_cell_changed.js_code
@@ -526,60 +534,7 @@ def render(user: dict | None = None):
             theme="balham"
         )
 
-        # === Adjuntar archivo cuando el estado es Terminado (fila seleccionada) ===
-        raw_sel = grid.get("selected_rows", None)
-        if isinstance(raw_sel, pd.DataFrame):
-            sel = raw_sel.to_dict("records")
-        elif isinstance(raw_sel, list):
-            sel = raw_sel
-        else:
-            sel = []
-
-        if len(sel) > 0:
-            sel0 = sel[0]
-            _sel_id = str(sel0.get("Id", "")).strip()
-            est_now = str(sel0.get("Estado actual", "")).strip()
-            est_mod = str(sel0.get("Estado modificado", "")).strip()
-            if _sel_id and (est_now == "Terminado" or est_mod == "Terminado"):
-                st.markdown("**📎 Adjuntar archivo (solo para estado _Terminado_)**")
-                up = st.file_uploader("Subir archivo para esta tarea", key=f"up_{_sel_id}")
-                if up is not None:
-                    try:
-                        # Guardar archivo en carpeta por Id
-                        save_dir = os.path.join("data", "files", _sel_id)
-                        os.makedirs(save_dir, exist_ok=True)
-                        save_path = os.path.join(save_dir, up.name)
-                        with open(save_path, "wb") as f:
-                            f.write(up.getbuffer())
-
-                        # Actualizar base en memoria
-                        base = st.session_state.get("df_main", pd.DataFrame()).copy()
-                        if not base.empty and "Id" in base.columns:
-                            base["Id"] = base["Id"].astype(str)
-                            if "Archivo" not in base.columns:
-                                base["Archivo"] = ""
-                            base.loc[base["Id"] == _sel_id, "Archivo"] = f"{_sel_id}/{up.name}"
-                            st.session_state["df_main"] = base.copy()
-
-                            # Guardar a disco
-                            try:
-                                os.makedirs("data", exist_ok=True)
-                                base.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig")
-                            except Exception:
-                                pass
-
-                            # Upsert a Sheets solo el registro afectado (si la columna existe en la hoja)
-                            try:
-                                _sheet_upsert_estado_by_id(base.copy(), [_sel_id])
-                            except Exception as _e:
-                                st.info(f"Archivo guardado localmente. No pude actualizar Sheets: {_e}")
-
-                        st.success("Archivo adjuntado a la tarea seleccionada.")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"No pude adjuntar el archivo: {e}")
-
-        # ===== Guardar cambios (estados/fechas/horas) =====
+        # ===== Guardar cambios (estados/fechas/horas y link) =====
         u1, u2 = st.columns([A+Fw+T_width+D+R, C], gap="medium")
         with u2:
             if st.button("💾 Guardar", use_container_width=True, key="est_guardar_inline_v3"):
@@ -590,6 +545,7 @@ def render(user: dict | None = None):
                     else:
                         grid_data["Id"] = grid_data["Id"].astype(str)
 
+                        # Cambios de estado
                         changes = grid_data.loc[
                             grid_data["Estado modificado"].astype(str).str.strip() != "",
                             ["Id", "Estado modificado"]
@@ -607,7 +563,7 @@ def render(user: dict | None = None):
                                 "Fecha Pausado","Hora Pausado",
                                 "Fecha Cancelado","Hora Cancelado",
                                 "Fecha Eliminado","Hora Eliminado",
-                                "Archivo"
+                                "Link de archivo","Archivo"
                             ]:
                                 if need not in base.columns:
                                     base[need] = ""
@@ -619,69 +575,71 @@ def render(user: dict | None = None):
 
                             b_i = base.set_index("Id")
                             c_i = changes.set_index("Id")
-                            ids = b_i.index.intersection(c_i.index)
+                            ids_estado = b_i.index.intersection(c_i.index)
 
                             # Actualizar estado + sello actual
-                            new_state = c_i.loc[ids, "Estado modificado"].astype(str)
-                            b_i.loc[ids, "Estado"] = new_state.values
-                            b_i.loc[ids, "Fecha estado actual"] = f_now
-                            b_i.loc[ids, "Hora estado actual"] = h_now
+                            if len(ids_estado) > 0:
+                                new_state = c_i.loc[ids_estado, "Estado modificado"].astype(str)
+                                b_i.loc[ids_estado, "Estado"] = new_state.values
+                                b_i.loc[ids_estado, "Fecha estado actual"] = f_now
+                                b_i.loc[ids_estado, "Hora estado actual"] = h_now
 
-                            # === Sellos por estado (solo si vacíos) ===
+                            # === Sellos por estado (solo si vacíos)
                             def _is_blank_dt(s):  # fecha vacía
                                 return pd.to_datetime(s, errors="coerce").isna()
                             def _is_blank_tm(s):  # hora vacía
                                 return s.astype(str).str.strip().isin(["", "00:00", "nan", "NaN"])
 
-                            # En curso -> Fecha/Hora inicio
-                            if "Fecha inicio" in b_i.columns and "Hora de inicio" in b_i.columns:
-                                m = new_state.eq("En curso")
-                                to_fix = ids[m]
-                                if len(to_fix) > 0:
-                                    mask_f = _is_blank_dt(b_i.loc[to_fix, "Fecha inicio"])
-                                    mask_h = _is_blank_tm(b_i.loc[to_fix, "Hora de inicio"])
-                                    b_i.loc[to_fix[mask_f], "Fecha inicio"] = f_now
-                                    b_i.loc[to_fix[mask_h], "Hora de inicio"] = h_now
+                            if len(ids_estado) > 0:
+                                # En curso -> Fecha/Hora inicio
+                                if "Fecha inicio" in b_i.columns and "Hora de inicio" in b_i.columns:
+                                    m = new_state.eq("En curso")
+                                    to_fix = ids_estado[m]
+                                    if len(to_fix) > 0:
+                                        mask_f = _is_blank_dt(b_i.loc[to_fix, "Fecha inicio"])
+                                        mask_h = _is_blank_tm(b_i.loc[to_fix, "Hora de inicio"])
+                                        b_i.loc[to_fix[mask_f], "Fecha inicio"] = f_now
+                                        b_i.loc[to_fix[mask_h], "Hora de inicio"] = h_now
 
-                            # Terminado
-                            if "Fecha Terminado" in b_i.columns and "Hora Terminado" in b_i.columns:
-                                m = new_state.eq("Terminado")
-                                to_fix = ids[m]
-                                if len(to_fix) > 0:
-                                    mask_f = _is_blank_dt(b_i.loc[to_fix, "Fecha Terminado"])
-                                    mask_h = _is_blank_tm(b_i.loc[to_fix, "Hora Terminado"])
-                                    b_i.loc[to_fix[mask_f], "Fecha Terminado"] = f_now
-                                    b_i.loc[to_fix[mask_h], "Hora Terminado"] = h_now
+                                # Terminado
+                                if "Fecha Terminado" in b_i.columns and "Hora Terminado" in b_i.columns:
+                                    m = new_state.eq("Terminado")
+                                    to_fix = ids_estado[m]
+                                    if len(to_fix) > 0:
+                                        mask_f = _is_blank_dt(b_i.loc[to_fix, "Fecha Terminado"])
+                                        mask_h = _is_blank_tm(b_i.loc[to_fix, "Hora Terminado"])
+                                        b_i.loc[to_fix[mask_f], "Fecha Terminado"] = f_now
+                                        b_i.loc[to_fix[mask_h], "Hora Terminado"] = h_now
 
-                            # Pausado
-                            if "Fecha Pausado" in b_i.columns and "Hora Pausado" in b_i.columns:
-                                m = new_state.eq("Pausado")
-                                to_fix = ids[m]
-                                if len(to_fix) > 0:
-                                    mask_f = _is_blank_dt(b_i.loc[to_fix, "Fecha Pausado"])
-                                    mask_h = _is_blank_tm(b_i.loc[to_fix, "Hora Pausado"])
-                                    b_i.loc[to_fix[mask_f], "Fecha Pausado"] = f_now
-                                    b_i.loc[to_fix[mask_h], "Hora Pausado"] = h_now
+                                # Pausado
+                                if "Fecha Pausado" in b_i.columns and "Hora Pausado" in b_i.columns:
+                                    m = new_state.eq("Pausado")
+                                    to_fix = ids_estado[m]
+                                    if len(to_fix) > 0:
+                                        mask_f = _is_blank_dt(b_i.loc[to_fix, "Fecha Pausado"])
+                                        mask_h = _is_blank_tm(b_i.loc[to_fix, "Hora Pausado"])
+                                        b_i.loc[to_fix[mask_f], "Fecha Pausado"] = f_now
+                                        b_i.loc[to_fix[mask_h], "Hora Pausado"] = h_now
 
-                            # Cancelado
-                            if "Fecha Cancelado" in b_i.columns and "Hora Cancelado" in b_i.columns:
-                                m = new_state.eq("Cancelado")
-                                to_fix = ids[m]
-                                if len(to_fix) > 0:
-                                    mask_f = _is_blank_dt(b_i.loc[to_fix, "Fecha Cancelado"])
-                                    mask_h = _is_blank_tm(b_i.loc[to_fix, "Hora Cancelado"])
-                                    b_i.loc[to_fix[mask_f], "Fecha Cancelado"] = f_now
-                                    b_i.loc[to_fix[mask_h], "Hora Cancelado"] = h_now
+                                # Cancelado
+                                if "Fecha Cancelado" in b_i.columns and "Hora Cancelado" in b_i.columns:
+                                    m = new_state.eq("Cancelado")
+                                    to_fix = ids_estado[m]
+                                    if len(to_fix) > 0:
+                                        mask_f = _is_blank_dt(b_i.loc[to_fix, "Fecha Cancelado"])
+                                        mask_h = _is_blank_tm(b_i.loc[to_fix, "Hora Cancelado"])
+                                        b_i.loc[to_fix[mask_f], "Fecha Cancelado"] = f_now
+                                        b_i.loc[to_fix[mask_h], "Hora Cancelado"] = h_now
 
-                            # Eliminado
-                            if "Fecha Eliminado" in b_i.columns and "Hora Eliminado" in b_i.columns:
-                                m = new_state.eq("Eliminado")
-                                to_fix = ids[m]
-                                if len(to_fix) > 0:
-                                    mask_f = _is_blank_dt(b_i.loc[to_fix, "Fecha Eliminado"])
-                                    mask_h = _is_blank_tm(b_i.loc[to_fix, "Hora Eliminado"])
-                                    b_i.loc[to_fix[mask_f], "Fecha Eliminado"] = f_now
-                                    b_i.loc[to_fix[mask_h], "Hora Eliminado"] = h_now
+                                # Eliminado
+                                if "Fecha Eliminado" in b_i.columns and "Hora Eliminado" in b_i.columns:
+                                    m = new_state.eq("Eliminado")
+                                    to_fix = ids_estado[m]
+                                    if len(to_fix) > 0:
+                                        mask_f = _is_blank_dt(b_i.loc[to_fix, "Fecha Eliminado"])
+                                        mask_h = _is_blank_tm(b_i.loc[to_fix, "Hora Eliminado"])
+                                        b_i.loc[to_fix[mask_f], "Fecha Eliminado"] = f_now
+                                        b_i.loc[to_fix[mask_h], "Hora Eliminado"] = h_now
 
                             # ===== Duración robusta tz =====
                             if "Duración" in b_i.columns and "Fecha Registro" in b_i.columns:
@@ -691,16 +649,35 @@ def render(user: dict | None = None):
                                     if pd.isna(d): return 0
                                     try: return int((ts_naive - d).total_seconds() / 60)
                                     except Exception: return 0
-                                dur_min = b_i.loc[ids, "Fecha Registro"].apply(_mins_since)
-                                try:
-                                    b_i.loc[ids, "Duración"] = dur_min
-                                except Exception:
-                                    pass
+                                # Solo para las filas editadas por estado
+                                if len(ids_estado) > 0:
+                                    dur_min = b_i.loc[ids_estado, "Fecha Registro"].apply(_mins_since)
+                                    try:
+                                        b_i.loc[ids_estado, "Duración"] = dur_min
+                                    except Exception:
+                                        pass
+
+                            # === Link de archivo (editable) ===
+                            ids_link = []
+                            if "Link de archivo" in grid_data.columns:
+                                g_i = grid_data.set_index("Id")
+                                new_links = g_i["Link de archivo"].fillna("").astype(str)
+                                if "Link de archivo" not in b_i.columns:
+                                    b_i["Link de archivo"] = ""
+                                prev_links = b_i["Link de archivo"].reindex(new_links.index).fillna("").astype(str)
+                                ids_link = list(new_links.index[prev_links.str.strip() != new_links.str.strip()])
+
+                                if len(ids_link) > 0:
+                                    b_i.loc[ids_link, "Link de archivo"] = new_links.loc[ids_link].values
+                                    # Espejo en "Archivo" para compatibilidad con otras vistas
+                                    if "Archivo" not in b_i.columns:
+                                        b_i["Archivo"] = ""
+                                    b_i.loc[ids_link, "Archivo"] = new_links.loc[ids_link].values
 
                             # Limpiar auxiliares
                             for aux in ["Estado modificado","Fecha estado modificado","Hora estado modificado"]:
-                                if aux in b_i.columns:
-                                    b_i.loc[ids, aux] = ""
+                                if aux in b_i.columns and len(ids_estado) > 0:
+                                    b_i.loc[ids_estado, aux] = ""
 
                             base = b_i.reset_index()
                             st.session_state["df_main"] = base.copy()
@@ -717,9 +694,11 @@ def render(user: dict | None = None):
                             maybe_save = st.session_state.get("maybe_save")
                             res = maybe_save(_persist, base.copy()) if callable(maybe_save) else _persist(base.copy())
 
-                            # Upsert a Sheets (incluye Archivo si está en la hoja)
+                            # Upsert a Sheets: ids con estado o link cambiados
+                            ids_to_push = sorted(set(list(ids_estado) + list(ids_link)))
                             try:
-                                _sheet_upsert_estado_by_id(base.copy(), list(ids))
+                                if ids_to_push:
+                                    _sheet_upsert_estado_by_id(base.copy(), ids_to_push)
                             except Exception as ee:
                                 st.info(f"Guardado local OK. No pude actualizar Sheets: {ee}")
 
