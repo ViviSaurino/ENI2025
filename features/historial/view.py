@@ -113,12 +113,14 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
         if c.lower().startswith("fecha"):
             df[c] = to_naive_local_series(df[c])
 
+    # Limpieza de HTML residual en Archivo y variantes
     def _strip_html(x):
         s = str(x) if x is not None else ""
         return re.sub(r"<[^>]+>", "", s)
     for cc in [c for c in df.columns if "archivo" in c.lower()]:
         df[cc] = df[cc].map(_strip_html)
 
+    # Unificar "N° alerta" -> "N° de alerta"
     if "N° de alerta" not in df.columns and "N° alerta" in df.columns:
         df.rename(columns={"N° alerta": "N° de alerta"}, inplace=True)
     dup_alert_cols = [c for c in df.columns if c.strip().lower() in {"n° alerta","n alerta","nº alerta"} and c != "N° de alerta"]
@@ -242,12 +244,12 @@ def render(user: dict | None = None):
 
         /* ===== Encabezados: nombre completo (wrap) y sin iconos de filtro/menú ===== */
         .ag-theme-balham .ag-header-cell-label{
-          white-space: normal !important;   /* permite varias líneas */
+          white-space: normal !important;
           line-height: 1.2 !important;
         }
         .ag-theme-balham .ag-header-cell .ag-icon-menu,
         .ag-theme-balham .ag-header-cell .ag-icon-filter{
-          display: none !important;         /* oculta íconos de menú y filtro */
+          display: none !important;
         }
         </style>
         <div class="hist-title-pill">📝 Tareas recientes</div>
@@ -365,6 +367,7 @@ def render(user: dict | None = None):
                     )
                     break
 
+    # Unificar/ubicar "N° de alerta"
     if "N° de alerta" not in df_view.columns and "N° alerta" in df_view.columns:
         df_view.rename(columns={"N° alerta": "N° de alerta"}, inplace=True)
     to_drop_dups = [c for c in df_view.columns if c != "N° de alerta" and c.strip().lower() in {"n° alerta","n alerta","nº alerta"}]
@@ -385,9 +388,11 @@ def render(user: dict | None = None):
         "Fecha Pausado","Hora Pausado",
         "Fecha Cancelado","Hora Cancelado",
         "Fecha Eliminado","Hora Eliminado",
-        "Archivo","__Pick__"
+        "__Pick__",
+        "Link de descarga"   # última columna visible
     ]
     HIDDEN_COLS = [
+        "Archivo",  # mantenemos el dato para construir el link, pero oculto
         "¿Eliminar?","Estado modificado",
         "Fecha estado modificado","Hora estado modificado",
         "Fecha estado actual","Hora estado actual",
@@ -397,13 +402,15 @@ def render(user: dict | None = None):
     for c in target_cols:
         if c not in df_view.columns:
             df_view[c] = ""
-
+    # construir grid y asegurar que "Link de descarga" exista
     df_grid = df_view.reindex(
         columns=list(dict.fromkeys(target_cols)) +
         [c for c in df_view.columns if c not in target_cols + HIDDEN_COLS]
     ).copy()
     df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()
     df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
+    if "Link de descarga" not in df_grid.columns:
+        df_grid["Link de descarga"] = ""
 
     gob = GridOptionsBuilder.from_dataframe(df_grid)
     # === Horizontal (sin wrap) y sin filtros/menú por defecto ===
@@ -422,7 +429,7 @@ def render(user: dict | None = None):
         suppressRowClickSelection=False,
         domLayout="normal",
         rowHeight=34,
-        wrapHeaderText=True, autoHeaderHeight=True, headerHeight=64,  # más alto para títulos completos
+        wrapHeaderText=True, autoHeaderHeight=True, headerHeight=64,
         enableRangeSelection=True, enableCellTextSelection=True,
         singleClickEdit=False, stopEditingWhenCellsLoseFocus=True,
         undoRedoCellEditing=False, enterMovesDown=False,
@@ -445,53 +452,7 @@ def render(user: dict | None = None):
     gob.configure_column("Fecha inicio", headerName="Fecha de inicio", minWidth=140, suppressMenu=True)
     gob.configure_column("Fecha Terminado", headerName="Fecha Terminado", minWidth=150, suppressMenu=True)
 
-    # ==== Archivo: nombre legible ====
-    archivo_value_getter = JsCode(r"""
-    function(p){
-      const raw0 = (p && p.data && p.data['Archivo'] != null) ? String(p.data['Archivo']).trim() : '';
-      if(!raw0) return '';
-      const parts = raw0.split(/[\n,;|]+/).map(s=>s.trim()).filter(Boolean);
-      let pick = parts[0] || '';
-      for (let s of parts){
-        if (s.toLowerCase() === 'directorio') continue;
-        if (/^https?:\/\//i.test(s) || /\.[a-z0-9]{2,5}$/i.test(s)) { pick = s; break; }
-      }
-      const raw = pick;
-      if(/^https?:\/\//i.test(raw)){
-        try{
-          const u = new URL(raw);
-          let name = u.pathname.split('/').pop();
-          name = name || u.searchParams.get('filename') || u.searchParams.get('file') || u.searchParams.get('name') || '';
-          return decodeURIComponent(name || 'Enlace');
-        }catch(_){
-          const segs = raw.split(/[\/?#]/);
-          return decodeURIComponent(segs[segs.length-1] || 'Enlace');
-        }
-      }else{
-        const parts2 = raw.split(/[\\/]/);
-        return parts2[parts2.length-1] || raw;
-      }
-    }
-    """)
-    archivo_renderer = JsCode("""
-    function(p){
-      const name = (p && p.value) ? String(p.value) : '';
-      if(!name){ return '—'; }
-      return '📎 ' + name;
-    }
-    """)
-    gob.configure_column(
-        "Archivo",
-        headerName="Archivo",
-        minWidth=240, flex=1,
-        editable=False, suppressMenu=True,
-        valueGetter=archivo_value_getter,
-        cellRenderer=archivo_renderer,
-        tooltipField="Archivo",
-        cellStyle={"cursor":"pointer","textDecoration":"underline","color":"#0A66C2"}
-    )
-
-    # ==== Checkbox junto a Archivo ====
+    # ==== Checkbox (selección de fila) ====
     pick_renderer = JsCode(r"""
     class SelRenderer{
       init(params){
@@ -515,7 +476,50 @@ def render(user: dict | None = None):
         cellStyle={"textAlign":"center"}
     )
 
-    # Formatos cortos
+    # ==== Link de descarga (extrae el primer http/https de 'Archivo') ====
+    link_value_getter = JsCode(r"""
+    function(p){
+      const raw0 = (p && p.data && p.data['Archivo'] != null) ? String(p.data['Archivo']).trim() : '';
+      if(!raw0) return '';
+      const parts = raw0.split(/[\n,;|]+/).map(s=>s.trim()).filter(Boolean);
+      let url = '';
+      for (let s of parts){
+        if (/^https?:\/\//i.test(s)){ url = s; break; }
+      }
+      return url;
+    }
+    """)
+    link_renderer = JsCode(r"""
+    class LinkRenderer{
+      init(params){
+        const url = (params && params.value) ? String(params.value) : '';
+        this.eGui = document.createElement('a');
+        if(url){
+          this.eGui.href = encodeURI(url);
+          this.eGui.target = '_blank';
+          this.eGui.rel = 'noopener';
+          this.eGui.textContent = url;
+          this.eGui.style.textDecoration = 'underline';
+          this.eGui.style.color = '#0A66C2';
+        }else{
+          this.eGui.textContent = '—';
+          this.eGui.style.opacity = '0.8';
+        }
+      }
+      getGui(){ return this.eGui; }
+      refresh(p){ return false; }
+    }
+    """)
+    gob.configure_column(
+        "Link de descarga",
+        headerName="Link de descarga",
+        minWidth=260, flex=1, suppressMenu=True,
+        valueGetter=link_value_getter,
+        cellRenderer=link_renderer,
+        tooltipField="Link de descarga"
+    )
+
+    # Formatos cortos para demás columnas
     fmt_dash = JsCode("""
     function(p){
       if(p.value===null||p.value===undefined) return '—';
@@ -524,7 +528,7 @@ def render(user: dict | None = None):
       return String(p.value);
     }""")
     for c in df_grid.columns:
-        if c in ["Archivo","__Pick__","Id","Área","Fase","Responsable","Estado",
+        if c in ["Link de descarga","__Pick__","Id","Área","Fase","Responsable","Estado",
                  "Fecha Vencimiento","Fecha inicio","Fecha Terminado","¿Generó alerta?","N° de alerta"]:
             continue
         gob.configure_column(c, valueFormatter=fmt_dash, suppressMenu=True)
@@ -547,39 +551,10 @@ def render(user: dict | None = None):
       }
     }""")
 
-    # Click en Archivo
-    on_click_archivo = JsCode(r"""
-    function(e){
-      if(!e || !e.colDef) return;
-      const f = e.colDef.field || '';
-      if(f !== 'Archivo') return;
-
-      const raw0 = (e && e.data && e.data['Archivo'] != null) ? String(e.data['Archivo']).trim() : '';
-      if(!raw0) return;
-
-      const parts = raw0.split(/[\n,;|]+/).map(s=>s.trim()).filter(Boolean);
-      let raw = parts[0] || '';
-      for (let s of parts){
-        if (s.toLowerCase() === 'directorio') continue;
-        if (/^https?:\/\//i.test(s) || /\.[a-z0-9]{2,5}$/i.test(s)) { raw = s; break; }
-      }
-
-      if(/^https?:\/\//i.test(raw)){
-        try{ window.open(encodeURI(raw), '_blank', 'noopener'); }catch(err){}
-        return;
-      }
-      try{
-        const node = e.node;
-        if(node){ node.setSelected(true, true); }
-      }catch(err){}
-    }
-    """)
-
     grid_opts = gob.build()
     grid_opts["onGridReady"] = autosize_on_ready.js_code
     grid_opts["onFirstDataRendered"] = autosize_on_data.js_code
     grid_opts["onColumnEverythingChanged"] = autosize_on_data.js_code
-    grid_opts["onCellClicked"] = on_click_archivo.js_code
     grid_opts["rememberSelection"] = True
 
     grid = AgGrid(
@@ -594,23 +569,13 @@ def render(user: dict | None = None):
         allow_unsafe_jscode=True, theme="balham",
     )
 
-    # ===== Selección actual (para descarga) =====
-    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-    sel_rows = []
-    try:
-        sel_rows = grid.get("selected_rows") or []
-    except Exception:
-        sel_rows = []
-    if isinstance(sel_rows, pd.DataFrame):
-        sel_rows = sel_rows.to_dict("records")
-
-    # ---- Botonera ----
+    # ===== Botonera =====
     left_spacer = A_f + Fw_f + T_width_f
     W_SHEETS = R_f + 0.8
 
     st.markdown('<div class="hist-actions">', unsafe_allow_html=True)
-    _spacer, b_xlsx, b_sync, b_save_local, b_save_sheets, b_download_file = st.columns(
-        [left_spacer, D_f, R_f, R_f, W_SHEETS, R_f], gap="medium"
+    _spacer, b_xlsx, b_sync, b_save_local, b_save_sheets = st.columns(
+        [left_spacer, D_f, R_f, R_f, W_SHEETS], gap="medium"
     )
 
     with b_xlsx:
@@ -658,36 +623,5 @@ def render(user: dict | None = None):
                 st.success("Enviado a Google Sheets.")
             except Exception as e:
                 st.warning(f"No se pudo subir a Sheets: {e}")
-
-    # === DESCARGAR ARCHIVO (al final) ===
-    with b_download_file:
-        did_render = False
-        if sel_rows:
-            r = sel_rows[0]
-            rid = str(r.get("Id","")).strip()
-            av  = str(r.get("Archivo","")).strip()
-            token = _pick_first_token(av)
-            if rid and token:
-                if token.lower().startswith(("http://","https://")):
-                    st.link_button("⬇️ Descargar archivo", token, use_container_width=True)
-                    did_render = True
-                else:
-                    res = _resolve_local_path(token, rid)
-                    if res:
-                        path, fname = res
-                        try:
-                            with open(path, "rb") as fh:
-                                st.download_button(
-                                    "⬇️ Descargar archivo",
-                                    fh.read(),
-                                    file_name=fname,
-                                    use_container_width=True
-                                )
-                                did_render = True
-                        except Exception:
-                            pass
-        if not did_render:
-            st.button("⬇️ Descargar archivo", use_container_width=True, disabled=True,
-                      help="Selecciona una fila con un archivo válido.")
 
     st.markdown('</div>', unsafe_allow_html=True)
