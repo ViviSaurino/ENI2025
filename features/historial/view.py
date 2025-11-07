@@ -83,7 +83,7 @@ def _save_local(df: pd.DataFrame):
     _disk_save_local(df.copy())
     st.session_state["_df_main_local_backup"] = df.copy()
 
-# --- Carga local en arranque (para persistir tras reboot) ---
+# --- Carga local ---
 def _load_local_if_exists() -> pd.DataFrame | None:
     try:
         p = os.path.join("data", "tareas.csv")
@@ -121,17 +121,11 @@ def _canonicalize_link_column(df: pd.DataFrame) -> pd.DataFrame:
 _URL_RX = re.compile(r"https?://", re.I)
 
 def _maybe_copy_archivo_to_link(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Copia una sola vez desde 'Archivo' -> 'Link de archivo' cuando:
-      - Link de archivo está vacío
-      - 'Archivo' contiene una URL (no archivo local)
-    """
     if "Archivo" not in df.columns:
         return df
     df = _canonicalize_link_column(df)
     link = df[_LINK_CANON].astype(str)
     arch = df["Archivo"].astype(str)
-    # limpia HTML si hubiera
     arch = arch.map(lambda x: re.sub(r"<[^>]+>", "", x or ""))
     mask = link.str.strip().eq("") & arch.str.contains(_URL_RX)
     if mask.any():
@@ -172,7 +166,7 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
         if c.lower().startswith("fecha"):
             df[c] = to_naive_local_series(df[c])
 
-    # limpiar HTML si hubiera en columnas de archivo
+    # limpia HTML si hubiera en columnas de archivo
     def _strip_html(x): return re.sub(r"<[^>]+>", "", str(x) if x is not None else "")
     for cc in [c for c in df.columns if "archivo" in c.lower()]:
         df[cc] = df[cc].map(_strip_html)
@@ -265,7 +259,7 @@ def _add_business_days(start_dates: pd.Series, days: pd.Series) -> pd.Series:
 def render(user: dict | None = None):
     st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-    # ====== CSS (píldora ajustada de ancho) ======
+    # ====== CSS (píldora ajustada) ======
     st.markdown("""
     <style>
       :root{ --pill-salmon:#F28B85; --hist-pill-w: 232px; }
@@ -303,7 +297,7 @@ def render(user: dict | None = None):
         else:
             st.session_state["df_main"] = pd.DataFrame(columns=DEFAULT_COLS)
 
-    # Canoniza link y copia desde 'Archivo' si es URL (para que se vea y persista)
+    # Canoniza link y copia desde 'Archivo' si es URL (para persistir)
     base0 = st.session_state["df_main"].copy()
     base0 = _canonicalize_link_column(base0)
     base1 = _maybe_copy_archivo_to_link(base0.copy())
@@ -389,10 +383,11 @@ def render(user: dict | None = None):
         "Fecha Pausado","Hora Pausado",
         "Fecha Cancelado","Hora Cancelado",
         "Fecha Eliminado","Hora Eliminado",
-        "Link de descarga"
+        _LINK_CANON,               # <<--- incluir en rowData (oculta)
+        "Link de descarga"         # visible
     ]
     hidden_cols = [
-        "Archivo", _LINK_CANON, "__ts__","__SEL__","__DEL__","¿Eliminar?","Tipo de alerta",
+        "Archivo","__ts__","__SEL__","__DEL__","¿Eliminar?","Tipo de alerta",
         "Fecha estado modificado","Hora estado modificado","Fecha estado actual","Hora estado actual",
         "Fecha","Hora","Vencimiento"
     ]
@@ -442,7 +437,7 @@ def render(user: dict | None = None):
                 df_grid["Fecha Vencimiento"] = pd.NaT
             df_grid.loc[mask_set, "Fecha Vencimiento"] = fv_calc.loc[mask_set]
 
-    # === Ajuste 4: Hora límite por defecto 17:00 ===
+    # === Ajuste 4: Hora límite por defecto 17:00 (sin .strip en Series) ===
     if "Hora Vencimiento" in df_grid.columns:
         hv = df_grid["Hora Vencimiento"].apply(_fmt_hhmm).astype(str)
         df_grid["Hora Vencimiento"] = hv.mask(hv.str.strip()=="", "17:00")
@@ -472,6 +467,7 @@ def render(user: dict | None = None):
         "Fecha Cancelado": 150, "Hora Cancelado": 130,
         "Fecha Eliminado": 150, "Hora Eliminado": 130,
         "Link de descarga": 260,
+        _LINK_CANON: 120,
     }
 
     header_map = {
@@ -494,6 +490,9 @@ def render(user: dict | None = None):
             suppressMenu=True,
             filter=False, floatingFilter=False, sortable=False
         )
+
+    # Mantener la columna "Link de archivo" oculta pero disponible en rowData
+    gob.configure_column(_LINK_CANON, hide=True)
 
     # Formato fecha (dd/mm/aaaa)
     date_only_fmt = JsCode(r"""
@@ -522,15 +521,14 @@ def render(user: dict | None = None):
         if col in df_grid.columns:
             gob.configure_column(col, valueFormatter=date_only_fmt)
 
-    # Link de descarga (solo desde "Link de archivo")
+    # Link de descarga (lee SOLO de "Link de archivo")
     link_value_getter = JsCode(r"""
     function(p){
-      const pickUrl = (raw) => {
-        const parts = String(raw || '').split(/[\n,;|]+/).map(s=>s.trim()).filter(Boolean);
-        for (let s of parts){ if(/^https?:\/\//i.test(s)) return s; }
-        return '';
-      };
-      return p && p.data ? pickUrl(p.data['Link de archivo']) : '';
+      const text = String((p && p.data && p.data['Link de archivo']) || '').trim();
+      if(!text) return '';
+      // Primer http/https que aparezca
+      const m = text.match(/https?:\/\/\S+/i);
+      return m ? m[0].replace(/[),.]+$/, '') : '';
     }""")
     link_renderer = JsCode(r"""
     class LinkRenderer{
@@ -538,15 +536,25 @@ def render(user: dict | None = None):
         const url = params && params.value ? String(params.value) : '';
         this.eGui = document.createElement('a');
         if(url){
-          this.eGui.href = encodeURI(url); this.eGui.target = '_blank'; this.eGui.rel='noopener';
-          this.eGui.textContent = url; this.eGui.style.textDecoration='underline';
-        }else{ this.eGui.textContent = '—'; this.eGui.style.opacity='0.8'; }
+          this.eGui.href = encodeURI(url);
+          this.eGui.target = '_blank';
+          this.eGui.rel='noopener';
+          this.eGui.textContent = url;
+          this.eGui.style.textDecoration='underline';
+        }else{
+          this.eGui.textContent = '—';
+          this.eGui.style.opacity='0.8';
+        }
       }
-      getGui(){ return this.eGui; } refresh(){ return false; }
+      getGui(){ return this.eGui; }
+      refresh(){ return false; }
     }""")
-    gob.configure_column("Link de descarga", valueGetter=link_value_getter,
-                         cellRenderer=link_renderer, tooltipField="Link de descarga",
-                         minWidth=width_map["Link de descarga"], flex=1)
+    gob.configure_column("Link de descarga",
+                         valueGetter=link_value_getter,
+                         cellRenderer=link_renderer,
+                         tooltipField="Link de descarga",
+                         minWidth=width_map["Link de descarga"],
+                         flex=1)
 
     # Sin menú/filtro en "Fecha inicio"
     gob.configure_column("Fecha inicio", filter=False, floatingFilter=False, sortable=False, suppressMenu=True)
