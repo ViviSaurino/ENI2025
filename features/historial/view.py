@@ -475,7 +475,7 @@ def render(user: dict | None = None):
         if col in df_grid.columns:
             gob.configure_column(col, valueFormatter=date_only_fmt, suppressMenu=True)
 
-    # ==== Link de descarga (extrae el primer http/https de 'Archivo') ====
+    # ==== Link de descarga (primer http/https de 'Archivo') ====
     link_value_getter = JsCode(r"""
     function(p){
       const raw0 = (p && p.data && p.data['Archivo'] != null) ? String(p.data['Archivo']).trim() : '';
