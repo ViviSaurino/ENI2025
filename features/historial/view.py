@@ -91,6 +91,18 @@ def _save_local(df: pd.DataFrame):
     _disk_save_local(df.copy())
     st.session_state["_df_main_local_backup"] = df.copy()
 
+# --- Carga local en arranque (para persistir tras reboot) ---
+def _load_local_if_exists() -> pd.DataFrame | None:
+    try:
+        p = os.path.join("data", "tareas.csv")
+        if os.path.exists(p):
+            # Mantener strings (links) tal cual; fechas se normalizan luego en las columnas donde corresponde
+            df = pd.read_csv(p, dtype=str, keep_default_na=False).fillna("")
+            return df
+    except Exception:
+        pass
+    return None
+
 # --- Google Sheets (opcional) ---
 def _gsheets_client():
     if "gcp_service_account" not in st.secrets:
@@ -247,7 +259,13 @@ def render(user: dict | None = None):
 
     # ====== DATA BASE ======
     if "df_main" not in st.session_state or not isinstance(st.session_state["df_main"], pd.DataFrame):
-        st.session_state["df_main"] = pd.DataFrame(columns=DEFAULT_COLS)
+        # INTENTO 1: cargar desde disco para persistir link tras reboot
+        df_local = _load_local_if_exists()
+        if isinstance(df_local, pd.DataFrame) and not df_local.empty:
+            st.session_state["df_main"] = df_local
+        else:
+            st.session_state["df_main"] = pd.DataFrame(columns=DEFAULT_COLS)
+
     df_all = st.session_state["df_main"].copy()
 
     # ===== Filtros externos =====
