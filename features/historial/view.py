@@ -113,14 +113,12 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
         if c.lower().startswith("fecha"):
             df[c] = to_naive_local_series(df[c])
 
-    # Limpieza de HTML residual en Archivo y variantes
     def _strip_html(x):
         s = str(x) if x is not None else ""
         return re.sub(r"<[^>]+>", "", s)
     for cc in [c for c in df.columns if "archivo" in c.lower()]:
         df[cc] = df[cc].map(_strip_html)
 
-    # Unificar "N° alerta" -> "N° de alerta"
     if "N° de alerta" not in df.columns and "N° alerta" in df.columns:
         df.rename(columns={"N° alerta": "N° de alerta"}, inplace=True)
     dup_alert_cols = [c for c in df.columns if c.strip().lower() in {"n° alerta","n alerta","nº alerta"} and c != "N° de alerta"]
@@ -215,7 +213,7 @@ def render(user: dict | None = None):
     # Alineaciones
     A_f, Fw_f, T_width_f, D_f, R_f, C_f = 1.80, 2.10, 3.00, 1.60, 1.40, 1.20
 
-    # Título
+    # Título + estilos
     title_cA, _t2, _t3, _t4, _t5, _t6 = st.columns(
         [A_f, Fw_f, T_width_f, D_f, R_f, C_f],
         gap="medium",
@@ -234,7 +232,23 @@ def render(user: dict | None = None):
         }
         .hist-actions{ padding:0 16px; border-top:2px solid #EF4444; }
         .hist-actions .stButton > button{ height:38px!important; border-radius:10px!important; width:100%; }
-        .ag-theme-balham .ag-header-cell.muted-col .ag-header-cell-label{ color:#90A4AE!important; }
+
+        /* ===== Celda horizontal (una línea con ‘…’) ===== */
+        .ag-theme-balham .ag-cell{
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        /* ===== Encabezados: nombre completo (wrap) y sin iconos de filtro/menú ===== */
+        .ag-theme-balham .ag-header-cell-label{
+          white-space: normal !important;   /* permite varias líneas */
+          line-height: 1.2 !important;
+        }
+        .ag-theme-balham .ag-header-cell .ag-icon-menu,
+        .ag-theme-balham .ag-header-cell .ag-icon-filter{
+          display: none !important;         /* oculta íconos de menú y filtro */
+        }
         </style>
         <div class="hist-title-pill">📝 Tareas recientes</div>
         """, unsafe_allow_html=True)
@@ -351,7 +365,6 @@ def render(user: dict | None = None):
                     )
                     break
 
-    # Unificar/ubicar "N° de alerta"
     if "N° de alerta" not in df_view.columns and "N° alerta" in df_view.columns:
         df_view.rename(columns={"N° alerta": "N° de alerta"}, inplace=True)
     to_drop_dups = [c for c in df_view.columns if c != "N° de alerta" and c.strip().lower() in {"n° alerta","n alerta","nº alerta"}]
@@ -372,7 +385,7 @@ def render(user: dict | None = None):
         "Fecha Pausado","Hora Pausado",
         "Fecha Cancelado","Hora Cancelado",
         "Fecha Eliminado","Hora Eliminado",
-        "Archivo","__Pick__"   # checkbox al costado
+        "Archivo","__Pick__"
     ]
     HIDDEN_COLS = [
         "¿Eliminar?","Estado modificado",
@@ -393,7 +406,13 @@ def render(user: dict | None = None):
     df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
 
     gob = GridOptionsBuilder.from_dataframe(df_grid)
-    gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, editable=False)
+    # === Horizontal (sin wrap) y sin filtros/menú por defecto ===
+    gob.configure_default_column(
+        resizable=True, editable=False,
+        wrapText=False, autoHeight=False,
+        filter=False, floatingFilter=False, suppressMenu=True,
+        cellStyle={"white-space":"nowrap","overflow":"hidden","textOverflow":"ellipsis"}
+    )
 
     # Selección "single" + checkbox propio
     gob.configure_selection(selection_mode="single", use_checkbox=False)
@@ -402,8 +421,8 @@ def render(user: dict | None = None):
         rowMultiSelectWithClick=False,
         suppressRowClickSelection=False,
         domLayout="normal",
-        rowHeight=30,
-        wrapHeaderText=True, autoHeaderHeight=True, headerHeight=56,
+        rowHeight=34,
+        wrapHeaderText=True, autoHeaderHeight=True, headerHeight=64,  # más alto para títulos completos
         enableRangeSelection=True, enableCellTextSelection=True,
         singleClickEdit=False, stopEditingWhenCellsLoseFocus=True,
         undoRedoCellEditing=False, enterMovesDown=False,
@@ -414,16 +433,19 @@ def render(user: dict | None = None):
 
     # ----- Columnas base visibles -----
     gob.configure_column("Id", headerName="ID", editable=False, width=110, pinned="left",
-                         suppressMovable=True, suppressSizeToFit=True)
-    gob.configure_column("Área", headerName="Área", editable=False, minWidth=160, pinned="left", suppressMovable=True)
-    gob.configure_column("Fase", headerName="Fase", editable=False, minWidth=140, pinned="left", suppressMovable=True)
-    gob.configure_column("Responsable", editable=False, minWidth=200, pinned="left", suppressMovable=True)
-    gob.configure_column("Estado", headerName="Estado actual")
-    gob.configure_column("Fecha Vencimiento", headerName="Fecha límite")
-    gob.configure_column("Fecha inicio", headerName="Fecha de inicio")
-    gob.configure_column("Fecha Terminado", headerName="Fecha Terminado")
+                         suppressMovable=True, suppressSizeToFit=True, suppressMenu=True)
+    gob.configure_column("Área", headerName="Área", editable=False, minWidth=160, pinned="left",
+                         suppressMovable=True, suppressMenu=True)
+    gob.configure_column("Fase", headerName="Fase", editable=False, minWidth=180, pinned="left",
+                         suppressMovable=True, suppressMenu=True)
+    gob.configure_column("Responsable", editable=False, minWidth=220, pinned="left",
+                         suppressMovable=True, suppressMenu=True)
+    gob.configure_column("Estado", headerName="Estado actual", minWidth=150, suppressMenu=True)
+    gob.configure_column("Fecha Vencimiento", headerName="Fecha límite", minWidth=140, suppressMenu=True)
+    gob.configure_column("Fecha inicio", headerName="Fecha de inicio", minWidth=140, suppressMenu=True)
+    gob.configure_column("Fecha Terminado", headerName="Fecha Terminado", minWidth=150, suppressMenu=True)
 
-    # ==== Archivo: nombre real (sin HTML) ====
+    # ==== Archivo: nombre legible ====
     archivo_value_getter = JsCode(r"""
     function(p){
       const raw0 = (p && p.data && p.data['Archivo'] != null) ? String(p.data['Archivo']).trim() : '';
@@ -461,15 +483,15 @@ def render(user: dict | None = None):
     gob.configure_column(
         "Archivo",
         headerName="Archivo",
-        minWidth=220, flex=1,
-        editable=False,
+        minWidth=240, flex=1,
+        editable=False, suppressMenu=True,
         valueGetter=archivo_value_getter,
         cellRenderer=archivo_renderer,
         tooltipField="Archivo",
         cellStyle={"cursor":"pointer","textDecoration":"underline","color":"#0A66C2"}
     )
 
-    # ==== Checkbox junto a Archivo (controla la selección de la fila) ====
+    # ==== Checkbox junto a Archivo ====
     pick_renderer = JsCode(r"""
     class SelRenderer{
       init(params){
@@ -488,7 +510,7 @@ def render(user: dict | None = None):
         "__Pick__",
         headerName="",
         minWidth=60, maxWidth=70, flex=0,
-        editable=False, pinned=None,
+        editable=False, pinned=None, suppressMenu=True,
         cellRenderer=pick_renderer,
         cellStyle={"textAlign":"center"}
     )
@@ -505,9 +527,9 @@ def render(user: dict | None = None):
         if c in ["Archivo","__Pick__","Id","Área","Fase","Responsable","Estado",
                  "Fecha Vencimiento","Fecha inicio","Fecha Terminado","¿Generó alerta?","N° de alerta"]:
             continue
-        gob.configure_column(c, valueFormatter=fmt_dash)
+        gob.configure_column(c, valueFormatter=fmt_dash, suppressMenu=True)
 
-    # === Eventos JS ===
+    # === Autosize eventos ===
     autosize_on_ready = JsCode("""
     function(params){
       const all = params.columnApi.getAllDisplayedColumns();
@@ -525,7 +547,7 @@ def render(user: dict | None = None):
       }
     }""")
 
-    # Clic en Archivo: abrir si es URL; si es local solo selecciona la fila
+    # Click en Archivo
     on_click_archivo = JsCode(r"""
     function(e){
       if(!e || !e.colDef) return;
@@ -637,7 +659,7 @@ def render(user: dict | None = None):
             except Exception as e:
                 st.warning(f"No se pudo subir a Sheets: {e}")
 
-    # === DESCARGAR ARCHIVO (al final de la fila) ===
+    # === DESCARGAR ARCHIVO (al final) ===
     with b_download_file:
         did_render = False
         if sel_rows:
