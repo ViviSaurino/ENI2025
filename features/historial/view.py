@@ -120,7 +120,7 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
     for cc in [c for c in df.columns if "archivo" in c.lower()]:
         df[cc] = df[cc].map(_strip_html)
 
-    # Unificar "N° alerta" -> "N° de alerta" (y quitar duplicados al final)
+    # Unificar "N° alerta" -> "N° de alerta"
     if "N° de alerta" not in df.columns and "N° alerta" in df.columns:
         df.rename(columns={"N° alerta": "N° de alerta"}, inplace=True)
     dup_alert_cols = [c for c in df.columns if c.strip().lower() in {"n° alerta","n alerta","nº alerta"} and c != "N° de alerta"]
@@ -351,10 +351,9 @@ def render(user: dict | None = None):
                     )
                     break
 
-    # Unificar/ubicar "N° de alerta" al costado de "¿Generó alerta?"
+    # Unificar/ubicar "N° de alerta"
     if "N° de alerta" not in df_view.columns and "N° alerta" in df_view.columns:
         df_view.rename(columns={"N° alerta": "N° de alerta"}, inplace=True)
-    # Eliminar duplicados de esa columna (caso imagen 2)
     to_drop_dups = [c for c in df_view.columns if c != "N° de alerta" and c.strip().lower() in {"n° alerta","n alerta","nº alerta"}]
     df_view.drop(columns=to_drop_dups, inplace=True, errors="ignore")
 
@@ -373,14 +372,13 @@ def render(user: dict | None = None):
         "Fecha Pausado","Hora Pausado",
         "Fecha Cancelado","Hora Cancelado",
         "Fecha Eliminado","Hora Eliminado",
-        "Archivo","__Pick__",   # checkbox al costado
-        "__Descargar__"         # acción a la derecha
+        "Archivo","__Pick__"   # checkbox al costado
     ]
     HIDDEN_COLS = [
         "¿Eliminar?","Estado modificado",
         "Fecha estado modificado","Hora estado modificado",
         "Fecha estado actual","Hora estado actual",
-        "N° alerta","Tipo de alerta","Fecha","Hora","Vencimiento",
+        "Tipo de alerta","Fecha","Hora","Vencimiento",
         "__ts__","__SEL__","__DEL__"
     ]
     for c in target_cols:
@@ -397,7 +395,7 @@ def render(user: dict | None = None):
     gob = GridOptionsBuilder.from_dataframe(df_grid)
     gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, editable=False)
 
-    # Usamos selección "single" + checkbox propio al lado de Archivo
+    # Selección "single" + checkbox propio
     gob.configure_selection(selection_mode="single", use_checkbox=False)
     gob.configure_grid_options(
         rowSelection="single",
@@ -495,31 +493,6 @@ def render(user: dict | None = None):
         cellStyle={"textAlign":"center"}
     )
 
-    # ==== Columna Descargar (pinned right) ====
-    desc_value_getter = JsCode(r"""
-    function(p){
-      const raw0 = (p && p.data && p.data['Archivo'] != null) ? String(p.data['Archivo']).trim() : '';
-      if(!raw0) return '';
-      const parts = raw0.split(/[\n,;|]+/).map(s=>s.trim()).filter(Boolean);
-      let raw = parts[0] || '';
-      for (let s of parts){
-        if (s.toLowerCase() === 'directorio') continue;
-        if (/^https?:\/\//i.test(s) || /\.[a-z0-9]{2,5}$/i.test(s)) { raw = s; break; }
-      }
-      if(/^https?:\/\//i.test(raw)) return '🌐 Abrir';
-      return '⬇️ Descargar';
-    }
-    """)
-    gob.configure_column(
-        "__Descargar__",
-        headerName="Descargar",
-        valueGetter=desc_value_getter,
-        minWidth=140, flex=0,
-        pinned="right",
-        editable=False,
-        cellStyle={"cursor":"pointer","textDecoration":"underline","color":"#0A66C2","textAlign":"center"}
-    )
-
     # Formatos cortos
     fmt_dash = JsCode("""
     function(p){
@@ -529,7 +502,7 @@ def render(user: dict | None = None):
       return String(p.value);
     }""")
     for c in df_grid.columns:
-        if c in ["Archivo","__Descargar__","__Pick__","Id","Área","Fase","Responsable","Estado",
+        if c in ["Archivo","__Pick__","Id","Área","Fase","Responsable","Estado",
                  "Fecha Vencimiento","Fecha inicio","Fecha Terminado","¿Generó alerta?","N° de alerta"]:
             continue
         gob.configure_column(c, valueFormatter=fmt_dash)
@@ -552,12 +525,12 @@ def render(user: dict | None = None):
       }
     }""")
 
-    # Clic en Archivo o en Descargar
+    # Clic en Archivo: abrir si es URL; si es local solo selecciona la fila
     on_click_archivo = JsCode(r"""
     function(e){
       if(!e || !e.colDef) return;
       const f = e.colDef.field || '';
-      if(f !== 'Archivo' && f !== '__Descargar__') return;
+      if(f !== 'Archivo') return;
 
       const raw0 = (e && e.data && e.data['Archivo'] != null) ? String(e.data['Archivo']).trim() : '';
       if(!raw0) return;
@@ -614,14 +587,14 @@ def render(user: dict | None = None):
     W_SHEETS = R_f + 0.8
 
     st.markdown('<div class="hist-actions">', unsafe_allow_html=True)
-    _spacer, b_xlsx, b_download_file, b_sync, b_save_local, b_save_sheets = st.columns(
-        [left_spacer, D_f, R_f, R_f, R_f, W_SHEETS], gap="medium"
+    _spacer, b_xlsx, b_sync, b_save_local, b_save_sheets, b_download_file = st.columns(
+        [left_spacer, D_f, R_f, R_f, W_SHEETS, R_f], gap="medium"
     )
 
     with b_xlsx:
         try:
             df_xlsx = st.session_state["df_main"].copy()
-            for c in ["__Descargar__","__Pick__","__SEL__","__DEL__","¿Eliminar?"]:
+            for c in ["__Pick__","__SEL__","__DEL__","¿Eliminar?"]:
                 if c in df_xlsx.columns:
                     df_xlsx.drop(columns=[c], inplace=True, errors="ignore")
             xlsx_b = export_excel(df_xlsx, sheet_name=TAB_NAME)
@@ -635,37 +608,6 @@ def render(user: dict | None = None):
             st.error("No pude generar Excel: falta 'xlsxwriter' u 'openpyxl'.")
         except Exception as e:
             st.error(f"No pude generar Excel: {e}")
-
-    # === DESCARGAR ARCHIVO (botón principal) ===
-    with b_download_file:
-        did_render = False
-        if sel_rows:
-            r = sel_rows[0]
-            rid = str(r.get("Id","")).strip()
-            av  = str(r.get("Archivo","")).strip()
-            token = _pick_first_token(av)
-            if rid and token:
-                if token.lower().startswith(("http://","https://")):
-                    st.link_button("🌐 Abrir archivo", token, use_container_width=True)
-                    did_render = True
-                else:
-                    res = _resolve_local_path(token, rid)
-                    if res:
-                        path, fname = res
-                        try:
-                            with open(path, "rb") as fh:
-                                st.download_button(
-                                    f"⬇️ Descargar archivo — {fname}",
-                                    fh.read(),
-                                    file_name=fname,
-                                    use_container_width=True
-                                )
-                                did_render = True
-                        except Exception:
-                            pass
-        if not did_render:
-            st.button("⬇️ Descargar archivo", use_container_width=True, disabled=True,
-                      help="Selecciona una fila con un archivo válido.")
 
     with b_sync:
         if st.button("🔄 Sincronizar", use_container_width=True, key="btn_sync_sheet"):
@@ -694,5 +636,36 @@ def render(user: dict | None = None):
                 st.success("Enviado a Google Sheets.")
             except Exception as e:
                 st.warning(f"No se pudo subir a Sheets: {e}")
+
+    # === DESCARGAR ARCHIVO (al final de la fila) ===
+    with b_download_file:
+        did_render = False
+        if sel_rows:
+            r = sel_rows[0]
+            rid = str(r.get("Id","")).strip()
+            av  = str(r.get("Archivo","")).strip()
+            token = _pick_first_token(av)
+            if rid and token:
+                if token.lower().startswith(("http://","https://")):
+                    st.link_button("⬇️ Descargar archivo", token, use_container_width=True)
+                    did_render = True
+                else:
+                    res = _resolve_local_path(token, rid)
+                    if res:
+                        path, fname = res
+                        try:
+                            with open(path, "rb") as fh:
+                                st.download_button(
+                                    "⬇️ Descargar archivo",
+                                    fh.read(),
+                                    file_name=fname,
+                                    use_container_width=True
+                                )
+                                did_render = True
+                        except Exception:
+                            pass
+        if not did_render:
+            st.button("⬇️ Descargar archivo", use_container_width=True, disabled=True,
+                      help="Selecciona una fila con un archivo válido.")
 
     st.markdown('</div>', unsafe_allow_html=True)
