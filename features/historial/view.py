@@ -25,7 +25,7 @@ DEFAULT_COLS = [
     "Fecha Pausado","Hora Pausado",
     "Fecha Cancelado","Hora Cancelado",
     "Fecha Eliminado","Hora Eliminado",
-    "Archivo"  # compat, pero no se usa para el link
+    "Archivo"  # compat histórico
 ]
 
 # ====== TZ helpers ======
@@ -96,6 +96,7 @@ def _load_local_if_exists() -> pd.DataFrame | None:
 
 # --- Columna canónica de link ---
 _LINK_CANON = "Link de archivo"
+
 def _canonicalize_link_column(df: pd.DataFrame) -> pd.DataFrame:
     if df is None or df.empty:
         return df
@@ -115,6 +116,26 @@ def _canonicalize_link_column(df: pd.DataFrame) -> pd.DataFrame:
     if canon != _LINK_CANON:
         df.rename(columns={canon: _LINK_CANON}, inplace=True)
     df[_LINK_CANON] = df[_LINK_CANON].astype(str)
+    return df
+
+_URL_RX = re.compile(r"https?://", re.I)
+
+def _maybe_copy_archivo_to_link(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Copia una sola vez desde 'Archivo' -> 'Link de archivo' cuando:
+      - Link de archivo está vacío
+      - 'Archivo' contiene una URL (no archivo local)
+    """
+    if "Archivo" not in df.columns:
+        return df
+    df = _canonicalize_link_column(df)
+    link = df[_LINK_CANON].astype(str)
+    arch = df["Archivo"].astype(str)
+    # limpia HTML si hubiera
+    arch = arch.map(lambda x: re.sub(r"<[^>]+>", "", x or ""))
+    mask = link.str.strip().eq("") & arch.str.contains(_URL_RX)
+    if mask.any():
+        df.loc[mask, _LINK_CANON] = arch.loc[mask].astype(str)
     return df
 
 # --- Google Sheets (opcional) ---
@@ -151,7 +172,7 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
         if c.lower().startswith("fecha"):
             df[c] = to_naive_local_series(df[c])
 
-    # limpiar HTML si hubiera
+    # limpiar HTML si hubiera en columnas de archivo
     def _strip_html(x): return re.sub(r"<[^>]+>", "", str(x) if x is not None else "")
     for cc in [c for c in df.columns if "archivo" in c.lower()]:
         df[cc] = df[cc].map(_strip_html)
@@ -244,13 +265,13 @@ def _add_business_days(start_dates: pd.Series, days: pd.Series) -> pd.Series:
 def render(user: dict | None = None):
     st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-    # ====== CSS (píldora; sin bloque de indicaciones) ======
+    # ====== CSS (píldora ajustada de ancho) ======
     st.markdown("""
     <style>
-      :root{ --pill-salmon:#F28B85; }
+      :root{ --pill-salmon:#F28B85; --hist-pill-w: 232px; }
       .hist-title-pill{
         display:flex; align-items:center; gap:8px;
-        padding:10px 16px; width:100%;
+        padding:10px 16px; width:var(--hist-pill-w);
         border-radius:10px; background: var(--pill-salmon);
         color:#fff; font-weight:600; font-size:1.05rem; line-height:1.1;
         box-shadow: inset 0 -2px 0 rgba(0,0,0,0.06);
@@ -282,10 +303,18 @@ def render(user: dict | None = None):
         else:
             st.session_state["df_main"] = pd.DataFrame(columns=DEFAULT_COLS)
 
-    # Canoniza/asegura la columna de link
-    st.session_state["df_main"] = _canonicalize_link_column(st.session_state["df_main"].copy())
+    # Canoniza link y copia desde 'Archivo' si es URL (para que se vea y persista)
+    base0 = st.session_state["df_main"].copy()
+    base0 = _canonicalize_link_column(base0)
+    base1 = _maybe_copy_archivo_to_link(base0.copy())
+    if not base0.equals(base1):
+        st.session_state["df_main"] = base1.copy()
+        try:
+            _save_local(st.session_state["df_main"].copy())
+        except Exception:
+            pass
 
-    # ===== Filtros + Título (píldora con ancho de Área) =====
+    # ===== Filtros + Título =====
     with st.container():
         c1,c2,c3,c4,c5,c6 = st.columns([1.15,1.25,1.60,1.05,1.05,1.05], gap="medium")
         with c1:
@@ -413,7 +442,7 @@ def render(user: dict | None = None):
                 df_grid["Fecha Vencimiento"] = pd.NaT
             df_grid.loc[mask_set, "Fecha Vencimiento"] = fv_calc.loc[mask_set]
 
-    # === Ajuste 4: Hora límite por defecto 17:00 (FIX .str.strip) ===
+    # === Ajuste 4: Hora límite por defecto 17:00 ===
     if "Hora Vencimiento" in df_grid.columns:
         hv = df_grid["Hora Vencimiento"].apply(_fmt_hhmm).astype(str)
         df_grid["Hora Vencimiento"] = hv.mask(hv.str.strip()=="", "17:00")
