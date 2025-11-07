@@ -25,8 +25,7 @@ DEFAULT_COLS = [
     "Fecha Pausado","Hora Pausado",
     "Fecha Cancelado","Hora Cancelado",
     "Fecha Eliminado","Hora Eliminado",
-    # Mantengo "Archivo" por compatibilidad, pero NO se usa para el link
-    "Archivo"
+    "Archivo"  # compat, pero no se usa para el link
 ]
 
 # ====== TZ helpers ======
@@ -95,32 +94,26 @@ def _load_local_if_exists() -> pd.DataFrame | None:
         pass
     return None
 
-# --- Normaliza/asegura la columna canónica "Link de archivo" (URL texto) ---
+# --- Columna canónica de link ---
 _LINK_CANON = "Link de archivo"
 def _canonicalize_link_column(df: pd.DataFrame) -> pd.DataFrame:
     if df is None or df.empty:
         return df
     cols = list(df.columns)
     canon = None
-    # Prioridad: coincidencia exacta (con o sin mayúsculas)
     for c in cols:
         if c.strip().lower() == _LINK_CANON.strip().lower():
-            canon = c
-            break
-    # Buscar variantes: "link archivo", "link_de_archivo", "url archivo", etc.
+            canon = c; break
     if canon is None:
         pat = re.compile(r"link.*archivo|url.*archivo", re.I)
         variants = [c for c in cols if pat.search(str(c))]
         if variants:
             canon = variants[0]
-    # Si no existe ninguna, créala
     if canon is None:
         df[_LINK_CANON] = ""
         return df
-    # Renombra a canónico si difiere
     if canon != _LINK_CANON:
         df.rename(columns={canon: _LINK_CANON}, inplace=True)
-    # Asegura tipo string
     df[_LINK_CANON] = df[_LINK_CANON].astype(str)
     return df
 
@@ -158,15 +151,14 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
         if c.lower().startswith("fecha"):
             df[c] = to_naive_local_series(df[c])
 
-    # Limpia HTML solo si alguna columna tuviera etiquetas (no debería para links)
+    # limpiar HTML si hubiera
     def _strip_html(x): return re.sub(r"<[^>]+>", "", str(x) if x is not None else "")
     for cc in [c for c in df.columns if "archivo" in c.lower()]:
         df[cc] = df[cc].map(_strip_html)
 
-    # Canoniza columna de link
     df = _canonicalize_link_column(df)
 
-    # Dedup/normaliza "N° alerta"
+    # N° alerta único
     alerta_pat = re.compile(r"^\s*n[°º]?\s*(de\s*)?alerta\s*$", re.I)
     alerta_cols = [c for c in df.columns if alerta_pat.match(str(c))]
     if alerta_cols:
@@ -233,14 +225,13 @@ def _yesno(v) -> str:
     s = str(v).strip().lower()
     return "Sí" if s in {"1","si","sí","true","t","y","s","x"} else "No"
 
-# --- Suma de días hábiles (lun–vie) para calcular Fecha Vencimiento ---
+# --- Suma de días hábiles (lun–vie) ---
 def _add_business_days(start_dates: pd.Series, days: pd.Series) -> pd.Series:
     sd = pd.to_datetime(start_dates, errors="coerce").dt.date
     n  = pd.to_numeric(days, errors="coerce").fillna(0).astype(int)
     ok = (~pd.isna(sd)) & (n > 0)
     out = pd.Series(pd.NaT, index=start_dates.index, dtype="datetime64[ns]")
     if ok.any():
-        # numpy.busday_offset trabaja en 'datetime64[D]'
         a = np.array(sd[ok], dtype="datetime64[D]")
         b = n[ok].to_numpy()
         res = np.busday_offset(a, b, weekmask="Mon Tue Wed Thu Fri")
@@ -253,29 +244,16 @@ def _add_business_days(start_dates: pd.Series, days: pd.Series) -> pd.Series:
 def render(user: dict | None = None):
     st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-    # ====== CSS (píldora + indicaciones) ======
+    # ====== CSS (píldora; sin bloque de indicaciones) ======
     st.markdown("""
     <style>
-      :root{
-        --pill-salmon:#F28B85;
-        --note-bg:#FCE2DF;      /* coral clarito */
-        --note-border:#F59CA0;  /* coral medio para borde punteado */
-        --note-text:#7A2E2B;    /* texto coral oscuro */
-      }
+      :root{ --pill-salmon:#F28B85; }
       .hist-title-pill{
         display:flex; align-items:center; gap:8px;
         padding:10px 16px; width:100%;
         border-radius:10px; background: var(--pill-salmon);
         color:#fff; font-weight:600; font-size:1.05rem; line-height:1.1;
         box-shadow: inset 0 -2px 0 rgba(0,0,0,0.06);
-      }
-      /* Indicaciones coral claro con borde punteado */
-      .hist-note{
-        margin-top:8px; padding:10px 14px;
-        background: var(--note-bg);
-        border: 2px dashed var(--note-border);
-        border-radius:10px; color:var(--note-text);
-        font-size:0.95rem; line-height:1.35;
       }
       .ag-theme-balham .ag-cell{
         white-space: nowrap !important;
@@ -304,10 +282,10 @@ def render(user: dict | None = None):
         else:
             st.session_state["df_main"] = pd.DataFrame(columns=DEFAULT_COLS)
 
-    # Canoniza/asegura la columna de link en la base completa
+    # Canoniza/asegura la columna de link
     st.session_state["df_main"] = _canonicalize_link_column(st.session_state["df_main"].copy())
 
-    # ===== Filtros + Título (píldora dentro de la col de Área para igualar ancho) =====
+    # ===== Filtros + Título (píldora con ancho de Área) =====
     with st.container():
         c1,c2,c3,c4,c5,c6 = st.columns([1.15,1.25,1.60,1.05,1.05,1.05], gap="medium")
         with c1:
@@ -340,18 +318,6 @@ def render(user: dict | None = None):
             f_hasta = st.date_input("Hasta", value=today, key="hist_hasta")
         with c6:
             hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
-
-    # ===== Indicaciones (rectángulo coral claro con borde punteado) =====
-    st.markdown("""
-    <div class="hist-note">
-      <b>Indicaciones:</b>
-      <ul style="margin:6px 0 0 18px; padding:0">
-        <li><i>Link de archivo</i> es una URL pegada desde <b>Editar estado</b> y se guarda por <b>Id</b>. Si cambias el link, se conserva tras reinicio.</li>
-        <li><b>Fecha límite</b> se calcula automáticamente como: <em>Fecha de inicio + Duración</em> (solo días hábiles, lun–vie).</li>
-        <li>La <em>Hora límite</em> por defecto es <b>17:00</b> si no se indica una hora.</li>
-      </ul>
-    </div>
-    """, unsafe_allow_html=True)
 
     show_deleted = st.toggle("Mostrar eliminadas (tachadas)", value=True, key="hist_show_deleted")
 
@@ -414,7 +380,7 @@ def render(user: dict | None = None):
     if "Link de descarga" not in df_grid.columns:
         df_grid["Link de descarga"] = ""
 
-    # --- Dedup/renombre seguro de N° alerta ---
+    # --- Dedup/renombre de N° alerta ---
     alerta_pat = re.compile(r"^\s*n[°º]?\s*(de\s*)?alerta\s*$", re.I)
     alerta_cols = [c for c in df_grid.columns if alerta_pat.match(str(c))]
     if alerta_cols:
@@ -424,7 +390,7 @@ def render(user: dict | None = None):
         for c in alerta_cols[1:]:
             df_grid.drop(columns=c, inplace=True, errors="ignore")
 
-    # === Ajuste 1: Sí/No en "¿Generó alerta?" y "¿Se corrigió?" ===
+    # === Ajuste 1: Sí/No ===
     for bcol in ["¿Generó alerta?","¿Se corrigió?"]:
         if bcol in df_grid.columns:
             df_grid[bcol] = df_grid[bcol].map(_yesno)
@@ -433,26 +399,24 @@ def render(user: dict | None = None):
     if "Calificación" in df_grid.columns:
         df_grid["Calificación"] = pd.to_numeric(df_grid["Calificación"], errors="coerce").fillna(0)
 
-    # === Ajuste 3: Duración válida (1–5) y cálculo automático de Fecha Vencimiento (días hábiles) ===
+    # === Ajuste 3: Duración válida + Fecha Vencimiento (días hábiles) ===
     if "Duración" in df_grid.columns:
         dur_num = pd.to_numeric(df_grid["Duración"], errors="coerce")
         ok = dur_num.where(dur_num.between(1,5))
         df_grid["Duración"] = ok.where(ok.between(1,5)).fillna("").astype(object)
 
-        # Calcula Fecha Vencimiento con días hábiles si hay Fecha inicio + Duración válida
         if "Fecha inicio" in df_grid.columns:
             fi = to_naive_local_series(df_grid.get("Fecha inicio", pd.Series([], dtype=object)))
             fv_calc = _add_business_days(fi, ok.fillna(0))
-            # Solo sobreescribe cuando obtenemos un cálculo válido
             mask_set = ~fv_calc.isna()
             if "Fecha Vencimiento" not in df_grid.columns:
                 df_grid["Fecha Vencimiento"] = pd.NaT
             df_grid.loc[mask_set, "Fecha Vencimiento"] = fv_calc.loc[mask_set]
 
-    # === Ajuste 4: Hora límite por defecto 17:00 ===
+    # === Ajuste 4: Hora límite por defecto 17:00 (FIX .str.strip) ===
     if "Hora Vencimiento" in df_grid.columns:
         hv = df_grid["Hora Vencimiento"].apply(_fmt_hhmm).astype(str)
-        df_grid["Hora Vencimiento"] = hv.mask(hv.strip()=="", "17:00")
+        df_grid["Hora Vencimiento"] = hv.mask(hv.str.strip()=="", "17:00")
 
     # ==== Opciones AG Grid ====
     gob = GridOptionsBuilder.from_dataframe(df_grid)
@@ -529,7 +493,7 @@ def render(user: dict | None = None):
         if col in df_grid.columns:
             gob.configure_column(col, valueFormatter=date_only_fmt)
 
-    # Link de descarga (SOLO desde "Link de archivo")
+    # Link de descarga (solo desde "Link de archivo")
     link_value_getter = JsCode(r"""
     function(p){
       const pickUrl = (raw) => {
@@ -555,7 +519,7 @@ def render(user: dict | None = None):
                          cellRenderer=link_renderer, tooltipField="Link de descarga",
                          minWidth=width_map["Link de descarga"], flex=1)
 
-    # Forzar sin filtro/menú en "Fecha inicio"
+    # Sin menú/filtro en "Fecha inicio"
     gob.configure_column("Fecha inicio", filter=False, floatingFilter=False, sortable=False, suppressMenu=True)
 
     gob.configure_grid_options(
@@ -591,7 +555,7 @@ def render(user: dict | None = None):
         allow_unsafe_jscode=True,
     )
 
-    # Guardar ediciones en sesión (preserva columnas ocultas, incl. Link de archivo)
+    # Guardar ediciones (y persistir)
     try:
         edited = grid_resp["data"]
         new_df = None
@@ -614,8 +578,6 @@ def render(user: dict | None = None):
                 st.session_state["df_main"] = base_idx.reset_index()
             else:
                 st.session_state["df_main"] = new_df
-
-            # Persiste en disco para no perder el Link tras reinicio
             try:
                 _save_local(st.session_state["df_main"].copy())
             except Exception:
@@ -648,7 +610,6 @@ def render(user: dict | None = None):
         if st.button("🔄 Sincronizar", use_container_width=True, key="btn_sync_sheet"):
             try:
                 pull_user_slice_from_sheet(replace_df_main=False)  # merge por Id
-                # Guarda local tras sincronizar (incluye Link de archivo actualizado)
                 _save_local(st.session_state["df_main"].copy())
             except Exception as e:
                 st.warning(f"No se pudo sincronizar: {e}")
