@@ -104,7 +104,7 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
     except Exception:
         return
 
-    # 1) Traigo los valores "vistos" (para headers/shape)
+    # 1) Valores "vistos"
     values = ws.get_all_values()
     if not values:
         return
@@ -112,60 +112,64 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
     rows = values[1:]
     df = pd.DataFrame(rows, columns=headers)
 
-    # 2) Intento traer fórmulas para extraer =HYPERLINK()
+    # 2) Formulas (=HYPERLINK / HIPERVINCULO / HIPERENLACE), coma o punto y coma
+    formulas = None
     try:
         from gspread.utils import rowcol_to_a1
         n_rows = len(values)
         n_cols = len(headers)
         if n_rows and n_cols:
             rng = f"A1:{rowcol_to_a1(n_rows, n_cols)}"
-            # value_render_option='FORMULA' devuelve =HYPERLINK("url","nombre")
             formulas = ws.get(rng, value_render_option="FORMULA")
-        else:
-            formulas = None
     except Exception:
-        formulas = None  # si falla, seguimos con values
+        formulas = None
+    if not formulas:
+        try:
+            # Fallback robusto por si lo anterior no trae fórmulas
+            got = ss.values_get(f"'{ws_name}'", params={"valueRenderOption":"FORMULA"})
+            formulas = got.get("values", None)
+        except Exception:
+            formulas = None
 
     # 3) Normalizo fechas
     for c in df.columns:
         if c.lower().startswith("fecha"):
             df[c] = to_naive_local_series(df[c])
 
-    # 4) Archivo: priorizo URL desde =HYPERLINK() si existe
     def _from_hyperlink_formula(txt: str) -> str | None:
         if not txt:
             return None
         s = str(txt).strip()
-        m = re.match(r'^=HYPERLINK\(\s*"([^"]+)"\s*,\s*"(?:[^"]*)"\s*\)$', s, flags=re.I)
+        # acepta HYPERLINK / HIPERVINCULO / HIPERENLACE con , o ;
+        m = re.match(
+            r'^=(?:HYPERLINK|HIPERVINCULO|HIPERENLACE)\(\s*"([^"]+)"\s*[,;]\s*"(?:[^"]*)"\s*\)$',
+            s, flags=re.I
+        )
         if m:
             return m.group(1).strip()
-        # a veces viene solo URL como fórmula
-        if s.startswith("http://") or s.startswith("https://"):
+        if s.startswith(("http://","https://")):
             return s
         return None
 
-    # Limpieza básica html si viniera (fallback)
     def _strip_html(x):
         s = str(x) if x is not None else ""
         return re.sub(r"<[^>]+>", "", s)
 
     if formulas:
-        # formulas[0] = headers con FORMULA; formulas[1:] = filas
         for j, col in enumerate(headers):
             if "archivo" in str(col).lower():
                 col_vals = []
                 for i in range(1, len(formulas)):
-                    fcell = formulas[i][j] if j < len(formulas[i]) else ""
+                    row = formulas[i] if i < len(formulas) else []
+                    fcell = row[j] if j < len(row) else ""
                     url = _from_hyperlink_formula(fcell)
                     if url:
                         col_vals.append(url)
                     else:
-                        # si no hay fórmula/URL, usamos el texto limpio
                         row_txt = values[i][j] if j < len(values[i]) else ""
                         col_vals.append(_strip_html(row_txt).strip())
                 df[col] = col_vals
     else:
-        # Sin soporte de fórmulas, al menos removemos html
         for cc in [c for c in df.columns if "archivo" in c.lower()]:
             df[cc] = df[cc].map(_strip_html).map(lambda s: s.strip())
 
@@ -264,7 +268,7 @@ def render(user: dict | None = None):
     # Alineaciones
     A_f, Fw_f, T_width_f, D_f, R_f, C_f = 1.80, 2.10, 3.00, 1.60, 1.40, 1.20
 
-    # Título
+    # Título + estilos
     title_cA, _t2, _t3, _t4, _t5, _t6 = st.columns(
         [A_f, Fw_f, T_width_f, D_f, R_f, C_f],
         gap="medium",
@@ -289,7 +293,12 @@ def render(user: dict | None = None):
           white-space:nowrap!important; overflow:hidden!important; text-overflow:ellipsis!important;
           display:inline-block!important; line-height:38px!important;
         }
-        .ag-theme-balham .ag-header-cell.muted-col .ag-header-cell-label{ color:#90A4AE!important; }
+        /* ===== Celda horizontal y en una línea ===== */
+        .ag-theme-balham .ag-cell{
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
         </style>
         <div class="hist-title-pill">📝 Tareas recientes</div>
         """, unsafe_allow_html=True)
@@ -450,7 +459,12 @@ def render(user: dict | None = None):
     df_grid["__ArchivoRaw__"] = df_view["Archivo"].astype(str).fillna("")
 
     gob = GridOptionsBuilder.from_dataframe(df_grid)
-    gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, editable=False)
+    # ==== Horizontal, una línea, sin autoHeight ====
+    gob.configure_default_column(
+        resizable=True, editable=False,
+        wrapText=False, autoHeight=False,
+        cellStyle={"white-space":"nowrap","overflow":"hidden","textOverflow":"ellipsis"}
+    )
 
     # Selección "single" + checkbox propio
     gob.configure_selection(selection_mode="single", use_checkbox=False)
@@ -459,7 +473,7 @@ def render(user: dict | None = None):
         rowMultiSelectWithClick=False,
         suppressRowClickSelection=False,
         domLayout="normal",
-        rowHeight=30,
+        rowHeight=34,  # un poco más alto para la línea única
         wrapHeaderText=True, autoHeaderHeight=True, headerHeight=56,
         enableRangeSelection=True, enableCellTextSelection=True,
         singleClickEdit=False, stopEditingWhenCellsLoseFocus=True,
@@ -473,12 +487,12 @@ def render(user: dict | None = None):
     gob.configure_column("Id", headerName="ID", editable=False, width=110, pinned="left",
                          suppressMovable=True, suppressSizeToFit=True)
     gob.configure_column("Área", headerName="Área", editable=False, minWidth=160, pinned="left", suppressMovable=True)
-    gob.configure_column("Fase", headerName="Fase", editable=False, minWidth=140, pinned="left", suppressMovable=True)
-    gob.configure_column("Responsable", editable=False, minWidth=200, pinned="left", suppressMovable=True)
-    gob.configure_column("Estado", headerName="Estado actual")
-    gob.configure_column("Fecha Vencimiento", headerName="Fecha límite")
-    gob.configure_column("Fecha inicio", headerName="Fecha de inicio")
-    gob.configure_column("Fecha Terminado", headerName="Fecha Terminado")
+    gob.configure_column("Fase", headerName="Fase", editable=False, minWidth=200, pinned="left", suppressMovable=True)
+    gob.configure_column("Responsable", editable=False, minWidth=220, pinned="left", suppressMovable=True)
+    gob.configure_column("Estado", headerName="Estado actual", minWidth=150)
+    gob.configure_column("Fecha Vencimiento", headerName="Fecha límite", minWidth=140)
+    gob.configure_column("Fecha inicio", headerName="Fecha de inicio", minWidth=140)
+    gob.configure_column("Fecha Terminado", headerName="Fecha Terminado", minWidth=150)
     gob.configure_column("__ArchivoRaw__", hide=True)
 
     # ==== Archivo visible (nombre legible) ====
@@ -519,7 +533,7 @@ def render(user: dict | None = None):
     gob.configure_column(
         "Archivo",
         headerName="Archivo",
-        minWidth=220, flex=1,
+        minWidth=240, flex=1,
         editable=False,
         valueGetter=archivo_value_getter,
         cellRenderer=archivo_renderer,
