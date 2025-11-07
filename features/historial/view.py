@@ -28,35 +28,29 @@ DEFAULT_COLS = [
     "Fecha Pausado","Hora Pausado",
     "Fecha Cancelado","Hora Cancelado",
     "Fecha Eliminado","Hora Eliminado",
-    "Archivo"  # asegurar presencia
+    "Archivo"
 ]
 
-# ====== TZ helpers para evitar "tz-naive vs tz-aware" ======
+# ====== TZ helpers ======
 try:
     from zoneinfo import ZoneInfo
     _TZ = ZoneInfo(st.secrets.get("local_tz", "America/Lima"))
 except Exception:
-    _TZ = None  # caerá a "quitar tz" si no hay zoneinfo
-
+    _TZ = None
 
 def to_naive_local_series(s: pd.Series) -> pd.Series:
-    """Convierte una serie a datetime naive (local) de forma segura."""
     ser = pd.to_datetime(s, errors="coerce", utc=False)
     try:
-        # Si viene con tz, convertir a local (si se pudo cargar) y luego quitar tz
         if getattr(ser.dt, "tz", None) is not None:
             ser = (ser.dt.tz_convert(_TZ) if _TZ else ser).dt.tz_localize(None)
     except Exception:
-        # Si no permite tz_convert, al menos quitar tz
         try:
             ser = ser.dt.tz_localize(None)
         except Exception:
             pass
     return ser
 
-
 def _fmt_hhmm(v) -> str:
-    """Formatea cualquier cosa a HH:MM (string) o ''."""
     if v is None or (isinstance(v, float) and pd.isna(v)):
         return ""
     try:
@@ -73,21 +67,19 @@ def _fmt_hhmm(v) -> str:
     except Exception:
         return ""
 
-
-# --- Guardado local: siempre a data/tareas.csv ---
+# --- Guardado local ---
 try:
     from shared import save_local as _disk_save_local
-except Exception:  # fallback directo a CSV
+except Exception:
     def _disk_save_local(df: pd.DataFrame):
         os.makedirs("data", exist_ok=True)
         df.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig")
 
 def _save_local(df: pd.DataFrame):
-    """Guarda SOLO en disco (data/tareas.csv). Mantengo un backup en sesión."""
     _disk_save_local(df.copy())
     st.session_state["_df_main_local_backup"] = df.copy()
 
-# --- Cliente GSheets: acepta gsheets_doc_url o [gsheets]/[sheets] ---
+# --- Cliente GSheets ---
 def _gsheets_client():
     if "gcp_service_account" not in st.secrets:
         raise KeyError("Falta 'gcp_service_account' en secrets.")
@@ -95,7 +87,7 @@ def _gsheets_client():
           (st.secrets.get("gsheets", {}) or {}).get("spreadsheet_url") or \
           (st.secrets.get("sheets", {}) or {}).get("sheet_url")
     if not url:
-        raise KeyError("No se encontró 'gsheets_doc_url' ni '[gsheets].spreadsheet_url' ni '[sheets].sheet_url'.")
+        raise KeyError("No se encontró URL de Sheets.")
     ws_name = (st.secrets.get("gsheets", {}) or {}).get("worksheet", "TareasRecientes")
 
     import gspread
@@ -118,7 +110,6 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
     headers = values[0]
     rows = values[1:]
     df = pd.DataFrame(rows, columns=headers)
-    # Normalizar columnas que inician con "Fecha"
     for c in df.columns:
         if c.lower().startswith("fecha"):
             df[c] = to_naive_local_series(df[c])
@@ -135,10 +126,7 @@ def push_user_slice_to_sheet():
         cols = str(max(26, len(st.session_state["df_main"].columns) + 5))
         ws = ss.add_worksheet(title=ws_name, rows=rows, cols=cols)
 
-    # ===== Formateo seguro de fechas/horas antes de subir =====
     df_out = st.session_state["df_main"].copy()
-
-    # Fechas → YYYY-MM-DD (naive/local), Horas → HH:MM
     for c in df_out.columns:
         low = str(c).lower()
         if low.startswith("fecha"):
@@ -152,7 +140,7 @@ def push_user_slice_to_sheet():
     ws.clear()
     ws.update("A1", [list(df_out.columns)] + df_out.values.tolist())
 
-# ====== Soporte de exportación ======
+# ===== Exportación =====
 def export_excel(df: pd.DataFrame, sheet_name: str = TAB_NAME) -> bytes:
     try:
         buf = BytesIO()
@@ -165,15 +153,13 @@ def export_excel(df: pd.DataFrame, sheet_name: str = TAB_NAME) -> bytes:
             df.to_excel(writer, index=False, sheet_name=sheet_name)
         return buf.getvalue()
 
-
 def render(user: dict | None = None):
-    # ================== Historial ==================
     st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
 
-    # —— (alineaciones globales) ——
+    # Alineaciones
     A_f, Fw_f, T_width_f, D_f, R_f, C_f = 1.80, 2.10, 3.00, 1.60, 1.40, 1.20
 
-    # ---- TÍTULO EN PÍLDORA ----
+    # Título
     title_cA, _t2, _t3, _t4, _t5, _t6 = st.columns(
         [A_f, Fw_f, T_width_f, D_f, R_f, C_f],
         gap="medium",
@@ -196,7 +182,7 @@ def render(user: dict | None = None):
 
     st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
-    # --- Estilos globales (SOLO rectángulo por .field-wrap) ---
+    # Estilos
     st.markdown("""
     <style>
     :root{
@@ -208,68 +194,28 @@ def render(user: dict | None = None):
       --hist-help-text:#7A2E2A;
       --hist-pad-x:16px;
       --hist-border-w:2px; --hist-border-c:#EF4444;
+      --muted-fg:#90A4AE;
     }
-
-    /* Contenedor coral que envuelve indicaciones + filtros */
     #hist-card-anchor + div{
-      background:var(--hist-card-bg)!important;
-      border:1px solid var(--hist-card-bd)!important;
-      border-radius:10px;
-      padding:14px;
-      box-shadow:0 0 0 1px rgba(0,0,0,0.02) inset;
-      margin-bottom:6px;
+      background:var(--hist-card-bg)!important; border:1px solid var(--hist-card-bd)!important;
+      border-radius:10px; padding:14px; box-shadow:0 0 0 1px rgba(0,0,0,0.02) inset; margin-bottom:6px;
     }
-
-    /* Franja de indicaciones */
     .section-hist .help-strip-hist{
-      background: var(--hist-help-bg) !important;
-      color: var(--hist-help-text) !important;
-      border: 1px dashed var(--hist-help-border) !important;
-      box-shadow: 0 0 0 1px var(--hist-help-border) inset !important;
-      border-radius:8px;
-      padding:8px 12px;
-      font-size:0.95rem;
+      background:var(--hist-help-bg)!important; color:var(--hist-help-text)!important;
+      border:1px dashed var(--hist-help-border)!important; box-shadow:0 0 0 1px var(--hist-help-border) inset!important;
+      border-radius:8px; padding:8px 12px; font-size:0.95rem;
     }
-
-    /* Rectángulo que envuelve TODA la fila de filtros */
-    #hist-card-anchor + div .form-card{
-      background:#ffffff;
-      border:1px solid var(--hist-card-bd);
-      border-radius:10px;
-      padding:12px;
-      margin-top:6px;
-    }
-
-    /* ========= Rectángulo alrededor de CADA campo ========= */
-    .form-card .field-wrap{
-      background:#F5F7FA;                 /* gris claro */
-      border:1px solid #E3E8EF;           /* borde suave */
-      border-radius:10px;
-      padding:6px 10px;                   /* respiro alrededor del widget */
-      box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
-    }
+    #hist-card-anchor + div .form-card{ background:#fff; border:1px solid var(--hist-card-bd); border-radius:10px; padding:12px; margin-top:6px; }
+    .form-card .field-wrap{ background:#F5F7FA; border:1px solid #E3E8EF; border-radius:10px; padding:6px 10px; box-shadow: inset 0 1px 0 rgba(0,0,0,0.02); }
     .form-card .field-wrap label{ margin-bottom:6px !important; }
-
-    /* Botón Buscar */
-    .hist-search .stButton>button{
-      height:38px!important; border-radius:10px!important; width:100%;
-    }
-
-    /* ===== Tabla y botonería inferior ===== */
+    .hist-search .stButton>button{ height:38px!important; border-radius:10px!important; width:100%; }
     .ag-theme-balham .row-deleted .ag-cell {
-      text-decoration: line-through; background-color:#FEE2E2 !important;
-      color:#7F1D1D !important; opacity:.95;
+      text-decoration: line-through; background-color:#FEE2E2 !important; color:#7F1D1D !important; opacity:.95;
     }
-    .hist-actions{
-      padding-left:var(--hist-pad-x)!important; padding-right:var(--hist-pad-x)!important;
-      border-top:var(--hist-border-w) solid var(--hist-border-c);
-    }
+    .hist-actions{ padding-left:var(--hist-pad-x)!important; padding-right:var(--hist-pad-x)!important; border-top:var(--hist-border-w) solid var(--hist-border-c); }
     .hist-actions [data-testid="column"] > div{ display:flex; align-items:center; height:46px; }
     .hist-actions .stButton > button{ height:38px!important; border-radius:10px!important; width:100%; white-space:nowrap; }
-
-    :root{ --muted-fg:#90A4AE; }
     .ag-theme-balham .ag-header-cell.muted-col .ag-header-cell-label{ color:var(--muted-fg)!important; }
-
     .ag-theme-balham .ag-header, .ag-theme-balham .ag-header-cell,
     .ag-theme-balham .ag-header-cell-label, .ag-theme-balham .ag-header-cell-text{
       white-space:normal!important; overflow:visible!important; text-overflow:clip!important; line-height:1.2!important;
@@ -283,13 +229,11 @@ def render(user: dict | None = None):
     """, unsafe_allow_html=True)
 
     # ====== DATA BASE ======
-    # Inicialización segura de la sesión para evitar errores al cargar
     if "df_main" not in st.session_state or not isinstance(st.session_state["df_main"], pd.DataFrame):
         st.session_state["df_main"] = pd.DataFrame(columns=DEFAULT_COLS)
 
     df_all = st.session_state["df_main"].copy()
 
-    # Normalización a naive/local de columnas de fecha conocidas
     TZ_DATE_COLS = [
         "Fecha estado modificado","Fecha estado actual","Fecha inicio",
         "Fecha Terminado","Fecha Registro","Fecha Vencimiento",
@@ -299,7 +243,7 @@ def render(user: dict | None = None):
     for c in [c for c in TZ_DATE_COLS if c in df_all.columns]:
         df_all[c] = to_naive_local_series(df_all[c])
 
-    # ===== Card (ancla + contenedor real) =====
+    # ===== Card filtros =====
     st.markdown('<div id="hist-card-anchor"></div>', unsafe_allow_html=True)
     with st.container():
         st.markdown(
@@ -315,7 +259,6 @@ def render(user: dict | None = None):
             unsafe_allow_html=True
         )
 
-        # Proporciones (misma fila)
         W_AREA, W_FASE, W_RESP, W_DESDE, W_HASTA, W_BUSCAR = 1.15, 1.25, 1.60, 1.05, 1.05, 1.05
         cA, cF, cR, cD, cH, cB = st.columns(
             [W_AREA, W_FASE, W_RESP, W_DESDE, W_HASTA, W_BUSCAR],
@@ -323,7 +266,6 @@ def render(user: dict | None = None):
             vertical_alignment="bottom"
         )
 
-        # === Campo: Área
         with cA:
             st.markdown('<div class="field-wrap">', unsafe_allow_html=True)
             area_sel = st.selectbox(
@@ -336,14 +278,12 @@ def render(user: dict | None = None):
             )
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # === Campo: Fase
         fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
         with cF:
             st.markdown('<div class="field-wrap">', unsafe_allow_html=True)
             fase_sel = st.selectbox("Fase", options=["Todas"] + fases_all, index=0, key="hist_fase")
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # === Campo: Responsable (multiselect con placeholder)
         df_resp_src = df_all.copy()
         if area_sel != "Todas":
             df_resp_src = df_resp_src[df_resp_src["Área"] == area_sel]
@@ -362,7 +302,6 @@ def render(user: dict | None = None):
             )
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # === Campo: Fechas (default hoy)
         today = date.today()
         with cD:
             st.markdown('<div class="field-wrap">', unsafe_allow_html=True)
@@ -374,19 +313,16 @@ def render(user: dict | None = None):
             f_hasta = st.date_input("Hasta",  value=today, key="hist_hasta")
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # === Botón Buscar (sin wrapper para que mantenga el estilo de botón)
         with cB:
             st.markdown('<div class="hist-search">', unsafe_allow_html=True)
             hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # Cierra form-card + section
         st.markdown("</div></div>", unsafe_allow_html=True)
 
-    # Toggle mostrar/ocultar eliminadas
     show_deleted = st.toggle("Mostrar eliminadas (tachadas)", value=True, key="hist_show_deleted")
 
-    # ---- Aplicar filtros sobre df_view SOLO si se presiona Buscar ----
+    # ---- Filtros ----
     df_view = df_all.copy()
     df_view["Fecha inicio"] = to_naive_local_series(df_view.get("Fecha inicio"))
 
@@ -402,11 +338,10 @@ def render(user: dict | None = None):
         if f_hasta:
             df_view = df_view[df_view["Fecha inicio"].dt.date <= f_hasta]
 
-    # Ocultar eliminadas si el toggle está OFF
     if not show_deleted and "Estado" in df_view.columns:
         df_view = df_view[df_view["Estado"].astype(str).str.strip() != "Eliminado"]
 
-    # ===== ORDEN POR RECIENTES =====
+    # Orden
     for c in ["Fecha estado modificado", "Fecha estado actual", "Fecha inicio"]:
         if c not in df_view.columns:
             df_view[c] = pd.NaT
@@ -418,11 +353,11 @@ def render(user: dict | None = None):
 
     st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
 
-    # --- FIX: eliminar columnas duplicadas ---
+    # Fix duplicadas
     df_view = df_view.loc[:, ~df_view.columns.duplicated()].copy()
     df_view.columns = df_view.columns.astype(str)
 
-    # ===== Helpers =====
+    # Helpers
     def _to_date(v):
         if pd.isna(v): return pd.NaT
         if isinstance(v, (pd.Timestamp, datetime)): return pd.Timestamp(v).normalize()
@@ -432,7 +367,7 @@ def render(user: dict | None = None):
     def _to_hhmm(v):
         return _fmt_hhmm(v)
 
-    # ===== Semántica de tiempos / estado =====
+    # Estado modificado → Estado
     if "Estado modificado" in df_view.columns:
         _em = df_view["Estado modificado"].astype(str).str.strip()
         mask_em = _em.notna() & _em.ne("") & _em.ne("nan")
@@ -467,7 +402,7 @@ def render(user: dict | None = None):
         df_view["Fecha Terminado"] = df_view["Fecha Terminado"].combine_first(_tmp_ft)
         df_view.drop(columns=["Fecha terminado"], inplace=True, errors="ignore")
 
-    # ===== Fuente de sellos: modificado y (fallback) actual =====
+    # Sellos de estado (prefer modificado; fallback actual)
     _mod  = to_naive_local_series(df_view.get("Fecha estado modificado"))
     _hmod = df_view["Hora estado modificado"].apply(_to_hhmm) if "Hora estado modificado" in df_view.columns else pd.Series([""]*len(df_view), index=df_view.index)
 
@@ -475,23 +410,21 @@ def render(user: dict | None = None):
     _hact = df_view["Hora estado actual"].apply(_to_hhmm) if "Hora estado actual" in df_view.columns else pd.Series([""]*len(df_view), index=df_view.index)
 
     if "Estado" in df_view.columns:
-        _en_curso   = df_view["Estado"].astype(str) == "En curso"
-        _terminado  = df_view["Estado"].astype(str) == "Terminado"
+        # normaliza estado (por si llega "Terminada", etc.)
+        _estado_norm = df_view["Estado"].astype(str).str.lower().str.strip()
+        _en_curso  = _estado_norm.isin(["en curso","en progreso","progreso"])
+        _terminado = _estado_norm.isin(["terminado","terminada","finalizado","finalizada","completado","completada"])
 
-        # INICIO (prefer: modificado; fallback: actual)
         _src_ini_dt = _mod.combine_first(_fact)
-        _src_ini_tm = _hmod.where(_hmod != "", _src_ini_dt.dt.strftime("%H:%M"))
-        _src_ini_tm = _src_ini_tm.where(_src_ini_tm != "", _hact)
+        _src_ini_tm = _hmod.where(_hmod != "", _src_ini_dt.dt.strftime("%H:%M")).where(lambda s: s != "", _hact)
 
         need_ini_dt = _en_curso & df_view["Fecha inicio"].isna()
         need_ini_tm = _en_curso & (df_view["Hora de inicio"].astype(str).str.strip() == "")
         df_view.loc[need_ini_dt, "Fecha inicio"]   = _src_ini_dt.dt.normalize()[need_ini_dt]
         df_view.loc[need_ini_tm, "Hora de inicio"] = _src_ini_tm[need_ini_tm]
 
-        # TERMINADO (prefer: modificado; fallback: actual)
         _src_fin_dt = _mod.combine_first(_fact)
-        _src_fin_tm = _hmod.where(_hmod != "", _src_fin_dt.dt.strftime("%H:%M"))
-        _src_fin_tm = _src_fin_tm.where(_src_fin_tm != "", _hact)
+        _src_fin_tm = _hmod.where(_hmod != "", _src_fin_dt.dt.strftime("%H:%M")).where(lambda s: s != "", _hact)
 
         need_fin_dt = _terminado & df_view["Fecha Terminado"].isna()
         need_fin_tm = _terminado & (df_view["Hora Terminado"].astype(str).str.strip() == "") if "Hora Terminado" in df_view.columns else False
@@ -499,7 +432,7 @@ def render(user: dict | None = None):
         if "Hora Terminado" in df_view.columns:
             df_view.loc[need_fin_tm, "Hora Terminado"] = _src_fin_tm[need_fin_tm]
 
-    # 3.b) VENCIMIENTO
+    # Vencimiento
     if "Fecha Vencimiento" not in df_view.columns: df_view["Fecha Vencimiento"] = pd.NaT
     if "Hora Vencimiento" not in df_view.columns:  df_view["Hora Vencimiento"]  = ""
     if "Vencimiento" in df_view.columns:
@@ -514,7 +447,7 @@ def render(user: dict | None = None):
     df_view["Hora Vencimiento"]  = df_view["Hora Vencimiento"].apply(_to_hhmm)
     df_view.loc[df_view["Hora Vencimiento"] == "", "Hora Vencimiento"] = "17:00"
 
-    # === ORDEN Y PRESENCIA DE COLUMNAS ===
+    # Orden y presencia de columnas
     target_cols = [
         "Id","Área","Fase","Responsable",
         "Tarea","Tipo","Detalle","Ciclo de mejora","Complejidad","Prioridad",
@@ -530,7 +463,7 @@ def render(user: dict | None = None):
         "Fecha Cancelado","Hora Cancelado",
         "Fecha Eliminado","Hora Eliminado",
         "__SEL__","__DEL__",
-        "Archivo"  # la dejamos literalmente al final
+        "Archivo"
     ]
     HIDDEN_COLS = [
         "¿Eliminar?","Estado modificado",
@@ -552,12 +485,11 @@ def render(user: dict | None = None):
     df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()
     df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
 
-    # Eliminar del GRID las columnas técnicas
     for tech_col in ["__SEL__", "__DEL__", "¿Eliminar?"]:
         if tech_col in df_grid.columns:
             df_grid.drop(columns=[tech_col], inplace=True, errors="ignore")
 
-    # ================= GRID OPTIONS =================
+    # =============== GRID OPTIONS ===============
     gob = GridOptionsBuilder.from_dataframe(df_grid)
     gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, editable=False)
     gob.configure_selection(selection_mode="multiple", use_checkbox=False)
@@ -585,24 +517,55 @@ def render(user: dict | None = None):
     gob.configure_column("Fecha inicio", headerName="Fecha de inicio")
     gob.configure_column("Fecha Terminado", headerName="Fecha Terminado")
 
-    # Renderer visual para la columna Archivo
+    # ==== Archivo: renderer DOM (no HTML string) ====
     archivo_renderer = JsCode("""
     function(p){
       const v = String(p.value||'').trim();
       if(!v) return '—';
-      // chip visual; la descarga real se muestra al seleccionar la fila
-      return `<span style="display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border:1px solid #D0D7DE;border-radius:999px;cursor:pointer;">
-                📎 <span>Descargar</span>
-              </span>`;
-    }""")
+      const isUrl = /^https?:\\/\\//i.test(v);
+
+      const chip = document.createElement('span');
+      chip.style.display='inline-flex';
+      chip.style.alignItems='center';
+      chip.style.gap='6px';
+      chip.style.padding='2px 8px';
+      chip.style.border='1px solid #D0D7DE';
+      chip.style.borderRadius='999px';
+      chip.style.cursor='pointer';
+      chip.title = isUrl ? v : 'Selecciona la fila para descargar';
+
+      const paper = document.createElement('span');
+      paper.textContent = '📎';
+      chip.appendChild(paper);
+
+      if(isUrl){
+        const a = document.createElement('a');
+        a.href = v;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.textContent = 'Descargar';
+        a.style.textDecoration = 'none';
+        chip.appendChild(a);
+      }else{
+        const t = document.createElement('span');
+        t.textContent = 'Descargar';
+        chip.appendChild(t);
+      }
+      return chip;
+    }
+    """)
     if "Archivo" in df_grid.columns:
-        gob.configure_column("Archivo", headerName="Archivo", minWidth=160, flex=0,
-                             editable=False, cellRenderer=archivo_renderer)
+        gob.configure_column(
+            "Archivo",
+            headerName="Archivo",
+            minWidth=170,
+            flex=0,
+            editable=False,
+            cellRenderer=archivo_renderer,
+            tooltipField="Archivo"
+        )
 
-    for ocultar in HIDDEN_COLS:
-        if ocultar in df_grid.columns:
-            gob.configure_column(ocultar, hide=True, suppressMenu=True, filter=False, width=1, maxWidth=1, minWidth=1)
-
+    # Fmt
     fmt_dash = JsCode("""
     function(p){
       if(p.value===null||p.value===undefined) return '—';
@@ -654,7 +617,7 @@ def render(user: dict | None = None):
         "Fecha Pausado":160, "Hora Pausado":140,
         "Fecha Cancelado":160, "Hora Cancelado":140,
         "Fecha Eliminado":160, "Hora Eliminado":140,
-        "Archivo":160
+        "Archivo":170
     }
 
     for c, fx in [("Tarea",3), ("Tipo",1), ("Detalle",2), ("Ciclo de mejora",1), ("Complejidad",1), ("Prioridad",1), ("Estado",1),
@@ -789,7 +752,7 @@ def render(user: dict | None = None):
         except Exception:
             pass
 
-    # ============== DESCARGA DE ARCHIVOS (fila seleccionada) ==============
+    # ===== Descarga de archivos (fila seleccionada) =====
     st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
     sel_rows = []
     try:
@@ -800,19 +763,15 @@ def render(user: dict | None = None):
         sel_rows = sel_rows.to_dict("records")
 
     def _resolve_local_path(val: str, row_id: str) -> tuple[str, str] | None:
-        """Devuelve (path, filename) si existe; soporta rutas relativas/absolutas."""
         if not val:
             return None
         v = str(val).strip()
-        # URL pública: muestro link en vez de download
         if v.lower().startswith(("http://", "https://")):
             return None
-        # Si ya es ruta existente
         if os.path.isabs(v) and os.path.isfile(v):
             return (v, os.path.basename(v))
         if os.path.isfile(v):
             return (v, os.path.basename(v))
-        # Heurísticas por convención: data/files/<Id>/<nombre>
         base = os.path.basename(v)
         candidates = [
             os.path.join("data", "files", row_id, base),
@@ -830,7 +789,6 @@ def render(user: dict | None = None):
         av  = str(r.get("Archivo","")).strip()
         if not rid or not av:
             continue
-        # Si es URL, muestro link; si es local, muestro download_button
         if av.lower().startswith(("http://","https://")):
             st.link_button(f"📎 Abrir archivo ({rid})", av, use_container_width=False)
             has_any_download = True
@@ -847,7 +805,7 @@ def render(user: dict | None = None):
     if (sel_rows and not has_any_download):
         st.info("La fila seleccionada tiene valor en “Archivo”, pero no encontré un archivo local ni URL válida.")
 
-    # ---- Botonera alineada ----
+    # ---- Botonera ----
     left_spacer = A_f + Fw_f + T_width_f
     W_SHEETS = R_f + 0.8
 
