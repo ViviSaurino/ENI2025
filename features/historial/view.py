@@ -573,7 +573,7 @@ def render(user: dict | None = None):
     link_renderer = JsCode(r"""
     class LinkRenderer{
       init(params){
-        const url = params y params.value ? String(params.value) : '';
+        const url = (params && params.value) ? String(params.value) : '';
         this.eGui = document.createElement('a');
         if(url){
           this.eGui.href = encodeURI(url);
@@ -645,7 +645,8 @@ def render(user: dict | None = None):
             base = st.session_state.get("df_main", pd.DataFrame()).copy()
             base = _canonicalize_link_column(base)
             new_df = _canonicalize_link_column(new_df)
-            if "Id" in base.columns y "Id" in new_df.columns:
+            if ("Id" in base.columns) and ("Id" in new_df.columns):
+
                 base["Id"] = base["Id"].astype(str)
                 new_df["Id"] = new_df["Id"].astype(str)
                 base_idx = base.set_index("Id")
