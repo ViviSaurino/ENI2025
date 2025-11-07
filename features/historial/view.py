@@ -18,7 +18,7 @@ DEFAULT_COLS = [
     "Fecha inicio","Hora de inicio",
     "Fecha Vencimiento","Hora Vencimiento",
     "Fecha Terminado","Hora Terminado",
-    "¿Generó alerta?","N° de alerta","Fecha de detección","Hora de detección",
+    "¿Generó alerta?","N° alerta","Fecha de detección","Hora de detección",
     "¿Se corrigió?","Fecha de corrección","Hora de corrección",
     "Cumplimiento","Evaluación","Calificación",
     "Fecha Pausado","Hora Pausado",
@@ -93,13 +93,27 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
     if not values: return
     headers, rows = values[0], values[1:]
     df = pd.DataFrame(rows, columns=headers)
+
+    # normaliza fechas
     for c in df.columns:
         if c.lower().startswith("fecha"): df[c] = to_naive_local_series(df[c])
+
     # limpia HTML en "Archivo"
     def _strip_html(x): return re.sub(r"<[^>]+>", "", str(x) if x is not None else "")
     for cc in [c for c in df.columns if "archivo" in c.lower()]: df[cc] = df[cc].map(_strip_html)
-    if "N° de alerta" not in df.columns and "N° alerta" in df.columns:
-        df.rename(columns={"N° alerta":"N° de alerta"}, inplace=True)
+
+    # Unificar nombre a "N° alerta" y eliminar duplicados similares
+    alerta_pat = re.compile(r"^\s*n[°º]?\s*(de\s*)?alerta\s*$", re.I)
+    alerta_cols = [c for c in df.columns if alerta_pat.match(str(c))]
+    if alerta_cols:
+        keep = alerta_cols[0]
+        # renombra la primera a "N° alerta"
+        if keep != "N° alerta":
+            df.rename(columns={keep: "N° alerta"}, inplace=True)
+        # elimina el resto
+        for c in alerta_cols[1:]:
+            df.drop(columns=c, inplace=True, errors="ignore")
+
     if replace_df_main: st.session_state["df_main"] = df
     return df
 
@@ -138,7 +152,7 @@ def export_excel(df: pd.DataFrame, sheet_name: str = TAB_NAME) -> bytes:
 def render(user: dict | None = None):
     st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
 
-    # ====== Título + CSS fuerte para encabezados ======
+    # ====== Título + CSS (oculta iconos de menú/filtro) ======
     st.markdown("""
     <style>
     :root{ --pill-salmon:#F28B85; }
@@ -149,21 +163,21 @@ def render(user: dict | None = None):
       color:#fff; font-weight:600; font-size:1.10rem; line-height:1;
       box-shadow: inset 0 -2px 0 rgba(0,0,0,0.06);
     }
-    /* Celdas en una línea con '…' */
     .ag-theme-balham .ag-cell{
       white-space: nowrap !important;
       overflow: hidden !important;
       text-overflow: ellipsis !important;
     }
-    /* Encabezados legibles (una línea) y sin íconos ni fila de filtros */
     .ag-theme-balham .ag-header-cell-label{
       white-space: nowrap !important;
       line-height: 1.1 !important;
       overflow: visible !important;
       text-overflow: clip !important;
     }
+    /* oculta iconos de header (filtro, menú, sort) */
     .ag-theme-balham .ag-header .ag-icon,
-    .ag-theme-balham .ag-header-cell .ag-icon { display: none !important; }
+    .ag-theme-balham .ag-header-cell .ag-icon,
+    .ag-theme-balham .ag-header-cell-menu-button,
     .ag-theme-balham .ag-floating-filter,
     .ag-theme-balham .ag-header-row.ag-header-row-column-filter { display: none !important; }
     </style>
@@ -226,7 +240,7 @@ def render(user: dict | None = None):
         "Fecha inicio","Hora de inicio",
         "Fecha Vencimiento","Hora Vencimiento",
         "Fecha Terminado","Hora Terminado",
-        "¿Generó alerta?","N° de alerta","Fecha de detección","Hora de detección",
+        "¿Generó alerta?","N° alerta","Fecha de detección","Hora de detección",
         "¿Se corrigió?","Fecha de corrección","Hora de corrección",
         "Cumplimiento","Evaluación","Calificación",
         "Fecha Pausado","Hora Pausado",
@@ -247,22 +261,25 @@ def render(user: dict | None = None):
     df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
     if "Link de descarga" not in df_grid.columns: df_grid["Link de descarga"] = ""
 
-    # --- Quitar SOLO estas dos columnas ---
-    for _col in ["Cumplimiento", "Evaluación"]:
-        if _col in df_grid.columns:
-            df_grid.drop(columns=[_col], inplace=True, errors="ignore")
+    # --- Unifica/deduplica columnas tipo "N° alerta" (deja SOLO una y con ese nombre) ---
+    alerta_pat = re.compile(r"^\s*n[°º]?\s*(de\s*)?alerta\s*$", re.I)
+    alerta_cols = [c for c in df_grid.columns if alerta_pat.match(str(c))]
+    if alerta_cols:
+        first = alerta_cols[0]
+        if first != "N° alerta":
+            df_grid.rename(columns={first: "N° alerta"}, inplace=True)
+        for c in alerta_cols[1:]:
+            df_grid.drop(columns=c, inplace=True, errors="ignore")
 
     # ==== Opciones AG Grid ====
     gob = GridOptionsBuilder.from_dataframe(df_grid)
 
-    # Sin filtros/menú/sort global + edición sólo en 2 columnas
     gob.configure_default_column(
         resizable=True, editable=False, filter=False, floatingFilter=False,
         sortable=False, suppressMenu=True, wrapText=False, autoHeight=False,
         cellStyle={"white-space":"nowrap","overflow":"hidden","textOverflow":"ellipsis"}
     )
 
-    # widths mínimas para que SE LEA el encabezado (scroll horizontal)
     width_map = {
         "Id": 90, "Área": 140, "Fase": 180, "Responsable": 220,
         "Tarea": 280, "Detalle": 360, "Detalle de tarea": 360,
@@ -272,17 +289,16 @@ def render(user: dict | None = None):
         "Fecha inicio": 150, "Hora de inicio": 130,
         "Fecha Vencimiento": 150, "Hora Vencimiento": 130,
         "Fecha Terminado": 150, "Hora Terminado": 130,
-        "¿Generó alerta?": 160, "N° de alerta": 130,
+        "¿Generó alerta?": 160, "N° alerta": 130,
         "Fecha de detección": 170, "Hora de detección": 150,
         "¿Se corrigió?": 140, "Fecha de corrección": 170, "Hora de corrección": 150,
-        "Calificación": 140,
+        "Cumplimiento": 150, "Evaluación": 150, "Calificación": 140,
         "Fecha Pausado": 150, "Hora Pausado": 130,
         "Fecha Cancelado": 150, "Hora Cancelado": 130,
         "Fecha Eliminado": 150, "Hora Eliminado": 130,
         "Link de descarga": 260,
     }
 
-    # Renombres de encabezado y edición habilitada en 2 columnas
     header_map = {
         "Detalle": "Detalle de tarea",
         "Fecha Vencimiento": "Fecha límite",
@@ -299,11 +315,15 @@ def render(user: dict | None = None):
             col,
             headerName=nice,
             minWidth=width_map.get(nice, width_map.get(col, 120)),
-            editable=(col in ["Tarea", "Detalle"]),  # SOLO estas dos
-            suppressMenu=True
+            editable=(col in ["Tarea", "Detalle"]),
+            suppressMenu=True,
+            filter=False, floatingFilter=False, sortable=False
         )
 
-    # Formato fecha (dd/mm/aaaa) en visibles
+    # Fuerza explícitamente sin filtro/menú en "Fecha inicio"
+    gob.configure_column("Fecha inicio", filter=False, floatingFilter=False, sortable=False, suppressMenu=True)
+
+    # Formato fecha (dd/mm/aaaa)
     date_only_fmt = JsCode(r"""
     function(p){
       const v = p.value;
@@ -321,7 +341,7 @@ def render(user: dict | None = None):
         if col in df_grid.columns:
             gob.configure_column(col, valueFormatter=date_only_fmt)
 
-    # Link de descarga desde "Archivo"
+    # Link de descarga
     link_value_getter = JsCode(r"""
     function(p){
       const raw0 = (p && p.data && p.data['Archivo']!=null) ? String(p.data['Archivo']).trim() : '';
@@ -364,7 +384,6 @@ def render(user: dict | None = None):
     grid_opts["rememberSelection"] = True
     grid_opts["floatingFilter"] = False
 
-    # === Render + persistencia de ediciones ===
     grid_resp = AgGrid(
         df_grid,
         key="grid_historial",
