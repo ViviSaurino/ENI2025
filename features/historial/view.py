@@ -400,14 +400,13 @@ def render(user: dict | None = None):
         df_view["Fecha Terminado"] = df_view["Fecha Terminado"].combine_first(_tmp_ft)
         df_view.drop(columns=["Fecha terminado"], inplace=True, errors="ignore")
 
-    # === Columna Archivo: si no existe, intenta alternativas conocidas ===
+    # === Columna Archivo: intenta alternativas si viene vacía ===
     if "Archivo" not in df_view.columns:
         for alt in ["Archivo estado modificado", "Archivo modificado", "Archivo adjunto"]:
             if alt in df_view.columns:
                 df_view["Archivo"] = df_view[alt]
                 break
     else:
-        # si viene vacía pero existe alguna alternativa con datos, complétala
         if df_view["Archivo"].astype(str).str.strip().eq("").all():
             for alt in ["Archivo estado modificado", "Archivo modificado", "Archivo adjunto"]:
                 if alt in df_view.columns and df_view[alt].astype(str).str.strip().ne("").any():
@@ -531,27 +530,12 @@ def render(user: dict | None = None):
     gob.configure_column("Fecha inicio", headerName="Fecha de inicio")
     gob.configure_column("Fecha Terminado", headerName="Fecha Terminado")
 
-    # ==== Archivo: renderer seguro (DOM real). URL -> <a>, local -> <span> ====
+    # ==== Archivo: renderer en TEXTO (evita React error #31). Click abre o selecciona ====
     archivo_renderer = JsCode("""
     function(p){
       const raw = (p && p.data && p.data['Archivo'] != null) ? String(p.data['Archivo']).trim() : '';
       if(!raw) return '—';
-      if(/^https?:\\/\\//i.test(raw)){
-        const a = document.createElement('a');
-        a.href = encodeURI(raw);
-        a.target = '_blank';
-        a.rel = 'noopener';
-        a.textContent = '📎 Descargar';
-        a.style.textDecoration = 'underline';
-        a.style.color = '#0A66C2';
-        return a;
-      }
-      const s = document.createElement('span');
-      s.className = 'file-local';
-      s.textContent = '📎 Descargar';
-      s.style.textDecoration = 'underline';
-      s.style.color = '#0A66C2';
-      return s;
+      return '📎 Descargar';
     }
     """)
     if "Archivo" in df_grid.columns:
@@ -563,10 +547,10 @@ def render(user: dict | None = None):
             editable=False,
             cellRenderer=archivo_renderer,
             tooltipField="Archivo",
-            cellStyle={"cursor":"pointer"}
+            cellStyle={"cursor":"pointer","textDecoration":"underline","color":"#0A66C2"}
         )
 
-    # Fmt
+    # Fmt (fechas/horas/texto)
     fmt_dash = JsCode("""
     function(p){
       if(p.value===null||p.value===undefined) return '—';
@@ -711,13 +695,16 @@ def render(user: dict | None = None):
     }
     """)
 
-    # Clic en "Archivo": si es URL, abre por el <a>; si es local, selecciona fila para botón de abajo
+    # Clic en "Archivo": si es URL abre; si es ruta/archivo local, selecciona fila
     open_url_on_click = JsCode("""
     function(e){
       if(!e || !e.colDef || e.colDef.field !== 'Archivo') return;
       const raw = (e && e.data && e.data['Archivo'] != null) ? String(e.data['Archivo']).trim() : '';
       if(!raw) return;
-      if(/^https?:\\/\\//i.test(raw)){ return; }  // <a> del renderer se encarga
+      if(/^https?:\\/\\//i.test(raw)){
+        try{ window.open(encodeURI(raw), '_blank', 'noopener'); }catch(err){}
+        return;
+      }
       try{
         const node = e.node;
         if(node && !node.isSelected()){ node.setSelected(true, true); }
