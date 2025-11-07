@@ -16,12 +16,12 @@ from st_aggrid import (
 try:
     from shared import now_lima_trimmed
 except Exception:
-    from datetime import datetime, timezone, timedelta
-    # Fallback robusto: siempre hora Lima (UTC-5) sin depender del TZ del servidor
+    from datetime import datetime, timedelta
+    # Fallback robusto: siempre hora Lima (UTC-5)
     def now_lima_trimmed():
         return (datetime.utcnow() - timedelta(hours=5)).replace(second=0, microsecond=0)
 
-# ========= Utilidades mínimas para zonas horarias (solo para Duración) =========
+# ========= Utilidades mínimas para zonas horarias =========
 try:
     from zoneinfo import ZoneInfo
     _TZ = ZoneInfo(st.secrets.get("local_tz", "America/Lima"))
@@ -29,21 +29,18 @@ except Exception:
     _TZ = None
 
 def _now_lima_trimmed_local():
-    """Devuelve datetime (Lima) sin segundos/microsegundos, robusto a TZ del servidor."""
+    """Devuelve datetime (Lima) sin segundos/microsegundos."""
     from datetime import datetime, timedelta
     try:
         if _TZ:
             return datetime.now(_TZ).replace(second=0, microsecond=0)
-        # UTC-5 todo el año en Perú
         return (datetime.utcnow() - timedelta(hours=5)).replace(second=0, microsecond=0)
     except Exception:
-        # Último recurso
         return now_lima_trimmed()
 
 def _to_naive_local_one(x):
-    """Convierte x a datetime naive en hora local; tolera strings con/ sin tz."""
-    if x is None or (isinstance(x, float) and pd.isna(x)):
-        return pd.NaT
+    """Convierte x a datetime naive en hora local; tolera strings/ tz."""
+    if x is None or (isinstance(x, float) and pd.isna(x)): return pd.NaT
     try:
         if isinstance(x, pd.Timestamp):
             if x.tz is not None:
@@ -51,32 +48,25 @@ def _to_naive_local_one(x):
                 return d
             return x
         s = str(x).strip()
-        if not s or s.lower() in {"nan","nat","none","null"}:
-            return pd.NaT
+        if not s or s.lower() in {"nan","nat","none","null"}: return pd.NaT
         if re.search(r'(Z|[+-]\d{2}:?\d{2})$', s):
             d = pd.to_datetime(s, errors="coerce", utc=True)
-            if pd.isna(d):
-                return pd.NaT
-            if _TZ:
-                d = d.tz_convert(_TZ)
+            if pd.isna(d): return pd.NaT
+            if _TZ: d = d.tz_convert(_TZ)
             return d.tz_localize(None)
         return pd.to_datetime(s, errors="coerce")
     except Exception:
         return pd.NaT
 
 def _fmt_hhmm(v) -> str:
-    if v is None or (isinstance(v, float) and pd.isna(v)):
-        return ""
+    if v is None or (isinstance(v, float) and pd.isna(v)): return ""
     try:
         s = str(v).strip()
-        if not s or s.lower() in {"nan","nat","none","null"}:
-            return ""
+        if not s or s.lower() in {"nan","nat","none","null"}: return ""
         m = re.match(r"^(\d{1,2}):(\d{2})", s)
-        if m:
-            return f"{int(m.group(1)):02d}:{int(m.group(2)):02d}"
+        if m: return f"{int(m.group(1)):02d}:{int(m.group(2)):02d}"
         d = pd.to_datetime(s, errors="coerce", utc=False)
-        if pd.isna(d):
-            return ""
+        if pd.isna(d): return ""
         return f"{int(d.hour):02d}:{int(d.minute):02d}"
     except Exception:
         return ""
@@ -89,7 +79,7 @@ def _gsheets_client():
           (st.secrets.get("gsheets", {}) or {}).get("spreadsheet_url") or \
           (st.secrets.get("sheets", {}) or {}).get("sheet_url")
     if not url:
-        raise KeyError("No se encontró 'gsheets_doc_url' ni '[gsheets].spreadsheet_url' ni '[sheets].sheet_url'.")
+        raise KeyError("No se encontró URL de Sheets.")
     ws_name = (st.secrets.get("gsheets", {}) or {}).get("worksheet", "TareasRecientes")
 
     import gspread
@@ -112,7 +102,7 @@ def _col_letter(n: int) -> str:
     return s
 
 def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
-    """Actualiza en Sheets por 'Id' estado + sellos, fechas/horas por estado y link de archivo."""
+    """Actualiza en Sheets por 'Id' estado/sellos y **Link de archivo** (si la hoja tiene esa columna)."""
     try:
         ss, ws, ws_name = _gsheets_client()
     except Exception as e:
@@ -142,7 +132,7 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
         if id_idx < len(row):
             id_to_row[str(row[id_idx]).strip()] = r_i
 
-    # Empujar también Link de archivo / Archivo si existen en la hoja
+    # Solo estas columnas (sin espejos)
     cols_to_push = [
         "Estado",
         "Fecha estado actual","Hora estado actual",
@@ -153,8 +143,7 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
         "Fecha Pausado","Hora Pausado",
         "Fecha Cancelado","Hora Cancelado",
         "Fecha Eliminado","Hora Eliminado",
-        "Link de archivo",  # preferente
-        "Archivo",          # compatibilidad
+        "Link de archivo",
     ]
     cols_to_push = [c for c in cols_to_push if c in col_map]
 
@@ -311,10 +300,8 @@ def render(user: dict | None = None):
             else:
                 fcol = pd.to_datetime(df_tasks.get("Fecha", pd.Series([], dtype=str)), errors="coerce")
 
-            if est_desde:
-                df_tasks = df_tasks[fcol >= pd.to_datetime(est_desde)]
-            if est_hasta:
-                df_tasks = df_tasks[fcol <= (pd.to_datetime(est_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
+            if est_desde: df_tasks = df_tasks[fcol >= pd.to_datetime(est_desde)]
+            if est_hasta: df_tasks = df_tasks[fcol <= (pd.to_datetime(est_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
 
         # ===== Tabla "Resultados" =====
         st.markdown("**Resultados**")
@@ -331,7 +318,7 @@ def render(user: dict | None = None):
             "Id", "Tarea",
             "Estado actual", "Fecha estado actual", "Hora estado actual",
             "Estado modificado", "Fecha estado modificado", "Hora estado modificado",
-            "Link de archivo"  # ← ahora editable como link
+            "Link de archivo"  # ← única columna de link
         ]
 
         df_view = pd.DataFrame(columns=cols_out)
@@ -347,16 +334,10 @@ def render(user: dict | None = None):
                 "Fecha Eliminado","Hora Eliminado",
                 "Fecha estado actual","Hora estado actual",
                 "Estado modificado","Fecha estado modificado","Hora estado modificado",
-                "Link de archivo","Archivo"
+                "Link de archivo"
             ]:
                 if need not in base.columns:
                     base[need] = ""
-
-            # Si aún existe solo "Archivo", úsalo como fuente para "Link de archivo"
-            base["Link de archivo"] = base["Link de archivo"].where(
-                base["Link de archivo"].astype(str).str.strip() != "",
-                base["Archivo"].astype(str)
-            )
 
             base["Estado"] = base["Estado"].astype(str)
             base.loc[base["Estado"].str.strip().isin(["", "nan"]), "Estado"] = "No iniciado"
@@ -376,19 +357,15 @@ def render(user: dict | None = None):
 
             fr_noini = _date_norm("Fecha Registro", "Fecha")
             hr_noini = _time_norm("Hora Registro", "Hora")
-
             fr_enc   = _date_norm("Fecha inicio")
             hr_enc   = _time_norm("Hora de inicio")
-
             fr_fin   = _date_norm("Fecha Terminado")
             hr_fin   = _time_norm("Hora Terminado")
-
             fr_pau, hr_pau = _date_norm("Fecha Pausado"),  _time_norm("Hora Pausado")
             fr_can, hr_can = _date_norm("Fecha Cancelado"), _time_norm("Hora Cancelado")
             fr_eli, hr_eli = _date_norm("Fecha Eliminado"), _time_norm("Hora Eliminado")
 
             estado_now = base["Estado"].astype(str)
-
             fecha_from_estado = pd.Series(pd.NaT, index=base.index, dtype="datetime64[ns]")
             hora_from_estado  = pd.Series("", index=base.index, dtype="object")
 
@@ -515,7 +492,7 @@ def render(user: dict | None = None):
         )
         gob.configure_column("Fecha estado modificado", editable=True, cellEditor=date_editor, minWidth=170)
         gob.configure_column("Hora estado modificado",  editable=False, minWidth=150)
-        # ← Ahora el link es editable (texto)
+        # ← única columna editable de link
         gob.configure_column("Link de archivo", editable=True, minWidth=260)
 
         grid_opts = gob.build()
@@ -534,7 +511,7 @@ def render(user: dict | None = None):
             theme="balham"
         )
 
-        # ===== Guardar cambios (estados/fechas/horas y link) =====
+        # ===== Guardar cambios =====
         u1, u2 = st.columns([A+Fw+T_width+D+R, C], gap="medium")
         with u2:
             if st.button("💾 Guardar", use_container_width=True, key="est_guardar_inline_v3"):
@@ -563,7 +540,7 @@ def render(user: dict | None = None):
                                 "Fecha Pausado","Hora Pausado",
                                 "Fecha Cancelado","Hora Cancelado",
                                 "Fecha Eliminado","Hora Eliminado",
-                                "Link de archivo","Archivo"
+                                "Link de archivo"
                             ]:
                                 if need not in base.columns:
                                     base[need] = ""
@@ -628,8 +605,8 @@ def render(user: dict | None = None):
                                     if len(to_fix) > 0:
                                         mask_f = _is_blank_dt(b_i.loc[to_fix, "Fecha Cancelado"])
                                         mask_h = _is_blank_tm(b_i.loc[to_fix, "Hora Cancelado"])
-                                        b_i.loc[to_fix[mask_f], "Fecha Cancelado"] = f_now
                                         b_i.loc[to_fix[mask_h], "Hora Cancelado"] = h_now
+                                        b_i.loc[to_fix[mask_f], "Fecha Cancelado"] = f_now
 
                                 # Eliminado
                                 if "Fecha Eliminado" in b_i.columns and "Hora Eliminado" in b_i.columns:
@@ -641,15 +618,14 @@ def render(user: dict | None = None):
                                         b_i.loc[to_fix[mask_f], "Fecha Eliminado"] = f_now
                                         b_i.loc[to_fix[mask_h], "Hora Eliminado"] = h_now
 
-                            # ===== Duración robusta tz =====
+                            # ===== Duración (mins desde Fecha Registro, si existe) =====
                             if "Duración" in b_i.columns and "Fecha Registro" in b_i.columns:
-                                ts_naive = pd.Timestamp(_local_now).tz_localize(None)  # siempre Lima naive
+                                ts_naive = pd.Timestamp(_local_now).tz_localize(None)
                                 def _mins_since(fr_val):
                                     d = _to_naive_local_one(fr_val)
                                     if pd.isna(d): return 0
                                     try: return int((ts_naive - d).total_seconds() / 60)
                                     except Exception: return 0
-                                # Solo para las filas editadas por estado
                                 if len(ids_estado) > 0:
                                     dur_min = b_i.loc[ids_estado, "Fecha Registro"].apply(_mins_since)
                                     try:
@@ -657,7 +633,7 @@ def render(user: dict | None = None):
                                     except Exception:
                                         pass
 
-                            # === Link de archivo (editable) ===
+                            # === Link de archivo (única) ===
                             ids_link = []
                             if "Link de archivo" in grid_data.columns:
                                 g_i = grid_data.set_index("Id")
@@ -666,13 +642,8 @@ def render(user: dict | None = None):
                                     b_i["Link de archivo"] = ""
                                 prev_links = b_i["Link de archivo"].reindex(new_links.index).fillna("").astype(str)
                                 ids_link = list(new_links.index[prev_links.str.strip() != new_links.str.strip()])
-
                                 if len(ids_link) > 0:
                                     b_i.loc[ids_link, "Link de archivo"] = new_links.loc[ids_link].values
-                                    # Espejo en "Archivo" para compatibilidad con otras vistas
-                                    if "Archivo" not in b_i.columns:
-                                        b_i["Archivo"] = ""
-                                    b_i.loc[ids_link, "Archivo"] = new_links.loc[ids_link].values
 
                             # Limpiar auxiliares
                             for aux in ["Estado modificado","Fecha estado modificado","Hora estado modificado"]:
