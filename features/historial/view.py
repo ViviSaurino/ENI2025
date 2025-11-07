@@ -164,11 +164,10 @@ def export_excel(df: pd.DataFrame, sheet_name: str = TAB_NAME) -> bytes:
 _EXT_RE = re.compile(r"\.(pdf|docx?|xlsx?|pptx?|png|jpe?g|csv|zip|rar)$", re.I)
 
 def _pick_first_token(av: str) -> str:
-    """De un valor 'Archivo' con varios items, devuelve el más probable."""
+    """De un valor 'Archivo' con varios items, devuelve el que parece archivo/URL."""
     raw = (av or "").strip()
     if not raw:
         return ""
-    # separadores comunes
     parts = re.split(r"[\n,;|]+", raw)
     for p in parts:
         s = p.strip()
@@ -186,7 +185,6 @@ def _resolve_local_path(val: str, row_id: str) -> tuple[str, str] | None:
         return None
     if v.lower().startswith(("http://", "https://")):
         return None
-    # absoluto o relativo existente
     if os.path.isabs(v) and os.path.isfile(v):
         return (v, os.path.basename(v))
     if os.path.isfile(v):
@@ -230,6 +228,7 @@ def render(user: dict | None = None):
         }
         .hist-actions{ padding:0 16px; border-top:2px solid #EF4444; }
         .hist-actions .stButton > button{ height:38px!important; border-radius:10px!important; width:100%; }
+        .ag-theme-balham .ag-header-cell.muted-col .ag-header-cell-label{ color:#90A4AE!important; }
         </style>
         <div class="hist-title-pill">📝 Tareas recientes</div>
         """, unsafe_allow_html=True)
@@ -239,6 +238,7 @@ def render(user: dict | None = None):
     # ====== DATA BASE ======
     if "df_main" not in st.session_state or not isinstance(st.session_state["df_main"], pd.DataFrame):
         st.session_state["df_main"] = pd.DataFrame(columns=DEFAULT_COLS)
+
     df_all = st.session_state["df_main"].copy()
 
     TZ_DATE_COLS = [
@@ -251,7 +251,6 @@ def render(user: dict | None = None):
         df_all[c] = to_naive_local_series(df_all[c])
 
     # ===== Filtros =====
-    st.markdown('<div id="hist-card-anchor"></div>', unsafe_allow_html=True)
     with st.container():
         W_AREA, W_FASE, W_RESP, W_DESDE, W_HASTA, W_BUSCAR = 1.15, 1.25, 1.60, 1.05, 1.05, 1.05
         cA, cF, cR, cD, cH, cB = st.columns(
@@ -310,7 +309,7 @@ def render(user: dict | None = None):
     if not show_deleted and "Estado" in df_view.columns:
         df_view = df_view[df_view["Estado"].astype(str).str.strip() != "Eliminado"]
 
-    # Orden por timestamps conocidos
+    # Orden
     for c in ["Fecha estado modificado","Fecha estado actual","Fecha inicio"]:
         if c not in df_view.columns:
             df_view[c] = pd.NaT
@@ -322,7 +321,7 @@ def render(user: dict | None = None):
 
     st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
 
-    # Normalizaciones mínimas
+    # ===== Normalizaciones mínimas =====
     if "Estado" not in df_view.columns:
         df_view["Estado"] = ""
     df_view["Estado"] = df_view["Estado"].apply(lambda s: "No iniciado" if str(s).strip() in {"","nan","NaN"} else s)
@@ -347,23 +346,47 @@ def render(user: dict | None = None):
                     break
 
     # ========= GRID =========
-    # *** SOLO columnas controladas (se eliminan las columnas “fantasma”) ***
     target_cols = [
-        # (no quitamos el resto del dataset, pero para tu caso solo te interesan estas:)
-        "Id","Archivo", "__SELCHK__", "__Descargar__"
+        "Id","Área","Fase","Responsable",
+        "Tarea","Tipo","Detalle","Ciclo de mejora","Complejidad","Prioridad",
+        "Estado","Duración",
+        "Fecha Registro","Hora Registro",
+        "Fecha inicio","Hora de inicio",
+        "Fecha Vencimiento","Hora Vencimiento",
+        "Fecha Terminado","Hora Terminado",
+        "¿Generó alerta?","Fecha de detección","Hora de detección",
+        "¿Se corrigió?","Fecha de corrección","Hora de corrección",
+        "Cumplimiento","Evaluación","Calificación",
+        "Fecha Pausado","Hora Pausado",
+        "Fecha Cancelado","Hora Cancelado",
+        "Fecha Eliminado","Hora Eliminado",
+        "Archivo",
+        "__Descargar__"   # acción a la derecha
+    ]
+    HIDDEN_COLS = [
+        "¿Eliminar?","Estado modificado",
+        "Fecha estado modificado","Hora estado modificado",
+        "Fecha estado actual","Hora estado actual",
+        "N° de alerta","Tipo de alerta","Fecha","Hora","Vencimiento",
+        "__ts__","__SEL__","__DEL__"
     ]
     for c in target_cols:
         if c not in df_view.columns:
             df_view[c] = ""
 
-    df_grid = df_view.reindex(columns=target_cols).copy()
+    # Construir df del grid sin columnas ocultas
+    df_grid = df_view.reindex(
+        columns=list(dict.fromkeys(target_cols)) +
+        [c for c in df_view.columns if c not in target_cols + HIDDEN_COLS]
+    ).copy()
+    df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()
     df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
 
     gob = GridOptionsBuilder.from_dataframe(df_grid)
     gob.configure_default_column(resizable=True, wrapText=True, autoHeight=True, editable=False)
 
-    # Selección por checkbox (single)
-    gob.configure_selection(selection_mode="single", use_checkbox=True)
+    # Selección SIN checkbox (para no crear la columna extra)
+    gob.configure_selection(selection_mode="single", use_checkbox=False)
     gob.configure_grid_options(
         rowSelection="single",
         rowMultiSelectWithClick=False,
@@ -371,7 +394,7 @@ def render(user: dict | None = None):
         domLayout="normal",
         rowHeight=30,
         wrapHeaderText=True, autoHeaderHeight=True, headerHeight=56,
-        enableRangeSelection=False, enableCellTextSelection=True,
+        enableRangeSelection=True, enableCellTextSelection=True,
         singleClickEdit=False, stopEditingWhenCellsLoseFocus=True,
         undoRedoCellEditing=False, enterMovesDown=False,
         suppressMovableColumns=False,
@@ -379,12 +402,21 @@ def render(user: dict | None = None):
         suppressHeaderVirtualisation=True,
     )
 
-    # ==== Archivo: nombre real + clic selecciona ====
+    # ----- Columnas base visibles -----
+    gob.configure_column("Id", headerName="ID", editable=False, minWidth=110, pinned="left", suppressMovable=True)
+    gob.configure_column("Área", headerName="Área", editable=False, minWidth=160, pinned="left", suppressMovable=True)
+    gob.configure_column("Fase", headerName="Fase", editable=False, minWidth=140, pinned="left", suppressMovable=True)
+    gob.configure_column("Responsable", editable=False, minWidth=200, pinned="left", suppressMovable=True)
+    gob.configure_column("Estado", headerName="Estado actual")
+    gob.configure_column("Fecha Vencimiento", headerName="Fecha límite")
+    gob.configure_column("Fecha inicio", headerName="Fecha de inicio")
+    gob.configure_column("Fecha Terminado", headerName="Fecha Terminado")
+
+    # ==== Archivo: nombre real (sin HTML) ====
     archivo_value_getter = JsCode(r"""
     function(p){
       const raw0 = (p && p.data && p.data['Archivo'] != null) ? String(p.data['Archivo']).trim() : '';
       if(!raw0) return '';
-      // si viene con varios items, tomar el más probable con extensión o URL
       const parts = raw0.split(/[\n,;|]+/).map(s=>s.trim()).filter(Boolean);
       let pick = parts[0] || '';
       for (let s of parts){
@@ -418,23 +450,12 @@ def render(user: dict | None = None):
     gob.configure_column(
         "Archivo",
         headerName="Archivo",
-        minWidth=240, flex=2,
+        minWidth=220, flex=1,
         editable=False,
         valueGetter=archivo_value_getter,
         cellRenderer=archivo_renderer,
         tooltipField="Archivo",
-        cellStyle={"cursor":"pointer","textDecoration":"underline","color":"#0A66C2"},
-        checkboxSelection=False  # checkbox va en la columna dedicada
-    )
-
-    # ==== Columna checkbox dedicada (entre Archivo y Descargar) ====
-    gob.configure_column(
-        "__SELCHK__",
-        headerName="",
-        minWidth=46, maxWidth=46, flex=0,
-        editable=False,
-        checkboxSelection=True,
-        headerCheckboxSelection=False
+        cellStyle={"cursor":"pointer","textDecoration":"underline","color":"#0A66C2"}
     )
 
     # ==== Columna Descargar (pinned right) ====
@@ -462,7 +483,23 @@ def render(user: dict | None = None):
         cellStyle={"cursor":"pointer","textDecoration":"underline","color":"#0A66C2","textAlign":"center"}
     )
 
-    # Eventos
+    # Formatos cortos (solo dejan '—' para nulos)
+    fmt_dash = JsCode("""
+    function(p){
+      if(p.value===null||p.value===undefined) return '—';
+      const s=String(p.value).trim().toLowerCase();
+      if(s===''||s==='nan'||s==='nat'||s==='none'||s==='null') return '—';
+      return String(p.value);
+    }""")
+
+    # Anchuras por defecto (no tocamos lo demás)
+    for c in df_grid.columns:
+        if c in ["Archivo","__Descargar__","Id","Área","Fase","Responsable","Estado",
+                 "Fecha Vencimiento","Fecha inicio","Fecha Terminado"]:
+            continue
+        gob.configure_column(c, valueFormatter=fmt_dash)
+
+    # === Eventos JS ===
     autosize_on_ready = JsCode("""
     function(params){
       const all = params.columnApi.getAllDisplayedColumns();
@@ -475,6 +512,7 @@ def render(user: dict | None = None):
         params.columnApi.autoSizeColumns(all, true);
       }
     }""")
+    # Clic en Archivo o en Descargar
     on_click_archivo = JsCode(r"""
     function(e){
       if(!e || !e.colDef) return;
@@ -483,9 +521,10 @@ def render(user: dict | None = None):
 
       const raw0 = (e && e.data && e.data['Archivo'] != null) ? String(e.data['Archivo']).trim() : '';
       if(!raw0) return;
+
       // elegir token
-      let raw = raw0.split(/[\n,;|]+/).map(s=>s.trim()).filter(Boolean)[0] || '';
       const parts = raw0.split(/[\n,;|]+/).map(s=>s.trim()).filter(Boolean);
+      let raw = parts[0] || '';
       for (let s of parts){
         if (s.toLowerCase() === 'directorio') continue;
         if (/^https?:\/\//i.test(s) || /\.[a-z0-9]{2,5}$/i.test(s)) { raw = s; break; }
@@ -495,7 +534,11 @@ def render(user: dict | None = None):
         try{ window.open(encodeURI(raw), '_blank', 'noopener'); }catch(err){}
         return;
       }
-      try{ const node = e.node; if(node){ node.setSelected(true, true); } }catch(err){}
+      // Local => asegurar selección para que Python muestre el botón de descarga
+      try{
+        const node = e.node;
+        if(node){ node.setSelected(true, true); }
+      }catch(err){}
     }
     """)
 
@@ -508,7 +551,7 @@ def render(user: dict | None = None):
 
     grid = AgGrid(
         df_grid, key="grid_historial",
-        gridOptions=grid_opts, height=420,
+        gridOptions=grid_opts, height=500,
         fit_columns_on_grid_load=False,
         data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
         update_mode=(GridUpdateMode.MODEL_CHANGED
@@ -565,7 +608,7 @@ def render(user: dict | None = None):
     with b_xlsx:
         try:
             df_xlsx = st.session_state["df_main"].copy()
-            for c in ["__SELCHK__", "__Descargar__"]:
+            for c in ["__Descargar__","__SEL__","__DEL__","¿Eliminar?"]:
                 if c in df_xlsx.columns:
                     df_xlsx.drop(columns=[c], inplace=True, errors="ignore")
             xlsx_b = export_excel(df_xlsx, sheet_name=TAB_NAME)
@@ -591,6 +634,8 @@ def render(user: dict | None = None):
         if st.button("💾 Grabar", use_container_width=True):
             base = st.session_state["df_main"].copy()
             base["Id"] = base["Id"].astype(str)
+            if "__DEL__" not in base.columns:
+                base["__DEL__"] = False
             st.session_state["df_main"] = base.reset_index(drop=True)
             try:
                 _save_local(st.session_state["df_main"].copy())
