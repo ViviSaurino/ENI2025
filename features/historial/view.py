@@ -293,6 +293,12 @@ def render(user: dict | None = None):
         margin: 2px 0 12px 0;
         font-size:0.95rem;
       }
+
+      /* === Ocultar input "huérfano" entre indicaciones y filtros === */
+      .hist-hint + div[data-testid="stTextInput"]{ display:none !important; }
+      .hist-hint + div:has(> div[data-testid="stTextInput"]){ display:none !important; }
+      .hist-hint + div:has(input[type="text"]){ display:none !important; }
+
       /* Bajar ligeramente el botón Buscar */
       .hist-search .stButton>button{ margin-top:8px; }
 
@@ -646,7 +652,6 @@ def render(user: dict | None = None):
             base = _canonicalize_link_column(base)
             new_df = _canonicalize_link_column(new_df)
             if ("Id" in base.columns) and ("Id" in new_df.columns):
-
                 base["Id"] = base["Id"].astype(str)
                 new_df["Id"] = new_df["Id"].astype(str)
                 base_idx = base.set_index("Id")
