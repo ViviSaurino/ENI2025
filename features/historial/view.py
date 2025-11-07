@@ -35,15 +35,7 @@ except Exception:
     _TZ = None
 
 def to_naive_local_series(s: pd.Series) -> pd.Series:
-    """
-    Convierte a datetime (naive, hora local). Soporta:
-    - ISO strings
-    - Objetos datetime con/ sin tz
-    - Epoch en milisegundos (strings/nums de 12–13 dígitos)
-    """
     ser = pd.to_datetime(s, errors="coerce", utc=False)
-
-    # Reprocesa epoch-ms (12–13 dígitos)
     try:
         raw = pd.Series(s, copy=False)
         mask_ms = raw.astype(str).str.fullmatch(r"\d{12,13}")
@@ -51,7 +43,6 @@ def to_naive_local_series(s: pd.Series) -> pd.Series:
             ser.loc[mask_ms] = pd.to_datetime(raw.loc[mask_ms].astype("int64"), unit="ms", utc=True)
     except Exception:
         pass
-
     try:
         if getattr(ser.dt, "tz", None) is not None:
             ser = (ser.dt.tz_convert(_TZ) if _TZ else ser).dt.tz_localize(None)
@@ -96,7 +87,6 @@ def _load_local_if_exists() -> pd.DataFrame | None:
     try:
         p = os.path.join("data", "tareas.csv")
         if os.path.exists(p):
-            # Mantener strings (links) tal cual; fechas se normalizan luego en las columnas donde corresponde
             df = pd.read_csv(p, dtype=str, keep_default_na=False).fillna("")
             return df
     except Exception:
@@ -122,12 +112,6 @@ def _gsheets_client():
     return ss, ws_name
 
 def pull_user_slice_from_sheet(replace_df_main: bool = True):
-    """
-    Lee del Sheet y ACTUALIZA df_main por 'Id':
-      - Si 'Id' existe en ambos, se actualizan los valores desde el Sheet.
-      - Si 'Id' existe solo en el Sheet, se agrega.
-      - Si 'Id' no existe en el Sheet, se conserva lo local.
-    """
     ss, ws_name = _gsheets_client()
     try:
         ws = ss.worksheet(ws_name)
@@ -139,17 +123,14 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
     headers, rows = values[0], values[1:]
     df = pd.DataFrame(rows, columns=headers)
 
-    # normaliza fechas (incluye epoch-ms)
     for c in df.columns:
         if c.lower().startswith("fecha"):
             df[c] = to_naive_local_series(df[c])
 
-    # limpia HTML en columnas que contengan "archivo"
     def _strip_html(x): return re.sub(r"<[^>]+>", "", str(x) if x is not None else "")
     for cc in [c for c in df.columns if "archivo" in c.lower()]:
         df[cc] = df[cc].map(_strip_html)
 
-    # Unifica/normaliza "N° alerta" y elimina duplicadas
     alerta_pat = re.compile(r"^\s*n[°º]?\s*(de\s*)?alerta\s*$", re.I)
     alerta_cols = [c for c in df.columns if alerta_pat.match(str(c))]
     if alerta_cols:
@@ -159,17 +140,12 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
         for c in alerta_cols[1:]:
             df.drop(columns=c, inplace=True, errors="ignore")
 
-    # Merge por Id si existe base local y columna Id
     if "Id" in df.columns and isinstance(st.session_state.get("df_main"), pd.DataFrame) and "Id" in st.session_state["df_main"].columns:
         base = st.session_state["df_main"].copy()
-        base["Id"] = base["Id"].astype(str)
-        df["Id"] = df["Id"].astype(str)
+        base["Id"] = base["Id"].astype(str); df["Id"] = df["Id"].astype(str)
         all_cols = list(dict.fromkeys(list(base.columns) + list(df.columns)))
-        base = base.reindex(columns=all_cols)
-        df = df.reindex(columns=all_cols)
-
-        base_idx = base.set_index("Id")
-        upd_idx = df.set_index("Id")
+        base = base.reindex(columns=all_cols); df = df.reindex(columns=all_cols)
+        base_idx = base.set_index("Id"); upd_idx = df.set_index("Id")
         base_idx.update(upd_idx)
         merged = base_idx.combine_first(upd_idx).reset_index()
         st.session_state["df_main"] = merged
@@ -224,7 +200,7 @@ def _yesno(v) -> str:
 def render(user: dict | None = None):
     st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
 
-    # ====== Título + CSS (oculta iconos de menú/filtro) ======
+    # ====== Título + CSS ======
     st.markdown("""
     <style>
     :root{ --pill-salmon:#F28B85; }
@@ -259,7 +235,6 @@ def render(user: dict | None = None):
 
     # ====== DATA BASE ======
     if "df_main" not in st.session_state or not isinstance(st.session_state["df_main"], pd.DataFrame):
-        # INTENTO 1: cargar desde disco para persistir link tras reboot
         df_local = _load_local_if_exists()
         if isinstance(df_local, pd.DataFrame) and not df_local.empty:
             st.session_state["df_main"] = df_local
@@ -267,6 +242,27 @@ def render(user: dict | None = None):
             st.session_state["df_main"] = pd.DataFrame(columns=DEFAULT_COLS)
 
     df_all = st.session_state["df_main"].copy()
+
+    # --- 🔒 Sincroniza y GRABA Link de archivo por Id (si falta) ---
+    if "Link de archivo" not in df_all.columns:
+        df_all["Link de archivo"] = ""
+
+    pre_link = df_all["Link de archivo"].astype(str).copy()
+    if "Archivo" in df_all.columns:
+        mask_empty_link = df_all["Link de archivo"].astype(str).str.strip() == ""
+        mask_has_arch = df_all["Archivo"].astype(str).str.strip() != ""
+        need_copy = mask_empty_link & mask_has_arch
+        if need_copy.any():
+            df_all.loc[need_copy, "Link de archivo"] = df_all.loc[need_copy, "Archivo"].astype(str)
+
+    post_link = df_all["Link de archivo"].astype(str)
+    if not pre_link.equals(post_link):
+        # Actualiza sesión y persiste en disco para no perderlo tras reboot
+        st.session_state["df_main"] = df_all.copy()
+        try:
+            _save_local(st.session_state["df_main"].copy())
+        except Exception:
+            pass
 
     # ===== Filtros externos =====
     with st.container():
@@ -303,7 +299,7 @@ def render(user: dict | None = None):
     show_deleted = st.toggle("Mostrar eliminadas (tachadas)", value=True, key="hist_show_deleted")
 
     # ---- Aplicar filtros ----
-    df_view = df_all.copy()
+    df_view = st.session_state["df_main"].copy()
     if "Fecha inicio" in df_view.columns:
         df_view["Fecha inicio"] = to_naive_local_series(df_view["Fecha inicio"])
     if hist_do_buscar:
@@ -324,16 +320,6 @@ def render(user: dict | None = None):
     for need in ["Estado","Hora de inicio","Fecha Terminado","Hora Terminado"]:
         if need not in df_view.columns:
             df_view[need] = "" if "Hora" in need else pd.NaT
-
-    # Asegura columna 'Link de archivo' y copia desde 'Archivo' solo si está vacía
-    if "Link de archivo" not in df_view.columns:
-        df_view["Link de archivo"] = ""
-    if "Archivo" in df_view.columns:
-        df_view["Link de archivo"] = df_view["Link de archivo"].astype(str)
-        df_view["Link de archivo"] = df_view["Link de archivo"].where(
-            df_view["Link de archivo"].str.strip() != "",
-            df_view["Archivo"].astype(str)
-        )
 
     # ===== GRID =====
     target_cols = [
@@ -385,11 +371,11 @@ def render(user: dict | None = None):
         if bcol in df_grid.columns:
             df_grid[bcol] = df_grid[bcol].map(_yesno)
 
-    # === Ajuste 2: Calificación = 0 por defecto si vacío/invalid ===
+    # === Ajuste 2: Calificación = 0 por defecto ===
     if "Calificación" in df_grid.columns:
         df_grid["Calificación"] = pd.to_numeric(df_grid["Calificación"], errors="coerce").fillna(0)
 
-    # === Ajuste 3: Duración en días 1–5 (nunca minutos) ===
+    # === Ajuste 3: Duración (1–5 días) ===
     if "Duración" in df_grid.columns:
         dur = pd.to_numeric(df_grid["Duración"], errors="coerce")
         ok = dur.where(dur.between(1,5))
@@ -403,7 +389,7 @@ def render(user: dict | None = None):
                 pass
         df_grid["Duración"] = ok.where(ok.between(1,5)).fillna("").astype(object)
 
-    # === Ajuste 4: Hora límite por defecto 17:00 cuando esté vacía ===
+    # === Ajuste 4: Hora límite por defecto 17:00 ===
     if "Hora Vencimiento" in df_grid.columns:
         hv = df_grid["Hora Vencimiento"].apply(_fmt_hhmm).astype(str)
         df_grid["Hora Vencimiento"] = hv.mask(hv.str.strip()=="", "17:00")
@@ -456,10 +442,9 @@ def render(user: dict | None = None):
             filter=False, floatingFilter=False, sortable=False
         )
 
-    # Fuerza sin filtro/menú en "Fecha inicio"
     gob.configure_column("Fecha inicio", filter=False, floatingFilter=False, sortable=False, suppressMenu=True)
 
-    # Formato fecha (dd/mm/aaaa) – soporta epoch-ms
+    # Formato fecha (dd/mm/aaaa)
     date_only_fmt = JsCode(r"""
     function(p){
       const v = p.value;
@@ -467,23 +452,16 @@ def render(user: dict | None = None):
       const s = String(v).trim();
       if(!s || ['nan','nat','null'].includes(s.toLowerCase())) return '—';
       let y,m,d;
-
-      // 1) YYYY-MM-DD
       const m1 = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
       if(m1){ y=+m1[1]; m=+m1[2]; d=+m1[3]; }
-
-      // 2) epoch-ms
       if(!y && /^\d{12,13}$/.test(s)){
         const dt = new Date(Number(s));
         if(!isNaN(dt)){ y=dt.getFullYear(); m=dt.getMonth()+1; d=dt.getDate(); }
       }
-
-      // 3) Fallback Date(s)
       if(!y){
         const dt = new Date(s);
         if(!isNaN(dt)){ y=dt.getFullYear(); m=dt.getMonth()+1; d=dt.getDate(); }
       }
-
       if(!y) return s.split(' ')[0];
       return String(d).padStart(2,'0') + '/' + String(m).padStart(2,'0') + '/' + y;
     }""")
@@ -493,7 +471,7 @@ def render(user: dict | None = None):
         if col in df_grid.columns:
             gob.configure_column(col, valueFormatter=date_only_fmt)
 
-    # Link de descarga (lee de "Link de archivo", y cae a "Archivo" si no hay)
+    # Link de descarga (prefiere "Link de archivo", cae a "Archivo")
     link_value_getter = JsCode(r"""
     function(p){
       const pickUrl = (raw) => {
@@ -555,7 +533,7 @@ def render(user: dict | None = None):
         allow_unsafe_jscode=True,
     )
 
-    # Guardar ediciones en sesión (preserva columnas ocultas como 'Link de archivo')
+    # Guardar ediciones en sesión (preserva columnas ocultas)
     try:
         edited = grid_resp["data"]
         new_df = None
