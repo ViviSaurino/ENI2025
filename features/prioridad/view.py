@@ -1,6 +1,7 @@
 # features/prioridad/view.py
 from __future__ import annotations
 import os
+from datetime import date
 import re
 import pandas as pd
 import streamlit as st
@@ -8,11 +9,13 @@ from st_aggrid import AgGrid, GridUpdateMode, DataReturnMode
 
 # 👇 Upsert centralizado (utils/gsheets)
 try:
-    from utils.gsheets import upsert_rows_by_id  # type: ignore
+    from utils.gsheets import upsert_rows_by_id, open_sheet_by_url, read_df_from_worksheet  # type: ignore
 except Exception:
     upsert_rows_by_id = None
+    open_sheet_by_url = None
+    read_df_from_worksheet = None
 
-# ================== Config & helpers base ==================
+# Fallbacks seguros
 SECTION_GAP_DEF = globals().get("SECTION_GAP", 30)
 
 def _save_local(df: pd.DataFrame):
@@ -33,189 +36,196 @@ def _load_local_if_exists() -> pd.DataFrame | None:
         pass
     return None
 
-# ====== TZ helpers (solo para filtrar por fechas) ======
-try:
-    from zoneinfo import ZoneInfo
-    _TZ = ZoneInfo(st.secrets.get("local_tz", "America/Lima"))
-except Exception:
-    _TZ = None
-
-def to_naive_local_series(s: pd.Series) -> pd.Series:
-    ser = pd.to_datetime(s, errors="coerce", utc=False)
-    try:
-        raw = pd.Series(s, copy=False)
-        mask_ms = raw.astype(str).str.fullmatch(r"\d{12,13}")
-        if mask_ms.any():
-            ser.loc[mask_ms] = pd.to_datetime(raw.loc[mask_ms].astype("int64"), unit="ms", utc=True)
-    except Exception:
-        pass
-    try:
-        if getattr(ser.dt, "tz", None) is not None:
-            ser = (ser.dt.tz_convert(_TZ) if _TZ else ser).dt.tz_localize(None)
-    except Exception:
-        try:
-            ser = ser.dt.tz_localize(None)
-        except Exception:
-            pass
-    return ser
-
-# ================== ACL (usa el mismo esquema global que Evaluación) ==================
-def _current_email_from(user: dict | None) -> str:
+# ====== ACL por correo ======
+def _get_current_email_and_name(user: dict | None = None):
+    """Devuelve (email, nombre) desde `user` o session_state."""
+    cand = []
+    if isinstance(user, dict):
+        cand += [user.get("email"), user.get("mail"), user.get("user_email")]
+        cand += [user.get("name"), user.get("username")]
     acl_user = st.session_state.get("acl_user", {}) or {}
-    email_from_user = (user or {}).get("email") if isinstance(user, dict) else None
-    return str(acl_user.get("email") or email_from_user or "").strip().lower()
+    cand += [acl_user.get("email"), acl_user.get("mail"), st.session_state.get("user_email")]
+    email = next((c for c in cand if isinstance(c, str) and "@" in c), None)
 
-def _allowed_emails_from_secrets() -> set[str]:
-    allow = set(map(str.lower,
-        (st.secrets.get("acl", {}).get("editor_emails", [])
-         or st.secrets.get("editors", {}).get("emails", [])
-         or st.secrets.get("editor_emails", [])
-         or [])
-    ))
-    # Permite también configurar una lista específica para Prioridad (opcional)
+    name_cand = []
+    if isinstance(user, dict):
+        name_cand += [user.get("name"), user.get("username")]
+    name_cand += [acl_user.get("name"), acl_user.get("username")]
+    name = next((c for c in name_cand if isinstance(c, str) and c.strip()), "")
+    return (email or "").strip(), name.strip()
+
+def _allowed_editors_from_secrets() -> set[str]:
+    """
+    Lee lista de correos permitidos desde secrets:
+      - acl.editor_emails (preferido)
+      - editors.emails
+      - editor_emails
+    Fallbacks: PRIORITY_EDITORS (env) y lista fija (Vivi/Enrique).
+    """
+    allow: set[str] = set()
     try:
-        raw = st.secrets.get("priority_editors", None)
-        extra = set()
-        if isinstance(raw, (list, tuple)):
-            extra = {str(x).strip().lower() for x in raw if str(x).strip()}
-        elif isinstance(raw, str) and raw.strip():
-            extra = {raw.strip().lower()}
-        allow |= extra
+        allow = {
+            *(str(x).strip().lower() for x in (
+                st.secrets.get("acl", {}).get("editor_emails", [])
+                or st.secrets.get("editors", {}).get("emails", [])
+                or st.secrets.get("editor_emails", [])
+                or []
+            ) if str(x).strip())
+        }
     except Exception:
-        pass
-    # Fallback por variable de entorno (separada por comas)
-    env = os.environ.get("PRIORITY_EDITORS", "")
-    if env.strip():
-        allow |= {e.strip().lower() for e in env.split(",") if e.strip()}
+        allow = set()
+    if not allow:
+        env = os.environ.get("PRIORITY_EDITORS", "")
+        if env.strip():
+            allow = {e.strip().lower() for e in env.split(",") if e.strip()}
+    if not allow:
+        allow = {
+            "enrique.oyola@inei.gob.pe",
+            "eoyolara@gmail.com",
+            "viviansg18@gmail.com",
+            "stephanysg1812@gmail.com",
+        }
     return allow
 
-def _is_editor(user: dict | None) -> bool:
+def _is_priority_editor(user: dict | None = None) -> bool:
+    """True solo si el email está en la lista de editores o tiene can_edit_all_tabs."""
+    email, _ = _get_current_email_and_name(user)
+    email = (email or "").strip().lower()
     acl_user = st.session_state.get("acl_user", {}) or {}
-    can_edit_all = bool(acl_user.get("can_edit_all_tabs", False))
-    email = _current_email_from(user)
-    allow = _allowed_emails_from_secrets()
-    return can_edit_all or (email and email in allow)
+    can_all = bool(acl_user.get("can_edit_all_tabs", False))
+    allow = _allowed_editors_from_secrets()
+    return can_all or (bool(email) and email in allow)
 
-# ================== UI ==================
+# ===== Helpers =====
+def _first_valid_date_series(df: pd.DataFrame) -> pd.Series:
+    for col in ["Fecha inicio", "Fecha Vencimiento", "Fecha Registro", "Fecha"]:
+        if col in df.columns:
+            s = pd.to_datetime(df[col], errors="coerce")
+            if s.notna().any():
+                return s
+    return pd.Series([], dtype="datetime64[ns]")
+
+# Normalización y emojis
+EMO_MAP = {
+    "urgente": "🚨",
+    "alto": "🔴", "alta": "🔴",
+    "medio": "🟡", "media": "🟡",
+    "bajo": "🔵", "baja": "🔵",
+    "": ""
+}
+CHOICES_EDIT_EMO = ["", "🚨 Urgente", "🔴 Alto", "🟡 Medio", "🔵 Bajo"]
+
+def _strip_emoji(txt: str) -> str:
+    if not isinstance(txt, str):
+        return ""
+    return re.sub(r"^[^\w]*", "", txt).strip()
+
+def _norm_pri(txt: str) -> str:
+    """Devuelve una etiqueta canónica sin emoji: Urgente, Alto, Medio, Bajo."""
+    t = (_strip_emoji(txt) or "").strip().lower()
+    if t in ("alta", "alto"):
+        return "Alto"
+    if t in ("media", "medio"):
+        return "Medio"
+    if t in ("baja", "bajo"):
+        return "Bajo"
+    if t == "urgente":
+        return "Urgente"
+    # por defecto: Alto si viene vacío/indefinido en 'actual'
+    return "Alto" if not t else t.title()
+
+def _display_with_emoji(label: str) -> str:
+    """Agrega emoji a la etiqueta canónica."""
+    key = (label or "").strip().lower()
+    return f"{EMO_MAP.get(key, '')} {label}".strip()
+
 def render(user: dict | None = None):
     # =========================== PRIORIDAD ===============================
     st.session_state.setdefault("pri_visible", True)
 
-    # Anchos de columnas (coherentes con otras secciones)
+    # ---------- Barra superior ----------
     A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
-
-    # ---------- Barra superior (wrapper del topbar) ----------
-    st.markdown('<div class="topbar-pri"></div>', unsafe_allow_html=True)
+    st.markdown('<div class="topbar-pri">', unsafe_allow_html=True)
+    c_pill_p, _ = st.columns([A, Fw + T_width + D + R + C], gap="medium")
+    with c_pill_p:
+        st.markdown("", unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
     if st.session_state["pri_visible"]:
-        IS_EDITOR = _is_editor(user)
 
-        # --- contenedor local + css ---
+        # === 🔐 ACL ===
+        IS_EDITOR = _is_priority_editor(user=user)
+
+        # --- contenedor + css ---
         st.markdown('<div id="pri-section">', unsafe_allow_html=True)
-        st.markdown(
-            """
+        st.markdown("""
         <style>
           #pri-section .stButton > button { width: 100% !important; }
-          .section-pri .help-strip-pri + .form-card{ margin-top: 6px !important; }
-
-          /* Evita efectos colaterales: solo dentro de PRIORIDAD */
           #pri-section .ag-body-horizontal-scroll,
           #pri-section .ag-center-cols-viewport { overflow-x: auto !important; }
 
-          /* Header visible (altura fija) */
           #pri-section .ag-theme-alpine .ag-header,
           #pri-section .ag-theme-streamlit .ag-header{
             height: 44px !important; min-height: 44px !important;
           }
 
-          /* Encabezados más livianos */
           #pri-section .ag-theme-alpine{ --ag-font-weight: 400; }
           #pri-section .ag-theme-streamlit{ --ag-font-weight: 400; }
 
           #pri-section .ag-theme-alpine .ag-header-cell-label,
           #pri-section .ag-theme-alpine .ag-header-cell-text,
-          #pri-section .ag-theme-alpine .ag-header *:not(.ag-icon),
           #pri-section .ag-theme-streamlit .ag-header-cell-label,
-          #pri-section .ag-theme-streamlit .ag-header-cell-text,
-          #pri-section .ag-theme-streamlit .ag-header *:not(.ag-icon){
+          #pri-section .ag-theme-streamlit .ag-header-cell-text{
             font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif !important;
-            font-weight: 400 !important;
-            font-synthesis-weight: none !important;
-            color: #A7F3D0 !important;
-            opacity: 1 !important;
-            visibility: visible !important;
+            font-weight: 400 !important; color: #A7F3D0 !important;
           }
 
-          /* ===== Paleta jade ===== */
           :root{
-            --pri-pill: #49BEA9;        /* jade pastel para la píldora */
-            --pri-help-bg: #C8EBE5;     /* jade muy claro para franja */
-            --pri-help-border: #A3DED3; /* borde jade claro */
-            --pri-help-text: #0F766E;   /* texto verde legible */
+            --pri-pill: #49BEA9;
+            --pri-help-bg: #C8EBE5;
+            --pri-help-border: #A3DED3;
+            --pri-help-text: #0F766E;
           }
-
-          /* Píldora jade pastel (mismo ancho que "Área") */
           .pri-pill{
             width:100%; height:38px; border-radius:12px;
-            display:flex; align-items:center; justify-content:flex-start; gap:8px;
+            display:flex; align-items:center; gap:8px;
             background: var(--pri-pill); color:#fff; font-weight:600;
             padding: 8px 12px; box-shadow: inset 0 -2px 0 rgba(0,0,0,0.06);
           }
-
-          /* Franja de ayuda */
           .help-strip-pri{
             background: var(--pri-help-bg);
             border: 2px dotted var(--pri-help-border);
             color: var(--pri-help-text);
-            border-radius: 10px; padding: 8px 12px;
-            margin: 8px 0 12px 0;
+            border-radius: 10px; padding: 8px 12px; margin: 8px 0 12px 0;
           }
         </style>
-        """,
-            unsafe_allow_html=True,
-        )
-
-        # ===== Píldora SOLO ancho "Área" =====
-        _pill_area, _, _, _, _, _ = st.columns([A, Fw, T_width, D, R, C], gap="medium")
-        with _pill_area:
-            st.markdown('<div class="pri-pill">🏷️&nbsp;Prioridad</div>', unsafe_allow_html=True)
-
-        # ===== Texto de ayuda =====
-        st.markdown(
-            '<div class="help-strip-pri">Edita la columna <b>Prioridad</b> (solo responsables autorizados). '
-            'Luego presiona <b>🏷️ Dar prioridad</b> para guardar en <i>TareasRecientes</i>.</div>',
-            unsafe_allow_html=True,
-        )
+        """, unsafe_allow_html=True)
 
         # ====== DATA BASE ======
         if "df_main" not in st.session_state or not isinstance(st.session_state["df_main"], pd.DataFrame):
             df_local = _load_local_if_exists()
             st.session_state["df_main"] = df_local if isinstance(df_local, pd.DataFrame) else pd.DataFrame()
 
-        base = st.session_state["df_main"].copy()
-        if base is None or base.empty:
-            base = pd.DataFrame(columns=["Id","Área","Fase","Responsable","Tarea","Prioridad","Fecha Vencimiento","Hora Vencimiento"])
+        # Píldora
+        _pill_area, _, _, _, _, _ = st.columns([A, Fw, T_width, D, R, C], gap="medium")
+        with _pill_area:
+            st.markdown('<div class="pri-pill">🏷️&nbsp;Prioridad</div>', unsafe_allow_html=True)
 
-        # Asegurar columnas clave
-        for c in ["Id","Área","Fase","Responsable","Tarea","Prioridad","Fecha Vencimiento","Hora Vencimiento"]:
-            if c not in base.columns:
-                base[c] = ""
+        st.markdown(
+            '<div class="help-strip-pri">Edita la columna <b>Prioridad a modificar</b> (solo responsables autorizados). '
+            'Luego presiona <b>🏷️ Dar prioridad</b> para guardar en <i>TareasRecientes</i>.</div>',
+            unsafe_allow_html=True
+        )
 
-        # ===== FILTROS (como la imagen) =====
-        # Min/max de fecha (preferimos Fecha Vencimiento; fallback otras)
-        def _first_valid_date_series(df: pd.DataFrame) -> pd.Series:
-            for col in ["Fecha Vencimiento", "Fecha inicio", "Fecha Registro", "Fecha"]:
-                if col in df.columns:
-                    s = to_naive_local_series(df[col])
-                    if s.notna().any():
-                        return s
-            return pd.Series([], dtype="datetime64[ns]")
+        # ====== FILTROS ======
+        df_all = st.session_state["df_main"].copy()
+        if df_all is None or df_all.empty:
+            df_all = pd.DataFrame(columns=["Id","Área","Fase","Responsable","Tarea","Prioridad"])
 
-        dates_all = _first_valid_date_series(base)
+        dates_all = _first_valid_date_series(df_all)
         if dates_all.empty:
-            today = pd.Timestamp.today().normalize().date()
-            min_date = today
-            max_date = today
+            today = date.today()
+            min_date = today; max_date = today
         else:
             min_date = dates_all.min().date()
             max_date = dates_all.max().date()
@@ -223,63 +233,71 @@ def render(user: dict | None = None):
         with st.form("pri_filtros_v1", clear_on_submit=False):
             c_area, c_fase, c_resp, c_desde, c_hasta, c_buscar = st.columns([A, Fw, T_width, D, R, C], gap="medium")
 
-            # Área
-            areas_all = st.session_state.get(
+            AREAS_OPC = st.session_state.get(
                 "AREAS_OPC",
                 ["Jefatura", "Gestión", "Metodología", "Base de datos", "Monitoreo", "Capacitación", "Consistencia"],
             )
-            area_sel = c_area.selectbox("Área", ["Todas"] + areas_all, index=0, key="pri_area")
+            pri_area = c_area.selectbox("Área", ["Todas"] + AREAS_OPC, index=0, key="pri_area")
 
-            # Fase
-            fases_all = sorted([x for x in base.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
-            fase_sel = c_fase.selectbox("Fase", ["Todas"] + fases_all, index=0, key="pri_fase")
+            fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+            pri_fase = c_fase.selectbox("Fase", ["Todas"] + fases_all, index=0, key="pri_fase")
 
-            # Responsable (multiselect con dependencia de área/fase)
-            df_resp_src = base.copy()
-            if area_sel != "Todas":
-                df_resp_src = df_resp_src[df_resp_src.get("Área", "").astype(str) == area_sel]
-            if fase_sel != "Todas" and "Fase" in df_resp_src.columns:
-                df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str) == fase_sel]
-            responsables_all = sorted(
-                [x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"]
-            )
-            resp_multi = c_resp.multiselect("Responsable", options=responsables_all, default=[], placeholder="Selecciona responsable(s)")
+            df_resp_src = df_all.copy()
+            if pri_area != "Todas":
+                df_resp_src = df_resp_src[df_resp_src.get("Área", "").astype(str) == pri_area]
+            if pri_fase != "Todas" and "Fase" in df_resp_src.columns:
+                df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str) == pri_fase]
+            responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
 
-            # Fechas (siempre visibles)
-            f_desde = c_desde.date_input("Desde", value=min_date, min_value=min_date, max_value=max_date, key="pri_desde")
-            f_hasta = c_hasta.date_input("Hasta", value=max_date, min_value=min_date, max_value=max_date, key="pri_hasta")
+            pri_resp = c_resp.multiselect("Responsable", options=responsables_all, default=[], placeholder="Selecciona responsable(s)")
+            pri_desde = c_desde.date_input("Desde", value=min_date, min_value=min_date, max_value=max_date, key="pri_desde")
+            pri_hasta = c_hasta.date_input("Hasta",  value=max_date, min_value=min_date, max_value=max_date, key="pri_hasta")
 
             with c_buscar:
                 st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
-                do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
+                pri_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
-        # ===== Vista filtrada =====
-        cols_order = ["Id","Área","Fase","Responsable","Tarea","Prioridad","Fecha Vencimiento","Hora Vencimiento"]
-        view = base.reindex(columns=cols_order).copy()
-        view["Id"] = view["Id"].astype(str)
+        df_filtrado = df_all.copy()
+        base_fecha_col = "Fecha inicio" if "Fecha inicio" in df_filtrado.columns else ("Fecha Vencimiento" if "Fecha Vencimiento" in df_filtrado.columns else None)
+        if pri_do_buscar:
+            if pri_area != "Todas":
+                df_filtrado = df_filtrado[df_filtrado.get("Área", "").astype(str) == pri_area]
+            if pri_fase != "Todas" and "Fase" in df_filtrado.columns:
+                df_filtrado = df_filtrado[df_filtrado["Fase"].astype(str) == pri_fase]
+            if pri_resp:
+                df_filtrado = df_filtrado[df_filtrado.get("Responsable", "").astype(str).isin(pri_resp)]
+            if base_fecha_col:
+                fcol = pd.to_datetime(df_filtrado[base_fecha_col], errors="coerce")
+                if pri_desde is not None:
+                    df_filtrado = df_filtrado[fcol >= pd.to_datetime(pri_desde)]
+                if pri_hasta is not None:
+                    df_filtrado = df_filtrado[fcol <= (pd.to_datetime(pri_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
 
-        if do_buscar:
-            if area_sel != "Todas":
-                view = view[view.get("Área", "").astype(str) == area_sel]
-            if fase_sel != "Todas" and "Fase" in view.columns:
-                view = view[view["Fase"].astype(str) == fase_sel]
-            if resp_multi:
-                view = view[view.get("Responsable", "").astype(str).isin(resp_multi)]
-            # rango de fechas sobre Fecha Vencimiento (si existe)
-            if "Fecha Vencimiento" in view.columns:
-                fv = to_naive_local_series(view["Fecha Vencimiento"])
-                if f_desde is not None:
-                    view = view[fv >= pd.to_datetime(f_desde)]
-                if f_hasta is not None:
-                    view = view[fv <= (pd.to_datetime(f_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
+        # ====== Preparar vista: Prioridad actual / a modificar ======
+        base = df_filtrado.copy()
+        for c in ["Id","Área","Fase","Responsable","Tarea","Prioridad"]:
+            if c not in base.columns:
+                base[c] = ""
 
-        # ===== Snapshot previo para detectar cambios en Prioridad =====
-        try:
-            st.session_state["_pri_prev"] = view[["Id", "Prioridad"]].copy()
-        except Exception:
-            st.session_state["_pri_prev"] = pd.DataFrame(columns=["Id", "Prioridad"])
+        # Generar columnas nuevas
+        cur_norm = base["Prioridad"].astype(str).map(_norm_pri)
+        cur_disp = cur_norm.map(_display_with_emoji)
+        cur_disp = cur_disp.mask(cur_disp.eq(""), _display_with_emoji("Alto"))  # por defecto 🔴 Alta
 
-        # ===== Grid (solo editar Prioridad y solo si IS_EDITOR) =====
+        view = pd.DataFrame({
+            "Id": base["Id"].astype(str),
+            "Área": base["Área"].astype(str),
+            "Fase": base["Fase"].astype(str),
+            "Responsable": base["Responsable"].astype(str),
+            "Tarea": base["Tarea"].astype(str),
+            "Prioridad actual": cur_disp,
+            "Prioridad a modificar": ""  # editable
+        })
+
+        # Snapshot previo (para detectar cambios sobre 'a modificar')
+        st.session_state["_pri_prev"] = view[["Id","Prioridad actual","Prioridad a modificar"]].copy()
+
+        # ===== GRID =====
         grid_options = {
             "columnDefs": [
                 {"field": "Id", "headerName": "Id", "editable": False, "minWidth": 100},
@@ -287,24 +305,17 @@ def render(user: dict | None = None):
                 {"field": "Fase", "headerName": "Fase", "editable": False, "minWidth": 180},
                 {"field": "Responsable", "headerName": "Responsable", "editable": False, "minWidth": 220},
                 {"field": "Tarea", "headerName": "Tarea", "editable": False, "minWidth": 300},
+                {"field": "Prioridad actual", "headerName": "Prioridad actual", "editable": False, "minWidth": 160},
                 {
-                    "field": "Prioridad",
-                    "headerName": "Prioridad",
-                    "editable": bool(IS_EDITOR),
-                    "minWidth": 140,
+                    "field": "Prioridad a modificar", "headerName": "Prioridad a modificar",
+                    "editable": bool(IS_EDITOR), "minWidth": 190,
                     "cellEditor": "agSelectCellEditor",
-                    "cellEditorParams": {"values": ["", "Baja", "Media", "Alta"]},
+                    "cellEditorParams": {"values": CHOICES_EDIT_EMO},
                 },
-                {"field": "Fecha Vencimiento", "headerName": "Fecha límite", "editable": False, "minWidth": 150},
-                {"field": "Hora Vencimiento", "headerName": "Hora límite", "editable": False, "minWidth": 130},
             ],
             "defaultColDef": {
-                "sortable": False,
-                "filter": False,
-                "floatingFilter": False,
-                "wrapText": False,
-                "autoHeight": False,
-                "resizable": True,
+                "sortable": False, "filter": False, "floatingFilter": False,
+                "wrapText": False, "autoHeight": False, "resizable": True,
             },
         }
 
@@ -315,68 +326,45 @@ def render(user: dict | None = None):
             theme="streamlit",
             height=420,
             data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
-            update_mode=(
-                GridUpdateMode.MODEL_CHANGED
-                | GridUpdateMode.FILTERING_CHANGED
-                | GridUpdateMode.SORTING_CHANGED
-                | GridUpdateMode.VALUE_CHANGED
-            ),
+            update_mode=(GridUpdateMode.MODEL_CHANGED
+                         | GridUpdateMode.FILTERING_CHANGED
+                         | GridUpdateMode.SORTING_CHANGED
+                         | GridUpdateMode.VALUE_CHANGED),
             allow_unsafe_jscode=True,
         )
 
-        # Detectar cambios en Prioridad y consolidar en df_main
-        try:
-            edited = grid_resp["data"]
-            new_df = None
-            if isinstance(edited, list):
-                new_df = pd.DataFrame(edited)
-            elif hasattr(grid_resp, "data"):
-                new_df = pd.DataFrame(grid_resp.data)
+        # ===== Detectar cambios y preparar dif =====
+        changed_ids = []
+        edits = grid_resp.get("data", [])
+        new_df = pd.DataFrame(edits) if isinstance(edits, list) else pd.DataFrame(grid_resp.data)
 
-            changed_ids = set()
-            try:
-                prev = st.session_state.get("_pri_prev")
-                if isinstance(prev, pd.DataFrame) and new_df is not None:
-                    a = prev.copy()
-                    b = new_df.reindex(columns=["Id", "Prioridad"]).copy()
-                    a["Id"] = a["Id"].astype(str)
-                    b["Id"] = b["Id"].astype(str)
-                    prev_map = a.set_index("Id")
-                    curr_map = b.set_index("Id")
-                    common = prev_map.index.intersection(curr_map.index)
-                    if len(common):
-                        dif_mask = (
-                            prev_map["Prioridad"].fillna("").astype(str).ne(
-                                curr_map["Prioridad"].fillna("").astype(str)
-                            )
-                        )
-                        changed_ids.update(common[dif_mask].tolist())
-            except Exception:
-                pass
-            st.session_state["_pri_changed_ids"] = sorted(changed_ids)
+        if not new_df.empty:
+            # normalizar ambos lados (actual vs a modificar)
+            new_df["__actual_norm"] = new_df["Prioridad actual"].astype(str).map(_norm_pri)
+            new_df["__nuevo_norm"] = new_df["Prioridad a modificar"].astype(str).map(_norm_pri)
 
-            # Aplicar cambios a df_main (solo Prioridad)
-            if new_df is not None and "Id" in new_df.columns:
+            mask_changed = (new_df["__nuevo_norm"].astype(str).str.len() > 0) & (
+                new_df["__nuevo_norm"].ne(new_df["__actual_norm"])
+            )
+            changed_ids = new_df.loc[mask_changed, "Id"].astype(str).tolist()
+
+            # aplicar al df_main (solo en memoria, columna 'Prioridad')
+            if changed_ids:
                 base_full = st.session_state.get("df_main", pd.DataFrame()).copy()
                 if "Id" in base_full.columns:
                     base_full["Id"] = base_full["Id"].astype(str)
-                    new_df["Id"] = new_df["Id"].astype(str)
-                    base_idx = base_full.set_index("Id")
-                    upd_idx = new_df.set_index("Id")
-                    if "Prioridad" not in base_idx.columns:
-                        base_idx["Prioridad"] = ""
-                    base_idx.update(upd_idx[["Prioridad"]])
-                    st.session_state["df_main"] = base_idx.reset_index()
-                else:
-                    st.session_state["df_main"] = new_df
-                try:
-                    _save_local(st.session_state["df_main"].copy())
-                except Exception:
-                    pass
-        except Exception:
-            pass
+                    upd_map = new_df.loc[mask_changed, ["Id","__nuevo_norm"]].set_index("Id")["__nuevo_norm"]
+                    # Guardar sin emoji (etiqueta canónica)
+                    base_full.loc[base_full["Id"].isin(upd_map.index), "Prioridad"] = base_full["Id"].map(upd_map).fillna(base_full.get("Prioridad"))
+                    st.session_state["df_main"] = base_full
+                    try:
+                        _save_local(base_full.copy())
+                    except Exception:
+                        pass
 
-        # ===== ÚNICO botón =====
+        st.session_state["_pri_changed_ids"] = changed_ids
+
+        # ===== ÚNICO BOTÓN =====
         st.markdown('<div style="padding:0 16px; border-top:2px solid #10B981; margin-top:8px;">', unsafe_allow_html=True)
         _spacer, b_action = st.columns([6.6, 1.8], gap="medium")
         with b_action:
@@ -386,22 +374,20 @@ def render(user: dict | None = None):
             try:
                 ids = st.session_state.get("_pri_changed_ids", [])
                 if not ids:
-                    st.info("No hay cambios de 'Prioridad' para guardar.")
+                    st.info("No hay cambios de prioridad para guardar.")
                 else:
                     base_full = st.session_state.get("df_main", pd.DataFrame()).copy()
-                    base_full["Id"] = base_full.get("Id", "").astype(str)
+                    base_full["Id"] = base_full.get("Id","").astype(str)
                     df_rows = base_full[base_full["Id"].isin(ids)].copy()
 
                     if upsert_rows_by_id is None:
-                        _save_local(st.session_state["df_main"].copy())
+                        _save_local(base_full.copy())
                         st.warning("No se encontró utils.gsheets.upsert_rows_by_id. Se guardó localmente.")
                     else:
-                        ss_url = (
-                            st.secrets.get("gsheets_doc_url")
-                            or (st.secrets.get("gsheets", {}) or {}).get("spreadsheet_url")
-                            or (st.secrets.get("sheets", {}) or {}).get("sheet_url")
-                        )
-                        ws_name = (st.secrets.get("gsheets", {}) or {}).get("worksheet", "TareasRecientes")
+                        ss_url = (st.secrets.get("gsheets_doc_url")
+                                  or (st.secrets.get("gsheets",{}) or {}).get("spreadsheet_url")
+                                  or (st.secrets.get("sheets",{}) or {}).get("sheet_url"))
+                        ws_name = (st.secrets.get("gsheets",{}) or {}).get("worksheet","TareasRecientes")
                         res = upsert_rows_by_id(ss_url=ss_url, ws_name=ws_name, df=df_rows, ids=[str(x) for x in ids])
                         if res.get("ok"):
                             st.success(res.get("msg", "Actualizado."))
@@ -410,8 +396,5 @@ def render(user: dict | None = None):
             except Exception as e:
                 st.warning(f"No se pudo guardar prioridad: {e}")
 
-        st.markdown("</div>", unsafe_allow_html=True)  # cierre de la botonera
-        st.markdown("</div>", unsafe_allow_html=True)  # cierre de #pri-section
-
-        # Separación final
+        st.markdown('</div>', unsafe_allow_html=True)
         st.markdown(f"<div style='height:{SECTION_GAP_DEF}px'></div>", unsafe_allow_html=True)
