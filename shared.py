@@ -466,12 +466,36 @@ def _user_tokens(user: dict | None = None) -> set[str]:
             tokens.add(_norm_txt(v.split("@", 1)[0]))
     return {t for t in tokens if t}
 
+# ====== AJUSTE 1: is_super_viewer ampliado (secrets + roles.xlsx) ======
 def is_super_viewer(user: dict | None = None) -> bool:
-    """Lee super_viewers de secrets; si no hay, usa ['vivi', 'enrique'] como fallback."""
-    sv = _st.secrets.get("super_viewers", ["vivi", "enrique"])
-    sv = {_norm_txt(x) for x in sv}
-    toks = _user_tokens(user)
-    return any(t in sv for t in toks)
+    """Supervisoras/es que ven todo.
+    Orden: secrets['super_viewers']  →  roles.xlsx (can_edit_all_tabs o rol alto)."""
+    # A) Lista rápida desde secrets (tolerante a substrings)
+    try:
+        sv = _st.secrets.get("super_viewers", ["vivi", "enrique"])
+        sv_norm = {_norm_txt(x) for x in sv}
+        toks = _user_tokens(user)
+        # match exacto o substring (ej. 'vivi' dentro de 'vivi saurino')
+        if any((t in sv_norm) or any(s in t for s in sv_norm) for t in toks):
+            return True
+    except Exception:
+        pass
+
+    # B) Roles.xlsx (si existe): can_edit_all_tabs o rol alto
+    try:
+        from features.security import acl as _acl  # type: ignore
+        roles_df = _acl.load_roles()
+        row = _acl.find_user(roles_df, get_user_email())
+        if row:
+            if bool(row.get("can_edit_all_tabs", False)):
+                return True
+            role = str(row.get("role", "")).strip().lower()
+            if role in {"admin", "owner", "manager"}:
+                return True
+    except Exception:
+        pass
+
+    return False
 
 def can_edit_all_tabs(user: dict | None = None) -> bool:
     """
@@ -531,6 +555,15 @@ def hydrate_acl_flags(user: dict | None = None):
             # can_edit_all_tabs desde roles tiene prioridad
             try:
                 acl_out["can_edit_all_tabs"] = bool(user_row.get("can_edit_all_tabs", False))
+            except Exception:
+                pass
+
+            # ====== AJUSTE 2: elevar también is_super_viewer por rol alto ======
+            try:
+                role_txt = str(user_row.get("role","")).strip().lower()
+                if bool(user_row.get("can_edit_all_tabs", False)) or role_txt in {"admin","owner","manager"}:
+                    acl_out["is_super_viewer"] = True
+                    acl_out["can_edit_all_tabs"] = True
             except Exception:
                 pass
 
@@ -612,16 +645,18 @@ def _owns_name(cell_value: str, allowed: set[str]) -> bool:
     # match exacto por token o substring tolerante
     return any((a in parts) or (a and a in nv) for a in allowed)
 
+# ====== AJUSTE 3: early return en apply_scope por permisos altos ======
 def apply_scope(df: _pd.DataFrame, user: dict | None = None, resp_col: str = "Responsable") -> _pd.DataFrame:
     """
-    Si user ∈ super_viewers => df completo.
+    Si user ∈ super_viewers o tiene can_edit_all_tabs => df completo.
     Si no, filtra por 'Responsable'≈usuario (con alias opcional) y/o por columnas de correo.
     """
     if not isinstance(df, _pd.DataFrame) or df.empty:
         return df
 
-    # 1) Super viewers
-    if is_super_viewer(user):
+    # Early return por permisos altos (desde session_state o por cálculo directo)
+    acl = _st.session_state.get("acl_user", {})
+    if bool(acl.get("can_edit_all_tabs")) or bool(acl.get("is_super_viewer")) or is_super_viewer(user):
         return df
 
     # 2) Identidad de usuario
