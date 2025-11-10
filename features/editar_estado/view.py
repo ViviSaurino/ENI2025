@@ -567,13 +567,17 @@ def render(user: dict | None = None):
         }"""
         )
 
+        # ✅ Ajuste de zona horaria en el frontend (UTC-5 Lima) para la hora de "estado modificado"
         on_cell_changed = JsCode(
             """
         function(params){
           if (params.colDef.field === 'Fecha estado modificado'){
             const pad = n => String(n).padStart(2,'0');
-            const d = new Date();
-            const hhmm = pad(d.getHours()) + ':' + pad(d.getMinutes());
+            const now = new Date();
+            // Convertir a UTC y restar 5 horas (Perú no usa DST)
+            const utcMs = now.getTime() + now.getTimezoneOffset()*60000;
+            const lima = new Date(utcMs - 5*60*60000);
+            const hhmm = pad(lima.getHours()) + ':' + pad(lima.getMinutes());
             params.node.setDataValue('Hora estado modificado', hhmm);
           }
         }"""
@@ -634,7 +638,7 @@ def render(user: dict | None = None):
 
                         # Cambios de estado
                         changes = grid_data.loc[
-                            grid_data["Estado modificado"].astype(str).str.strip() != "",
+                            grid_data["Estado modificado"].astype(str).str.trim() != "",
                             ["Id", "Estado modificado"],
                         ].copy()
 
@@ -671,7 +675,7 @@ def render(user: dict | None = None):
                             c_i = changes.set_index("Id")
                             ids_estado = b_i.index.intersection(c_i.index)
 
-                            # Actualizar estado + sello actual
+                            # Actualizar estado + sello actual (Lima)
                             if len(ids_estado) > 0:
                                 new_state = c_i.loc[ids_estado, "Estado modificado"].astype(str)
                                 b_i.loc[ids_estado, "Estado"] = new_state.values
