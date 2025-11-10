@@ -191,8 +191,8 @@ def _ensure_defaults(df: pd.DataFrame) -> pd.DataFrame:
         base[c] = base[c].fillna("").replace({"nan": ""})
 
     if "¿Se corrigió?" not in base.columns:
-        base["¿Se corrigió?"] = "No"
-    base["¿Se corrigió?"] = base["¿Se corrigió?"].fillna("No").replace({"": "No"})
+        base["¿Se corrigió?" ] = "No"
+    base["¿Se corrigió?" ] = base["¿Se corrigió?" ].fillna("No").replace({"": "No"})
 
     return base
 
@@ -490,18 +490,86 @@ def can_edit_all_tabs(user: dict | None = None) -> bool:
     return is_super_viewer(user)
 
 def hydrate_acl_flags(user: dict | None = None):
-    """Guarda flags ACL en st.session_state['acl_user'] para uso en vistas."""
+    """
+    Guarda flags ACL en st.session_state['acl_user'] para uso en vistas.
+    Si existe features/security/acl.py:
+      - Carga roles, ubica usuario y deriva permisos (can_edit_all_tabs, etc.).
+      - Expone st.session_state['maybe_save'] = lambda fn,*a,**k: acl.maybe_save(user_row, fn, *a, **k)
+      - Expone columnas de solo-lectura: st.session_state['acl_user']['read_only_cols'] (set)
+    """
+    # Identidad base
     u = user or {
         "email": get_user_email(),
         "display": _st.session_state.get("user_display_name", "") or "",
     }
-    _st.session_state.setdefault("acl_user", {})
-    _st.session_state["acl_user"].update({
+
+    # Defaults (fallback a secrets)
+    acl_out = {
         "email": u.get("email", ""),
         "display": u.get("display", ""),
         "is_super_viewer": is_super_viewer(u),
         "can_edit_all_tabs": can_edit_all_tabs(u),
-    })
+    }
+    read_only_cols = set()
+
+    # Intento: consumir features/security/acl.py
+    try:
+        from features.security import acl as _acl  # type: ignore
+
+        # Cargar roles y fila de usuario
+        roles_df = _acl.load_roles()
+        user_row = _acl.find_user(roles_df, acl_out["email"])
+
+        if user_row:
+            # can_edit_all_tabs desde roles tiene prioridad
+            try:
+                acl_out["can_edit_all_tabs"] = bool(user_row.get("can_edit_all_tabs", False))
+            except Exception:
+                pass
+
+            # Guardar wrapper de persistencia según política
+            def _maybe_save(fn, *args, **kwargs):
+                return _acl.maybe_save(user_row, fn, *args, **kwargs)
+
+            st.session_state["maybe_save"] = _maybe_save
+
+            # Columnas de solo lectura
+            try:
+                read_only_cols = _acl.get_readonly_cols(user_row)
+            except Exception:
+                read_only_cols = set()
+
+            # (Opcional) Mensaje de horario/fin de semana; no bloquea UI
+            try:
+                ok_now, msg = _acl.can_access_now(user_row)
+                acl_out["access_now_ok"] = bool(ok_now)
+                acl_out["access_now_msg"] = str(msg or "")
+            except Exception:
+                pass
+
+            # Alias de display si está en roles (no pisa el que ya tengas)
+            try:
+                disp = (user_row.get("display_name") or "").strip()
+                if disp:
+                    acl_out["display"] = disp
+            except Exception:
+                pass
+
+        else:
+            # Si no hay coincidencia en roles, mantener fallback y limpiar maybe_save previo
+            if "maybe_save" in st.session_state and not callable(st.session_state.get("maybe_save")):
+                st.session_state.pop("maybe_save", None)
+
+    except Exception:
+        # Sin módulo ACL: si existía maybe_save de una sesión anterior, lo dejamos si es callable
+        if "maybe_save" in st.session_state and not callable(st.session_state.get("maybe_save")):
+            st.session_state.pop("maybe_save", None)
+
+    # Persistir flags en session_state
+    _st.session_state.setdefault("acl_user", {})
+    _st.session_state["acl_user"].update(acl_out)
+    if read_only_cols:
+        _st.session_state["acl_user"]["read_only_cols"] = set(read_only_cols)
 
 def _owns_name(cell_value: str, allowed: set[str]) -> bool:
     """¿El valor de 'Responsable' contiene alguno de los candidatos?"""
@@ -572,11 +640,19 @@ def apply_scope(df: _pd.DataFrame, user: dict | None = None, resp_col: str = "Re
 # === fin ACL helper =============================================================
 
 # === Historial / TareasRecientes (log universal de "Nueva tarea") ===============
-def log_reciente(sheet, tarea_nombre: str, especialista: str = "", detalle: str = "Asignada", tab_name: str = "TareasRecientes"):
+def log_reciente(
+    sheet,
+    tarea_nombre: str,
+    especialista: str = "",
+    detalle: str = "Asignada",
+    tab_name: str = "TareasRecientes",
+    id_val: str | None = None,
+):
     """
     Registra SIEMPRE (sin ACL) un evento de 'Nueva tarea' en la hoja `tab_name`.
     - Usa hora Lima (minutos, sin tzinfo).
     - Incluye columnas de identidad para visibilidad por usuario: 'Responsable' y 'UserEmail'.
+    - Acepta `id_val` para persistir el Id de la tarea (además de un `id` interno de fila).
     - Se alinea a las columnas existentes si la hoja ya tiene un esquema propio.
     - Limpia el cache de Streamlit para que el Historial refleje el cambio al instante.
     """
@@ -584,16 +660,24 @@ def log_reciente(sheet, tarea_nombre: str, especialista: str = "", detalle: str 
     import pandas as _pd_local
 
     _email = get_user_email()
+    _ts = now_lima_trimmed().strftime("%Y-%m-%d %H:%M")
+    tarea_txt = (tarea_nombre or "").strip()
+    resp_txt = (especialista or "").strip()
 
     row = {
+        # Row-id técnico para upsert/append en la hoja de historial
         "id": uuid4().hex[:10].upper(),
-        "fecha": now_lima_trimmed().strftime("%Y-%m-%d %H:%M"),
+        # Id de la tarea del tablero (si existe)
+        "Id": id_val or "",
+        # Campos de control/visualización
+        "fecha": _ts,
         "accion": "Nueva tarea",
-        "tarea": tarea_nombre or "",
-        # compatibilidad histórica
-        "especialista": (especialista or "").strip(),
-        # columnas clave para filtros y visibilidad
-        "Responsable": (especialista or "").strip(),
+        # Compatibilidad histórica (minúsculas) y nueva (Título con mayúscula)
+        "tarea": tarea_txt,
+        "Tarea": tarea_txt,
+        # Identidad para filtros y visibilidad
+        "especialista": resp_txt,   # legacy
+        "Responsable": resp_txt,    # preferida
         "UserEmail": (_email or "").strip(),
         "detalle": (detalle or "").strip(),
     }
