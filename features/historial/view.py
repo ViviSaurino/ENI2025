@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode, JsCode
+import time  # ⬅️ Auto-sync debounce
 
 # 👇 ACL: para filtrar vista (Vivi/Enrique ven todo, resto solo lo suyo)
 try:
@@ -400,6 +401,14 @@ def render(user: dict | None = None):
         except Exception:
             pass
 
+    # === Auto-sync desde Sheets (debounce 60s por sesión) ===
+    try:
+        if (time.time() - st.session_state.get("_last_pull_hist", 0)) > 60:
+            pull_user_slice_from_sheet(replace_df_main=False)  # merge por Id
+            st.session_state["_last_pull_hist"] = time.time()
+    except Exception:
+        pass
+
     # ===== Píldora arriba =====
     st.markdown('<div class="hist-title-pill">📝 Tareas recientes</div>', unsafe_allow_html=True)
 
@@ -416,6 +425,19 @@ def render(user: dict | None = None):
     # 👉 ALCANCE por usuario (ACL)
     df_all = st.session_state["df_main"].copy()
     df_scope = apply_scope(df_all.copy(), user=user)  # Vivi/Enrique ven todo; resto solo lo suyo
+
+    # ➤ Rango por defecto = mín–máx de la data disponible (no hoy–hoy)
+    if "Fecha inicio" in df_scope.columns:
+        _fseries = to_naive_local_series(df_scope["Fecha inicio"])
+    elif "Fecha Registro" in df_scope.columns:
+        _fseries = to_naive_local_series(df_scope["Fecha Registro"])
+    else:
+        _fseries = to_naive_local_series(df_scope.get("Fecha", pd.Series([], dtype=object)))
+    if _fseries.notna().any():
+        _min_date = _fseries.min().date()
+        _max_date = _fseries.max().date()
+    else:
+        _min_date = _max_date = date.today()
 
     with st.container():
         c1, c2, c3, c4, c5, c6 = st.columns([1.05, 1.10, 1.70, 1.05, 1.05, 0.90], gap="medium")
@@ -442,11 +464,10 @@ def render(user: dict | None = None):
         with c3:
             resp_multi = st.multiselect("Responsable", options=responsables, default=[], key="hist_resp",
                                         placeholder="Selecciona responsable(s)")
-        today = date.today()
         with c4:
-            f_desde = st.date_input("Desde (Fecha de registro)", value=today, key="hist_desde")
+            f_desde = st.date_input("Desde (Fecha de registro)", value=_min_date, key="hist_desde")
         with c5:
-            f_hasta = st.date_input("Hasta (Fecha de registro)", value=today, key="hist_hasta")
+            f_hasta = st.date_input("Hasta (Fecha de registro)", value=_max_date, key="hist_hasta")
         with c6:
             st.markdown('<div class="hist-search">', unsafe_allow_html=True)
             hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
