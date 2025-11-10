@@ -72,7 +72,7 @@ def _fmt_hhmm(v) -> str:
         s = str(v).strip()
         if not s or s.lower() in {"nan", "nat", "none", "null"}:
             return ""
-        m = re.match(r"^(\d{1,2}):(\d{2})", s)
+        m = re.match(r"^(\d{1,2}):(\d{2})(?::\d{2})?$", s)
         if m:
             return f"{int(m.group(1)):02d}:{int(m.group(2)):02d}"
         d = pd.to_datetime(s, errors="coerce", utc=False)
@@ -147,27 +147,19 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
             id_to_row[str(row[id_idx]).strip()] = r_i
 
     # Columnas a reflejar (incluye auxiliares y sellos)
-    cols_to_push = [
-        "Estado",
-        "Fecha estado actual",
-        "Hora estado actual",
+    base_push_cols = [
+        "Estado", "Estado actual",
+        "Fecha estado actual", "Hora estado actual",
         "Duración",
-        "Estado modificado",
-        "Fecha estado modificado",
-        "Hora estado modificado",
-        "Fecha inicio",
-        "Hora de inicio",
-        "Fecha Terminado",
-        "Hora Terminado",
-        "Fecha Pausado",
-        "Hora Pausado",
-        "Fecha Cancelado",
-        "Hora Cancelado",
-        "Fecha Eliminado",
-        "Hora Eliminado",
+        "Estado modificado", "Fecha estado modificado", "Hora estado modificado",
+        "Fecha inicio", "Hora de inicio",
+        "Fecha Terminado", "Hora Terminado",
+        "Fecha Pausado", "Hora Pausado",
+        "Fecha Cancelado", "Hora Cancelado",
+        "Fecha Eliminado", "Hora Eliminado",
         "Link de archivo",
     ]
-    cols_to_push = [c for c in cols_to_push if c in col_map]
+    cols_to_push = [c for c in base_push_cols if c in col_map]
 
     def _fmt_out(col, val):
         low = str(col).lower()
@@ -182,6 +174,14 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
     body, ranges = [], []
     df_idx = df_base.set_index("Id")
 
+    def _get_val(_id, h):
+        if h in df_idx.columns:
+            return df_idx.loc[_id, h]
+        # Si la hoja tiene 'Estado actual', úsalo desde 'Estado'
+        if h == "Estado actual" and "Estado" in df_idx.columns:
+            return df_idx.loc[_id, "Estado"]
+        return ""
+
     for _id in changed_ids:
         if _id not in df_idx.index:
             continue
@@ -189,7 +189,7 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
         if not row_idx:
             new_row = []
             for h in headers:
-                v = df_idx.loc[_id, h] if h in df_idx.columns else ""
+                v = _get_val(_id, h)
                 new_row.append(_fmt_out(h, v))
             values.append(new_row)
             ws.append_row(new_row, value_input_option="USER_ENTERED")
@@ -200,7 +200,7 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
             current_row += [""] * (len(headers) - len(current_row))
 
         for h in cols_to_push:
-            v = df_idx.loc[_id, h] if h in df_idx.columns else ""
+            v = _get_val(_id, h)
             current_row[col_map[h] - 1] = _fmt_out(h, v)
 
         ranges.append(f"A{row_idx}:{last_col_letter}{row_idx}")
@@ -270,12 +270,28 @@ def render(user: dict | None = None):
 
         # ===== Rango por defecto (min–max del dataset) =====
         def _first_valid_date_series(df: pd.DataFrame) -> pd.Series:
-            for col in ["Fecha inicio", "Fecha Registro", "Fecha"]:
-                if col in df.columns:
-                    s = pd.to_datetime(df[col], errors="coerce")
-                    if s.notna().any():
-                        return s
-            return pd.Series([], dtype="datetime64[ns]")
+            """
+            Devuelve una serie con *todas* las fechas encontradas para calcular min/max
+            (solo para defaults). Cubre cualquier columna 'Fecha*'.
+            """
+            if df.empty:
+                return pd.Series([], dtype="datetime64[ns]")
+            pri = [
+                "Fecha inicio","Fecha estado actual","Fecha Registro","Fecha",
+                "Fecha Terminado","Fecha Pausado","Fecha Cancelado","Fecha Eliminado",
+                "Fecha estado modificado"
+            ]
+            s_list = []
+            for c in pri:
+                if c in df.columns:
+                    s_list.append(pd.to_datetime(df[c], errors="coerce"))
+            for c in df.columns:
+                if c not in pri and str(c).strip().lower().startswith("fecha"):
+                    s_list.append(pd.to_datetime(df[c], errors="coerce"))
+            if not s_list:
+                return pd.Series([], dtype="datetime64[ns]")
+            all_dates = pd.concat(s_list, ignore_index=True)
+            return all_dates[all_dates.notna()]
 
         dates_all = _first_valid_date_series(df_all)
         if dates_all.empty:
@@ -357,19 +373,25 @@ def render(user: dict | None = None):
             if est_resp != "Todos" and "Responsable" in df_tasks.columns:
                 df_tasks = df_tasks[df_tasks["Responsable"].astype(str) == est_resp]
 
-            if "Fecha inicio" in df_tasks.columns:
-                fcol = pd.to_datetime(df_tasks["Fecha inicio"], errors="coerce")
-            elif "Fecha Registro" in df_tasks.columns:
-                fcol = pd.to_datetime(df_tasks["Fecha Registro"], errors="coerce")
-            else:
-                fcol = pd.to_datetime(df_tasks.get("Fecha", pd.Series([], dtype=str)), errors="coerce")
+            # NUEVO: prioriza varias columnas de fecha para el filtro de rango
+            date_priority = [
+                "Fecha inicio","Fecha estado actual","Fecha Registro","Fecha",
+                "Fecha Terminado","Fecha Pausado","Fecha Cancelado","Fecha Eliminado",
+                "Fecha estado modificado"
+            ]
+            fcol = pd.Series(pd.NaT, index=df_tasks.index)
+            for c in date_priority:
+                if c in df_tasks.columns:
+                    tmp = pd.to_datetime(df_tasks[c], errors="coerce")
+                    if tmp.notna().any():
+                        fcol = tmp
+                        break
 
             if est_desde:
                 df_tasks = df_tasks[fcol >= pd.to_datetime(est_desde)]
             if est_hasta:
                 df_tasks = df_tasks[
-                    fcol
-                    <= (pd.to_datetime(est_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))
+                    fcol <= (pd.to_datetime(est_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))
                 ]
 
         # ===== Tabla "Resultados" =====
@@ -380,8 +402,24 @@ def render(user: dict | None = None):
             return s.dt.strftime("%Y-%m-%d").fillna("")
 
         def _fmt_time(s):
-            s = pd.to_datetime(s, errors="coerce")
-            return s.dt.strftime("%H:%M").fillna("")
+            """Devuelve HH:MM. Acepta Series/Index o escalares ('17:05', '17:05:33', datetimes)."""
+            def _one(x):
+                x = "" if x is None or (isinstance(x, float) and pd.isna(x)) else str(x).strip()
+                if not x or x.lower() in {"nan", "nat", "none", "null"}:
+                    return ""
+                m = re.match(r"^(\d{1,2}):(\d{2})(?::\d{2})?$", x)
+                if m:
+                    return f"{int(m.group(1)):02d}:{int(m.group(2)):02d}"
+                try:
+                    d = pd.to_datetime(x, errors="coerce")
+                    if pd.isna(d):
+                        return ""
+                    return f"{int(d.hour):02d}:{int(d.minute):02d}"
+                except Exception:
+                    return ""
+            if isinstance(s, (pd.Series, pd.Index)):
+                return s.astype(str).map(_one)
+            return _one(s)
 
         cols_out = [
             "Id",
