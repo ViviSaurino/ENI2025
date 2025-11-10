@@ -4,7 +4,7 @@
 from __future__ import annotations
 import os
 from io import BytesIO
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timezone
 import pandas as pd
 import streamlit as st
 
@@ -30,16 +30,18 @@ except Exception:
         LIMA_TZ = None
 
 def now_lima_trimmed():
-    now = datetime.now()
+    """
+    Devuelve datetime en hora de Lima, redondeado a minuto (sin tzinfo),
+    robusto al timezone del servidor (convierte desde UTC).
+    """
     try:
-        if LIMA_TZ:
-            if hasattr(LIMA_TZ, "localize"):
-                now = LIMA_TZ.localize(now)
-            else:
-                now = now.replace(tzinfo=LIMA_TZ)
+        if LIMA_TZ is None:
+            return datetime.now().replace(second=0, microsecond=0)
+        now_utc = datetime.now(timezone.utc)
+        now_local = now_utc.astimezone(LIMA_TZ)
+        return now_local.replace(second=0, microsecond=0, tzinfo=None)
     except Exception:
-        pass
-    return now.replace(second=0, microsecond=0)
+        return datetime.now().replace(second=0, microsecond=0)
 
 def combine_dt(d, t):
     if d in (None, "", pd.NaT):
@@ -97,7 +99,7 @@ COLS_XLSX = [c for c in COLS if c not in ("__DEL__", "DEL")]
 
 # Columnas de ALERTA que vamos a garantizar si la vista las usa
 ALERT_COLS = [
-    "¿Generó alerta?", "Nº alerta",
+    "¿Generó alerta?", "N° alerta",
     "Fecha de detección", "Hora de detección",
     "¿Se corrigió?",
     "Fecha de corrección", "Hora de corrección"
@@ -175,9 +177,13 @@ def _ensure_defaults(df: pd.DataFrame) -> pd.DataFrame:
         base["¿Generó alerta?"] = "No"
     base["¿Generó alerta?"] = base["¿Generó alerta?"].fillna("No").replace({"": "No"})
 
-    if "Nº alerta" not in base.columns:
-        base["Nº alerta"] = 0
-    base["Nº alerta"] = pd.to_numeric(base["Nº alerta"], errors="coerce").fillna(0).astype(int).clip(lower=0)
+    # Preferimos "N° alerta". Si solo hay "Nº alerta", la usamos para poblarla.
+    if "N° alerta" not in base.columns:
+        if "Nº alerta" in base.columns:
+            base["N° alerta"] = pd.to_numeric(base["Nº alerta"], errors="coerce").fillna(0).astype(int).clip(lower=0)
+        else:
+            base["N° alerta"] = 0
+    base["N° alerta"] = pd.to_numeric(base["N° alerta"], errors="coerce").fillna(0).astype(int).clip(lower=0)
 
     for c in ["Fecha de detección", "Hora de detección", "Fecha de corrección", "Hora de corrección"]:
         if c not in base.columns:
@@ -194,10 +200,13 @@ def ensure_df_main():
     """
     Rehidrata st.session_state['df_main'] en este orden:
     1) data/tareas.csv (persistencia local de 'Grabar')
-    2) Google Sheets pestaña 'TareasRecientes' (filtrando por usuario)
+    2) Google Sheets pestaña 'TareasRecientes' (filtrando por usuario, EXCEPTO super_viewers)
     3) DataFrame vacío con columnas COLS
+    Además hidrata flags ACL en st.session_state['acl_user'].
     """
     if "df_main" in st.session_state:
+        # Asegura flags ACL aunque la DF ya exista
+        hydrate_acl_flags()
         return
 
     # --- 1) Intento: archivo local ---
@@ -215,21 +224,25 @@ def ensure_df_main():
                 except Exception:
                     url = None
 
+            email = get_user_email()
+            display_name = st.session_state.get("user_display_name", "") or ""
+            user_obj = {"email": email, "display": display_name}
+
             if url and callable(open_sheet_by_url) and callable(read_df_from_worksheet):
                 sh = open_sheet_by_url(url)
                 ws_name = (st.secrets.get("gsheets", {}) or {}).get("worksheet", "TareasRecientes")
                 df_sheet = read_df_from_worksheet(sh, ws_name)
 
-                email = st.session_state.get("user_email") or (st.session_state.get("user") or {}).get("email", "")
-                display_name = st.session_state.get("user_display_name", "") or ""
-
                 if isinstance(df_sheet, pd.DataFrame) and not df_sheet.empty:
-                    if "UserEmail" in df_sheet.columns and email:
-                        base = df_sheet[df_sheet["UserEmail"] == email].copy()
-                    elif "Responsable" in df_sheet.columns and display_name:
-                        base = df_sheet[df_sheet["Responsable"] == display_name].copy()
-                    else:
+                    if is_super_viewer(user_obj):
                         base = df_sheet.copy()
+                    else:
+                        if "UserEmail" in df_sheet.columns and email:
+                            base = df_sheet[df_sheet["UserEmail"] == email].copy()
+                        elif "Responsable" in df_sheet.columns and display_name:
+                            base = df_sheet[df_sheet["Responsable"] == display_name].copy()
+                        else:
+                            base = df_sheet.iloc[0:0].copy()  # sin columnas relevantes, no mostrar
         except Exception:
             base = base if base is not None else pd.DataFrame()
 
@@ -245,6 +258,9 @@ def ensure_df_main():
     keep_first = [c for c in COLS if c in base.columns]
     others = [c for c in base.columns if c not in keep_first]
     st.session_state["df_main"] = base[keep_first + others].copy()
+
+    # Hidrata flags ACL
+    hydrate_acl_flags()
 
 # --------- Fila en blanco ----------
 def blank_row():
@@ -409,6 +425,29 @@ def _norm_txt(s: str) -> str:
     s = _re.sub(r"\s+", " ", s)
     return s
 
+def get_user_email() -> str:
+    return (
+        str(_st.session_state.get("auth_email") or "") or
+        str(_st.session_state.get("user_email") or "") or
+        str((_st.session_state.get("user") or {}).get("email", "") or "")
+    )
+
+def alias_from_email(email: str) -> str:
+    """
+    Retorna alias/display para un email usando [resp_alias] de secrets.
+    Si no existe, devuelve la parte local del correo (como fallback simple).
+    """
+    try:
+        m = dict(_st.secrets.get("resp_alias", {}))
+        if email in m:
+            return m[email]
+    except Exception:
+        pass
+    try:
+        return (email or "").split("@", 1)[0]
+    except Exception:
+        return email or ""
+
 def _user_tokens(user: dict | None = None) -> set[str]:
     """Tokens comparables: nombre, email, usuario (parte local), display."""
     u = {**(user or {}), **_st.session_state.get("user", {})}
@@ -427,12 +466,42 @@ def _user_tokens(user: dict | None = None) -> set[str]:
             tokens.add(_norm_txt(v.split("@", 1)[0]))
     return {t for t in tokens if t}
 
-def _super_viewer(user: dict | None = None) -> bool:
-    """Lee super_viewers de secrets; si no hay, usa ['vivi','enrique']."""
+def is_super_viewer(user: dict | None = None) -> bool:
+    """Lee super_viewers de secrets; si no hay, usa ['vivi', 'enrique'] como fallback."""
     sv = _st.secrets.get("super_viewers", ["vivi", "enrique"])
     sv = {_norm_txt(x) for x in sv}
     toks = _user_tokens(user)
     return any(t in sv for t in toks)
+
+def can_edit_all_tabs(user: dict | None = None) -> bool:
+    """
+    True si el email del usuario está en [acl].editor_emails.
+    Si no existe ese bloque, por compatibilidad: permite a super_viewers.
+    """
+    try:
+        editors = list((_st.secrets.get("acl") or {}).get("editor_emails", []))
+        editors_norm = {_norm_txt(x) for x in editors}
+        toks = _user_tokens(user)
+        if editors_norm:
+            return any(t in editors_norm for t in toks)
+    except Exception:
+        pass
+    # Fallback: super_viewers también editan todo
+    return is_super_viewer(user)
+
+def hydrate_acl_flags(user: dict | None = None):
+    """Guarda flags ACL en st.session_state['acl_user'] para uso en vistas."""
+    u = user or {
+        "email": get_user_email(),
+        "display": _st.session_state.get("user_display_name", "") or "",
+    }
+    _st.session_state.setdefault("acl_user", {})
+    _st.session_state["acl_user"].update({
+        "email": u.get("email", ""),
+        "display": u.get("display", ""),
+        "is_super_viewer": is_super_viewer(u),
+        "can_edit_all_tabs": can_edit_all_tabs(u),
+    })
 
 def _owns_name(cell_value: str, allowed: set[str]) -> bool:
     """¿El valor de 'Responsable' contiene alguno de los candidatos?"""
@@ -453,7 +522,7 @@ def apply_scope(df: _pd.DataFrame, user: dict | None = None, resp_col: str = "Re
         return df
 
     # 1) Super viewers
-    if _super_viewer(user):
+    if is_super_viewer(user):
         return df
 
     # 2) Identidad de usuario
