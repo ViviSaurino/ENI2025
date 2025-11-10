@@ -393,3 +393,74 @@ def inject_global_css():
 }
 </style>
 """, unsafe_allow_html=True)
+
+# === ACL helper (Vivi/Enrique ven todo; el resto solo sus tareas) ===============
+import re as _re, unicodedata as _ud
+import pandas as _pd
+import streamlit as _st
+
+def _norm_txt(s: str) -> str:
+    """lower, sin tildes, sin dobles espacios, sin HTML."""
+    if s is None:
+        return ""
+    s = _re.sub(r"<[^>]+>", "", str(s)).strip().lower()
+    s = _ud.normalize("NFD", s)
+    s = "".join(ch for ch in s if _ud.category(ch) != "Mn")
+    s = _re.sub(r"\s+", " ", s)
+    return s
+
+def _user_tokens(user: dict | None = None) -> set[str]:
+    """Tokens comparables: nombre, email y 'usuario' (parte antes de @)."""
+    u = (user or {}) | _st.session_state.get("user", {})
+    vals = {
+        str(u.get("email", "")).strip(),
+        str(u.get("name", "")).strip(),
+        str(u.get("username", "")).strip(),
+        str(u.get("display", "")).strip(),
+    }
+    tokens = {_norm_txt(v) for v in vals if v}
+    # agrega parte local del correo
+    for v in list(tokens):
+        if "@" in v:
+            tokens.add(v.split("@", 1)[0])
+    return {t for t in tokens if t}
+
+def _super_viewer(user: dict | None = None) -> bool:
+    """Lee super_viewers de secrets; si no hay, usa ['vivi','enrique']."""
+    sv = _st.secrets.get("super_viewers", ["vivi", "enrique"])
+    sv = {_norm_txt(x) for x in sv}
+    toks = _user_tokens(user)
+    return any(t in sv for t in toks)
+
+def apply_scope(df: _pd.DataFrame, user: dict | None = None, resp_col: str = "Responsable") -> _pd.DataFrame:
+    """
+    Si user es Vivi o Enrique (en super_viewers), retorna df completo.
+    Si no, filtra df por la columna 'Responsable' ≈ usuario logueado.
+    Opcionalmente usa un mapeo de alias en secrets: [resp_alias]
+      p.ej.: resp_alias = { vivi="viviana saurino", enrique="enrique torres" }
+    """
+    if not isinstance(df, _pd.DataFrame) or df.empty or resp_col not in df.columns:
+        return df
+
+    if _super_viewer(user):
+        return df
+
+    toks = _user_tokens(user)
+    if not toks:
+        # si no pudimos identificar al usuario, no mostramos nada
+        return df.iloc[0:0].copy()
+
+    # alias opcional en secrets
+    alias_map_raw = _st.secrets.get("resp_alias", {})
+    alias_map = {_norm_txt(k): _norm_txt(v) for k, v in dict(alias_map_raw).items()}
+
+    # set de valores permitidos en la columna Responsable (normalizados)
+    allowed = set(toks)
+    for t in list(toks):
+        if t in alias_map:
+            allowed.add(alias_map[t])
+
+    col_norm = df[resp_col].astype(str).map(_norm_txt)
+    mask = col_norm.isin(allowed)
+    return df.loc[mask].copy()
+# === fin ACL helper =============================================================
