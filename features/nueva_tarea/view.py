@@ -228,7 +228,7 @@ def render(user: dict | None = None):
             # ===== Responsable & Área desde ACL =====
             _acl = st.session_state.get("acl_user", {}) or {}
             _display_name = (
-                _acl.get("display_name")
+                _acl.get("display")           # ← clave correcta según shared.hydrate_acl_flags()
                 or st.session_state.get("user_display_name", "")
                 or _acl.get("name", "")
                 or (st.session_state.get("user") or {}).get("name", "")
