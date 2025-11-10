@@ -1,4 +1,5 @@
 # utils/gsheets.py
+import re
 import pandas as pd
 import gspread
 from gspread_dataframe import set_with_dataframe
@@ -81,3 +82,178 @@ def upsert_by_id(sh, ws_name: str, df_user: pd.DataFrame, id_col: str = "Id"):
 
     except Exception as e:
         return {"ok": False, "msg": f"Upsert falló: {e}"}
+
+# ============================================================
+#         NUEVO: Upsert por Id en lote, sin borrar nada
+#         (para reutilizar desde Historial u otras vistas)
+# ============================================================
+
+def _a1_col(n: int) -> str:
+    """Convierte índice 1-based a letra A1 (1->A, 26->Z, 27->AA)."""
+    s = ""
+    while n > 0:
+        n, r = divmod(n - 1, 26)
+        s = chr(65 + r) + s
+    return s
+
+def _fmt_hhmm(value) -> str:
+    """Normaliza hora a HH:MM; tolerante a strings y datetimes."""
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return ""
+    s = str(value).strip()
+    if not s or s.lower() in {"nan", "nat", "none", "null"}:
+        return ""
+    m = re.match(r"^(\d{1,2}):(\d{2})", s)
+    if m:
+        return f"{int(m.group(1)):02d}:{int(m.group(2)):02d}"
+    try:
+        d = pd.to_datetime(s, errors="coerce", utc=False)
+        if pd.isna(d):
+            return ""
+        return f"{int(d.hour):02d}:{int(d.minute):02d}"
+    except Exception:
+        return ""
+
+def _format_row_for_headers(row: pd.Series, headers: list[str]) -> list[str]:
+    """Devuelve la fila alineada a headers, formateando Fecha*/Hora*."""
+    out = []
+    for c in headers:
+        v = row.get(c, "")
+        low = str(c).lower()
+        if low.startswith("fecha"):
+            ser = pd.to_datetime(pd.Series([v]), errors="coerce")
+            x = ser.iloc[0]
+            out.append("" if pd.isna(x) else pd.Timestamp(x).strftime("%Y-%m-%d"))
+        elif low.startswith("hora"):
+            out.append(_fmt_hhmm(v))
+        else:
+            if v is None or (isinstance(v, float) and pd.isna(v)):
+                out.append("")
+            else:
+                out.append(str(v))
+    return out
+
+def _ensure_worksheet(ss, ws_name: str, rows: int = 1000, cols: int = 26):
+    """Abre o crea la pestaña."""
+    try:
+        ws = ss.worksheet(ws_name)
+    except gspread.WorksheetNotFound:
+        ws = ss.add_worksheet(title=ws_name, rows=str(rows), cols=str(cols))
+    return ws
+
+def _ensure_headers(ws, desired_headers: list[str]) -> list[str]:
+    """
+    Lee headers actuales y devuelve la lista final.
+    Si faltan columnas de desired_headers, las agrega al final y actualiza A1.
+    """
+    headers = ws.row_values(1)
+    if not headers:
+        headers = list(desired_headers)
+        ws.update("A1", [headers])
+        return headers
+
+    missing = [c for c in desired_headers if c not in headers]
+    if missing:
+        headers = headers + missing
+        ws.update("A1", [headers])
+    return headers
+
+def upsert_rows_by_id(
+    ss_url: str,
+    ws_name: str,
+    df: pd.DataFrame,
+    ids: list[str] | set[str] | None,
+    id_col: str = "Id",
+) -> dict:
+    """
+    Upsert SOLO las filas con Id ∈ ids (o todas si ids=None) en la pestaña ws_name del spreadsheet ss_url,
+    sin borrar datos de otros usuarios. Usa batch update por rangos.
+
+    Retorna: {"ok": True/False, "updated": n, "inserted": m, "msg": str}
+    """
+    try:
+        if df is None or df.empty:
+            return {"ok": False, "updated": 0, "inserted": 0, "msg": "DataFrame vacío."}
+        if id_col not in df.columns:
+            return {"ok": False, "updated": 0, "inserted": 0, "msg": f"Falta columna '{id_col}'."}
+
+        # Filtra por ids si se pasan
+        df2 = df.copy()
+        df2[id_col] = df2[id_col].astype(str).str.strip()
+        if ids is not None:
+            ids_norm = {str(x).strip() for x in ids if str(x).strip()}
+            df2 = df2[df2[id_col].isin(ids_norm)].copy()
+            if df2.empty:
+                return {"ok": True, "updated": 0, "inserted": 0, "msg": "No hay Ids para actualizar."}
+
+        # Abre SS/WS
+        ss = open_sheet_by_url(ss_url)
+        ws = _ensure_worksheet(ss, ws_name)
+
+        # Headers: asegúrate de incluir todas las columnas presentes en df2
+        desired_headers = list(df2.columns)
+        if "Id" in desired_headers:
+            # prioriza 'Id' como primera columna si no lo es
+            desired_headers = ["Id"] + [c for c in desired_headers if c != "Id"]
+        headers = _ensure_headers(ws, desired_headers)
+
+        # Índice de columna 'Id'
+        try:
+            id_col_idx = headers.index(id_col) + 1
+        except ValueError:
+            # Si por alguna razón no existía, fuerza a que sea la primera
+            headers = [id_col] + [c for c in headers if c != id_col]
+            ws.update("A1", [headers])
+            id_col_idx = 1
+
+        last_col_letter = _a1_col(len(headers))
+
+        # Mapa Id->número de fila existente (lee solo la columna Id)
+        existing_ids_col = ws.col_values(id_col_idx)
+        id_to_row = {}
+        # existing_ids_col[0] es el header
+        for i, v in enumerate(existing_ids_col[1:], start=2):
+            if v:
+                id_to_row[str(v).strip()] = i
+
+        # Prepara updates/append
+        update_data_ranges = []  # para values_batch_update
+        appends = []
+        df2 = df2.reindex(columns=headers).copy()  # garantiza orden de columnas
+        for _, row in df2.iterrows():
+            rid = str(row.get(id_col, "")).strip()
+            if not rid:
+                continue
+            row_vals = _format_row_for_headers(row, headers)
+            if rid in id_to_row:
+                r = id_to_row[rid]
+                rng = f"{ws_name}!A{r}:{last_col_letter}{r}"
+                update_data_ranges.append({"range": rng, "values": [row_vals]})
+            else:
+                appends.append(row_vals)
+
+        # Ejecuta batch update (updates)
+        updated = 0
+        if update_data_ranges:
+            body = {
+                "valueInputOption": "USER_ENTERED",
+                "data": update_data_ranges,
+            }
+            ss.values_batch_update(body)
+            updated = len(update_data_ranges)
+
+        # Ejecuta appends
+        inserted = 0
+        if appends:
+            ws.append_rows(appends, value_input_option="USER_ENTERED")
+            inserted = len(appends)
+
+        return {
+            "ok": True,
+            "updated": updated,
+            "inserted": inserted,
+            "msg": f"Upsert completado: {updated} actualizada(s), {inserted} insertada(s).",
+        }
+
+    except Exception as e:
+        return {"ok": False, "updated": 0, "inserted": 0, "msg": f"Error en upsert_rows_by_id: {e}"}
