@@ -16,6 +16,12 @@ except Exception:
     def apply_scope(df, user=None):  # fallback no-op
         return df
 
+# 👇 Upsert centralizado (utils/gsheets)
+try:
+    from utils.gsheets import upsert_rows_by_id  # type: ignore
+except Exception:
+    upsert_rows_by_id = None  # fallback local más abajo
+
 # ================== Config base ==================
 TAB_NAME = "Tareas"
 DEFAULT_COLS = [
@@ -234,10 +240,25 @@ def _sheet_upsert_by_id(df_rows: pd.DataFrame) -> dict:
     """
     Actualiza o inserta filas por Id en la pestaña configurada (sin borrar nada).
     df_rows: subconjunto con las filas a upsert (debe incluir 'Id').
+
+    🔄 Ajuste solicitado: usa utils.gsheets.upsert_rows_by_id si está disponible.
     """
     if df_rows is None or df_rows.empty or "Id" not in df_rows.columns:
         return {"ok": False, "msg": "No hay filas con Id para actualizar."}
 
+    # ⇨ Preferir helper centralizado
+    if upsert_rows_by_id is not None:
+        try:
+            ss_url = (st.secrets.get("gsheets_doc_url")
+                      or (st.secrets.get("gsheets",{}) or {}).get("spreadsheet_url")
+                      or (st.secrets.get("sheets",{}) or {}).get("sheet_url"))
+            ws_name = (st.secrets.get("gsheets",{}) or {}).get("worksheet","TareasRecientes")
+            ids = df_rows["Id"].astype(str).tolist()
+            return upsert_rows_by_id(ss_url=ss_url, ws_name=ws_name, df=df_rows, ids=ids)
+        except Exception as e:
+            return {"ok": False, "msg": f"Upsert falló: {e}"}
+
+    # ⇨ Fallback local (por si no se pudo importar utils.gsheets)
     ss, ws_name = _gsheets_client()
     try:
         ws = ss.worksheet(ws_name)
@@ -247,20 +268,15 @@ def _sheet_upsert_by_id(df_rows: pd.DataFrame) -> dict:
         cols = str(max(26, len(df_rows.columns) + 5))
         ws = ss.add_worksheet(title=ws_name, rows=rows, cols=cols)
 
-    # Lee cabeceras existentes
     headers = ws.row_values(1)
     if not headers:
         headers = list(df_rows.columns)
 
-    # Agrega columnas nuevas al final si hiciera falta
     new_cols = [c for c in df_rows.columns if c not in headers]
     if new_cols:
         headers = headers + new_cols
-        # actualiza la fila de encabezados
         ws.update("A1", [headers])
 
-    # Mapa Id -> fila (número de fila en Sheets)
-    # Ubica índice de columna 'Id'
     try:
         id_col_idx = (headers.index("Id") + 1)
     except ValueError:
@@ -268,20 +284,17 @@ def _sheet_upsert_by_id(df_rows: pd.DataFrame) -> dict:
         ws.update("A1", [headers])
         id_col_idx = 1
 
-    # Trae toda la columna Id para mapear filas existentes (evita get_all_values completo)
     col_letter = _a1_col(id_col_idx)
     existing_ids_col = ws.col_values(id_col_idx)
-    # existing_ids_col[0] es "Id" (header)
     id_to_row = {}
     for i, v in enumerate(existing_ids_col[1:], start=2):
         if v:
             id_to_row[str(v).strip()] = i
 
-    # Prepara y ejecuta upserts
     last_col_letter = _a1_col(len(headers))
     updates = []
     appends = []
-    # Asegura tipos
+
     df_rows = df_rows.copy()
     df_rows["Id"] = df_rows["Id"].astype(str)
 
@@ -297,16 +310,14 @@ def _sheet_upsert_by_id(df_rows: pd.DataFrame) -> dict:
         else:
             appends.append(row_values)
 
-    # Aplica updates por lotes
     for rng, vals in updates:
         ws.update(rng, vals, value_input_option="USER_ENTERED")
 
-    # Apéndices (nuevas filas)
     if appends:
         ws.append_rows(appends, value_input_option="USER_ENTERED")
 
     total = len(updates) + len(appends)
-    return {"ok": True, "msg": f"Upsert completado: {total} fila(s) actualizada(s)/insertada(s)."}
+    return {"ok": True, "msg": f"Upsert completado (fallback): {total} fila(s) actualizada(s)/insertada(s)."}
 
 # ===== Exportación =====
 def export_excel(df: pd.DataFrame, sheet_name: str = TAB_NAME) -> bytes:
@@ -335,7 +346,7 @@ def _add_business_days(start_dates: pd.Series, days: pd.Series) -> pd.Series:
     ok = (~pd.isna(sd)) & (n > 0)
     out = pd.Series(pd.NaT, index=start_dates.index, dtype="datetime64[ns]")
     if ok.any():
-        a = np.array(sd[ok], dtype="datetime64[D]")
+        a = np.array(sd[ok], dtype="datetime64[D]"])
         b = n[ok].to_numpy()
         res = np.busday_offset(a, b, weekmask="Mon Tue Wed Thu Fri")
         out.loc[ok] = pd.to_datetime(res)
