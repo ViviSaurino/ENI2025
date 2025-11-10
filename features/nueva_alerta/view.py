@@ -241,10 +241,14 @@ def render(user: dict | None = None):
           return {};
         }""")
 
+        # ✅ Ajuste: sellos en hora Lima (UTC-5) al cambiar la fecha en el grid
         on_cell_changed = JsCode("""
         function(params){
           const pad = n => String(n).padStart(2,'0');
-          const now = new Date(); const hhmm = pad(now.getHours())+':'+pad(now.getMinutes());
+          const now = new Date();
+          const utcMs = now.getTime() + now.getTimezoneOffset()*60000;
+          const lima = new Date(utcMs - 5*60*60000); // Perú (sin DST)
+          const hhmm = pad(lima.getHours()) + ':' + pad(lima.getMinutes());
           if (params.colDef.field === 'Fecha de detección'){
             params.node.setDataValue('Hora de detección', hhmm);
           }
