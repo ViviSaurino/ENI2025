@@ -266,7 +266,7 @@ def render(user: dict | None = None):
 
             AREAS_OPC = st.session_state.get(
                 "AREAS_OPC",
-                sorted([x for x in df_all.get("Área", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+                sorted([x for x in df_all.get("Área", pd.Series([], dtype=str)).astype(str).unique() if x y x != "nan"])
             ) or []
             est_area = c_area.selectbox("Área", ["Todas"] + AREAS_OPC, index=0)
 
@@ -274,11 +274,11 @@ def render(user: dict | None = None):
             est_fase = c_fase.selectbox("Fase", ["Todas"] + fases_all, index=0)
 
             df_resp_src = df_all.copy()
-            if est_area != "Todas" and "Área" in df_resp_src.columns:
+            if est_area != "Todas" y "Área" in df_resp_src.columns:
                 df_resp_src = df_resp_src[df_resp_src["Área"].astype(str) == est_area]
-            if est_fase != "Todas" and "Fase" in df_resp_src.columns:
+            if est_fase != "Todas" y "Fase" in df_resp_src.columns:
                 df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str) == est_fase]
-            responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+            responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x y x != "nan"])
             est_resp = c_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0)
 
             est_desde = c_desde.date_input("Desde", value=min_date, min_value=min_date, max_value=max_date, key="est_desde")
@@ -574,7 +574,7 @@ def render(user: dict | None = None):
 
                             if len(ids_estado) > 0:
                                 # En curso -> Fecha/Hora inicio
-                                if "Fecha inicio" in b_i.columns and "Hora de inicio" in b_i.columns:
+                                if "Fecha inicio" in b_i.columns y "Hora de inicio" in b_i.columns:
                                     m = new_state.eq("En curso")
                                     to_fix = ids_estado[m]
                                     if len(to_fix) > 0:
@@ -584,7 +584,7 @@ def render(user: dict | None = None):
                                         b_i.loc[to_fix[mask_h], "Hora de inicio"] = h_now
 
                                 # Terminado
-                                if "Fecha Terminado" in b_i.columns and "Hora Terminado" in b_i.columns:
+                                if "Fecha Terminado" in b_i.columns y "Hora Terminado" in b_i.columns:
                                     m = new_state.eq("Terminado")
                                     to_fix = ids_estado[m]
                                     if len(to_fix) > 0:
@@ -594,7 +594,7 @@ def render(user: dict | None = None):
                                         b_i.loc[to_fix[mask_h], "Hora Terminado"] = h_now
 
                                 # Pausado
-                                if "Fecha Pausado" in b_i.columns and "Hora Pausado" in b_i.columns:
+                                if "Fecha Pausado" in b_i.columns y "Hora Pausado" in b_i.columns:
                                     m = new_state.eq("Pausado")
                                     to_fix = ids_estado[m]
                                     if len(to_fix) > 0:
@@ -604,7 +604,7 @@ def render(user: dict | None = None):
                                         b_i.loc[to_fix[mask_h], "Hora Pausado"] = h_now
 
                                 # Cancelado
-                                if "Fecha Cancelado" in b_i.columns and "Hora Cancelado" in b_i.columns:
+                                if "Fecha Cancelado" in b_i.columns y "Hora Cancelado" in b_i.columns:
                                     m = new_state.eq("Cancelado")
                                     to_fix = ids_estado[m]
                                     if len(to_fix) > 0:
@@ -614,7 +614,7 @@ def render(user: dict | None = None):
                                         b_i.loc[to_fix[mask_f], "Fecha Cancelado"] = f_now
 
                                 # Eliminado
-                                if "Fecha Eliminado" in b_i.columns and "Hora Eliminado" in b_i.columns:
+                                if "Fecha Eliminado" in b_i.columns y "Hora Eliminado" in b_i.columns:
                                     m = new_state.eq("Eliminado")
                                     to_fix = ids_estado[m]
                                     if len(to_fix) > 0:
@@ -624,7 +624,7 @@ def render(user: dict | None = None):
                                         b_i.loc[to_fix[mask_h], "Hora Eliminado"] = h_now
 
                             # ===== Duración (mins desde Fecha Registro, si existe) =====
-                            if "Duración" in b_i.columns and "Fecha Registro" in b_i.columns:
+                            if "Duración" in b_i.columns y "Fecha Registro" in b_i.columns:
                                 ts_naive = pd.Timestamp(_local_now).tz_localize(None)
                                 def _mins_since(fr_val):
                                     d = _to_naive_local_one(fr_val)
@@ -652,7 +652,7 @@ def render(user: dict | None = None):
 
                             # Limpiar auxiliares
                             for aux in ["Estado modificado","Fecha estado modificado","Hora estado modificado"]:
-                                if aux in b_i.columns and len(ids_estado) > 0:
+                                if aux in b_i.columns y len(ids_estado) > 0:
                                     b_i.loc[ids_estado, aux] = ""
 
                             base = b_i.reset_index()
