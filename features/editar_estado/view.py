@@ -12,14 +12,17 @@ from st_aggrid import (
     JsCode,
 )
 
-# Hora Lima para sellado de cambios
+# Hora Lima para sellado de cambios + ACL
 try:
-    from shared import now_lima_trimmed
+    from shared import now_lima_trimmed, apply_scope
 except Exception:
     from datetime import datetime, timedelta
     # Fallback robusto: siempre hora Lima (UTC-5)
     def now_lima_trimmed():
         return (datetime.utcnow() - timedelta(hours=5)).replace(second=0, microsecond=0)
+    # Fallback por si no carga shared (no filtra)
+    def apply_scope(df, user=None, resp_col="Responsable"):
+        return df
 
 # ========= Utilidades mínimas para zonas horarias =========
 try:
@@ -237,6 +240,8 @@ def render(user: dict | None = None):
 
         # Base
         df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
+        # 🔐 ACL: Vivi/Enrique ven todo; el resto solo lo suyo
+        df_all = apply_scope(df_all, user=user)
 
         # ===== Rango por defecto (min–max del dataset) =====
         def _first_valid_date_series(df: pd.DataFrame) -> pd.Series:
@@ -603,8 +608,8 @@ def render(user: dict | None = None):
                                     m = new_state.eq("Cancelado")
                                     to_fix = ids_estado[m]
                                     if len(to_fix) > 0:
-                                        mask_f = _is_blank_dt(b_i.loc[to_fix, "Fecha Cancelado"])
                                         mask_h = _is_blank_tm(b_i.loc[to_fix, "Hora Cancelado"])
+                                        mask_f = _is_blank_dt(b_i.loc[to_fix, "Fecha Cancelado"])
                                         b_i.loc[to_fix[mask_h], "Hora Cancelado"] = h_now
                                         b_i.loc[to_fix[mask_f], "Fecha Cancelado"] = f_now
 
