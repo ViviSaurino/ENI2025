@@ -23,6 +23,16 @@ try:
 except Exception:
     upsert_rows_by_id = None  # fallback local más abajo
 
+# 👇 Solo-lectura por usuario (si viene de ACL). Acepta nombres separados por coma.
+def _split_list(s: str) -> set[str]:
+    return {x.strip() for x in str(s or "").split(",") if x and x.strip()}
+
+def _get_readonly_cols_from_acl(user_row: dict) -> set[str]:
+    try:
+        return _split_list((user_row or {}).get("read_only_cols", ""))
+    except Exception:
+        return set()
+
 # ================== Config base ==================
 TAB_NAME = "Tareas"
 DEFAULT_COLS = [
@@ -680,13 +690,24 @@ def render(user: dict | None = None):
         "Hora Registro": "Hora de registro",
     }
 
+    # === Solo-lectura por usuario (desde ACL) ===
+    _acl_user = st.session_state.get("acl_user", {}) or {}
+    _ro_acl = {re.sub(r'[^a-z0-9]', '', x.lower()) for x in _get_readonly_cols_from_acl(_acl_user)}
+    def _normkey(x: str) -> str:
+        return re.sub(r'[^a-z0-9]', '', (x or '').lower())
+
+    # Columnas base editables en historial
+    _editable_base = {"Tarea", "Detalle"}
+
     for col in df_grid.columns:
         nice = header_map.get(col, col)
+        # editable si está en base y NO está en la lista de solo-lectura del usuario (normalizada)
+        col_is_editable = (col in _editable_base) and (_normkey(col) not in _ro_acl) and (_normkey(nice) not in _ro_acl)
         gob.configure_column(
             col,
             headerName=nice,
             minWidth=width_map.get(nice, width_map.get(col, 120)),
-            editable=(col in ["Tarea", "Detalle"]),
+            editable=col_is_editable,
             suppressMenu=True,
             filter=False, floatingFilter=False, sortable=False
         )
