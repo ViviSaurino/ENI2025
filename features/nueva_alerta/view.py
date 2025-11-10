@@ -7,6 +7,32 @@ from st_aggrid import AgGrid, GridUpdateMode, DataReturnMode, JsCode
 
 SECTION_GAP_DEF = globals().get("SECTION_GAP", 30)
 
+# ==== ACL + hora Lima (compat con shared) ====
+try:
+    from shared import apply_scope, now_lima_trimmed
+except Exception:
+    def apply_scope(df, user=None, resp_col="Responsable"):
+        return df
+    from datetime import datetime, timedelta
+    def now_lima_trimmed():
+        return (datetime.utcnow() - timedelta(hours=5)).replace(second=0, microsecond=0)
+
+# Hora Lima local sin segundos (robusto a secrets/local_tz)
+try:
+    from zoneinfo import ZoneInfo
+    _TZ = ZoneInfo(st.secrets.get("local_tz", "America/Lima"))
+except Exception:
+    _TZ = None
+
+def _now_lima_trimmed_local():
+    from datetime import datetime, timedelta
+    try:
+        if _TZ:
+            return datetime.now(_TZ).replace(second=0, microsecond=0)
+        return (datetime.utcnow() - timedelta(hours=5)).replace(second=0, microsecond=0)
+    except Exception:
+        return now_lima_trimmed()
+
 def _save_local(df: pd.DataFrame):
     try:
         os.makedirs("data", exist_ok=True)
@@ -69,8 +95,11 @@ def render(user: dict | None = None):
           <div class="form-card">
         """, unsafe_allow_html=True)
 
+        # Base (filtrada por ACL)
         df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
+        df_all = apply_scope(df_all, user=user)
 
+        # ===== Rango por defecto (min–max del dataset) =====
         def _first_valid_date_series(df: pd.DataFrame) -> pd.Series:
             for col in ["Fecha inicio", "Fecha Registro", "Fecha"]:
                 if col in df.columns:
@@ -314,6 +343,9 @@ def render(user: dict | None = None):
                                 df_base[c] = ""
 
                         cambios = 0
+                        _now = _now_lima_trimmed_local()
+                        h_now = _now.strftime("%H:%M")
+
                         for _, row in df_edit.iterrows():
                             id_row = str(row.get("Id","")).strip()
                             if not id_row:
@@ -329,6 +361,7 @@ def render(user: dict | None = None):
                                     return 1
                                 return 0
 
+                            # Set básicos
                             cambios += _set("¿Generó alerta?",     row.get("¿Generó alerta?"))
                             cambios += _set("N° alerta",           row.get("N° alerta"))
                             cambios += _set("Fecha de detección",  row.get("Fecha de detección"))
@@ -336,6 +369,17 @@ def render(user: dict | None = None):
                             cambios += _set("¿Se corrigió?",       row.get("¿Se corrigió?"))
                             cambios += _set("Fecha de corrección", row.get("Fecha de corrección"))
                             cambios += _set("Hora de corrección",  row.get("Hora de corrección"))
+
+                            # Si hay fecha y falta hora -> sellamos con hora Lima
+                            if str(df_base.loc[m, "Fecha de detección"].iloc[0]).strip() and \
+                               str(df_base.loc[m, "Hora de detección"].iloc[0]).strip() in {"", "nan", "NaN", "00:00"}:
+                                df_base.loc[m, "Hora de detección"] = h_now
+                                cambios += 1
+
+                            if str(df_base.loc[m, "Fecha de corrección"].iloc[0]).strip() and \
+                               str(df_base.loc[m, "Hora de corrección"].iloc[0]).strip() in {"", "nan", "NaN", "00:00"}:
+                                df_base.loc[m, "Hora de corrección"] = h_now
+                                cambios += 1
 
                         if cambios > 0:
                             st.session_state["df_main"] = df_base.copy()
@@ -351,7 +395,6 @@ def render(user: dict | None = None):
                                 st.rerun()
                             else:
                                 st.info(res.get("msg", "Guardado deshabilitado."))
-
                         else:
                             st.info("No se detectaron cambios para guardar.")
                 except Exception as e:
