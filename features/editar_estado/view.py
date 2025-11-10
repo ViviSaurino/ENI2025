@@ -266,7 +266,7 @@ def render(user: dict | None = None):
 
             AREAS_OPC = st.session_state.get(
                 "AREAS_OPC",
-                sorted([x for x in df_all.get("Área", pd.Series([], dtype=str)).astype(str).unique() if x y x != "nan"])
+                sorted([x for x in df_all.get("Área", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
             ) or []
             est_area = c_area.selectbox("Área", ["Todas"] + AREAS_OPC, index=0)
 
