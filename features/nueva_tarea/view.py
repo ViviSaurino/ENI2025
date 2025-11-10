@@ -1,4 +1,4 @@
-from __future__ import annotations 
+from __future__ import annotations
 import os
 import pandas as pd
 import streamlit as st
@@ -10,8 +10,9 @@ try:
         next_id_by_person,
         make_id_prefix,
         COLS,
-        SECTION_GAP,
-        _auto_time_on_date,
+        # SECTION_GAP  # <- no se importa: no existe en shared por defecto
+        now_lima_trimmed,
+        log_reciente,
     )
 except Exception:
     from datetime import datetime
@@ -39,21 +40,66 @@ except Exception:
     COLS = None
     SECTION_GAP = 30
 
-    # --- Hora local America/Lima ---
+    # --- Hora local America/Lima (fallback) ---
     try:
         from zoneinfo import ZoneInfo
         _LIMA = ZoneInfo("America/Lima")
-        def _now_local():
+        def now_lima_trimmed():
             return datetime.now(_LIMA).replace(second=0, microsecond=0)
     except Exception:
-        def _now_local():
-            from datetime import datetime
+        def now_lima_trimmed():
             return datetime.now().replace(second=0, microsecond=0)
 
+    def log_reciente(sheet, tarea_nombre: str, especialista: str = "", detalle: str = "Asignada", tab_name: str = "TareasRecientes"):
+        # no-op seguro si no hay gsheets
+        try:
+            from uuid import uuid4
+            import pandas as _pd
+            row = {
+                "id": uuid4().hex[:10].upper(),
+                "fecha": now_lima_trimmed().strftime("%Y-%m-%d %H:%M"),
+                "accion": "Nueva tarea",
+                "tarea": tarea_nombre or "",
+                "especialista": (especialista or "").strip(),
+                "detalle": (detalle or "").strip(),
+            }
+            if sheet is None:
+                return
+            try:
+                from utils.gsheets import read_df_from_worksheet, upsert_by_id  # type: ignore
+            except Exception:
+                read_df_from_worksheet = None
+                upsert_by_id = None
+            df_exist = None
+            if callable(read_df_from_worksheet):
+                try:
+                    df_exist = read_df_from_worksheet(sheet, tab_name)
+                except Exception:
+                    df_exist = None
+            if isinstance(df_exist, _pd.DataFrame) and not df_exist.empty:
+                cols = list(df_exist.columns)
+                payload = _pd.DataFrame([{c: row.get(c, "") for c in cols}], columns=cols)
+            else:
+                payload = _pd.DataFrame([row])
+            if callable(upsert_by_id) and "id" in payload.columns:
+                upsert_by_id(sheet, tab_name, payload, id_col="id")
+            else:
+                ws = sheet.worksheet(tab_name)
+                ws.append_rows(payload.astype(str).values.tolist())
+            try:
+                st.cache_data.clear()
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+# --- helpers de hora para esta vista (si no existen aún) ---
+if "_auto_time_on_date" not in globals():
     def _auto_time_on_date():
-        now = _now_local()
+        now = now_lima_trimmed()
         st.session_state["fi_t"] = now.time()
 
+if "_sync_time_from_date" not in globals():
     def _sync_time_from_date():
         d = st.session_state.get("fi_d", None)
         if d is None:
@@ -62,8 +108,8 @@ except Exception:
             d = pd.to_datetime(d).date()
         except Exception:
             return
-        if d == _now_local().date():
-            st.session_state["fi_t"] = _now_local().time()
+        if d == now_lima_trimmed().date():
+            st.session_state["fi_t"] = now_lima_trimmed().time()
             try:
                 st.session_state["fi_t_view"] = st.session_state["fi_t"].strftime("%H:%M")
             except Exception:
@@ -203,7 +249,7 @@ def render(user: dict | None = None):
                 if st.session_state.get("nt_skip_date_init", False):
                     st.session_state.pop("nt_skip_date_init", None)
                 else:
-                    st.session_state["fi_d"] = _now_local().date()
+                    st.session_state["fi_d"] = now_lima_trimmed().date()
             _sync_time_from_date()
 
             _t = st.session_state.get("fi_t")
@@ -344,6 +390,32 @@ def render(user: dict | None = None):
                 res = maybe_save(_persist, df.copy()) if callable(maybe_save) else _persist(df.copy())
                 if not res.get("ok", False):
                     st.info(res.get("msg", "Guardado deshabilitado."))
+
+                # ====== Log universal en TareasRecientes (sin ACL) ======
+                # Abrimos el spreadsheet si está configurado en secrets
+                sheet = None
+                try:
+                    from utils.gsheets import open_sheet_by_url  # type: ignore
+                    url = st.secrets.get("gsheets_doc_url") or (st.secrets.get("gsheets", {}) or {}).get("spreadsheet_url")
+                    if url and callable(open_sheet_by_url):
+                        try:
+                            sheet = open_sheet_by_url(url)
+                        except Exception:
+                            sheet = None
+                except Exception:
+                    sheet = None
+
+                try:
+                    # Registrar SIEMPRE (para todas las personas)
+                    log_reciente(
+                        sheet,
+                        tarea_nombre=new.get("Tarea", ""),
+                        especialista=new.get("Responsable", ""),
+                        detalle="Asignada",
+                    )
+                except Exception:
+                    # No romper el flujo si no hay gsheets
+                    pass
 
                 # limpiar campos
                 for k in [
