@@ -404,7 +404,7 @@ def inject_global_css():
 .form-card [data-testid="stHorizontalBlock"]:nth-of-type(2) > [data-testid="column"]:first-child [data-baseweb="select"] > div{ min-width:300px !important; }
 /* Topbar layout */
 .topbar, .topbar-ux, .topbar-na{ display:flex !important; align-items:center !important; gap:8px !important; }
-.topbar .stButton>button, .topbar-ux .stButton>button, .topbar-na .stButton>button{
+topbar .stButton>button, .topbar-ux .stButton>button, .topbar-na .stButton>button{
   height:var(--pill-h) !important; padding:0 16px !important; border-radius:10px !important; display:inline-flex !important; align-items:center !important;
 }
 </style>
@@ -576,18 +576,25 @@ def log_reciente(sheet, tarea_nombre: str, especialista: str = "", detalle: str 
     """
     Registra SIEMPRE (sin ACL) un evento de 'Nueva tarea' en la hoja `tab_name`.
     - Usa hora Lima (minutos, sin tzinfo).
+    - Incluye columnas de identidad para visibilidad por usuario: 'Responsable' y 'UserEmail'.
     - Se alinea a las columnas existentes si la hoja ya tiene un esquema propio.
     - Limpia el cache de Streamlit para que el Historial refleje el cambio al instante.
     """
     from uuid import uuid4
     import pandas as _pd_local
 
+    _email = get_user_email()
+
     row = {
         "id": uuid4().hex[:10].upper(),
         "fecha": now_lima_trimmed().strftime("%Y-%m-%d %H:%M"),
         "accion": "Nueva tarea",
         "tarea": tarea_nombre or "",
+        # compatibilidad histórica
         "especialista": (especialista or "").strip(),
+        # columnas clave para filtros y visibilidad
+        "Responsable": (especialista or "").strip(),
+        "UserEmail": (_email or "").strip(),
         "detalle": (detalle or "").strip(),
     }
 
