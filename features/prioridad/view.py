@@ -147,7 +147,7 @@ def render(user: dict | None = None):
             --pri-help-text: #0F766E;   /* texto verde legible */
           }
 
-          /* Píldora jade pastel (mismo ancho que "Área") */
+          /* Píldora jade pastel (se ubicará dentro de la columna "Área") */
           .pri-pill{
             width:100%; height:38px; border-radius:12px;
             display:flex; align-items:center;
@@ -175,9 +175,17 @@ def render(user: dict | None = None):
             else:
                 st.session_state["df_main"] = pd.DataFrame()
 
-        # Píldora y ayuda
-        st.markdown('<div class="pri-pill">🏷️ Prioridad</div>', unsafe_allow_html=True)
-        st.markdown('<div class="help-strip-pri">Edita la columna <b>Prioridad</b> (solo responsables autorizados). Luego presiona <b>Grabar</b> y <b>Subir a Sheets</b>.</div>', unsafe_allow_html=True)
+        # === Píldora SOLO ancho de "Área" ===
+        _pill_area, _, _, _, _, _ = st.columns([A, Fw, T_width, D, R, C], gap="medium")
+        with _pill_area:
+            st.markdown('<div class="pri-pill">🏷️&nbsp;Prioridad</div>', unsafe_allow_html=True)
+
+        # Ayuda (texto actualizado a un solo botón)
+        st.markdown(
+            '<div class="help-strip-pri">Edita la columna <b>Prioridad</b> (solo responsables autorizados). '
+            'Luego presiona <b>🏷️ Dar prioridad</b> para guardar en <i>TareasRecientes</i>.</div>',
+            unsafe_allow_html=True
+        )
 
         # ====== Vista mínima enfocada en Prioridad ======
         base = st.session_state["df_main"].copy()
@@ -286,65 +294,39 @@ def render(user: dict | None = None):
         except Exception:
             pass
 
-        # ===== Botonera =====
+        # ===== Único botón de acción =====
         st.markdown('<div style="padding:0 16px; border-top:2px solid #10B981; margin-top:8px;">', unsafe_allow_html=True)
-        _sp, b_xlsx, b_save_local, b_save_sheets = st.columns([5.2, 1.6, 1.4, 2.2], gap="medium")
+        _spacer, b_action = st.columns([6.6, 1.8], gap="medium")
+        with b_action:
+            click = st.button("🏷️ Dar prioridad", use_container_width=True, disabled=not IS_EDITOR, key="btn_dar_prioridad")
 
-        with b_xlsx:
+        if click:
             try:
-                base_out = st.session_state["df_main"].copy()
-                for c in ["__SEL__","__DEL__","¿Eliminar?"]:
-                    if c in base_out.columns:
-                        base_out.drop(columns=[c], inplace=True, errors="ignore")
-                # Export simple
-                from io import BytesIO
-                buf = BytesIO()
-                with pd.ExcelWriter(buf, engine="xlsxwriter") as w:
-                    base_out.to_excel(w, index=False, sheet_name="Tareas")
-                st.download_button(
-                    "⬇️ Exportar Excel",
-                    data=buf.getvalue(),
-                    file_name="tareas.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True
-                )
-            except Exception as e:
-                st.warning(f"No pude generar Excel: {e}")
+                ids = st.session_state.get("_pri_changed_ids", [])
+                if not ids:
+                    st.info("No hay cambios de 'Prioridad' para guardar.")
+                else:
+                    base_full = st.session_state.get("df_main", pd.DataFrame()).copy()
+                    base_full["Id"] = base_full.get("Id","").astype(str)
+                    df_rows = base_full[base_full["Id"].isin(ids)].copy()
 
-        with b_save_local:
-            if st.button("💾 Grabar", use_container_width=True):
-                try:
-                    _save_local(st.session_state["df_main"].copy())
-                    st.success("Datos grabados en data/tareas.csv.")
-                except Exception as e:
-                    st.warning(f"No se pudo grabar localmente: {e}")
-
-        # ====== 📤 Subida a Sheets usando helper centralizado ======
-        with b_save_sheets:
-            if st.button("📤 Subir a Sheets", use_container_width=True, disabled=not IS_EDITOR):
-                try:
-                    ids = st.session_state.get("_pri_changed_ids", [])
-                    if not ids:
-                        st.info("No hay cambios de 'Prioridad' para enviar.")
+                    if upsert_rows_by_id is None:
+                        _save_local(st.session_state["df_main"].copy())
+                        st.warning("No se encontró utils.gsheets.upsert_rows_by_id. Se guardó localmente.")
                     else:
-                        base_full = st.session_state.get("df_main", pd.DataFrame()).copy()
-                        base_full["Id"] = base_full.get("Id","").astype(str)
-                        df_rows = base_full[base_full["Id"].isin(ids)].copy()
-
-                        if upsert_rows_by_id is None:
-                            st.warning("No se encontró utils.gsheets.upsert_rows_by_id. Revisa dependencias.")
+                        ss_url = (st.secrets.get("gsheets_doc_url")
+                                  or (st.secrets.get("gsheets",{}) or {}).get("spreadsheet_url")
+                                  or (st.secrets.get("sheets",{}) or {}).get("sheet_url"))
+                        ws_name = (st.secrets.get("gsheets",{}) or {}).get("worksheet","TareasRecientes")
+                        res = upsert_rows_by_id(ss_url=ss_url, ws_name=ws_name, df=df_rows, ids=[str(x) for x in ids])
+                        if res.get("ok"):
+                            st.success(res.get("msg", "Actualizado."))
                         else:
-                            # ✅ Ajuste solicitado: helper reutilizable
-                            ss_url = (st.secrets.get("gsheets_doc_url")
-                                      or (st.secrets.get("gsheets",{}) or {}).get("spreadsheet_url")
-                                      or (st.secrets.get("sheets",{}) or {}).get("sheet_url"))
-                            ws_name = (st.secrets.get("gsheets",{}) or {}).get("worksheet","TareasRecientes")
-                            res = upsert_rows_by_id(ss_url=ss_url, ws_name=ws_name, df=df_rows, ids=[str(x) for x in ids])
-                            if res.get("ok"):
-                                st.success(res.get("msg", "Actualizado."))
-                            else:
-                                st.warning(res.get("msg", "No se pudo actualizar."))
-                except Exception as e:
-                    st.warning(f"No se pudo subir a Sheets: {e}")
+                            st.warning(res.get("msg", "No se pudo actualizar."))
+            except Exception as e:
+                st.warning(f"No se pudo guardar prioridad: {e}")
 
         st.markdown('</div>', unsafe_allow_html=True)
+
+        # Separación vertical final
+        st.markdown(f"<div style='height:{SECTION_GAP_DEF}px'></div>", unsafe_allow_html=True)
