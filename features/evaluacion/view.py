@@ -5,6 +5,12 @@ import pandas as pd
 import streamlit as st
 from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode, JsCode
 
+# ✅ Upsert reutilizable (Google Sheets)
+try:
+    from utils.gsheets import upsert_rows_by_id  # type: ignore
+except Exception:
+    upsert_rows_by_id = None
+
 # Fallback seguro para separación vertical
 SECTION_GAP_DEF = globals().get("SECTION_GAP", 30)
 
@@ -132,10 +138,10 @@ def render(user: dict | None = None):
                 columns=["Id", "Área", "Fase", "Responsable", "Tarea", "Fecha inicio", "Evaluación", "Calificación", "Comentarios"]
             )
 
-        # Asegura columnas base
+        # ✅ Asegura columnas base (por defecto, Evaluación = "Sin evaluar")
         if "Evaluación" not in df_all.columns:
             df_all["Evaluación"] = "Sin evaluar"
-        df_all["Evaluación"] = df_all["Evaluación"].fillna("Sin evaluar").replace({"": "Sin evaluar"})
+        df_all["Evaluación"] = df_all["Evaluación"].fillna("Sin evaluar").replace({"": "Sin evaluar"}).astype(str)
         if "Calificación" not in df_all.columns:
             df_all["Calificación"] = 0
         df_all["Calificación"] = pd.to_numeric(df_all["Calificación"], errors="coerce").fillna(0).astype(int).clip(0, 5)
@@ -249,6 +255,7 @@ def render(user: dict | None = None):
             for need in ["Responsable", "Tarea", "Evaluación", "Calificación", "Comentarios"]:
                 if need not in tmp.columns:
                     tmp[need] = ""
+            # ✅ Por defecto "Sin evaluar"
             eva_actual_txt = tmp["Evaluación"].fillna("Sin evaluar").replace({"": "Sin evaluar"}).astype(str)
             eva_ajustada_show = eva_actual_txt.apply(lambda v: TEXT_TO_SHOW.get(v, "Sin evaluar"))
             calif = pd.to_numeric(tmp.get("Calificación", 0), errors="coerce").fillna(0).astype(int).clip(0, 5)
@@ -305,7 +312,7 @@ def render(user: dict | None = None):
             "Evaluación ajustada",
             editable=bool(IS_EDITOR),
             cellEditor="agSelectCellEditor",
-            cellEditorParams={"values": EVA_OPC_SHOW},
+            cellEditorParams={"values": ["Sin evaluar", "🟢 Aprobado", "🔴 Desaprobado", "🟠 Observado"]},
             cellClassRules=eva_cell_rules,
             flex=1.4,
             minWidth=180,
@@ -391,6 +398,8 @@ def render(user: dict | None = None):
                             df_base["Comentarios"] = ""
 
                         cambios = 0
+                        changed_ids: set[str] = set()
+
                         for _, row in edited.iterrows():
                             id_row = str(row.get("Id", "")).strip()
                             if not id_row:
@@ -423,33 +432,51 @@ def render(user: dict | None = None):
                             prev_cal = df_base.loc[m, "Calificación"].iloc[0] if m.any() else None
                             prev_com = str(df_base.loc[m, "Comentarios"].iloc[0]) if m.any() else ""
 
+                            any_change = False
                             if eva_new != prev_eva:
                                 df_base.loc[m, "Evaluación"] = eva_new
-                                cambios += 1
+                                any_change = True
                             if cal_new != prev_cal:
                                 df_base.loc[m, "Calificación"] = cal_new
-                                cambios += 1
+                                any_change = True
                             if com_new != prev_com:
                                 df_base.loc[m, "Comentarios"] = com_new
+                                any_change = True
+
+                            if any_change:
                                 cambios += 1
+                                changed_ids.add(id_row)
 
                         if cambios > 0:
                             new_df = df_base.copy()
                             st.session_state["df_main"] = new_df
 
-                            # Persistencia con políticas (dry_run/save_scope)
-                            def _persist(df):
-                                _save_local(df)
-                                return {"ok": True, "msg": "Evaluaciones guardadas."}
+                            # Persistencia local
+                            _save_local(new_df)
 
-                            maybe_save = st.session_state.get("maybe_save")
-                            if callable(maybe_save):
-                                res = maybe_save(_persist, new_df)
-                            else:
-                                _save_local(new_df)
-                                res = {"ok": True, "msg": "Evaluaciones guardadas (local)."}
+                            # 📤 Upsert a Google Sheets por Id (solo filas cambiadas)
+                            try:
+                                if upsert_rows_by_id is not None and changed_ids:
+                                    ss_url = (st.secrets.get("gsheets_doc_url")
+                                              or (st.secrets.get("gsheets", {}) or {}).get("spreadsheet_url")
+                                              or (st.secrets.get("sheets", {}) or {}).get("sheet_url"))
+                                    ws_name = (st.secrets.get("gsheets", {}) or {}).get("worksheet", "TareasRecientes")
+                                    df_rows = new_df[new_df["Id"].astype(str).isin([str(x) for x in changed_ids])].copy()
+                                    res = upsert_rows_by_id(
+                                        ss_url=ss_url,
+                                        ws_name=ws_name,
+                                        df=df_rows,
+                                        ids=[str(x) for x in changed_ids],
+                                    )
+                                    if res.get("ok"):
+                                        st.success(res.get("msg", "Evaluaciones guardadas y subidas."))
+                                    else:
+                                        st.warning(res.get("msg", "Guardado local ok, no se pudo subir a Sheets."))
+                                else:
+                                    st.success("Evaluaciones guardadas (local).")
+                            except Exception as e:
+                                st.warning(f"Guardado local ok, pero falló la subida a Sheets: {e}")
 
-                            st.success(res.get("msg", "Listo."))
                             st.rerun()
                         else:
                             st.info("No se detectaron cambios para guardar.")
