@@ -1,4 +1,4 @@
-# features/editar_estado/view.py
+# features/editar_estado/view.py 
 from __future__ import annotations
 import os
 import re
@@ -536,11 +536,13 @@ def render(user: dict | None = None):
         }"""
         )
 
+        # ✅ Se agrega "No iniciado" con emoji
         estado_emoji_fmt = JsCode(
             """
         function(p){
           const v = String(p.value || '');
           const M = {
+            "No iniciado":"🍼 No iniciado",
             "En curso":"🟣 En curso",
             "Terminado":"✅ Terminado",
             "Pausado":"⏸️ Pausado",
@@ -551,11 +553,13 @@ def render(user: dict | None = None):
         }"""
         )
 
+        # ✅ Se agrega color para "No iniciado"
         estado_cell_style = JsCode(
             """
         function(p){
           const v = String(p.value || '');
           const S = {
+            "No iniciado":{bg:"#E3F2FD", fg:"#0D47A1"},
             "En curso":   {bg:"#EDE7F6", fg:"#4A148C"},
             "Terminado":  {bg:"#E8F5E9", fg:"#1B5E20"},
             "Pausado":    {bg:"#FFF8E1", fg:"#E65100"},
@@ -594,6 +598,9 @@ def render(user: dict | None = None):
         )
         gob.configure_default_column(wrapHeaderText=True, autoHeaderHeight=True)
         gob.configure_selection("single", use_checkbox=False)
+
+        # ✅ Mostrar emoji/color también en "Estado actual"
+        gob.configure_column("Estado actual", valueFormatter=estado_emoji_fmt, cellStyle=estado_cell_style, minWidth=160)
 
         gob.configure_column(
             "Estado modificado",
@@ -636,9 +643,9 @@ def render(user: dict | None = None):
                     else:
                         grid_data["Id"] = grid_data["Id"].astype(str)
 
-                        # Cambios de estado
+                        # Cambios de estado  (✅ .str.strip en vez de .str.trim)
                         changes = grid_data.loc[
-                            grid_data["Estado modificado"].astype(str).str.trim() != "",
+                            grid_data["Estado modificado"].astype(str).str.strip() != "",
                             ["Id", "Estado modificado"],
                         ].copy()
 
