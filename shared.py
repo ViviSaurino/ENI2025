@@ -496,6 +496,7 @@ def hydrate_acl_flags(user: dict | None = None):
       - Carga roles, ubica usuario y deriva permisos (can_edit_all_tabs, etc.).
       - Expone st.session_state['maybe_save'] = lambda fn,*a,**k: acl.maybe_save(user_row, fn, *a, **k)
       - Expone columnas de solo-lectura: st.session_state['acl_user']['read_only_cols'] (set)
+      - Hidrata display_name/area/role y allowed_tabs desde roles.
     """
     # Identidad base
     u = user or {
@@ -519,6 +520,12 @@ def hydrate_acl_flags(user: dict | None = None):
         # Cargar roles y fila de usuario
         roles_df = _acl.load_roles()
         user_row = _acl.find_user(roles_df, acl_out["email"])
+
+        # Hidrata alias básicos (display_name/area/role) directamente en session_state
+        try:
+            _acl.set_acl_user_from_roles(acl_out["email"])
+        except Exception:
+            pass
 
         if user_row:
             # can_edit_all_tabs desde roles tiene prioridad
@@ -552,6 +559,30 @@ def hydrate_acl_flags(user: dict | None = None):
                 disp = (user_row.get("display_name") or "").strip()
                 if disp:
                     acl_out["display"] = disp
+            except Exception:
+                pass
+
+            # === NEW: allowed_tabs a session_state (como set y cadena cruda) ===
+            try:
+                raw_tabs = str(user_row.get("allowed_tabs", "") or "").strip()
+                st.session_state.setdefault("acl_user", {})
+                st.session_state["acl_user"]["allowed_tabs_raw"] = raw_tabs
+                try:
+                    st.session_state["acl_user"]["allowed_tabs_set"] = _acl._split_tabs(raw_tabs)
+                except Exception:
+                    st.session_state["acl_user"]["allowed_tabs_set"] = {t.strip() for t in raw_tabs.split(",") if t.strip()}
+            except Exception:
+                pass
+
+            # === NEW: persistir display_name/area/role (por si el helper no corrió) ===
+            try:
+                st.session_state.setdefault("acl_user", {})
+                if (user_row.get("display_name") or "").strip():
+                    st.session_state["acl_user"]["display_name"] = (user_row.get("display_name") or "").strip()
+                if (user_row.get("area") or "").strip():
+                    st.session_state["acl_user"]["area"] = (user_row.get("area") or "").strip()
+                if (user_row.get("role") or "").strip():
+                    st.session_state["acl_user"]["role"] = (user_row.get("role") or "").strip()
             except Exception:
                 pass
 
