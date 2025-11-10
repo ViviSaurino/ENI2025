@@ -346,7 +346,7 @@ def _add_business_days(start_dates: pd.Series, days: pd.Series) -> pd.Series:
     ok = (~pd.isna(sd)) & (n > 0)
     out = pd.Series(pd.NaT, index=start_dates.index, dtype="datetime64[ns]")
     if ok.any():
-        a = np.array(sd[ok], dtype="datetime64[D]"])
+        a = np.array(sd[ok], dtype="datetime64[D]")
         b = n[ok].to_numpy()
         res = np.busday_offset(a, b, weekmask="Mon Tue Wed Thu Fri")
         out.loc[ok] = pd.to_datetime(res)
