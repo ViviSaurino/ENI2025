@@ -461,7 +461,24 @@ def render(user: dict | None = None):
         if _k not in _seen:
             _seen.add(_k); _keep.append(_c)
     df_grid = df_grid[_keep]
-    # --- fin ajuste ---
+    # --- fin ajuste general ---
+
+    # 🔧 Forzar a dejar una sola columna "Duración" (tolera acentos/variantes/typos como "duraicon")
+    def _is_duracion_like(name: str) -> bool:
+        n = _normcol_hist(name)
+        if n == "duracion":
+            return True
+        if n == "duraicon":  # error común por transposición
+            return True
+        # variantes mínimas por regex (duración/duracion)
+        if _re.fullmatch(r"durac(i|í)?on", n):
+            return True
+        return False
+
+    _dur_cols = [c for c in df_grid.columns if _is_duracion_like(c)]
+    if len(_dur_cols) > 1:
+        # conserva la primera (la que viene de target_cols) y elimina el resto
+        df_grid.drop(columns=_dur_cols[1:], inplace=True, errors="ignore")
 
     df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
     if "Link de descarga" not in df_grid.columns:
