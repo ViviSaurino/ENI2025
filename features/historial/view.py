@@ -193,7 +193,7 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
         keep = alerta_cols[0]
         if keep != "N° alerta":
             df.rename(columns={keep: "N° alerta"}, inplace=True)
-        for c in alerta_cols[1:]:
+        for c in alerta_cols[1:]            :
             df.drop(columns=c, inplace=True, errors="ignore")
 
     # Merge por Id
@@ -444,9 +444,9 @@ def render(user: dict | None = None):
                                         placeholder="Selecciona responsable(s)")
         today = date.today()
         with c4:
-            f_desde = st.date_input("Desde", value=today, key="hist_desde")
+            f_desde = st.date_input("Desde (Fecha de registro)", value=today, key="hist_desde")
         with c5:
-            f_hasta = st.date_input("Hasta", value=today, key="hist_hasta")
+            f_hasta = st.date_input("Hasta (Fecha de registro)", value=today, key="hist_hasta")
         with c6:
             st.markdown('<div class="hist-search">', unsafe_allow_html=True)
             hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
@@ -458,8 +458,13 @@ def render(user: dict | None = None):
     # ---- Aplicar filtros ----
     df_view = df_scope.copy()
     df_view = _canonicalize_link_column(df_view)
+
+    # ✅ Parseamos fechas relevantes
+    if "Fecha Registro" in df_view.columns:
+        df_view["Fecha Registro"] = to_naive_local_series(df_view["Fecha Registro"])
     if "Fecha inicio" in df_view.columns:
         df_view["Fecha inicio"] = to_naive_local_series(df_view["Fecha inicio"])
+
     if hist_do_buscar:
         if area_sel!="Todas":
             df_view = df_view[df_view.get("Área","").astype(str)==area_sel]
@@ -467,10 +472,12 @@ def render(user: dict | None = None):
             df_view = df_view[df_view["Fase"].astype(str)==fase_sel]
         if resp_multi:
             df_view = df_view[df_view["Responsable"].astype(str).isin(resp_multi)]
-        if f_desde is not None and "Fecha inicio" in df_view.columns:
-            df_view = df_view[df_view["Fecha inicio"].dt.date >= f_desde]
-        if f_hasta is not None and "Fecha inicio" in df_view.columns:
-            df_view = df_view[df_view["Fecha inicio"].dt.date <= f_hasta]
+        # 🟣 Filtro por Fecha de REGISTRO (no por Fecha inicio)
+        if f_desde is not None and "Fecha Registro" in df_view.columns:
+            df_view = df_view[df_view["Fecha Registro"].dt.date >= f_desde]
+        if f_hasta is not None and "Fecha Registro" in df_view.columns:
+            df_view = df_view[df_view["Fecha Registro"].dt.date <= f_hasta]
+
     if not show_deleted and "Estado" in df_view.columns:
         df_view = df_view[df_view["Estado"].astype(str).str.strip()!="Eliminado"]
 
