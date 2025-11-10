@@ -181,3 +181,21 @@ def get_readonly_cols(user_row: dict) -> set[str]:
     Se alimenta desde la columna 'read_only_cols' del Excel de roles.
     """
     return _split_list(user_row.get("read_only_cols", ""))
+
+# === Helper: hidratar st.session_state['acl_user'] desde el Excel de roles ===
+def set_acl_user_from_roles(email: str) -> dict:
+    """
+    Carga la fila del usuario por email y actualiza st.session_state['acl_user']
+    con 'display_name', 'area' y 'role' (sin tocar otros flags).
+    """
+    from streamlit import session_state as _ss  # import local y perezoso
+    row = find_user(load_roles(), email) or {}
+
+    _ss.setdefault("acl_user", {})
+    _ss["acl_user"].update({
+        "email": email or _ss["acl_user"].get("email", ""),
+        "display_name": row.get("display_name", "") or _ss["acl_user"].get("display_name", ""),
+        "area": row.get("area", "") or _ss["acl_user"].get("area", ""),
+        "role": row.get("role", "") or _ss["acl_user"].get("role", ""),
+    })
+    return row
