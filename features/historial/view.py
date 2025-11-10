@@ -245,7 +245,8 @@ def _add_business_days(start_dates: pd.Series, days: pd.Series) -> pd.Series:
     sd = pd.to_datetime(start_dates, errors="coerce").dt.date
     n  = pd.to_numeric(days, errors="coerce").fillna(0).astype(int)
     ok = (~pd.isna(sd)) & (n > 0)
-    out = pd.Series(pd.NaT, index=start_dates.index, dtype="datetime64[ns]"])
+    # 🔧 aquí estaba el error: terminaba con ] en vez de )
+    out = pd.Series(pd.NaT, index=start_dates.index, dtype="datetime64[ns]")
     if ok.any():
         a = np.array(sd[ok], dtype="datetime64[D]")
         b = n[ok].to_numpy()
