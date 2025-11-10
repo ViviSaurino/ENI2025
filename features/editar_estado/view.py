@@ -43,7 +43,8 @@ def _now_lima_trimmed_local():
 
 def _to_naive_local_one(x):
     """Convierte x a datetime naive en hora local; tolera strings/ tz."""
-    if x is None or (isinstance(x, float) and pd.isna(x)): return pd.NaT
+    if x is None or (isinstance(x, float) and pd.isna(x)):
+        return pd.NaT
     try:
         if isinstance(x, pd.Timestamp):
             if x.tz is not None:
@@ -51,25 +52,32 @@ def _to_naive_local_one(x):
                 return d
             return x
         s = str(x).strip()
-        if not s or s.lower() in {"nan","nat","none","null"}: return pd.NaT
+        if not s or s.lower() in {"nan", "nat", "none", "null"}:
+            return pd.NaT
         if re.search(r'(Z|[+-]\d{2}:?\d{2})$', s):
             d = pd.to_datetime(s, errors="coerce", utc=True)
-            if pd.isna(d): return pd.NaT
-            if _TZ: d = d.tz_convert(_TZ)
+            if pd.isna(d):
+                return pd.NaT
+            if _TZ:
+                d = d.tz_convert(_TZ)
             return d.tz_localize(None)
         return pd.to_datetime(s, errors="coerce")
     except Exception:
         return pd.NaT
 
 def _fmt_hhmm(v) -> str:
-    if v is None or (isinstance(v, float) and pd.isna(v)): return ""
+    if v is None or (isinstance(v, float) and pd.isna(v)):
+        return ""
     try:
         s = str(v).strip()
-        if not s or s.lower() in {"nan","nat","none","null"}: return ""
+        if not s or s.lower() in {"nan", "nat", "none", "null"}:
+            return ""
         m = re.match(r"^(\d{1,2}):(\d{2})", s)
-        if m: return f"{int(m.group(1)):02d}:{int(m.group(2)):02d}"
+        if m:
+            return f"{int(m.group(1)):02d}:{int(m.group(2)):02d}"
         d = pd.to_datetime(s, errors="coerce", utc=False)
-        if pd.isna(d): return ""
+        if pd.isna(d):
+            return ""
         return f"{int(d.hour):02d}:{int(d.minute):02d}"
     except Exception:
         return ""
@@ -78,15 +86,18 @@ def _fmt_hhmm(v) -> str:
 def _gsheets_client():
     if "gcp_service_account" not in st.secrets:
         raise KeyError("Falta 'gcp_service_account' en secrets.")
-    url = st.secrets.get("gsheets_doc_url") or \
-          (st.secrets.get("gsheets", {}) or {}).get("spreadsheet_url") or \
-          (st.secrets.get("sheets", {}) or {}).get("sheet_url")
+    url = (
+        st.secrets.get("gsheets_doc_url")
+        or (st.secrets.get("gsheets", {}) or {}).get("spreadsheet_url")
+        or (st.secrets.get("sheets", {}) or {}).get("sheet_url")
+    )
     if not url:
         raise KeyError("No se encontró URL de Sheets.")
     ws_name = (st.secrets.get("gsheets", {}) or {}).get("worksheet", "TareasRecientes")
 
     import gspread
     from google.oauth2.service_account import Credentials
+
     scopes = ["https://www.googleapis.com/auth/spreadsheets"]
     creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scopes)
     gc = gspread.authorize(creds)
@@ -124,7 +135,7 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
         values = ws.get_all_values()
 
     headers = values[0]
-    col_map = {h: i+1 for i, h in enumerate(headers)}
+    col_map = {h: i + 1 for i, h in enumerate(headers)}
     if "Id" not in col_map:
         st.info("La hoja seleccionada no tiene columna 'Id'; no se puede actualizar por Id.")
         return
@@ -138,14 +149,22 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
     # Solo estas columnas (sin espejos)
     cols_to_push = [
         "Estado",
-        "Fecha estado actual","Hora estado actual",
+        "Fecha estado actual",
+        "Hora estado actual",
         "Duración",
-        "Estado modificado","Fecha estado modificado","Hora estado modificado",
-        "Fecha inicio","Hora de inicio",
-        "Fecha Terminado","Hora Terminado",
-        "Fecha Pausado","Hora Pausado",
-        "Fecha Cancelado","Hora Cancelado",
-        "Fecha Eliminado","Hora Eliminado",
+        "Estado modificado",
+        "Fecha estado modificado",
+        "Hora estado modificado",
+        "Fecha inicio",
+        "Hora de inicio",
+        "Fecha Terminado",
+        "Hora Terminado",
+        "Fecha Pausado",
+        "Hora Pausado",
+        "Fecha Cancelado",
+        "Hora Cancelado",
+        "Fecha Eliminado",
+        "Hora Eliminado",
         "Link de archivo",
     ]
     cols_to_push = [c for c in cols_to_push if c in col_map]
@@ -176,16 +195,16 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
             ws.append_row(new_row, value_input_option="USER_ENTERED")
             continue
 
-        current_row = values[row_idx-1].copy()
+        current_row = values[row_idx - 1].copy()
         if len(current_row) < len(headers):
             current_row += [""] * (len(headers) - len(current_row))
 
         for h in cols_to_push:
             v = df_idx.loc[_id, h] if h in df_idx.columns else ""
-            current_row[col_map[h]-1] = _fmt_out(h, v)
+            current_row[col_map[h] - 1] = _fmt_out(h, v)
 
         ranges.append(f"A{row_idx}:{last_col_letter}{row_idx}")
-        body.append(current_row[:len(headers)])
+        body.append(current_row[: len(headers)])
 
     if body and ranges:
         data = [{"range": rng, "values": [vals]} for rng, vals in zip(ranges, body)]
@@ -203,7 +222,8 @@ def render(user: dict | None = None):
         A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
         st.markdown('<div id="est-section">', unsafe_allow_html=True)
-        st.markdown("""
+        st.markdown(
+            """
         <style>
           #est-section .stButton > button { width: 100% !important; }
           #est-section .ag-header-cell-label{
@@ -224,19 +244,24 @@ def render(user: dict | None = None):
           }
           .est-pill span{ display:inline-flex; gap:8px; align-items:center; }
         </style>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
 
         c_pill, _, _, _, _, _ = st.columns([A, Fw, T_width, D, R, C], gap="medium")
         with c_pill:
             st.markdown('<div class="est-pill"><span>✏️&nbsp;Editar estado</span></div>', unsafe_allow_html=True)
 
-        st.markdown("""
+        st.markdown(
+            """
         <div class="section-est">
           <div class="help-strip">
             🔷 <strong>Actualiza el estado</strong> de una tarea ya registrada usando los filtros
           </div>
           <div class="form-card">
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
 
         # Base
         df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
@@ -250,27 +275,49 @@ def render(user: dict | None = None):
                     s = pd.to_datetime(df[col], errors="coerce")
                     if s.notna().any():
                         return s
-            return pd.Series([], dtype="datetime64[ns]"])
+            return pd.Series([], dtype="datetime64[ns]")
 
         dates_all = _first_valid_date_series(df_all)
         if dates_all.empty:
             today = pd.Timestamp.today().normalize().date()
-            min_date = today; max_date = today
+            min_date = today
+            max_date = today
         else:
             min_date = dates_all.min().date()
             max_date = dates_all.max().date()
 
         # ===== FILTROS =====
         with st.form("est_filtros_v3", clear_on_submit=False):
-            c_area, c_fase, c_resp, c_desde, c_hasta, c_buscar = st.columns([A, Fw, T_width, D, R, C], gap="medium")
+            c_area, c_fase, c_resp, c_desde, c_hasta, c_buscar = st.columns(
+                [A, Fw, T_width, D, R, C], gap="medium"
+            )
 
-            AREAS_OPC = st.session_state.get(
-                "AREAS_OPC",
-                sorted([x for x in df_all.get("Área", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
-            ) or []
+            AREAS_OPC = (
+                st.session_state.get(
+                    "AREAS_OPC",
+                    sorted(
+                        [
+                            x
+                            for x in df_all.get("Área", pd.Series([], dtype=str))
+                            .astype(str)
+                            .unique()
+                            if x and x != "nan"
+                        ]
+                    ),
+                )
+                or []
+            )
             est_area = c_area.selectbox("Área", ["Todas"] + AREAS_OPC, index=0)
 
-            fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+            fases_all = sorted(
+                [
+                    x
+                    for x in df_all.get("Fase", pd.Series([], dtype=str))
+                    .astype(str)
+                    .unique()
+                    if x and x != "nan"
+                ]
+            )
             est_fase = c_fase.selectbox("Fase", ["Todas"] + fases_all, index=0)
 
             df_resp_src = df_all.copy()
@@ -278,11 +325,23 @@ def render(user: dict | None = None):
                 df_resp_src = df_resp_src[df_resp_src["Área"].astype(str) == est_area]
             if est_fase != "Todas" and "Fase" in df_resp_src.columns:
                 df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str) == est_fase]
-            responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+            responsables_all = sorted(
+                [
+                    x
+                    for x in df_resp_src.get("Responsable", pd.Series([], dtype=str))
+                    .astype(str)
+                    .unique()
+                    if x and x != "nan"
+                ]
+            )
             est_resp = c_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0)
 
-            est_desde = c_desde.date_input("Desde", value=min_date, min_value=min_date, max_value=max_date, key="est_desde")
-            est_hasta = c_hasta.date_input("Hasta", value=max_date, min_value=min_date, max_value=max_date, key="est_hasta")
+            est_desde = c_desde.date_input(
+                "Desde", value=min_date, min_value=min_date, max_value=max_date, key="est_desde"
+            )
+            est_hasta = c_hasta.date_input(
+                "Hasta", value=max_date, min_value=min_date, max_value=max_date, key="est_hasta"
+            )
 
             with c_buscar:
                 st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
@@ -305,8 +364,13 @@ def render(user: dict | None = None):
             else:
                 fcol = pd.to_datetime(df_tasks.get("Fecha", pd.Series([], dtype=str)), errors="coerce")
 
-            if est_desde: df_tasks = df_tasks[fcol >= pd.to_datetime(est_desde)]
-            if est_hasta: df_tasks = df_tasks[fcol <= (pd.to_datetime(est_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
+            if est_desde:
+                df_tasks = df_tasks[fcol >= pd.to_datetime(est_desde)]
+            if est_hasta:
+                df_tasks = df_tasks[
+                    fcol
+                    <= (pd.to_datetime(est_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))
+                ]
 
         # ===== Tabla "Resultados" =====
         st.markdown("**Resultados**")
@@ -320,26 +384,44 @@ def render(user: dict | None = None):
             return s.dt.strftime("%H:%M").fillna("")
 
         cols_out = [
-            "Id", "Tarea",
-            "Estado actual", "Fecha estado actual", "Hora estado actual",
-            "Estado modificado", "Fecha estado modificado", "Hora estado modificado",
-            "Link de archivo"  # ← única columna de link
+            "Id",
+            "Tarea",
+            "Estado actual",
+            "Fecha estado actual",
+            "Hora estado actual",
+            "Estado modificado",
+            "Fecha estado modificado",
+            "Hora estado modificado",
+            "Link de archivo",  # ← única columna de link
         ]
 
         df_view = pd.DataFrame(columns=cols_out)
         if not df_tasks.empty:
             base = df_tasks.copy()
             for need in [
-                "Id","Tarea","Estado",
-                "Fecha Registro","Hora Registro","Fecha","Hora",
-                "Fecha inicio","Hora de inicio",
-                "Fecha Terminado","Hora Terminado",
-                "Fecha Pausado","Hora Pausado",
-                "Fecha Cancelado","Hora Cancelado",
-                "Fecha Eliminado","Hora Eliminado",
-                "Fecha estado actual","Hora estado actual",
-                "Estado modificado","Fecha estado modificado","Hora estado modificado",
-                "Link de archivo"
+                "Id",
+                "Tarea",
+                "Estado",
+                "Fecha Registro",
+                "Hora Registro",
+                "Fecha",
+                "Hora",
+                "Fecha inicio",
+                "Hora de inicio",
+                "Fecha Terminado",
+                "Hora Terminado",
+                "Fecha Pausado",
+                "Hora Pausado",
+                "Fecha Cancelado",
+                "Hora Cancelado",
+                "Fecha Eliminado",
+                "Hora Eliminado",
+                "Fecha estado actual",
+                "Hora estado actual",
+                "Estado modificado",
+                "Fecha estado modificado",
+                "Hora estado modificado",
+                "Link de archivo",
             ]:
                 if need not in base.columns:
                     base[need] = ""
@@ -362,60 +444,76 @@ def render(user: dict | None = None):
 
             fr_noini = _date_norm("Fecha Registro", "Fecha")
             hr_noini = _time_norm("Hora Registro", "Hora")
-            fr_enc   = _date_norm("Fecha inicio")
-            hr_enc   = _time_norm("Hora de inicio")
-            fr_fin   = _date_norm("Fecha Terminado")
-            hr_fin   = _time_norm("Hora Terminado")
-            fr_pau, hr_pau = _date_norm("Fecha Pausado"),  _time_norm("Hora Pausado")
+            fr_enc = _date_norm("Fecha inicio")
+            hr_enc = _time_norm("Hora de inicio")
+            fr_fin = _date_norm("Fecha Terminado")
+            hr_fin = _time_norm("Hora Terminado")
+            fr_pau, hr_pau = _date_norm("Fecha Pausado"), _time_norm("Hora Pausado")
             fr_can, hr_can = _date_norm("Fecha Cancelado"), _time_norm("Hora Cancelado")
             fr_eli, hr_eli = _date_norm("Fecha Eliminado"), _time_norm("Hora Eliminado")
 
             estado_now = base["Estado"].astype(str)
             fecha_from_estado = pd.Series(pd.NaT, index=base.index, dtype="datetime64[ns]")
-            hora_from_estado  = pd.Series("", index=base.index, dtype="object")
+            hora_from_estado = pd.Series("", index=base.index, dtype="object")
 
-            m0 = (estado_now == "No iniciado")
-            m1 = (estado_now == "En curso")
-            m2 = (estado_now == "Terminado")
-            m3 = (estado_now == "Pausado")
-            m4 = (estado_now == "Cancelado")
-            m5 = (estado_now == "Eliminado")
+            m0 = estado_now == "No iniciado"
+            m1 = estado_now == "En curso"
+            m2 = estado_now == "Terminado"
+            m3 = estado_now == "Pausado"
+            m4 = estado_now == "Cancelado"
+            m5 = estado_now == "Eliminado"
 
-            fecha_from_estado[m0] = fr_noini[m0]; hora_from_estado[m0] = hr_noini[m0]
-            fecha_from_estado[m1] = fr_enc[m1];   hora_from_estado[m1] = hr_enc[m1]
-            fecha_from_estado[m2] = fr_fin[m2];   hora_from_estado[m2] = hr_fin[m2]
-            fecha_from_estado[m3] = fr_pau[m3];   hora_from_estado[m3] = hr_pau[m3]
-            fecha_from_estado[m4] = fr_can[m4];   hora_from_estado[m4] = hr_can[m4]
-            fecha_from_estado[m5] = fr_eli[m5];   hora_from_estado[m5] = hr_eli[m5]
+            fecha_from_estado[m0] = fr_noini[m0]
+            hora_from_estado[m0] = hr_noini[m0]
+            fecha_from_estado[m1] = fr_enc[m1]
+            hora_from_estado[m1] = hr_enc[m1]
+            fecha_from_estado[m2] = fr_fin[m2]
+            hora_from_estado[m2] = hr_fin[m2]
+            fecha_from_estado[m3] = fr_pau[m3]
+            hora_from_estado[m3] = hr_pau[m3]
+            fecha_from_estado[m4] = fr_can[m4]
+            hora_from_estado[m4] = hr_can[m4]
+            fecha_from_estado[m5] = fr_eli[m5]
+            hora_from_estado[m5] = hr_eli[m5]
 
             fecha_estado_exist = pd.to_datetime(base["Fecha estado actual"], errors="coerce").dt.normalize()
-            hora_estado_exist  = base["Hora estado actual"].astype(str)
+            hora_estado_exist = base["Hora estado actual"].astype(str)
 
-            fecha_estado_final = fecha_estado_exist.where(fecha_estado_exist.notna(), fecha_from_estado)
-            hora_estado_final  = hora_estado_exist.where(hora_estado_exist.str.strip() != "", hora_from_estado)
+            fecha_estado_final = fecha_estado_exist.where(
+                fecha_estado_exist.notna(), fecha_from_estado
+            )
+            hora_estado_final = hora_estado_exist.where(
+                hora_estado_exist.str.strip() != "", hora_from_estado
+            )
 
             fecha_estado_final = fecha_estado_final.where(
-                fecha_estado_final.notna(), pd.to_datetime(base.get("Fecha Registro"), errors="coerce").dt.normalize()
+                fecha_estado_final.notna(),
+                pd.to_datetime(base.get("Fecha Registro"), errors="coerce").dt.normalize(),
             )
             hora_reg_str = base.get("Hora Registro", pd.Series("", index=base.index)).astype(str)
-            hora_estado_final = hora_estado_final.where(hora_estado_final.str.strip() != "", hora_reg_str)
+            hora_estado_final = hora_estado_final.where(
+                hora_estado_final.str.strip() != "", hora_reg_str
+            )
 
-            df_view = pd.DataFrame({
-                "Id":   base["Id"].astype(str),
-                "Tarea": base["Tarea"].astype(str),
-                "Estado actual": estado_now,
-                "Fecha estado actual": _fmt_date(fecha_estado_final),
-                "Hora estado actual":  _fmt_time(hora_estado_final),
-                "Estado modificado":       base["Estado modificado"].astype(str),
-                "Fecha estado modificado": _fmt_date(base["Fecha estado modificado"]),
-                "Hora estado modificado":  _fmt_time(base["Hora estado modificado"]),
-                "Link de archivo":         base["Link de archivo"].astype(str),
-            })[cols_out].copy()
+            df_view = pd.DataFrame(
+                {
+                    "Id": base["Id"].astype(str),
+                    "Tarea": base["Tarea"].astype(str),
+                    "Estado actual": estado_now,
+                    "Fecha estado actual": _fmt_date(fecha_estado_final),
+                    "Hora estado actual": _fmt_time(hora_estado_final),
+                    "Estado modificado": base["Estado modificado"].astype(str),
+                    "Fecha estado modificado": _fmt_date(base["Fecha estado modificado"]),
+                    "Hora estado modificado": _fmt_time(base["Hora estado modificado"]),
+                    "Link de archivo": base["Link de archivo"].astype(str),
+                }
+            )[cols_out].copy()
 
         # ========= editores y estilo =========
-        estados_editables = ["En curso","Terminado","Pausado","Cancelado","Eliminado"]
+        estados_editables = ["En curso", "Terminado", "Pausado", "Cancelado", "Eliminado"]
 
-        date_editor = JsCode("""
+        date_editor = JsCode(
+            """
         class DateEditor{
           init(p){
             this.eInput = document.createElement('input');
@@ -435,9 +533,11 @@ def render(user: dict | None = None):
           getGui(){ return this.eInput }
           afterGuiAttached(){ this.eInput.focus() }
           getValue(){ return this.eInput.value }
-        }""")
+        }"""
+        )
 
-        estado_emoji_fmt = JsCode("""
+        estado_emoji_fmt = JsCode(
+            """
         function(p){
           const v = String(p.value || '');
           const M = {
@@ -448,9 +548,11 @@ def render(user: dict | None = None):
             "Eliminado":"🗑️ Eliminado"
           };
           return M[v] || v;
-        }""")
+        }"""
+        )
 
-        estado_cell_style = JsCode("""
+        estado_cell_style = JsCode(
+            """
         function(p){
           const v = String(p.value || '');
           const S = {
@@ -462,9 +564,11 @@ def render(user: dict | None = None):
           };
           const m = S[v]; if(!m) return {};
           return {backgroundColor:m.bg, color:m.fg, fontWeight:'600', textAlign:'center', borderRadius:'12px'};
-        }""")
+        }"""
+        )
 
-        on_cell_changed = JsCode("""
+        on_cell_changed = JsCode(
+            """
         function(params){
           if (params.colDef.field === 'Fecha estado modificado'){
             const pad = n => String(n).padStart(2,'0');
@@ -472,7 +576,8 @@ def render(user: dict | None = None):
             const hhmm = pad(d.getHours()) + ':' + pad(d.getMinutes());
             params.node.setDataValue('Hora estado modificado', hhmm);
           }
-        }""")
+        }"""
+        )
 
         gob = GridOptionsBuilder.from_dataframe(df_view)
         gob.configure_grid_options(
@@ -481,7 +586,7 @@ def render(user: dict | None = None):
             ensureDomOrder=True,
             rowHeight=38,
             headerHeight=60,
-            suppressHorizontalScroll=True
+            suppressHorizontalScroll=True,
         )
         gob.configure_default_column(wrapHeaderText=True, autoHeaderHeight=True)
         gob.configure_selection("single", use_checkbox=False)
@@ -493,10 +598,10 @@ def render(user: dict | None = None):
             cellEditorParams={"values": estados_editables},
             valueFormatter=estado_emoji_fmt,
             cellStyle=estado_cell_style,
-            minWidth=180
+            minWidth=180,
         )
         gob.configure_column("Fecha estado modificado", editable=True, cellEditor=date_editor, minWidth=170)
-        gob.configure_column("Hora estado modificado",  editable=False, minWidth=150)
+        gob.configure_column("Hora estado modificado", editable=False, minWidth=150)
         # ← única columna editable de link
         gob.configure_column("Link de archivo", editable=True, minWidth=260)
 
@@ -513,11 +618,11 @@ def render(user: dict | None = None):
             reload_data=False,
             height=260,
             allow_unsafe_jscode=True,
-            theme="balham"
+            theme="balham",
         )
 
         # ===== Guardar cambios =====
-        u1, u2 = st.columns([A+Fw+T_width+D+R, C], gap="medium")
+        _, u2 = st.columns([A + Fw + T_width + D + R, C], gap="medium")
         with u2:
             if st.button("💾 Guardar", use_container_width=True, key="est_guardar_inline_v3"):
                 try:
@@ -530,7 +635,7 @@ def render(user: dict | None = None):
                         # Cambios de estado
                         changes = grid_data.loc[
                             grid_data["Estado modificado"].astype(str).str.strip() != "",
-                            ["Id", "Estado modificado"]
+                            ["Id", "Estado modificado"],
                         ].copy()
 
                         base = st.session_state.get("df_main", pd.DataFrame()).copy()
@@ -539,13 +644,20 @@ def render(user: dict | None = None):
                         else:
                             base["Id"] = base["Id"].astype(str)
                             for need in [
-                                "Estado","Fecha estado actual","Hora estado actual",
-                                "Fecha inicio","Hora de inicio",
-                                "Fecha Terminado","Hora Terminado",
-                                "Fecha Pausado","Hora Pausado",
-                                "Fecha Cancelado","Hora Cancelado",
-                                "Fecha Eliminado","Hora Eliminado",
-                                "Link de archivo"
+                                "Estado",
+                                "Fecha estado actual",
+                                "Hora estado actual",
+                                "Fecha inicio",
+                                "Hora de inicio",
+                                "Fecha Terminado",
+                                "Hora Terminado",
+                                "Fecha Pausado",
+                                "Hora Pausado",
+                                "Fecha Cancelado",
+                                "Hora Cancelado",
+                                "Fecha Eliminado",
+                                "Hora Eliminado",
+                                "Link de archivo",
                             ]:
                                 if need not in base.columns:
                                     base[need] = ""
@@ -569,6 +681,7 @@ def render(user: dict | None = None):
                             # === Sellos por estado (solo si vacíos)
                             def _is_blank_dt(s):  # fecha vacía
                                 return pd.to_datetime(s, errors="coerce").isna()
+
                             def _is_blank_tm(s):  # hora vacía
                                 return s.astype(str).str.strip().isin(["", "00:00", "nan", "NaN"])
 
@@ -626,11 +739,16 @@ def render(user: dict | None = None):
                             # ===== Duración (mins desde Fecha Registro, si existe) =====
                             if "Duración" in b_i.columns and "Fecha Registro" in b_i.columns:
                                 ts_naive = pd.Timestamp(_local_now).tz_localize(None)
+
                                 def _mins_since(fr_val):
                                     d = _to_naive_local_one(fr_val)
-                                    if pd.isna(d): return 0
-                                    try: return int((ts_naive - d).total_seconds() / 60)
-                                    except Exception: return 0
+                                    if pd.isna(d):
+                                        return 0
+                                    try:
+                                        return int((ts_naive - d).total_seconds() / 60)
+                                    except Exception:
+                                        return 0
+
                                 if len(ids_estado) > 0:
                                     dur_min = b_i.loc[ids_estado, "Fecha Registro"].apply(_mins_since)
                                     try:
@@ -645,13 +763,17 @@ def render(user: dict | None = None):
                                 new_links = g_i["Link de archivo"].fillna("").astype(str)
                                 if "Link de archivo" not in b_i.columns:
                                     b_i["Link de archivo"] = ""
-                                prev_links = b_i["Link de archivo"].reindex(new_links.index).fillna("").astype(str)
-                                ids_link = list(new_links.index[prev_links.str.strip() != new_links.str.strip()])
+                                prev_links = (
+                                    b_i["Link de archivo"].reindex(new_links.index).fillna("").astype(str)
+                                )
+                                ids_link = list(
+                                    new_links.index[prev_links.str.strip() != new_links.str.strip()]
+                                )
                                 if len(ids_link) > 0:
                                     b_i.loc[ids_link, "Link de archivo"] = new_links.loc[ids_link].values
 
                             # Limpiar auxiliares
-                            for aux in ["Estado modificado","Fecha estado modificado","Hora estado modificado"]:
+                            for aux in ["Estado modificado", "Fecha estado modificado", "Hora estado modificado"]:
                                 if aux in b_i.columns and len(ids_estado) > 0:
                                     b_i.loc[ids_estado, aux] = ""
 
@@ -662,7 +784,7 @@ def render(user: dict | None = None):
                             def _persist(_df: pd.DataFrame):
                                 try:
                                     os.makedirs("data", exist_ok=True)
-                                    _df.to_csv(os.path.join("data","tareas.csv"), index=False, encoding="utf-8-sig")
+                                    _df.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig")
                                     return {"ok": True, "msg": "Cambios guardados."}
                                 except Exception as _e:
                                     return {"ok": False, "msg": f"Error al guardar: {_e}"}
@@ -683,9 +805,8 @@ def render(user: dict | None = None):
                                 st.rerun()
                             else:
                                 st.info(res.get("msg", "Guardado deshabilitado."))
-
                 except Exception as e:
                     st.error(f"No pude guardar: {e}")
 
-        st.markdown('</div></div>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("</div></div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
