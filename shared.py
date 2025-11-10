@@ -410,19 +410,21 @@ def _norm_txt(s: str) -> str:
     return s
 
 def _user_tokens(user: dict | None = None) -> set[str]:
-    """Tokens comparables: nombre, email y 'usuario' (parte antes de @)."""
-    u = (user or {}) | _st.session_state.get("user", {})
+    """Tokens comparables: nombre, email, usuario (parte local), display."""
+    u = {**(user or {}), **_st.session_state.get("user", {})}
     vals = {
         str(u.get("email", "")).strip(),
+        str(_st.session_state.get("auth_email", "")).strip(),
+        str(_st.session_state.get("user_email", "")).strip(),
         str(u.get("name", "")).strip(),
         str(u.get("username", "")).strip(),
         str(u.get("display", "")).strip(),
     }
     tokens = {_norm_txt(v) for v in vals if v}
     # agrega parte local del correo
-    for v in list(tokens):
-        if "@" in v:
-            tokens.add(v.split("@", 1)[0])
+    for v in list(vals):
+        if isinstance(v, str) and "@" in v:
+            tokens.add(_norm_txt(v.split("@", 1)[0]))
     return {t for t in tokens if t}
 
 def _super_viewer(user: dict | None = None) -> bool:
@@ -432,35 +434,70 @@ def _super_viewer(user: dict | None = None) -> bool:
     toks = _user_tokens(user)
     return any(t in sv for t in toks)
 
+def _owns_name(cell_value: str, allowed: set[str]) -> bool:
+    """¿El valor de 'Responsable' contiene alguno de los candidatos?"""
+    nv = _norm_txt(cell_value)
+    if not nv:
+        return False
+    # admite múltiples responsables separados por , ; / |
+    parts = {_norm_txt(p) for p in _re.split(r"[,;/|]", nv) if p}
+    # match exacto por token o substring tolerante
+    return any((a in parts) or (a and a in nv) for a in allowed)
+
 def apply_scope(df: _pd.DataFrame, user: dict | None = None, resp_col: str = "Responsable") -> _pd.DataFrame:
     """
-    Si user es Vivi o Enrique (en super_viewers), retorna df completo.
-    Si no, filtra df por la columna 'Responsable' ≈ usuario logueado.
-    Opcionalmente usa un mapeo de alias en secrets: [resp_alias]
-      p.ej.: resp_alias = { vivi="viviana saurino", enrique="enrique torres" }
+    Si user ∈ super_viewers => df completo.
+    Si no, filtra por 'Responsable'≈usuario (con alias opcional) y/o por columnas de correo.
     """
-    if not isinstance(df, _pd.DataFrame) or df.empty or resp_col not in df.columns:
+    if not isinstance(df, _pd.DataFrame) or df.empty:
         return df
 
+    # 1) Super viewers
     if _super_viewer(user):
         return df
 
-    toks = _user_tokens(user)
-    if not toks:
-        # si no pudimos identificar al usuario, no mostramos nada
-        return df.iloc[0:0].copy()
+    # 2) Identidad de usuario
+    toks = _user_tokens(user)  # incluye email, parte local, nombre display (normalizados)
+    # Alias opcional (secrets: [resp_alias])
+    alias_raw = dict(_st.secrets.get("resp_alias", {}))
+    alias_map = {_norm_txt(k): _norm_txt(v) for k, v in alias_raw.items()}
 
-    # alias opcional en secrets
-    alias_map_raw = _st.secrets.get("resp_alias", {})
-    alias_map = {_norm_txt(k): _norm_txt(v) for k, v in dict(alias_map_raw).items()}
-
-    # set de valores permitidos en la columna Responsable (normalizados)
     allowed = set(toks)
+    # Expande con alias si existen
     for t in list(toks):
         if t in alias_map:
             allowed.add(alias_map[t])
 
-    col_norm = df[resp_col].astype(str).map(_norm_txt)
-    mask = col_norm.isin(allowed)
+    if not allowed:
+        # no sabemos quién es: no mostramos nada
+        return df.iloc[0:0].copy()
+
+    # 3) Columnas candidatas
+    name_cols = [c for c in df.columns if _norm_txt(c) in {
+        "responsable","responsables","responsable/a","asignado a","asignada a"
+    }]
+    mail_cols = [c for c in df.columns if _norm_txt(c) in {
+        "correo","email","e-mail","useremail","user email"
+    }]
+
+    # 4) Construir máscara
+    mask = _pd.Series(False, index=df.index)
+
+    if name_cols:
+        ser = df[name_cols[0]].astype(str).fillna("")
+        mask = mask | ser.map(lambda v: _owns_name(v, allowed))
+
+    # intenta por correo si hay columna y algún token parece correo/usuario
+    if mail_cols:
+        email_like = [t for t in allowed if "@" in t or t.isalnum()]
+        if email_like:
+            em = df[mail_cols[0]].astype(str).str.lower()
+            for t in email_like:
+                mask = mask | em.str.contains(_re.escape(t), na=False)
+
+    # 5) Si no hay columnas relevantes, por seguridad no mostrar nada
+    if not name_cols and not mail_cols:
+        return df.iloc[0:0].copy()
+
     return df.loc[mask].copy()
 # === fin ACL helper =============================================================
