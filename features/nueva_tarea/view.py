@@ -50,42 +50,80 @@ except Exception:
         def now_lima_trimmed():
             return datetime.now().replace(second=0, microsecond=0)
 
-    def log_reciente(sheet, tarea_nombre: str, especialista: str = "", detalle: str = "Asignada", tab_name: str = "TareasRecientes"):
-        # no-op seguro si no hay gsheets
+    def log_reciente(sheet, tarea_nombre: str, especialista: str = "", detalle: str = "Asignada", tab_name: str = "TareasRecientes", **kwargs):
+        """
+        Fallback robusto:
+        - Si la hoja ya tiene columnas 'estándar', escribe con:
+          Id, Fecha Registro, Hora Registro, Acción, Tarea, Responsable, Detalle
+        - Si tiene el esquema antiguo (id, fecha, accion, tarea, especialista, detalle), lo respeta.
+        - Acepta id_val opcional (el Id real de la tarea).
+        """
         try:
             from uuid import uuid4
             import pandas as _pd
-            row = {
-                "id": uuid4().hex[:10].upper(),
-                "fecha": now_lima_trimmed().strftime("%Y-%m-%d %H:%M"),
+
+            ts = now_lima_trimmed()
+            id_std = str(kwargs.get("id_val", "")) or uuid4().hex[:10].upper()
+
+            row_std = {
+                "Id": id_std,
+                "Fecha Registro": ts.strftime("%Y-%m-%d"),
+                "Hora Registro": ts.strftime("%H:%M"),
+                "Acción": "Nueva tarea",
+                "Tarea": tarea_nombre or "",
+                "Responsable": (especialista or "").strip(),
+                "Detalle": (detalle or "").strip(),
+            }
+            # compat esquema antiguo
+            row_legacy = {
+                "id": id_std,
+                "fecha": ts.strftime("%Y-%m-%d %H:%M"),
                 "accion": "Nueva tarea",
                 "tarea": tarea_nombre or "",
                 "especialista": (especialista or "").strip(),
                 "detalle": (detalle or "").strip(),
             }
+
             if sheet is None:
                 return
+
             try:
                 from utils.gsheets import read_df_from_worksheet, upsert_by_id  # type: ignore
             except Exception:
                 read_df_from_worksheet = None
                 upsert_by_id = None
+
             df_exist = None
             if callable(read_df_from_worksheet):
                 try:
                     df_exist = read_df_from_worksheet(sheet, tab_name)
                 except Exception:
                     df_exist = None
+
+            # Elegimos columnas según lo que existe
             if isinstance(df_exist, _pd.DataFrame) and not df_exist.empty:
                 cols = list(df_exist.columns)
-                payload = _pd.DataFrame([{c: row.get(c, "") for c in cols}], columns=cols)
+                payload = {}
+                for c in cols:
+                    if c in row_std:
+                        payload[c] = row_std[c]
+                    elif c in row_legacy:
+                        payload[c] = row_legacy[c]
+                    else:
+                        payload[c] = ""
+                payload_df = _pd.DataFrame([payload], columns=cols)
             else:
-                payload = _pd.DataFrame([row])
-            if callable(upsert_by_id) and "id" in payload.columns:
-                upsert_by_id(sheet, tab_name, payload, id_col="id")
+                # si no hay nada, crear con estándar
+                payload_df = _pd.DataFrame([row_std])
+
+            if callable(upsert_by_id) and ("Id" in payload_df.columns or "id" in payload_df.columns):
+                # Elegimos la columna Id/id que exista
+                id_col = "Id" if "Id" in payload_df.columns else "id"
+                upsert_by_id(sheet, tab_name, payload_df, id_col=id_col)
             else:
                 ws = sheet.worksheet(tab_name)
-                ws.append_rows(payload.astype(str).values.tolist())
+                ws.append_rows(payload_df.astype(str).values.tolist())
+
             try:
                 st.cache_data.clear()
             except Exception:
@@ -333,9 +371,6 @@ def render(user: dict | None = None):
                     reg_hora_txt = str(reg_hora_obj) if reg_hora_obj is not None else ""
 
                 # Fase final:
-                # - Si es "Otros" y hay texto, guardamos "Otros — <texto>"
-                # - Si es "Otros" sin texto, guardamos "Otros"
-                # - En cualquier otro caso, guardamos el valor seleccionado
                 fase_sel = st.session_state.get("nt_fase", "")
                 fase_otro = (st.session_state.get("nt_fase_otro", "") or "").strip()
                 if str(fase_sel).strip() == "Otros":
@@ -406,13 +441,22 @@ def render(user: dict | None = None):
                     sheet = None
 
                 try:
-                    # Registrar SIEMPRE (para todas las personas)
-                    log_reciente(
-                        sheet,
-                        tarea_nombre=new.get("Tarea", ""),
-                        especialista=new.get("Responsable", ""),
-                        detalle="Asignada",
-                    )
+                    # Intento con id_val (si la versión importada no acepta, reintenta sin él)
+                    try:
+                        log_reciente(
+                            sheet,
+                            tarea_nombre=new.get("Tarea", ""),
+                            especialista=new.get("Responsable", ""),
+                            detalle="Asignada",
+                            id_val=new.get("Id", "")
+                        )
+                    except TypeError:
+                        log_reciente(
+                            sheet,
+                            tarea_nombre=new.get("Tarea", ""),
+                            especialista=new.get("Responsable", ""),
+                            detalle="Asignada"
+                        )
                 except Exception:
                     # No romper el flujo si no hay gsheets
                     pass
