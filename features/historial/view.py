@@ -447,6 +447,22 @@ def render(user: dict | None = None):
         columns=list(dict.fromkeys(target_cols)) + [c for c in df_view.columns if c not in target_cols + hidden_cols]
     ).copy()
     df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()
+
+    # --- Quitar columnas duplicadas por nombre “normalizado” (sin tildes/espacios extra/case) ---
+    import unicodedata, re as _re
+    def _normcol_hist(x: str) -> str:
+        s = unicodedata.normalize('NFD', str(x))
+        s = ''.join(ch for ch in s if unicodedata.category(ch) != 'Mn')  # quita acentos
+        return _re.sub(r'\s+', ' ', s).strip().lower()
+
+    _seen = set(); _keep = []
+    for _c in df_grid.columns:
+        _k = _normcol_hist(_c)
+        if _k not in _seen:
+            _seen.add(_k); _keep.append(_c)
+    df_grid = df_grid[_keep]
+    # --- fin ajuste ---
+
     df_grid["Id"] = df_grid["Id"].astype(str).fillna("")
     if "Link de descarga" not in df_grid.columns:
         df_grid["Link de descarga"] = ""
