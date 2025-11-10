@@ -9,6 +9,13 @@ import pandas as pd
 import streamlit as st
 from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode, JsCode
 
+# 👇 ACL: para filtrar vista (Vivi/Enrique ven todo, resto solo lo suyo)
+try:
+    from shared import apply_scope  # type: ignore
+except Exception:
+    def apply_scope(df, user=None):  # fallback no-op
+        return df
+
 # ================== Config base ==================
 TAB_NAME = "Tareas"
 DEFAULT_COLS = [
@@ -199,26 +206,107 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
             st.session_state["df_main"] = df
     return df
 
-def push_user_slice_to_sheet():
+# ======== 🔁 Upsert por Id (fila a fila, sin clear) ========
+def _a1_col(n: int) -> str:
+    """1->A, 26->Z, 27->AA ..."""
+    s = ""
+    while n > 0:
+        n, r = divmod(n - 1, 26)
+        s = chr(65 + r) + s
+    return s
+
+def _format_outgoing_row(row: pd.Series, headers: list[str]) -> list[str]:
+    out = []
+    for c in headers:
+        val = row.get(c, "")
+        low = str(c).lower()
+        if low.startswith("fecha"):
+            ser = to_naive_local_series(pd.Series([val]))
+            v = ser.iloc[0]
+            out.append("" if pd.isna(v) else pd.Timestamp(v).strftime("%Y-%m-%d"))
+        elif low.startswith("hora"):
+            out.append(_fmt_hhmm(val))
+        else:
+            out.append("" if val is None or (isinstance(val, float) and pd.isna(val)) else str(val))
+    return out
+
+def _sheet_upsert_by_id(df_rows: pd.DataFrame) -> dict:
+    """
+    Actualiza o inserta filas por Id en la pestaña configurada (sin borrar nada).
+    df_rows: subconjunto con las filas a upsert (debe incluir 'Id').
+    """
+    if df_rows is None or df_rows.empty or "Id" not in df_rows.columns:
+        return {"ok": False, "msg": "No hay filas con Id para actualizar."}
+
     ss, ws_name = _gsheets_client()
     try:
         ws = ss.worksheet(ws_name)
     except Exception:
-        rows = str(max(1000, len(st.session_state["df_main"]) + 10))
-        cols = str(max(26, len(st.session_state["df_main"].columns) + 5))
+        # Crea hoja si no existe
+        rows = str(max(1000, len(df_rows) + 10))
+        cols = str(max(26, len(df_rows.columns) + 5))
         ws = ss.add_worksheet(title=ws_name, rows=rows, cols=cols)
-    df_out = st.session_state["df_main"].copy()
-    df_out = _canonicalize_link_column(df_out)
-    for c in df_out.columns:
-        low = str(c).lower()
-        if low.startswith("fecha"):
-            ser = to_naive_local_series(df_out[c])
-            df_out[c] = ser.dt.strftime("%Y-%m-%d").fillna("")
-        elif low.startswith("hora"):
-            df_out[c] = df_out[c].apply(_fmt_hhmm).astype(str)
-    df_out = df_out.fillna("").astype(str)
-    ws.clear()
-    ws.update("A1", [list(df_out.columns)] + df_out.values.tolist())
+
+    # Lee cabeceras existentes
+    headers = ws.row_values(1)
+    if not headers:
+        headers = list(df_rows.columns)
+
+    # Agrega columnas nuevas al final si hiciera falta
+    new_cols = [c for c in df_rows.columns if c not in headers]
+    if new_cols:
+        headers = headers + new_cols
+        # actualiza la fila de encabezados
+        ws.update("A1", [headers])
+
+    # Mapa Id -> fila (número de fila en Sheets)
+    # Ubica índice de columna 'Id'
+    try:
+        id_col_idx = (headers.index("Id") + 1)
+    except ValueError:
+        headers = ["Id"] + [c for c in headers if c != "Id"]
+        ws.update("A1", [headers])
+        id_col_idx = 1
+
+    # Trae toda la columna Id para mapear filas existentes (evita get_all_values completo)
+    col_letter = _a1_col(id_col_idx)
+    existing_ids_col = ws.col_values(id_col_idx)
+    # existing_ids_col[0] es "Id" (header)
+    id_to_row = {}
+    for i, v in enumerate(existing_ids_col[1:], start=2):
+        if v:
+            id_to_row[str(v).strip()] = i
+
+    # Prepara y ejecuta upserts
+    last_col_letter = _a1_col(len(headers))
+    updates = []
+    appends = []
+    # Asegura tipos
+    df_rows = df_rows.copy()
+    df_rows["Id"] = df_rows["Id"].astype(str)
+
+    for _, row in df_rows.iterrows():
+        rid = str(row.get("Id", "")).strip()
+        if not rid:
+            continue
+        row_values = _format_outgoing_row(row, headers)
+        if rid in id_to_row:
+            r = id_to_row[rid]
+            rng = f"A{r}:{last_col_letter}{r}"
+            updates.append((rng, [row_values]))
+        else:
+            appends.append(row_values)
+
+    # Aplica updates por lotes
+    for rng, vals in updates:
+        ws.update(rng, vals, value_input_option="USER_ENTERED")
+
+    # Apéndices (nuevas filas)
+    if appends:
+        ws.append_rows(appends, value_input_option="USER_ENTERED")
+
+    total = len(updates) + len(appends)
+    return {"ok": True, "msg": f"Upsert completado: {total} fila(s) actualizada(s)/insertada(s)."}
 
 # ===== Exportación =====
 def export_excel(df: pd.DataFrame, sheet_name: str = TAB_NAME) -> bytes:
@@ -245,7 +333,6 @@ def _add_business_days(start_dates: pd.Series, days: pd.Series) -> pd.Series:
     sd = pd.to_datetime(start_dates, errors="coerce").dt.date
     n  = pd.to_numeric(days, errors="coerce").fillna(0).astype(int)
     ok = (~pd.isna(sd)) & (n > 0)
-    # 🔧 aquí estaba el error: terminaba con ] en vez de )
     out = pd.Series(pd.NaT, index=start_dates.index, dtype="datetime64[ns]")
     if ok.any():
         a = np.array(sd[ok], dtype="datetime64[D]")
@@ -314,6 +401,11 @@ def render(user: dict | None = None):
 
     # ===== Filtros =====
     st.markdown('<div class="hist-card">', unsafe_allow_html=True)
+
+    # 👉 ALCANCE por usuario (ACL)
+    df_all = st.session_state["df_main"].copy()
+    df_scope = apply_scope(df_all.copy(), user=user)  # Vivi/Enrique ven todo; resto solo lo suyo
+
     with st.container():
         c1, c2, c3, c4, c5, c6 = st.columns([1.05, 1.10, 1.70, 1.05, 1.05, 0.90], gap="medium")
         with c1:
@@ -325,13 +417,14 @@ def render(user: dict | None = None):
                 ),
                 index=0, key="hist_area"
             )
-        df_all = st.session_state["df_main"].copy()
-        fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x!="nan"])
+
+        fases_all = sorted([x for x in df_scope.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x!="nan"])
         with c2:
             fase_sel = st.selectbox("Fase", options=["Todas"]+fases_all, index=0, key="hist_fase")
-        df_resp_src = df_all.copy()
+
+        df_resp_src = df_scope.copy()
         if area_sel!="Todas":
-            df_resp_src = df_resp_src[df_resp_src["Área"]==area_sel]
+            df_resp_src = df_resp_src[df_resp_src.get("Área","").astype(str)==area_sel]
         if fase_sel!="Todas" and "Fase" in df_resp_src.columns:
             df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str)==fase_sel]
         responsables = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x!="nan"])
@@ -352,20 +445,20 @@ def render(user: dict | None = None):
     show_deleted = st.toggle("Mostrar eliminadas (tachadas)", value=True, key="hist_show_deleted")
 
     # ---- Aplicar filtros ----
-    df_view = st.session_state["df_main"].copy()
+    df_view = df_scope.copy()
     df_view = _canonicalize_link_column(df_view)
     if "Fecha inicio" in df_view.columns:
         df_view["Fecha inicio"] = to_naive_local_series(df_view["Fecha inicio"])
     if hist_do_buscar:
         if area_sel!="Todas":
-            df_view = df_view[df_view["Área"]==area_sel]
+            df_view = df_view[df_view.get("Área","").astype(str)==area_sel]
         if fase_sel!="Todas" and "Fase" in df_view.columns:
             df_view = df_view[df_view["Fase"].astype(str)==fase_sel]
         if resp_multi:
             df_view = df_view[df_view["Responsable"].astype(str).isin(resp_multi)]
-        if f_desde is not None:
+        if f_desde is not None and "Fecha inicio" in df_view.columns:
             df_view = df_view[df_view["Fecha inicio"].dt.date >= f_desde]
-        if f_hasta is not None:
+        if f_hasta is not None and "Fecha inicio" in df_view.columns:
             df_view = df_view[df_view["Fecha inicio"].dt.date <= f_hasta]
     if not show_deleted and "Estado" in df_view.columns:
         df_view = df_view[df_view["Estado"].astype(str).str.strip()!="Eliminado"]
@@ -408,11 +501,11 @@ def render(user: dict | None = None):
     ).copy()
     df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()
 
-    # --- Quitar columnas duplicadas por nombre “normalizado” (sin tildes/espacios/case) ---
+    # --- Quitar columnas duplicadas por nombre “normalizado” ---
     import unicodedata, re as _re
     def _normcol_hist(x: str) -> str:
         s = unicodedata.normalize('NFD', str(x))
-        s = ''.join(ch for ch in s if unicodedata.category(ch) != 'Mn')  # quita acentos
+        s = ''.join(ch for ch in s if unicodedata.category(ch) != 'Mn')
         return _re.sub(r'\s+', ' ', s).strip().lower()
 
     _seen = set(); _keep = []
@@ -423,19 +516,16 @@ def render(user: dict | None = None):
     df_grid = df_grid[_keep]
     # --- fin ajuste general ---
 
-    # 🔧 Forzar a dejar UNA SOLA “Duración” (tolerante a typos, signos y espacios)
+    # 🔧 Forzar una sola “Duración”
     def _norm_match_key(name: str) -> str:
-        s = _normcol_hist(name)          # sin acentos, minúsculas
-        s = _re.sub(r'[^a-z0-9]', '', s) # sin signos/puntuación/espacios
+        s = _normcol_hist(name)
+        s = _re.sub(r'[^a-z0-9]', '', s)
         return s
-
     def _is_duracion_like(name: str) -> bool:
         n = _norm_match_key(name)
         return (n == "duracion" or n == "duraicon" or n.startswith("duracion"))
-
     dur_like_cols = [c for c in df_grid.columns if _is_duracion_like(c)]
     if len(dur_like_cols) > 1:
-        # Preferimos mantener EXACTAMENTE "Duración" si existe; si no, la primera en orden
         keep_col = next((c for c in dur_like_cols if c.strip() == "Duración"), dur_like_cols[0])
         drop_cols = [c for c in dur_like_cols if c != keep_col]
         df_grid.drop(columns=drop_cols, inplace=True, errors="ignore")
@@ -506,6 +596,12 @@ def render(user: dict | None = None):
         out[no_delivered]      = "❌ No entregado"
         out[risk]              = "⚠️ En riesgo de retrasos"
         df_grid["Cumplimiento"] = out
+
+    # ======= Snapshot para detectar cambios en grilla (Tarea/Detalle) =======
+    try:
+        st.session_state["_hist_prev"] = df_grid[["Id","Tarea","Detalle"]].copy()
+    except Exception:
+        st.session_state["_hist_prev"] = pd.DataFrame(columns=["Id","Tarea","Detalle"])
 
     # ==== Opciones AG Grid ====
     gob = GridOptionsBuilder.from_dataframe(df_grid)
@@ -681,7 +777,7 @@ def render(user: dict | None = None):
         allow_unsafe_jscode=True,
     )
 
-    # Guardar ediciones (y persistir)
+    # ===== Detectar cambios y persistir local =====
     try:
         edited = grid_resp["data"]
         new_df = None
@@ -690,6 +786,31 @@ def render(user: dict | None = None):
         elif hasattr(grid_resp, "data"):
             new_df = pd.DataFrame(grid_resp.data)
 
+        # Calcula changed_ids comparando snapshot previo vs grilla actual (solo Tarea/Detalle)
+        changed_ids = set()
+        try:
+            prev = st.session_state.get("_hist_prev")
+            if isinstance(prev, pd.DataFrame) and new_df is not None:
+                ccols = ["Id","Tarea","Detalle"]
+                a = prev.reindex(columns=ccols).copy()
+                b = new_df.reindex(columns=ccols).copy()
+                a["Id"] = a["Id"].astype(str)
+                b["Id"] = b["Id"].astype(str)
+                prev_map = a.set_index("Id")
+                curr_map = b.set_index("Id")
+                common = prev_map.index.intersection(curr_map.index)
+                if len(common):
+                    dif_mask = (prev_map.loc[common, ["Tarea","Detalle"]].fillna("").astype(str)
+                                .ne(curr_map.loc[common, ["Tarea","Detalle"]].fillna("").astype(str))).any(axis=1)
+                    changed_ids.update(common[dif_mask].tolist())
+                # nuevos Ids visibles en grilla
+                new_only = [iid for iid in curr_map.index if iid not in prev_map.index and iid]
+                changed_ids.update(new_only)
+        except Exception:
+            pass
+        st.session_state["_hist_changed_ids"] = sorted(changed_ids)
+
+        # Merge edición en df_main y guarda local
         if new_df is not None:
             base = st.session_state.get("df_main", pd.DataFrame()).copy()
             base = _canonicalize_link_column(base)
@@ -751,8 +872,19 @@ def render(user: dict | None = None):
     with b_save_sheets:
         if st.button("📤 Subir a Sheets", use_container_width=True):
             try:
-                push_user_slice_to_sheet()
-                st.success("Enviado a Google Sheets.")
+                ids = st.session_state.get("_hist_changed_ids", [])
+                if not ids:
+                    st.info("No hay cambios detectados en la grilla para enviar.")
+                else:
+                    # Subconjunto por Id desde la base completa (no solo la vista)
+                    base_full = st.session_state.get("df_main", pd.DataFrame()).copy()
+                    base_full["Id"] = base_full.get("Id","").astype(str)
+                    df_rows = base_full[base_full["Id"].isin(ids)].copy()
+                    res = _sheet_upsert_by_id(df_rows)
+                    if res.get("ok"):
+                        st.success(res.get("msg","Actualizado."))
+                    else:
+                        st.warning(res.get("msg","No se pudo actualizar."))
             except Exception as e:
                 st.warning(f"No se pudo subir a Sheets: {e}")
 
