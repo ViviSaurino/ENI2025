@@ -22,9 +22,21 @@ def render(user: dict | None = None):
     # =========================== EVALUACIÓN ===============================
     st.session_state.setdefault("eva_visible", True)
 
-    # 🔐 ACL: solo jefatura/owner puede editar/guardar
+    # 🔐 ACL: SOLO Vivi y Enrique (por correo) o quien tenga can_edit_all_tabs
     acl_user = st.session_state.get("acl_user", {}) or {}
-    IS_EDITOR = bool(acl_user.get("can_edit_all_tabs", False))
+    email_from_user = (user or {}).get("email") if isinstance(user, dict) else None
+    current_email = str(acl_user.get("email") or email_from_user or "").strip().lower()
+
+    # Lista de correos permitidos (configurable por secrets); fallback: vacía
+    allow_secret = set(map(str.lower,
+                           (st.secrets.get("acl", {}).get("editor_emails", [])
+                            or st.secrets.get("editors", {}).get("emails", [])
+                            or st.secrets.get("editor_emails", [])
+                            or [])))
+    # Flag central
+    can_edit_flag = bool(acl_user.get("can_edit_all_tabs", False))
+
+    IS_EDITOR = can_edit_flag or (current_email in allow_secret)
 
     # Anchos (consistentes con las otras secciones)
     A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
@@ -117,7 +129,7 @@ def render(user: dict | None = None):
         df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
         if df_all.empty:
             df_all = pd.DataFrame(
-                columns=["Id", "Área", "Fase", "Responsable", "Tarea", "Fecha inicio", "Evaluación", "Calificación"]
+                columns=["Id", "Área", "Fase", "Responsable", "Tarea", "Fecha inicio", "Evaluación", "Calificación", "Comentarios"]
             )
 
         # Asegura columnas base
@@ -127,6 +139,9 @@ def render(user: dict | None = None):
         if "Calificación" not in df_all.columns:
             df_all["Calificación"] = 0
         df_all["Calificación"] = pd.to_numeric(df_all["Calificación"], errors="coerce").fillna(0).astype(int).clip(0, 5)
+        if "Comentarios" not in df_all.columns:
+            df_all["Comentarios"] = ""
+        df_all["Comentarios"] = df_all["Comentarios"].fillna("").astype(str)
 
         # ===== Rango por defecto (min–max del dataset) =====
         def _first_valid_date_series(df: pd.DataFrame) -> pd.Series:
@@ -226,17 +241,18 @@ def render(user: dict | None = None):
             "Sin evaluar": "Sin evaluar",
         }
 
-        cols_out = ["Id", "Responsable", "Tarea", "Evaluación actual", "Evaluación ajustada", "Calificación"]
+        cols_out = ["Id", "Responsable", "Tarea", "Evaluación actual", "Evaluación ajustada", "Calificación", "Comentarios"]
         if df_filtrado.empty:
             df_view = pd.DataFrame({c: pd.Series(dtype="str") for c in cols_out})
         else:
             tmp = df_filtrado.dropna(subset=["Id"]).copy()
-            for need in ["Responsable", "Tarea", "Evaluación", "Calificación"]:
+            for need in ["Responsable", "Tarea", "Evaluación", "Calificación", "Comentarios"]:
                 if need not in tmp.columns:
                     tmp[need] = ""
             eva_actual_txt = tmp["Evaluación"].fillna("Sin evaluar").replace({"": "Sin evaluar"}).astype(str)
             eva_ajustada_show = eva_actual_txt.apply(lambda v: TEXT_TO_SHOW.get(v, "Sin evaluar"))
             calif = pd.to_numeric(tmp.get("Calificación", 0), errors="coerce").fillna(0).astype(int).clip(0, 5)
+            comentarios = tmp.get("Comentarios", "").astype(str).fillna("")
 
             df_view = pd.DataFrame(
                 {
@@ -246,6 +262,7 @@ def render(user: dict | None = None):
                     "Evaluación actual": eva_actual_txt,
                     "Evaluación ajustada": eva_ajustada_show,
                     "Calificación": calif,
+                    "Comentarios": comentarios,
                 }
             )[cols_out].copy()
 
@@ -305,6 +322,14 @@ def render(user: dict | None = None):
             minWidth=160,
         )
 
+        # 🔐 Editable (solo jefatura): Comentarios (texto libre)
+        gob.configure_column(
+            "Comentarios",
+            editable=bool(IS_EDITOR),
+            flex=2.0,
+            minWidth=240,
+        )
+
         # Ajuste flex
         gob.configure_column("Id", flex=1.0, minWidth=110)
         gob.configure_column("Responsable", flex=1.6, minWidth=160)
@@ -362,6 +387,8 @@ def render(user: dict | None = None):
                             df_base["Evaluación"] = "Sin evaluar"
                         if "Calificación" not in df_base.columns:
                             df_base["Calificación"] = 0
+                        if "Comentarios" not in df_base.columns:
+                            df_base["Comentarios"] = ""
 
                         cambios = 0
                         for _, row in edited.iterrows():
@@ -388,15 +415,22 @@ def render(user: dict | None = None):
                                 cal_new = 0
                             cal_new = max(0, min(5, cal_new))
 
-                            # Aplicar
+                            # Comentarios (texto)
+                            com_new = str(row.get("Comentarios", "") or "").strip()
+
+                            # Valores previos
                             prev_eva = df_base.loc[m, "Evaluación"].iloc[0] if m.any() else None
                             prev_cal = df_base.loc[m, "Calificación"].iloc[0] if m.any() else None
+                            prev_com = str(df_base.loc[m, "Comentarios"].iloc[0]) if m.any() else ""
 
                             if eva_new != prev_eva:
                                 df_base.loc[m, "Evaluación"] = eva_new
                                 cambios += 1
                             if cal_new != prev_cal:
                                 df_base.loc[m, "Calificación"] = cal_new
+                                cambios += 1
+                            if com_new != prev_com:
+                                df_base.loc[m, "Comentarios"] = com_new
                                 cambios += 1
 
                         if cambios > 0:
