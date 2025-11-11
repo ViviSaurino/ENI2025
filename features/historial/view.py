@@ -70,7 +70,7 @@ DEFAULT_COLS = [
     "Archivo"
 ]
 
-# ⬇️ NUEVO: intervalo de auto-pull configurable (segundos)
+# ⬇️ intervalo de auto-pull configurable (segundos)
 PULL_INTERVAL_SECS = int(st.secrets.get("hist_pull_secs", 30))
 
 # ====== TZ helpers ======
@@ -932,7 +932,13 @@ def render(user: dict | None = None):
 
     # ===== Botonera =====
     st.markdown('<div style="padding:0 16px; border-top:2px solid #EF4444">', unsafe_allow_html=True)
-    _sp, b_xlsx, b_sync, b_save_local, b_save_sheets = st.columns([4.9, 1.6, 1.4, 1.4, 2.2], gap="medium")
+
+    # ⬇️ AJUSTE: distribución sin hueco para no-editores (3 botones juntos)
+    if _is_super_editor():
+        _sp, b_xlsx, b_sync, b_save_local, b_save_sheets = st.columns([4.9, 1.6, 1.4, 1.4, 2.2], gap="medium")
+    else:
+        # Sin columna de sincronizar; botones más juntos
+        _sp, b_xlsx, b_save_local, b_save_sheets = st.columns([5.6, 1.8, 1.6, 2.4], gap="small")
 
     with b_xlsx:
         try:
@@ -951,8 +957,9 @@ def render(user: dict | None = None):
         except Exception as e:
             st.warning(f"No pude generar Excel: {e}")
 
-    with b_sync:
-        if _is_super_editor():
+    # Solo aparece para super editores, sin dejar hueco
+    if _is_super_editor():
+        with b_sync:
             if st.button("🔄 Sincronizar", use_container_width=True, key="btn_sync_sheet"):
                 try:
                     pull_user_slice_from_sheet(replace_df_main=False)
@@ -969,7 +976,6 @@ def render(user: dict | None = None):
                 st.warning(f"No se pudo grabar localmente: {e}")
 
     with b_save_sheets:
-        # ⬇️ NUEVO: botón habilitado para todos con reglas por rol
         if st.button("📤 Subir a Sheets", use_container_width=True):
             try:
                 pend_ids  = set(st.session_state.get("_hist_changed_ids", []) or [])
@@ -1003,11 +1009,9 @@ def render(user: dict | None = None):
                             pend_diff = filtered_cell_diff
 
                             # Limitar ids a los que realmente tienen difs permitidos y existen en su base filtrada
-                            ids_in_base = set(base_full["Id"].astype(str))
-                            pend_ids = {rid for rid in pend_ids if (rid in ids_in_base and rid in pend_diff)}
-                            new_ids  = {rid for rid in new_ids  if rid in ids_in_base}
+                            pend_ids = {rid for rid in pend_ids if rid in set(base_full["Id"].astype(str)) and rid in pend_diff}
+                            new_ids  = {rid for rid in new_ids  if rid in set(base_full["Id"].astype(str))}
                             ids_to_push = set(pend_ids) | set(new_ids)
-
                             if not ids_to_push:
                                 st.info("No hay cambios permitidos para subir (solo ‘Tarea’ y ‘Detalle’ de tus tareas).")
                                 st.stop()
@@ -1022,12 +1026,9 @@ def render(user: dict | None = None):
                         )
                         if res.get("ok"):
                             st.success(res.get("msg","Actualizado."))
-                            # ✅ limpiar pendientes SOLO si subió bien
                             st.session_state["_hist_changed_ids"] = []
                             st.session_state["_hist_cell_diff"]  = {}
                             st.session_state["_hist_new_ids"]    = []
-
-                            # ⬇️ NUEVO: refresco inmediato desde Sheets + rerun
                             try:
                                 st.session_state["_last_pull_hist"] = 0  # forzar próximo pull
                                 pull_user_slice_from_sheet(replace_df_main=False)
