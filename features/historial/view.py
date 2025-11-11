@@ -932,7 +932,7 @@ def render(user: dict | None = None):
 
     # ===== Botonera =====
     st.markdown('<div style="padding:0 16px; border-top:2px solid #EF4444">', unsafe_allow_html=True)
-    _sp, b_xlsx, b_sync, b_save_local, b_save_sheets = st.columns([4.9, 1.6, 1.4, 1.4, 2.2], gap="medium")
+    _sp, b_sync, b_xlsx, b_save_local, b_save_sheets = st.columns([4.9, 1.4, 1.6, 1.4, 2.2], gap="medium")
 
     with b_xlsx:
         try:
