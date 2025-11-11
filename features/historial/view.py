@@ -46,11 +46,9 @@ def _display_name() -> str:
 
 def _is_super_editor() -> bool:
     u = st.session_state.get("acl_user", {}) or {}
-    # Si ACL trae un flag, respétalo
     flag = str(u.get("can_edit_all", "")).strip().lower()
     if flag in {"1","true","yes","si","sí"}:
         return True
-    # Fallback por nombre visible
     dn = _display_name().strip().lower()
     return dn.startswith("vivi") or dn.startswith("enrique")
 
@@ -70,7 +68,7 @@ DEFAULT_COLS = [
     "Fecha Pausado","Hora Pausado",
     "Fecha Cancelado","Hora Cancelado",
     "Fecha Eliminado","Hora Eliminado",
-    "Archivo"  # compat histórico
+    "Archivo"
 ]
 
 # ====== TZ helpers ======
@@ -103,7 +101,7 @@ def _fmt_hhmm(v) -> str:
     if v is None or (isinstance(v, float) and pd.isna(v)):
         return ""
     try:
-        s = str(v).strip()
+        s = str(v).trim() if hasattr(v, "trim") else str(v).strip()
         if not s or s.lower() in {"nan","nat","none","null"}:
             return ""
         m = re.match(r"^(\d{1,2}):(\d{2})", s)
@@ -211,14 +209,12 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
         if c.lower().startswith("fecha"):
             df[c] = to_naive_local_series(df[c])
 
-    # limpia HTML si hubiera en columnas de archivo
     def _strip_html(x): return re.sub(r"<[^>]+>", "", str(x) if x is not None else "")
     for cc in [c for c in df.columns if "archivo" in c.lower()]:
         df[cc] = df[cc].map(_strip_html)
 
     df = _canonicalize_link_column(df)
 
-    # N° alerta único
     alerta_pat = re.compile(r"^\s*n[°º]?\s*(de\s*)?alerta\s*$", re.I)
     alerta_cols = [c for c in df.columns if alerta_pat.match(str(c))]
     if alerta_cols:
@@ -228,7 +224,6 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
         for c in alerta_cols[1:]:
             df.drop(columns=c, inplace=True, errors="ignore")
 
-    # Merge por Id
     if "Id" in df.columns and isinstance(st.session_state.get("df_main"), pd.DataFrame) and "Id" in st.session_state["df_main"].columns:
         base = st.session_state["df_main"].copy()
         base["Id"] = base["Id"].astype(str); df["Id"] = df["Id"].astype(str)
@@ -246,7 +241,6 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
 
 # ======== 🔁 Upsert por Id (fila a fila, sin clear) ========
 def _a1_col(n: int) -> str:
-    """1->A, 26->Z, 27->AA ..."""
     s = ""
     while n > 0:
         n, r = divmod(n - 1, 26)
@@ -270,17 +264,12 @@ def _format_outgoing_row(row: pd.Series, headers: list[str]) -> list[str]:
 
 def _sheet_upsert_by_id(df_rows: pd.DataFrame) -> dict:
     """
-    Actualiza o inserta filas por Id en la pestaña configurada (sin borrar nada).
-    df_rows: subconjunto con las filas a upsert (debe incluir 'Id').
-
-    Comportamiento:
     1) Intenta utils.gsheets.upsert_rows_by_id (si existe).
-    2) Si el helper falla o no retorna ok, cae a fallback local con gspread.
+    2) Si falla/no retorna ok, cae a fallback gspread.
     """
     if df_rows is None or df_rows.empty or "Id" not in df_rows.columns:
         return {"ok": False, "msg": "No hay filas con Id para actualizar."}
 
-    # ===== 1) Helper centralizado (si existe) =====
     if upsert_rows_by_id is not None:
         try:
             ss_url = (st.secrets.get("gsheets_doc_url")
@@ -288,26 +277,17 @@ def _sheet_upsert_by_id(df_rows: pd.DataFrame) -> dict:
                       or (st.secrets.get("sheets",{}) or {}).get("sheet_url"))
             ws_name = (st.secrets.get("gsheets",{}) or {}).get("worksheet","TareasRecientes")
             ids = df_rows["Id"].astype(str).tolist()
-
             res = upsert_rows_by_id(ss_url=ss_url, ws_name=ws_name, df=df_rows, ids=ids)
-
-            # Normaliza posibles formatos de retorno
             if isinstance(res, dict):
                 if res.get("ok"):
                     return res
-                # si vino dict pero sin ok True, continuamos a fallback
             elif isinstance(res, tuple) and len(res) >= 1:
-                if bool(res[0]):  # (True, "msg")
+                if bool(res[0]):
                     return {"ok": True, "msg": res[1] if len(res) > 1 else "Actualizado."}
-            # si llegó aquí, hacemos fallback
         except Exception as e:
-            # Detecta el error de payload inválido y cualquier otro → fallback
-            _err = str(e)
             if st.session_state.get("_debug_hist_upsert"):
-                st.info(f"Helper upsert_rows_by_id falló, usando fallback. Detalle: {_err}")
-            # no hacemos return: seguimos al fallback
+                st.info(f"Helper upsert_rows_by_id falló, usando fallback. Detalle: {e}")
 
-    # ===== 2) Fallback local con gspread =====
     ss, ws_name = _gsheets_client()
     try:
         ws = ss.worksheet(ws_name)
@@ -332,7 +312,6 @@ def _sheet_upsert_by_id(df_rows: pd.DataFrame) -> dict:
         ws.update("A1", [headers])
         id_col_idx = 1
 
-    col_letter = _a1_col(id_col_idx)
     existing_ids_col = ws.col_values(id_col_idx)
     id_to_row = {}
     for i, v in enumerate(existing_ids_col[1:], start=2):
@@ -359,7 +338,6 @@ def _sheet_upsert_by_id(df_rows: pd.DataFrame) -> dict:
 
     for rng, vals in updates:
         ws.update(rng, vals, value_input_option="USER_ENTERED")
-
     if appends:
         ws.append_rows(appends, value_input_option="USER_ENTERED")
 
@@ -393,8 +371,7 @@ def _add_business_days(start_dates: pd.Series, days: pd.Series) -> pd.Series:
     ok = (~pd.isna(sd)) & (n > 0)
     out = pd.Series(pd.NaT, index=start_dates.index, dtype="datetime64[ns]")
     if ok.any():
-        a = np.array(sd[ok], dtype="datetime64[D]")
-        b = n[ok].to_numpy()
+        a = np.array(sd[ok], dtype="datetime64[D]"); b = n[ok].to_numpy()
         res = np.busday_offset(a, b, weekmask="Mon Tue Wed Thu Fri")
         out.loc[ok] = pd.to_datetime(res)
     return out
@@ -405,7 +382,7 @@ def _add_business_days(start_dates: pd.Series, days: pd.Series) -> pd.Series:
 def render(user: dict | None = None):
     st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-    # ====== CSS (píldora, aviso punteado y card SOLO para filtros) ======
+    # ====== CSS ======
     st.markdown("""
     <style>
       :root{
@@ -431,34 +408,26 @@ def render(user: dict | None = None):
     # ====== DATA BASE ======
     if "df_main" not in st.session_state or not isinstance(st.session_state["df_main"], pd.DataFrame):
         df_local = _load_local_if_exists()
-        if isinstance(df_local, pd.DataFrame) and not df_local.empty:
-            st.session_state["df_main"] = df_local
-        else:
-            st.session_state["df_main"] = pd.DataFrame(columns=DEFAULT_COLS)
+        st.session_state["df_main"] = df_local if isinstance(df_local, pd.DataFrame) and not df_local.empty else pd.DataFrame(columns=DEFAULT_COLS)
 
-    # Canoniza link y copia desde 'Archivo' si es URL (para persistir)
     base0 = st.session_state["df_main"].copy()
     base0 = _canonicalize_link_column(base0)
     base1 = _maybe_copy_archivo_to_link(base0.copy())
     if not base0.equals(base1):
         st.session_state["df_main"] = base1.copy()
-        try:
-            _save_local(st.session_state["df_main"].copy())
-        except Exception:
-            pass
+        try: _save_local(st.session_state["df_main"].copy())
+        except Exception: pass
 
-    # === Auto-sync desde Sheets (debounce 60s por sesión) ===
+    # === Auto-sync pull (debounce 60s) ===
     try:
         if (time.time() - st.session_state.get("_last_pull_hist", 0)) > 60:
-            pull_user_slice_from_sheet(replace_df_main=False)  # merge por Id
+            pull_user_slice_from_sheet(replace_df_main=False)
             st.session_state["_last_pull_hist"] = time.time()
     except Exception:
         pass
 
-    # ===== Píldora arriba =====
+    # ===== Píldora e indicaciones =====
     st.markdown('<div class="hist-title-pill">📝 Tareas recientes</div>', unsafe_allow_html=True)
-
-    # ===== Indicaciones =====
     st.markdown(
         '<div class="hist-hint">Aquí puedes editar <b>Tarea</b> y <b>Detalle de tarea</b>. '
         'Opcional: descargar en Excel. <b>Obligatorio:</b> Grabar y después Subir a Sheets.</div>',
@@ -468,11 +437,9 @@ def render(user: dict | None = None):
     # ===== Filtros =====
     st.markdown('<div class="hist-card">', unsafe_allow_html=True)
 
-    # 👉 ALCANCE por usuario (ACL)
     df_all = st.session_state["df_main"].copy()
-    df_scope = apply_scope(df_all.copy(), user=user)  # Vivi/Enrique ven todo; resto solo lo suyo
+    df_scope = apply_scope(df_all.copy(), user=user)
 
-    # ➤ Rango por defecto = mín–máx de la data disponible (no hoy–hoy)
     if "Fecha inicio" in df_scope.columns:
         _fseries = to_naive_local_series(df_scope["Fecha inicio"])
     elif "Fecha Registro" in df_scope.columns:
@@ -480,8 +447,7 @@ def render(user: dict | None = None):
     else:
         _fseries = to_naive_local_series(df_scope.get("Fecha", pd.Series([], dtype=object)))
     if _fseries.notna().any():
-        _min_date = _fseries.min().date()
-        _max_date = _fseries.max().date()
+        _min_date = _fseries.min().date(); _max_date = _fseries.max().date()
     else:
         _min_date = _max_date = date.today()
 
@@ -490,20 +456,16 @@ def render(user: dict | None = None):
         with c1:
             area_sel = st.selectbox(
                 "Área",
-                options=["Todas"] + st.session_state.get(
-                    "AREAS_OPC",
-                    ["Jefatura","Gestión","Metodología","Base de datos","Monitoreo","Capacitación","Consistencia"]
-                ),
+                options=["Todas"] + st.session_state.get("AREAS_OPC",
+                    ["Jefatura","Gestión","Metodología","Base de datos","Monitoreo","Capacitación","Consistencia"]),
                 index=0, key="hist_area"
             )
-
         fases_all = sorted([x for x in df_scope.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x!="nan"])
         with c2:
             fase_sel = st.selectbox("Fase", options=["Todas"]+fases_all, index=0, key="hist_fase")
 
         df_resp_src = df_scope.copy()
-        if area_sel!="Todas":
-            df_resp_src = df_resp_src[df_resp_src.get("Área","").astype(str)==area_sel]
+        if area_sel!="Todas": df_resp_src = df_resp_src[df_resp_src.get("Área","").astype(str)==area_sel]
         if fase_sel!="Todas" and "Fase" in df_resp_src.columns:
             df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str)==fase_sel]
         responsables = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x!="nan"])
@@ -526,7 +488,6 @@ def render(user: dict | None = None):
     df_view = df_scope.copy()
     df_view = _canonicalize_link_column(df_view)
 
-    # ✅ Parseamos fechas relevantes
     if "Fecha Registro" in df_view.columns:
         df_view["Fecha Registro"] = to_naive_local_series(df_view["Fecha Registro"])
     if "Fecha inicio" in df_view.columns:
@@ -539,7 +500,6 @@ def render(user: dict | None = None):
             df_view = df_view[df_view["Fase"].astype(str)==fase_sel]
         if resp_multi:
             df_view = df_view[df_view["Responsable"].astype(str).isin(resp_multi)]
-        # 🟣 Filtro por Fecha de REGISTRO (no por Fecha inicio)
         if f_desde is not None and "Fecha Registro" in df_view.columns:
             df_view = df_view[df_view["Fecha Registro"].dt.date >= f_desde]
         if f_hasta is not None and "Fecha Registro" in df_view.columns:
@@ -586,7 +546,6 @@ def render(user: dict | None = None):
     ).copy()
     df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()
 
-    # --- Quitar columnas duplicadas por nombre “normalizado” ---
     import unicodedata, re as _re
     def _normcol_hist(x: str) -> str:
         s = unicodedata.normalize('NFD', str(x))
@@ -599,9 +558,7 @@ def render(user: dict | None = None):
         if _k not in _seen:
             _seen.add(_k); _keep.append(_c)
     df_grid = df_grid[_keep]
-    # --- fin ajuste general ---
 
-    # 🔧 Forzar una sola “Duración”
     def _norm_match_key(name: str) -> str:
         s = _normcol_hist(name)
         s = _re.sub(r'[^a-z0-9]', '', s)
@@ -619,7 +576,6 @@ def render(user: dict | None = None):
     if "Link de descarga" not in df_grid.columns:
         df_grid["Link de descarga"] = ""
 
-    # --- Dedup/renombre de N° alerta ---
     alerta_pat = re.compile(r"^\s*n[°º]?\s*(de\s*)?alerta\s*$", re.I)
     alerta_cols = [c for c in df_grid.columns if alerta_pat.match(str(c))]
     if alerta_cols:
@@ -629,16 +585,13 @@ def render(user: dict | None = None):
         for c in alerta_cols[1:]:
             df_grid.drop(columns=c, inplace=True, errors="ignore")
 
-    # === Ajuste 1: Sí/No ===
     for bcol in ["¿Generó alerta?","¿Se corrigió?"]:
         if bcol in df_grid.columns:
             df_grid[bcol] = df_grid[bcol].map(_yesno)
 
-    # === Ajuste 2: Calificación = 0 por defecto ===
     if "Calificación" in df_grid.columns:
         df_grid["Calificación"] = pd.to_numeric(df_grid["Calificación"], errors="coerce").fillna(0)
 
-    # === Ajuste 3: Duración válida + Fecha Vencimiento (días hábiles) ===
     if "Duración" in df_grid.columns:
         dur_num = pd.to_numeric(df_grid["Duración"], errors="coerce")
         ok = dur_num.where(dur_num.between(1,5))
@@ -652,25 +605,19 @@ def render(user: dict | None = None):
                 df_grid["Fecha Vencimiento"] = pd.NaT
             df_grid.loc[mask_set, "Fecha Vencimiento"] = fv_calc.loc[mask_set]
 
-    # === Ajuste 4: Hora límite por defecto 17:00 ===
     if "Hora Vencimiento" in df_grid.columns:
         hv = df_grid["Hora Vencimiento"].apply(_fmt_hhmm).astype(str)
         df_grid["Hora Vencimiento"] = hv.mask(hv.str.strip()=="", "17:00")
 
-    # === Ajuste 5: Cumplimiento automático ===
     if "Cumplimiento" in df_grid.columns:
         fv = to_naive_local_series(df_grid.get("Fecha Vencimiento", pd.Series([], dtype=object)))
         ft = to_naive_local_series(df_grid.get("Fecha Terminado", pd.Series([], dtype=object)))
         today_ts = pd.Timestamp(date.today())
-        fv_n = fv.dt.normalize()
-        ft_n = ft.dt.normalize()
+        fv_n = fv.dt.normalize(); ft_n = ft.dt.normalize()
 
-        has_fv = ~fv_n.isna()
-        has_ft = ~ft_n.isna()
-
+        has_fv = ~fv_n.isna(); has_ft = ~ft_n.isna()
         delivered_on_time = has_fv & has_ft & (ft_n <= fv_n)
         delivered_late    = has_fv & has_ft & (ft_n >  fv_n)
-
         days_left = (fv_n - today_ts).dt.days
         no_delivered = has_fv & (~has_ft) & (days_left < 0)
         risk         = has_fv & (~has_ft) & (days_left >= 1) & (days_left <= 2)
@@ -682,12 +629,9 @@ def render(user: dict | None = None):
         out[risk]              = "⚠️ En riesgo de retrasos"
         df_grid["Cumplimiento"] = out
 
-    # ======= Snapshot para detectar cambios =======
-    # 🔧 AJUSTE: detectar cambios en TODAS las columnas editables (no solo Tarea/Detalle)
-    #           y guardar qué columnas son editables para el usuario actual.
+    # ======= Snapshot / Detección de cambios =======
     editable_cols = set()
 
-    # ==== Opciones AG Grid ====
     gob = GridOptionsBuilder.from_dataframe(df_grid)
     gob.configure_default_column(
         resizable=True, editable=False, filter=False, floatingFilter=False,
@@ -715,7 +659,6 @@ def render(user: dict | None = None):
         _LINK_CANON: 120,
     }
 
-    # 🔧 AJUSTE: el header “Fecha Registro/Hora Registro” se muestran como “Fecha de registro / Hora de registro”
     header_map = {
         "Detalle": "Detalle de tarea",
         "Fecha Vencimiento": "Fecha límite",
@@ -726,27 +669,22 @@ def render(user: dict | None = None):
         "Hora Registro": "Hora de registro",
     }
 
-    # === Solo-lectura por usuario (desde ACL) ===
     _acl_user = st.session_state.get("acl_user", {}) or {}
     _ro_acl = {re.sub(r'[^a-z0-9]', '', x.lower()) for x in _get_readonly_cols_from_acl(_acl_user)}
     def _normkey(x: str) -> str:
         return re.sub(r'[^a-z0-9]', '', (x or '').lower())
 
-    # 🔧 AJUSTE: Vivi/Enrique pueden editar “todas” (excepto Id y columnas derivadas); el resto solo Tarea/Detalle
     super_editor = _is_super_editor()
     _editable_base = set(df_grid.columns) - {"Id", "Link de descarga", _LINK_CANON} if super_editor else {"Tarea", "Detalle"}
 
     for col in df_grid.columns:
         nice = header_map.get(col, col)
-        # si es super editor, ignoramos la lista de solo-lectura; de lo contrario, respetamos _ro_acl
         if super_editor:
             col_is_editable = (col in _editable_base)
         else:
             col_is_editable = (col in _editable_base) and (_normkey(col) not in _ro_acl) and (_normkey(nice) not in _ro_acl)
-
         if col_is_editable:
             editable_cols.add(col)
-
         gob.configure_column(
             col,
             headerName=nice,
@@ -756,10 +694,8 @@ def render(user: dict | None = None):
             filter=False, floatingFilter=False, sortable=False
         )
 
-    # Ocultamos "Link de archivo" pero disponible
     gob.configure_column(_LINK_CANON, hide=True)
 
-    # Formato fecha (dd/mm/aaaa)
     date_only_fmt = JsCode(r"""
     function(p){
       const v = p.value;
@@ -786,7 +722,6 @@ def render(user: dict | None = None):
         if col in df_grid.columns:
             gob.configure_column(col, valueFormatter=date_only_fmt)
 
-    # Link de descarga (lee SOLO de "Link de archivo")
     link_value_getter = JsCode(r"""
     function(p){
       const text = String((p && p.data && p.data['Link de archivo']) || '').trim();
@@ -820,7 +755,6 @@ def render(user: dict | None = None):
                          minWidth=width_map["Link de descarga"],
                          flex=1)
 
-    # Cumplimiento: estilos por estado
     cumplimiento_style = JsCode(r"""
     function(p){
       const v = (p.value || '').toLowerCase();
@@ -845,7 +779,6 @@ def render(user: dict | None = None):
     }""")
     gob.configure_column("Cumplimiento", cellStyle=cumplimiento_style)
 
-    # Sin menú/filtro en "Fecha inicio"
     gob.configure_column("Fecha inicio", filter=False, floatingFilter=False, sortable=False, suppressMenu=True)
 
     gob.configure_grid_options(
@@ -881,16 +814,19 @@ def render(user: dict | None = None):
         allow_unsafe_jscode=True,
     )
 
-    # 🔧 AJUSTE: snapshot de columnas editables para comparar cambios por Id
+    # === NUEVO: preparar snap_cols SIN pisar snapshot previo ===
     try:
-        snap_cols = ["Id"] + sorted([c for c in editable_cols if c in df_grid.columns])
-        if not snap_cols or snap_cols == ["Id"]:
-            snap_cols = ["Id","Tarea","Detalle"]  # fallback seguro
-        st.session_state["_hist_cols"] = snap_cols
-        st.session_state["_hist_prev"] = df_grid[snap_cols].copy()
+        snap_cols = st.session_state.get("_hist_cols")
+        if not snap_cols:
+            snap_cols = ["Id"] + sorted([c for c in editable_cols if c in df_grid.columns])
+            if not snap_cols or snap_cols == ["Id"]:
+                snap_cols = ["Id","Tarea","Detalle"]
+            st.session_state["_hist_cols"] = snap_cols
     except Exception:
-        st.session_state["_hist_cols"] = ["Id","Tarea","Detalle"]
-        st.session_state["_hist_prev"] = pd.DataFrame(columns=["Id","Tarea","Detalle"])
+        snap_cols = ["Id","Tarea","Detalle"]
+        st.session_state["_hist_cols"] = snap_cols
+
+    prev = st.session_state.get("_hist_prev")  # <-- usamos snapshot previo
 
     # ===== Detectar cambios y persistir local =====
     try:
@@ -901,27 +837,24 @@ def render(user: dict | None = None):
         elif hasattr(grid_resp, "data"):
             new_df = pd.DataFrame(grid_resp.data)
 
-        # 🔧 AJUSTE: comparar todas las columnas editables (por usuario) para armar changed_ids
         changed_ids = set()
         try:
-            prev = st.session_state.get("_hist_prev")
-            snap_cols = st.session_state.get("_hist_cols", ["Id","Tarea","Detalle"])
             cols_to_cmp = [c for c in snap_cols if c != "Id"]
             if isinstance(prev, pd.DataFrame) and new_df is not None and cols_to_cmp:
                 a = prev.reindex(columns=snap_cols).copy()
                 b = new_df.reindex(columns=snap_cols).copy()
-                a["Id"] = a["Id"].astype(str)
-                b["Id"] = b["Id"].astype(str)
-                prev_map = a.set_index("Id")
-                curr_map = b.set_index("Id")
+                a["Id"] = a["Id"].astype(str); b["Id"] = b["Id"].astype(str)
+                prev_map = a.set_index("Id"); curr_map = b.set_index("Id")
                 common = prev_map.index.intersection(curr_map.index)
                 if len(common):
                     dif_mask = (prev_map.loc[common, cols_to_cmp].fillna("").astype(str)
                                 .ne(curr_map.loc[common, cols_to_cmp].fillna("").astype(str))).any(axis=1)
                     changed_ids.update(common[dif_mask].tolist())
-                # nuevos Ids visibles en grilla
                 new_only = [iid for iid in curr_map.index if iid not in prev_map.index and iid]
                 changed_ids.update(new_only)
+            elif new_df is not None:
+                # primera corrida sin snapshot previo → no marcamos cambios todavía
+                pass
         except Exception:
             pass
         st.session_state["_hist_changed_ids"] = sorted(changed_ids)
@@ -929,20 +862,21 @@ def render(user: dict | None = None):
         # Merge edición en df_main y guarda local
         if new_df is not None:
             base = st.session_state.get("df_main", pd.DataFrame()).copy()
-            base = _canonicalize_link_column(base)
-            new_df = _canonicalize_link_column(new_df)
+            base = _canonicalize_link_column(base); new_df = _canonicalize_link_column(new_df)
             if ("Id" in base.columns) and ("Id" in new_df.columns):
-                base["Id"] = base["Id"].astype(str)
-                new_df["Id"] = new_df["Id"].astype(str)
-                base_idx = base.set_index("Id")
-                new_idx  = new_df.set_index("Id")
+                base["Id"] = base["Id"].astype(str); new_df["Id"] = new_df["Id"].astype(str)
+                base_idx = base.set_index("Id"); new_idx  = new_df.set_index("Id")
                 cols_to_update = [c for c in new_idx.columns if c in base_idx.columns]
                 base_idx.update(new_idx[cols_to_update])
                 st.session_state["df_main"] = base_idx.reset_index()
             else:
                 st.session_state["df_main"] = new_df
+            try: _save_local(st.session_state["df_main"].copy())
+            except Exception: pass
+
+            # 🔑 IMPORTANTE: actualizar snapshot DESPUÉS de comparar
             try:
-                _save_local(st.session_state["df_main"].copy())
+                st.session_state["_hist_prev"] = new_df.reindex(columns=snap_cols).copy()
             except Exception:
                 pass
     except Exception:
@@ -970,17 +904,13 @@ def render(user: dict | None = None):
             st.warning(f"No pude generar Excel: {e}")
 
     with b_sync:
-        # 🔧 AJUSTE: “Sincronizar” SOLO visible para Vivi/Enrique; y SOLO hace pull
         if _is_super_editor():
             if st.button("🔄 Sincronizar", use_container_width=True, key="btn_sync_sheet"):
                 try:
-                    pull_user_slice_from_sheet(replace_df_main=False)  # merge por Id (solo trae cambios)
+                    pull_user_slice_from_sheet(replace_df_main=False)
                     _save_local(st.session_state["df_main"].copy())
                 except Exception as e:
                     st.warning(f"No se pudo sincronizar: {e}")
-        else:
-            # no mostrar el botón a otros usuarios
-            pass
 
     with b_save_local:
         if st.button("💾 Grabar", use_container_width=True):
@@ -997,7 +927,6 @@ def render(user: dict | None = None):
                 if not ids:
                     st.info("No hay cambios detectados en la grilla para enviar.")
                 else:
-                    # Subconjunto por Id desde la base completa (no solo la vista)
                     base_full = st.session_state.get("df_main", pd.DataFrame()).copy()
                     base_full["Id"] = base_full.get("Id","").astype(str)
                     df_rows = base_full[base_full["Id"].isin(ids)].copy()
