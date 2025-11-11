@@ -53,31 +53,71 @@ except Exception:
     def log_reciente(sheet, tarea_nombre: str, especialista: str = "", detalle: str = "Asignada", tab_name: str = "TareasRecientes", **kwargs):
         """
         Fallback robusto:
-        - Si la hoja ya tiene columnas 'estándar', escribe con:
-          Id, Fecha Registro, Hora Registro, Acción, Tarea, Responsable, Detalle
-        - Si tiene el esquema antiguo (id, fecha, accion, tarea, especialista, detalle), lo respeta.
-        - Acepta id_val opcional (el Id real de la tarea).
+        - Si la hoja ya tiene columnas estándar NUEVAS: 'Fecha de registro' / 'Hora de registro', las usa.
+        - Si tiene el esquema antiguo: 'Fecha Registro' / 'Hora Registro', las usa.
+        - Si es un esquema legado (fecha combinada), respeta 'fecha'.
+        - Acepta id_val (Id de la tarea) y, si se puede, 'fecha_reg' y 'hora_reg' para usar exactamente
+          la fecha y hora que se registraron en Nueva tarea.
         """
         try:
             from uuid import uuid4
             import pandas as _pd
 
-            ts = now_lima_trimmed()
+            # Tomar fecha/hora que vengan de Nueva Tarea (si están); si no, ahora Lima
+            _ts = now_lima_trimmed()
+            _fecha_reg = kwargs.get("fecha_reg", None)  # puede venir como date o str
+            _hora_reg  = kwargs.get("hora_reg", None)   # puede venir como "HH:MM" o time/str
+
+            # Normalizar fecha
+            try:
+                if _fecha_reg is None or str(_fecha_reg).strip().lower() in {"", "nan", "nat", "none", "null"}:
+                    fecha_txt = _ts.strftime("%Y-%m-%d")
+                else:
+                    fecha_txt = pd.to_datetime(_fecha_reg).strftime("%Y-%m-%d")
+            except Exception:
+                fecha_txt = _ts.strftime("%Y-%m-%d")
+
+            # Normalizar hora
+            def _fmt_hhmm(v) -> str:
+                if v is None: return _ts.strftime("%H:%M")
+                try:
+                    s = str(v).strip()
+                    if not s: return _ts.strftime("%H:%M")
+                    m = re.match(r"^(\d{1,2}):(\d{2})", s)
+                    if m: return f"{int(m.group(1)):02d}:{int(m.group(2)):02d}"
+                    d = pd.to_datetime(s, errors="coerce", utc=False)
+                    if pd.isna(d): return _ts.strftime("%H:%M")
+                    return f"{int(d.hour):02d}:{int(d.minute):02d}"
+                except Exception:
+                    return _ts.strftime("%H:%M")
+
+            hora_txt = _fmt_hhmm(_hora_reg)
             id_std = str(kwargs.get("id_val", "")) or uuid4().hex[:10].upper()
 
-            row_std = {
+            # Estándar NUEVO
+            row_new = {
                 "Id": id_std,
-                "Fecha Registro": ts.strftime("%Y-%m-%d"),
-                "Hora Registro": ts.strftime("%H:%M"),
+                "Fecha de registro": fecha_txt,
+                "Hora de registro": hora_txt,
                 "Acción": "Nueva tarea",
                 "Tarea": tarea_nombre or "",
                 "Responsable": (especialista or "").strip(),
                 "Detalle": (detalle or "").strip(),
             }
-            # compat esquema antiguo
+            # Estándar ANTIGUO (separadas)
+            row_old = {
+                "Id": id_std,
+                "Fecha Registro": fecha_txt,
+                "Hora Registro": hora_txt,
+                "Acción": "Nueva tarea",
+                "Tarea": tarea_nombre or "",
+                "Responsable": (especialista or "").strip(),
+                "Detalle": (detalle or "").strip(),
+            }
+            # Esquema LEGADO (fecha combinada)
             row_legacy = {
                 "id": id_std,
-                "fecha": ts.strftime("%Y-%m-%d %H:%M"),
+                "fecha": f"{fecha_txt} {hora_txt}",
                 "accion": "Nueva tarea",
                 "tarea": tarea_nombre or "",
                 "especialista": (especialista or "").strip(),
@@ -100,24 +140,25 @@ except Exception:
                 except Exception:
                     df_exist = None
 
-            # Elegimos columnas según lo que existe
+            # Construir payload según columnas existentes
             if isinstance(df_exist, _pd.DataFrame) and not df_exist.empty:
                 cols = list(df_exist.columns)
                 payload = {}
                 for c in cols:
-                    if c in row_std:
-                        payload[c] = row_std[c]
+                    if c in row_new:
+                        payload[c] = row_new[c]
+                    elif c in row_old:
+                        payload[c] = row_old[c]
                     elif c in row_legacy:
                         payload[c] = row_legacy[c]
                     else:
                         payload[c] = ""
                 payload_df = _pd.DataFrame([payload], columns=cols)
             else:
-                # si no hay nada, crear con estándar
-                payload_df = _pd.DataFrame([row_std])
+                # si no hay nada, crear con estándar NUEVO
+                payload_df = _pd.DataFrame([row_new])
 
             if callable(upsert_by_id) and ("Id" in payload_df.columns or "id" in payload_df.columns):
-                # Elegimos la columna Id/id que exista
                 id_col = "Id" if "Id" in payload_df.columns else "id"
                 upsert_by_id(sheet, tab_name, payload_df, id_col=id_col)
             else:
@@ -228,7 +269,7 @@ def render(user: dict | None = None):
             # ===== Responsable & Área desde ACL =====
             _acl = st.session_state.get("acl_user", {}) or {}
             _display_name = (
-                _acl.get("display")           # ← clave correcta según shared.hydrate_acl_flags()
+                _acl.get("display")
                 or st.session_state.get("user_display_name", "")
                 or _acl.get("name", "")
                 or (st.session_state.get("user") or {}).get("name", "")
@@ -259,8 +300,6 @@ def render(user: dict | None = None):
 
             # ---------- FILA 1 ----------
             if _is_fase_otros:
-                # Orden y anchos para que "Otros, Tarea, Detalle, Responsable"
-                # coincidan con los anchos de "Estado, Complejidad, Duración, Fecha"
                 r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
                 r1c1.text_input("Área", value=area_fixed, key="nt_area_view", disabled=True)
                 r1c2.selectbox("Fase", options=FASES, key="nt_fase", index=FASES.index("Otros"))
@@ -269,7 +308,6 @@ def render(user: dict | None = None):
                 r1c5.text_input("Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle")
                 r1c6.text_input("Responsable", key="nt_resp", disabled=True)
             else:
-                # Layout original (con Área fijo)
                 r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
                 r1c1.text_input("Área", value=area_fixed, key="nt_area_view", disabled=True)
                 r1c2.selectbox("Fase", options=FASES, index=None, placeholder="Selecciona una fase", key="nt_fase")
@@ -304,29 +342,30 @@ def render(user: dict | None = None):
 
             # ---------- FILA 2 ----------
             if _is_fase_otros:
-                # Ciclo, Tipo, Estado, Complejidad, Duración, Fecha
                 r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
                 ciclo_mejora = r2c1.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
                 r2c2.selectbox("Tipo de tarea", options=["Otros"], index=0, key="nt_tipo", disabled=True)
                 r2c3.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
                 r2c4.selectbox("Complejidad", options=["🟢 Baja", "🟡 Media", "🔴 Alta"], index=0, key="nt_complejidad")
                 r2c5.selectbox("Duración", options=[f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)], index=0, key="nt_duracion_label")
-                r2c6.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date); _sync_time_from_date()
+                # ⬇️ etiqueta cambiada
+                r2c6.date_input("Fecha de registro", key="fi_d", on_change=_auto_time_on_date); _sync_time_from_date()
 
                 # ---------- FILA 3 ----------
                 r3c1, r3c2, r3c3, r3c4, r3c5, r3c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
-                r3c1.text_input("Hora (auto)", key="fi_t_view", disabled=True, help="Se asigna al elegir la fecha")
+                # ⬇️ etiqueta cambiada
+                r3c1.text_input("Hora de registro (auto)", key="fi_t_view", disabled=True, help="Se asigna al elegir la fecha")
                 r3c2.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
-                # r3c3..r3c6 vacíos (alineación)
             else:
-                # Layout original F2/F3
                 r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
                 r2c1.selectbox("Tipo de tarea", options=["Otros"], index=0, key="nt_tipo", disabled=True)
                 r2c2.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
                 r2c3.selectbox("Complejidad", options=["🟢 Baja", "🟡 Media", "🔴 Alta"], index=0, key="nt_complejidad")
                 r2c4.selectbox("Duración", options=[f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)], index=0, key="nt_duracion_label")
-                r2c5.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date); _sync_time_from_date()
-                r2c6.text_input("Hora (auto)", key="fi_t_view", disabled=True, help="Se asigna al elegir la fecha")
+                # ⬇️ etiqueta cambiada
+                r2c5.date_input("Fecha de registro", key="fi_d", on_change=_auto_time_on_date); _sync_time_from_date()
+                # ⬇️ etiqueta cambiada
+                r2c6.text_input("Hora de registro (auto)", key="fi_t_view", disabled=True, help="Se asigna al elegir la fecha")
 
                 r3c1, r3c2, r3c3, r3c4, r3c5, r3c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
                 r3c1.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
@@ -361,6 +400,12 @@ def render(user: dict | None = None):
                         df_out = df_out.loc[:, ordered].copy()
                     return df_out
 
+                # 🔁 Renombrar en memoria si vinieran las columnas antiguas
+                if "Fecha Registro" in df.columns and "Fecha de registro" not in df.columns:
+                    df = df.rename(columns={"Fecha Registro": "Fecha de registro"})
+                if "Hora Registro" in df.columns and "Hora de registro" not in df.columns:
+                    df = df.rename(columns={"Hora Registro": "Hora de registro"})
+
                 df = _sanitize(df, COLS if "COLS" in globals() else None)
 
                 reg_fecha = st.session_state.get("fi_d")
@@ -387,8 +432,10 @@ def render(user: dict | None = None):
                     "Responsable": st.session_state.get("nt_resp", ""),  # fijado al usuario logueado
                     "Fase": fase_final,
                     "Estado": "No iniciado",
+                    # ⬇️ Guardar SOLO con los nombres nuevos
+                    "Fecha de registro": reg_fecha, "Hora de registro": reg_hora_txt,
+                    # Campos espejo que ya usas en otros módulos (no tocados)
                     "Fecha": reg_fecha, "Hora": reg_hora_txt,
-                    "Fecha Registro": reg_fecha, "Hora Registro": reg_hora_txt,
                     "Fecha inicio": None, "Hora de inicio": "",
                     "Fecha Terminado": None, "Hora Terminado": "",
                     "Ciclo de mejora": st.session_state.get("nt_ciclo_mejora", ""),
@@ -402,11 +449,8 @@ def render(user: dict | None = None):
                         _dur = int(str(lbl).split()[0])
                     except Exception:
                         _dur = ""  # dejar vacío si no se puede parsear
-
-                    # Guardar también con el encabezado usado por "Tareas recientes"
                     new["Duración (días)"] = _dur
-                    # Compatibilidad hacia atrás
-                    new["Duración"] = _dur
+                    new["Duración"] = _dur  # compat hacia atrás
 
                 df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
                 df = _sanitize(df, COLS if "COLS" in globals() else None)
@@ -427,7 +471,6 @@ def render(user: dict | None = None):
                     st.info(res.get("msg", "Guardado deshabilitado."))
 
                 # ====== Log universal en TareasRecientes (sin ACL) ======
-                # Abrimos el spreadsheet si está configurado en secrets
                 sheet = None
                 try:
                     from utils.gsheets import open_sheet_by_url  # type: ignore
@@ -441,16 +484,19 @@ def render(user: dict | None = None):
                     sheet = None
 
                 try:
-                    # Intento con id_val (si la versión importada no acepta, reintenta sin él)
+                    # Intento con mismos nombres y fecha/hora proporcionadas
                     try:
                         log_reciente(
                             sheet,
                             tarea_nombre=new.get("Tarea", ""),
                             especialista=new.get("Responsable", ""),
                             detalle="Asignada",
-                            id_val=new.get("Id", "")
+                            id_val=new.get("Id", ""),
+                            fecha_reg=reg_fecha,
+                            hora_reg=reg_hora_txt,
                         )
                     except TypeError:
+                        # Si la versión importada no acepta kwargs extra, reintenta sin ellos
                         log_reciente(
                             sheet,
                             tarea_nombre=new.get("Tarea", ""),
@@ -458,8 +504,7 @@ def render(user: dict | None = None):
                             detalle="Asignada"
                         )
                 except Exception:
-                    # No romper el flujo si no hay gsheets
-                    pass
+                    pass  # no romper el flujo si no hay gsheets
 
                 # limpiar campos
                 for k in [
