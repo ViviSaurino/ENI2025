@@ -618,4 +618,4 @@ def render(user: dict | None = None):
         has_fv = ~fv_n.isna(); has_ft = ~ft_n.isna()
         delivered_on_time = has_fv & has_ft & (ft_n <= fv_n)
         delivered_late    = has_fv & has_ft & (ft_n >  fv_n)
-        days_left = (fv_n - today_ts
+        days_left = (fv_n - today_ts)
