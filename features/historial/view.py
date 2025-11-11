@@ -32,7 +32,7 @@ def _get_readonly_cols_from_acl(user_row: dict) -> set[str]:
     except Exception:
         return set()
 
-# 🔧 AJUSTE: helpers mínimos para identificar “super editores” (Vivi/Enrique)
+# 🔧 Identificar super editores (Vivi/Enrique)
 def _display_name() -> str:
     u = st.session_state.get("acl_user", {}) or {}
     return (
@@ -238,7 +238,7 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
             st.session_state["df_main"] = df
     return df
 
-# ======== 🔁 Upsert por Id (fila a fila, sin clear) ========
+# ======== Upsert helpers ========
 def _a1_col(n: int) -> str:
     s = ""
     while n > 0:
@@ -261,44 +261,23 @@ def _format_outgoing_row(row: pd.Series, headers: list[str]) -> list[str]:
             out.append("" if val is None or (isinstance(val, float) and pd.isna(val)) else str(val))
     return out
 
-# === NUEVO: formato de UNA celda según su tipo (fecha/hora/otro)
-def _format_single_cell(col_name: str, val):
-    low = str(col_name or "").lower()
+def _format_single_cell(val, colname: str) -> str:
+    low = str(colname).lower()
     if low.startswith("fecha"):
         ser = to_naive_local_series(pd.Series([val]))
         v = ser.iloc[0]
         return "" if pd.isna(v) else pd.Timestamp(v).strftime("%Y-%m-%d")
     if low.startswith("hora"):
         return _fmt_hhmm(val)
-    if val is None or (isinstance(val, float) and pd.isna(val)):
-        return ""
-    return str(val)
+    return "" if val is None or (isinstance(val, float) and pd.isna(val)) else str(val)
 
-def _sheet_upsert_by_id(df_rows: pd.DataFrame) -> dict:
+def _sheet_upsert_by_id_partial(df_rows: pd.DataFrame, cell_diff_map: dict[str, set[str]] | None = None,
+                                new_ids: set[str] | None = None) -> dict:
     """
-    1) Intenta utils.gsheets.upsert_rows_by_id (si existe).
-    2) Si falla/no retorna ok, cae a fallback gspread.
+    Actualiza solo las celdas modificadas por Id y columna; inserta filas completas si es Id nuevo.
     """
     if df_rows is None or df_rows.empty or "Id" not in df_rows.columns:
         return {"ok": False, "msg": "No hay filas con Id para actualizar."}
-
-    if upsert_rows_by_id is not None:
-        try:
-            ss_url = (st.secrets.get("gsheets_doc_url")
-                      or (st.secrets.get("gsheets",{}) or {}).get("spreadsheet_url")
-                      or (st.secrets.get("sheets",{}) or {}).get("sheet_url"))
-            ws_name = (st.secrets.get("gsheets",{}) or {}).get("worksheet","TareasRecientes")
-            ids = df_rows["Id"].astype(str).tolist()
-            res = upsert_rows_by_id(ss_url=ss_url, ws_name=ws_name, df=df_rows, ids=ids)
-            if isinstance(res, dict):
-                if res.get("ok"):
-                    return res
-            elif isinstance(res, tuple) and len(res) >= 1:
-                if bool(res[0]):
-                    return {"ok": True, "msg": res[1] if len(res) > 1 else "Actualizado."}
-        except Exception as e:
-            if st.session_state.get("_debug_hist_upsert"):
-                st.info(f"Helper upsert_rows_by_id falló, usando fallback. Detalle: {e}")
 
     ss, ws_name = _gsheets_client()
     try:
@@ -312,6 +291,7 @@ def _sheet_upsert_by_id(df_rows: pd.DataFrame) -> dict:
     if not headers:
         headers = list(df_rows.columns)
 
+    # Asegurar cabeceras completas
     new_cols = [c for c in df_rows.columns if c not in headers]
     if new_cols:
         headers = headers + new_cols
@@ -330,103 +310,52 @@ def _sheet_upsert_by_id(df_rows: pd.DataFrame) -> dict:
         if v:
             id_to_row[str(v).strip()] = i
 
-    last_col_letter = _a1_col(len(headers))
-    updates, appends = [], []
-
+    col_to_idx = {c: i+1 for i, c in enumerate(headers)}
     df_rows = df_rows.copy()
     df_rows["Id"] = df_rows["Id"].astype(str)
+
+    updates_count = 0
+    appends = []
+
+    new_ids = set(new_ids or set())
+    cell_diff_map = cell_diff_map or {}
 
     for _, row in df_rows.iterrows():
         rid = str(row.get("Id", "")).strip()
         if not rid:
             continue
-        row_values = _format_outgoing_row(row, headers)
-        if rid in id_to_row:
-            r = id_to_row[rid]
-            rng = f"A{r}:{last_col_letter}{r}"
-            updates.append((rng, [row_values]))
-        else:
-            appends.append(row_values)
 
-    for rng, vals in updates:
-        ws.update(rng, vals, value_input_option="USER_ENTERED")
+        # Si es nuevo Id o no existe en hoja → append fila completa
+        if (rid not in id_to_row) or (rid in new_ids):
+            appends.append(_format_outgoing_row(row, headers))
+            continue
+
+        # Para existentes, actualizar solo columnas cambiadas
+        diff_cols = set(cell_diff_map.get(rid, set()))
+        if not diff_cols:
+            continue
+
+        r_idx = id_to_row[rid]
+        for col in diff_cols:
+            if col not in col_to_idx:
+                headers.append(col)
+                ws.update("A1", [headers])
+                col_to_idx[col] = len(headers)
+            c_idx = col_to_idx[col]
+            a1 = f"{_a1_col(c_idx)}{r_idx}"
+            value = _format_single_cell(row.get(col, ""), col)
+            ws.update(a1, [[value]], value_input_option="USER_ENTERED")
+            updates_count += 1
+
     if appends:
         ws.append_rows(appends, value_input_option="USER_ENTERED")
 
-    total = len(updates) + len(appends)
-    return {"ok": True, "msg": f"Upsert completado: {total} fila(s) actualizada(s)/insertada(s) (fallback)."}
-
-# === NUEVO: actualizar celdas puntuales por Id/columna (fallback gspread)
-def _sheet_update_cells_by_id(cell_diff: dict[str, set[str]], df_source: pd.DataFrame) -> dict:
-    """
-    Actualiza SOLO las celdas (Id, columna) indicadas en `cell_diff`.
-    `cell_diff` = { 'ID_123': {'Fase','Prioridad'}, ... }
-    Usa gspread con USER_ENTERED. Crea encabezados que falten.
-    """
-    if not cell_diff:
-        return {"ok": True, "msg": "No hay celdas para actualizar."}
-
-    ss, ws_name = _gsheets_client()
-    try:
-        ws = ss.worksheet(ws_name)
-    except Exception:
-        # si no existe, creamos con encabezados de la fuente
-        rows = str(max(1000, len(df_source) + 10))
-        cols = str(max(26, len(df_source.columns) + 5))
-        ws = ss.add_worksheet(title=ws_name, rows=rows, cols=cols)
-        ws.update("A1", [list(df_source.columns)])
-
-    headers = ws.row_values(1) or list(df_source.columns)
-
-    # asegurar que existan todas las columnas a actualizar
-    needed_cols = set().union(*cell_diff.values()) if cell_diff else set()
-    added = False
-    for c in needed_cols:
-        if c not in headers:
-            headers.append(c)
-            added = True
-    if added:
-        ws.update("A1", [headers])
-
-    # localizar índice de Id y filas existentes
-    try:
-        id_col_idx = (headers.index("Id") + 1)
-    except ValueError:
-        headers = ["Id"] + [c for c in headers if c != "Id"]
-        ws.update("A1", [headers])
-        id_col_idx = 1
-
-    existing_ids_col = ws.col_values(id_col_idx)
-    id_to_row = {}
-    for i, v in enumerate(existing_ids_col[1:], start=2):
-        if v:
-            id_to_row[str(v).strip()] = i
-
-    # construir updates
-    updates = []
-    for rid, cols in cell_diff.items():
-        r = id_to_row.get(str(rid))
-        if not r:
-            # si no existe la fila, se ignorará aquí (la fila nueva la maneja _sheet_upsert_by_id)
-            continue
-        src_row = df_source[df_source["Id"].astype(str) == str(rid)]
-        if src_row.empty:
-            continue
-        row_vals = src_row.iloc[0].to_dict()
-        for c in sorted(cols):
-            try:
-                cidx = headers.index(c) + 1
-            except ValueError:
-                continue
-            value = _format_single_cell(c, row_vals.get(c, ""))
-            rng = f"{_a1_col(cidx)}{r}"
-            updates.append((rng, [[value]]))
-
-    # ejecutar
-    for rng, val in updates:
-        ws.update(rng, val, value_input_option="USER_ENTERED")
-
-    return {"ok": True, "msg": f"Actualizadas {len(updates)} celda(s) en Sheets."}
+    msg = []
+    if updates_count:
+        msg.append(f"{updates_count} celda(s) actualizada(s)")
+    if appends:
+        msg.append(f"{len(appends)} fila(s) insertada(s)")
+    return {"ok": True, "msg": "Upsert parcial: " + (", ".join(msg) if msg else "sin cambios.")}
 
 # ===== Exportación =====
 def export_excel(df: pd.DataFrame, sheet_name: str = TAB_NAME) -> bytes:
@@ -518,12 +447,27 @@ def render(user: dict | None = None):
         unsafe_allow_html=True
     )
 
-    # ===== Filtros =====
+    # ===== Filtros y alcance =====
     st.markdown('<div class="hist-card">', unsafe_allow_html=True)
 
     df_all = st.session_state["df_main"].copy()
-    df_scope = apply_scope(df_all.copy(), user=user)
 
+    super_editor = _is_super_editor()
+    if super_editor:
+        df_scope = df_all.copy()
+    else:
+        # 1) Intentar ACL externo
+        df_scope = apply_scope(df_all.copy(), user=user)
+        # 2) Fallback: filtrar por Responsable == usuario (contiene, case-insensitive)
+        try:
+            me = _display_name().strip()
+            if isinstance(df_scope, pd.DataFrame) and "Responsable" in df_scope.columns and me:
+                mask = df_scope["Responsable"].astype(str).str.lower().str.contains(me.lower())
+                df_scope = df_scope[mask]
+        except Exception:
+            pass
+
+    # Rango de fechas base
     if "Fecha inicio" in df_scope.columns:
         _fseries = to_naive_local_series(df_scope["Fecha inicio"])
     elif "Fecha Registro" in df_scope.columns:
@@ -671,7 +615,7 @@ def render(user: dict | None = None):
 
     for bcol in ["¿Generó alerta?","¿Se corrigió?"]:
         if bcol in df_grid.columns:
-            df_grid[bcol] = df_grid[bcol].map(_yesno)
+            df_grid[bcol] = df_grid[bcol] = df_grid[bcol].map(_yesno)
 
     if "Calificación" in df_grid.columns:
         df_grid["Calificación"] = pd.to_numeric(df_grid["Calificación"], errors="coerce").fillna(0)
@@ -724,7 +668,7 @@ def render(user: dict | None = None):
     )
 
     width_map = {
-        "Id": 90, "Área": 140, "Fase": 180, "Responsable": 220,
+        "Id": 110, "Área": 140, "Fase": 180, "Responsable": 220,
         "Tarea": 280, "Detalle": 360, "Detalle de tarea": 360,
         "Tipo": 140, "Ciclo de mejora": 150, "Complejidad": 140, "Prioridad": 130,
         "Estado": 150, "Duración": 120,
@@ -759,7 +703,8 @@ def render(user: dict | None = None):
         return re.sub(r'[^a-z0-9]', '', (x or '').lower())
 
     super_editor = _is_super_editor()
-    _editable_base = set(df_grid.columns) - {"Id", "Link de descarga", _LINK_CANON} if super_editor else {"Tarea", "Detalle"}
+    # 👉 Super editores: TODO editable (incluye Id). Resto: solo Tarea y Detalle.
+    _editable_base = (set(df_grid.columns) - {"Link de descarga", _LINK_CANON}) if super_editor else {"Tarea", "Detalle"}
 
     for col in df_grid.columns:
         nice = header_map.get(col, col)
@@ -898,66 +843,57 @@ def render(user: dict | None = None):
         allow_unsafe_jscode=True,
     )
 
-    # === NUEVO: preparar snap_cols SIN pisar snapshot previo ===
-    try:
-        snap_cols = st.session_state.get("_hist_cols")
-        if not snap_cols:
-            snap_cols = ["Id"] + sorted([c for c in editable_cols if c in df_grid.columns])
-            if not snap_cols or snap_cols == ["Id"]:
-                snap_cols = ["Id","Tarea","Detalle"]
-            st.session_state["_hist_cols"] = snap_cols
-    except Exception:
-        snap_cols = ["Id","Tarea","Detalle"]
-        st.session_state["_hist_cols"] = snap_cols
+    # === TRACKING de cambios (incluye Id para detectar nuevos)
+    base_cols = list(st.session_state.get("df_main", pd.DataFrame()).columns) or list(df_grid.columns)
+    persist_cols = [c for c in df_grid.columns if c in base_cols]
+    snap_cols = persist_cols  # incluye Id
+    st.session_state["_hist_cols"] = snap_cols
 
-    prev = st.session_state.get("_hist_prev")  # <-- usamos snapshot previo
+    prev = st.session_state.get("_hist_prev")
 
-    # ===== Detectar cambios y persistir local =====
     try:
         edited = grid_resp["data"]
-        new_df = None
-        if isinstance(edited, list):
-            new_df = pd.DataFrame(edited)
-        elif hasattr(grid_resp, "data"):
-            new_df = pd.DataFrame(grid_resp.data)
+        new_df = pd.DataFrame(edited) if isinstance(edited, list) else pd.DataFrame(grid_resp.data)
 
         changed_ids = set()
         cell_diff: dict[str, set[str]] = {}
         new_only_ids = set()
 
-        try:
+        if isinstance(prev, pd.DataFrame) and new_df is not None:
+            a = prev.reindex(columns=snap_cols).copy()
+            b = new_df.reindex(columns=snap_cols).copy()
+            if "Id" not in a.columns and "Id" in b.columns:
+                a["Id"] = ""
+            if "Id" not in b.columns and "Id" in a.columns:
+                b["Id"] = ""
+            a["Id"] = a["Id"].astype(str); b["Id"] = b["Id"].astype(str)
+            prev_map = a.set_index("Id", drop=False)
+            curr_map = b.set_index("Id", drop=False)
+
+            # Detectar filas nuevas (Id nuevo o antes vacío)
+            for iid, row in curr_map.iterrows():
+                if not iid or iid == "nan":
+                    continue
+                if iid not in prev_map.index:
+                    new_only_ids.add(iid)
+                    changed_ids.add(iid)
+
+            common_ids = prev_map.index.intersection(curr_map.index)
             cols_to_cmp = [c for c in snap_cols if c != "Id"]
-            if isinstance(prev, pd.DataFrame) and new_df is not None and cols_to_cmp:
-                a = prev.reindex(columns=snap_cols).copy()
-                b = new_df.reindex(columns=snap_cols).copy()
-                a["Id"] = a["Id"].astype(str); b["Id"] = b["Id"].astype(str)
-                prev_map = a.set_index("Id"); curr_map = b.set_index("Id")
-
-                common = prev_map.index.intersection(curr_map.index)
-                if len(common):
-                    # por fila, identificar columnas distintas
-                    prev_block = prev_map.loc[common, cols_to_cmp].fillna("").astype(str)
-                    curr_block = curr_map.loc[common, cols_to_cmp].fillna("").astype(str)
-                    neq = prev_block.ne(curr_block)
-                    changed_any = neq.any(axis=1)
-                    changed_ids.update(common[changed_any].tolist())
-
-                    # mapa por celda
-                    for rid in common[changed_any]:
-                        diff_cols = set(neq.columns[neq.loc[rid]].tolist())
-                        if diff_cols:
-                            cell_diff[str(rid)] = diff_cols
-
-                # nuevos Id (primer snapshot no tenía la fila)
-                for iid in curr_map.index:
-                    if iid not in prev_map.index and iid:
-                        new_only_ids.add(iid)
-                        changed_ids.add(iid)
-            elif new_df is not None:
-                # primera corrida sin snapshot previo → no marcamos cambios todavía
-                pass
-        except Exception:
-            pass
+            if len(common_ids) and cols_to_cmp:
+                prev_block = prev_map.loc[common_ids, cols_to_cmp].fillna("").astype(str)
+                curr_block = curr_map.loc[common_ids, cols_to_cmp].fillna("").astype(str)
+                neq = prev_block.ne(curr_block)
+                changed_any = neq.any(axis=1)
+                changed_ids.update(common_ids[changed_any].tolist())
+                for rid in common_ids[changed_any]:
+                    diff_cols = set(neq.columns[neq.loc[rid]].tolist())
+                    if diff_cols:
+                        cell_diff[str(rid)] = diff_cols
+        else:
+            # Primera corrida: grabar snapshot inicial
+            if new_df is not None:
+                st.session_state["_hist_prev"] = new_df.reindex(columns=snap_cols).copy()
 
         st.session_state["_hist_changed_ids"] = sorted(changed_ids)
         st.session_state["_hist_cell_diff"] = cell_diff
@@ -978,11 +914,12 @@ def render(user: dict | None = None):
             try: _save_local(st.session_state["df_main"].copy())
             except Exception: pass
 
-            # 🔑 IMPORTANTE: actualizar snapshot DESPUÉS de comparar
+            # Actualizar snapshot
             try:
                 st.session_state["_hist_prev"] = new_df.reindex(columns=snap_cols).copy()
             except Exception:
                 pass
+
     except Exception:
         pass
 
@@ -1025,39 +962,27 @@ def render(user: dict | None = None):
                 st.warning(f"No se pudo grabar localmente: {e}")
 
     with b_save_sheets:
-        if st.button("📤 Subir a Sheets", use_container_width=True):
-            try:
-                ids = st.session_state.get("_hist_changed_ids", [])
-                if not ids:
-                    st.info("No hay cambios detectados en la grilla para enviar.")
-                else:
-                    base_full = st.session_state.get("df_main", pd.DataFrame()).copy()
-                    base_full["Id"] = base_full.get("Id","").astype(str)
-
-                    # nuevos Id → subir fila completa
-                    new_ids = set(st.session_state.get("_hist_new_ids", []))
-                    df_new = base_full[base_full["Id"].isin(new_ids)].copy() if new_ids else pd.DataFrame()
-
-                    # existentes con cambios → subir SOLO celdas modificadas
-                    cell_diff = st.session_state.get("_hist_cell_diff", {}) or {}
-                    upd_ids = [i for i in ids if i not in new_ids and str(i) in cell_diff]
-
-                    msgs = []
-
-                    if not df_new.empty:
-                        res_new = _sheet_upsert_by_id(df_new)
-                        msgs.append(res_new.get("msg",""))
-
-                    if upd_ids:
-                        sub_diff = {str(i): cell_diff[str(i)] for i in upd_ids}
-                        res_cells = _sheet_update_cells_by_id(sub_diff, base_full)
-                        msgs.append(res_cells.get("msg",""))
-
-                    if msgs:
-                        st.success(" | ".join([m for m in msgs if m]))
+        if _is_super_editor():
+            if st.button("📤 Subir a Sheets", use_container_width=True):
+                try:
+                    ids = st.session_state.get("_hist_changed_ids", [])
+                    if not ids:
+                        st.info("No hay cambios detectados en la grilla para enviar.")
                     else:
-                        st.info("No se detectaron filas/celdas para enviar.")
-            except Exception as e:
-                st.warning(f"No se pudo subir a Sheets: {e}")
+                        base_full = st.session_state.get("df_main", pd.DataFrame()).copy()
+                        base_full["Id"] = base_full.get("Id","").astype(str)
+                        df_rows = base_full[base_full["Id"].isin(ids)].copy()
+                        cell_diff = st.session_state.get("_hist_cell_diff", {}) or {}
+                        new_ids = set(st.session_state.get("_hist_new_ids", []) or [])
+                        res = _sheet_upsert_by_id_partial(df_rows, cell_diff_map=cell_diff, new_ids=new_ids)
+                        if res.get("ok"):
+                            st.success(res.get("msg","Actualizado."))
+                        else:
+                            st.warning(res.get("msg","No se pudo actualizar."))
+                except Exception as e:
+                    st.warning(f"No se pudo subir a Sheets: {e}")
+        else:
+            st.button("📤 Subir a Sheets", use_container_width=True, disabled=True)
+            st.caption("Solo Vivi y Enrique pueden subir cambios a Sheets.")
 
     st.markdown('</div>', unsafe_allow_html=True)
