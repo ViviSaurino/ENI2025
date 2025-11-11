@@ -11,6 +11,31 @@ try:
 except Exception:
     upsert_rows_by_id = None
 
+# 🔐 Alcance/visibilidad (apply_scope) y helpers de identidad
+try:
+    from shared import apply_scope  # type: ignore
+except Exception:
+    def apply_scope(df, user=None):
+        return df  # fallback no-op
+
+def _get_display_name() -> str:
+    acl_user = st.session_state.get("acl_user", {}) or {}
+    return (
+        acl_user.get("display")
+        or st.session_state.get("user_display_name", "")
+        or acl_user.get("name", "")
+        or (st.session_state.get("user") or {}).get("name", "")
+        or ""
+    )
+
+def _is_super_viewer(user: dict | None = None) -> bool:
+    """Solo Vivi/Enrique o quien tenga can_edit_all_tabs pueden ver TODO."""
+    acl_user = st.session_state.get("acl_user", {}) or {}
+    if bool(acl_user.get("can_edit_all_tabs", False)):
+        return True
+    dn = (_get_display_name() or "").strip().lower()
+    return dn.startswith("vivi") or dn.startswith("enrique")
+
 # Fallback seguro para separación vertical
 SECTION_GAP_DEF = globals().get("SECTION_GAP", 30)
 
@@ -137,6 +162,20 @@ def render(user: dict | None = None):
             df_all = pd.DataFrame(
                 columns=["Id", "Área", "Fase", "Responsable", "Tarea", "Fecha inicio", "Evaluación", "Calificación", "Comentarios"]
             )
+
+        # 🔒 VISIBILIDAD por usuario: solo Vivi/Enrique ven todo; el resto solo lo suyo.
+        me = _get_display_name().strip()
+        if not _is_super_viewer(user=user):
+            # 1) Reglas externas (si existen)
+            df_all = apply_scope(df_all, user=st.session_state.get("acl_user"))
+            # 2) Filtro por Responsable contiene mi nombre (case-insensitive)
+            if "Responsable" in df_all.columns and me:
+                df_all = df_all[df_all["Responsable"].astype(str).str.contains(me, case=False, na=False)]
+        else:
+            # Super viewer: toggle para ver todas o solo propias
+            ver_todas = st.toggle("👀 Ver todas las tareas", value=True, key="eva_ver_todas")
+            if (not ver_todas) and "Responsable" in df_all.columns and me:
+                df_all = df_all[df_all["Responsable"].astype(str).str.contains(me, case=False, na=False)]
 
         # ✅ Asegura columnas base (por defecto, Evaluación = "Sin evaluar")
         if "Evaluación" not in df_all.columns:
