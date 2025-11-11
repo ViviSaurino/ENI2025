@@ -945,7 +945,7 @@ def render(user: dict | None = None):
             if ("Id" in base.columns) and ("Id" in new_df.columns):
                 base["Id"] = base["Id"].astype(str); new_df["Id"] = new_df["Id"].astype(str)
                 base_idx = base.set_index("Id"); new_idx  = new_df.set_index("Id")
-                cols_to_update = [c for c in new_idx.columns si en base_idx.columns]
+                cols_to_update = [c for c in new_idx.columns if c in base_idx.columns]
                 base_idx.update(new_idx[cols_to_update])
                 st.session_state["df_main"] = base_idx.reset_index()
             else:
