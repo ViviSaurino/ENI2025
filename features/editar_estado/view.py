@@ -186,10 +186,8 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
     last_col_letter = _col_letter(len(headers))
     body, ranges = [], []
 
-    # Evitar duplicados en df_base para el upsert
     if "Id" in df_base.columns:
         df_base = df_base.drop_duplicates(subset=["Id"], keep="last").copy()
-
     df_idx = df_base.set_index("Id")
 
     def _get_val(_id, h):
@@ -235,7 +233,7 @@ def render(user: dict | None = None):
 
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
-    if st.session_state["est_visible"]:
+    if st.session_state["est_visible"]]:
         A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
         st.markdown('<div id="est-section">', unsafe_allow_html=True)
@@ -283,7 +281,7 @@ def render(user: dict | None = None):
         # Base global
         df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
 
-        # 🔐 ACL: primero apply_scope; en Editar estado, si NO eres super → ver solo tus tareas
+        # 🔐 ACL
         df_all = apply_scope(df_all, user=user)
         me = _display_name().strip()
         is_super = _is_super_editor()
@@ -298,9 +296,7 @@ def render(user: dict | None = None):
         def _first_valid_date_series(df: pd.DataFrame) -> pd.Series:
             if df.empty:
                 return pd.Series([], dtype="datetime64[ns]")
-            pri = [
-                "Fecha inicio","Fecha Registro","Fecha","Fecha Terminado"
-            ]
+            pri = ["Fecha inicio","Fecha Registro","Fecha","Fecha Terminado"]
             s_list = []
             for c in pri:
                 if c in df.columns:
@@ -313,8 +309,7 @@ def render(user: dict | None = None):
         dates_all = _first_valid_date_series(df_all)
         if dates_all.empty:
             today = pd.Timestamp.today().normalize().date()
-            min_date = today
-            max_date = today
+            min_date = today; max_date = today
         else:
             min_date = dates_all.min().date()
             max_date = dates_all.max().date()
@@ -328,27 +323,12 @@ def render(user: dict | None = None):
             AREAS_OPC = (
                 st.session_state.get(
                     "AREAS_OPC",
-                    sorted(
-                        [
-                            x
-                            for x in df_all.get("Área", pd.Series([], dtype=str))
-                            .astype(str).unique()
-                            if x and x != "nan"
-                        ]
-                    ),
-                )
-                or []
+                    sorted([x for x in df_all.get("Área", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"]),
+                ) or []
             )
             est_area = c_area.selectbox("Área", ["Todas"] + AREAS_OPC, index=0)
 
-            fases_all = sorted(
-                [
-                    x
-                    for x in df_all.get("Fase", pd.Series([], dtype=str))
-                    .astype(str).unique()
-                    if x and x != "nan"
-                ]
-            )
+            fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
             est_fase = c_fase.selectbox("Fase", ["Todas"] + fases_all, index=0)
 
             df_resp_src = df_all.copy()
@@ -356,22 +336,11 @@ def render(user: dict | None = None):
                 df_resp_src = df_resp_src[df_resp_src["Área"].astype(str) == est_area]
             if est_fase != "Todas" and "Fase" in df_resp_src.columns:
                 df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str) == est_fase]
-            responsables_all = sorted(
-                [
-                    x
-                    for x in df_resp_src.get("Responsable", pd.Series([], dtype=str))
-                    .astype(str).unique()
-                    if x and x != "nan"
-                ]
-            )
+            responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
             est_resp = c_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0)
 
-            est_desde = c_desde.date_input(
-                "Desde", value=min_date, min_value=min_date, max_value=max_date, key="est_desde"
-            )
-            est_hasta = c_hasta.date_input(
-                "Hasta", value=max_date, min_value=min_date, max_value=max_date, key="est_hasta"
-            )
+            est_desde = c_desde.date_input("Desde", value=min_date, min_value=min_date, max_value=max_date, key="est_desde")
+            est_hasta = c_hasta.date_input("Hasta", value=max_date, min_value=min_date, max_value=max_date, key="est_hasta")
 
             with c_buscar:
                 st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
@@ -386,8 +355,6 @@ def render(user: dict | None = None):
                 df_tasks = df_tasks[df_tasks["Fase"].astype(str) == est_fase]
             if est_resp != "Todos" and "Responsable" in df_tasks.columns:
                 df_tasks = df_tasks[df_tasks["Responsable"].astype(str) == est_resp]
-
-            # rango: prioriza inicio/registro
             fcol = pd.to_datetime(df_tasks.get("Fecha inicio", pd.Series([], dtype=object)), errors="coerce")
             if fcol.isna().all():
                 fcol = pd.to_datetime(df_tasks.get("Fecha Registro", pd.Series([], dtype=object)), errors="coerce")
@@ -422,34 +389,20 @@ def render(user: dict | None = None):
             return s.astype(str).map(_one)
 
         cols_out = [
-            "Id",
-            "Tarea",
-            "Estado actual",
-            "Fecha de registro",
-            "Hora de registro",
-            "Fecha inicio",
-            "Hora de inicio",
-            "Fecha terminada",
-            "Hora terminada",
+            "Id","Tarea","Estado actual",
+            "Fecha de registro","Hora de registro",
+            "Fecha inicio","Hora de inicio",
+            "Fecha terminada","Hora terminada",
             "Link de archivo",
         ]
 
         df_view = pd.DataFrame(columns=cols_out)
         if not df_tasks.empty:
             base = df_tasks.copy()
-
-            # columnas mínimas
-            for need in [
-                "Id", "Tarea", "Estado",
-                "Fecha Registro", "Hora Registro",
-                "Fecha inicio","Hora de inicio",
-                "Fecha Terminado","Hora Terminado",
-                "Link de archivo",
-            ]:
+            for need in ["Id","Tarea","Estado","Fecha Registro","Hora Registro","Fecha inicio","Hora de inicio","Fecha Terminado","Hora Terminado","Link de archivo"]:
                 if need not in base.columns:
                     base[need] = ""
 
-            # Estado automático para vista
             fr = pd.to_datetime(base["Fecha Registro"], errors="coerce")
             hr = base["Hora Registro"].astype(str)
             fi = pd.to_datetime(base["Fecha inicio"], errors="coerce")
@@ -461,56 +414,38 @@ def render(user: dict | None = None):
             est_now = est_now.mask(fi.notna() & ft.isna(), "En curso")
             est_now = est_now.mask(ft.notna(), "Terminado")
 
-            link_col = base["Link de archivo"].astype(str).replace(
-                {"nan": "-", "NaN": "-", "None": "-", "": "-"}
-            )
+            link_col = base["Link de archivo"].astype(str).replace({"nan":"-","NaN":"-","None":"-","": "-"})
 
-            df_view = pd.DataFrame(
-                {
-                    "Id": base["Id"].astype(str),
-                    "Tarea": base["Tarea"].astype(str).replace({"nan": "-", "NaN": "-", "": "-"}),
-                    "Estado actual": est_now,
-                    "Fecha de registro": _fmt_date_series(fr),
-                    "Hora de registro": _fmt_time_series(hr),
-                    "Fecha inicio": _fmt_date_series(fi),
-                    "Hora de inicio": _fmt_time_series(hi),
-                    "Fecha terminada": _fmt_date_series(ft),
-                    "Hora terminada": _fmt_time_series(ht),
-                    "Link de archivo": link_col,
-                }
-            )[cols_out].copy()
+            df_view = pd.DataFrame({
+                "Id": base["Id"].astype(str),
+                "Tarea": base["Tarea"].astype(str).replace({"nan":"-","NaN":"-","": "-"}),
+                "Estado actual": est_now,
+                "Fecha de registro": _fmt_date_series(fr),
+                "Hora de registro": _fmt_time_series(hr),
+                "Fecha inicio": _fmt_date_series(fi),
+                "Hora de inicio": _fmt_time_series(hi),
+                "Fecha terminada": _fmt_date_series(ft),
+                "Hora terminada": _fmt_time_series(ht),
+                "Link de archivo": link_col,
+            })[cols_out].copy()
 
         # ========= editores y estilo =========
-        estado_emoji_fmt = JsCode(
-            """
+        estado_emoji_fmt = JsCode("""
         function(p){
           const v = String(p.value || '');
-          const M = {
-            "No iniciado":"🍼 No iniciado",
-            "En curso":"🟣 En curso",
-            "Terminado":"✅ Terminado"
-          };
+          const M = {"No iniciado":"🍼 No iniciado","En curso":"🟣 En curso","Terminado":"✅ Terminado"};
           return M[v] || v;
-        }"""
-        )
+        }""")
 
-        estado_cell_style = JsCode(
-            """
+        estado_cell_style = JsCode("""
         function(p){
           const v = String(p.value || '');
-          const S = {
-            "No iniciado":{bg:"#E3F2FD", fg:"#0D47A1"},
-            "En curso":   {bg:"#EDE7F6", fg:"#4A148C"},
-            "Terminado":  {bg:"#E8F5E9", fg:"#1B5E20"},
-          };
+          const S = {"No iniciado":{bg:"#E3F2FD", fg:"#0D47A1"},"En curso":{bg:"#EDE7F6", fg:"#4A148C"},"Terminado":{bg:"#E8F5E9", fg:"#1B5E20"}};
           const m = S[v]; if(!m) return {};
           return {backgroundColor:m.bg, color:m.fg, fontWeight:'600', textAlign:'center', borderRadius:'12px'};
-        }"""
-        )
+        }""")
 
-        # Editor de fecha (calendar)
-        date_editor = JsCode(
-            """
+        date_editor = JsCode("""
         class DateEditor{
           init(p){
             this.eInput = document.createElement('input');
@@ -530,17 +465,11 @@ def render(user: dict | None = None):
           getGui(){ return this.eInput }
           afterGuiAttached(){ this.eInput.focus() }
           getValue(){ return this.eInput.value }
-        }"""
-        )
+        }""")
 
-        # Mostrar "-" en link vacío (pero permitimos editar texto)
-        link_formatter = JsCode(
-            """function(p){ const s=String(p.value||'').trim(); return s? s : '-'; }"""
-        )
+        link_formatter = JsCode("""function(p){ const s=String(p.value||'').trim(); return s? s : '-'; }""")
 
-        # Al cambiar fecha → poner hora Lima y estado actual
-        on_cell_changed = JsCode(
-            f"""
+        on_cell_changed = JsCode(f"""
         function(params){{
           const field = params.colDef.field;
           const pad = n => String(n).padStart(2,'0');
@@ -556,39 +485,27 @@ def render(user: dict | None = None):
             params.node.setDataValue('Hora terminada', hhmm);
             params.node.setDataValue('Estado actual', 'Terminado');
           }}
-        }}"""
-        )
+        }}""")
 
-        # Editable condicional por rol y huella
-        editable_start = JsCode(
-            f"""
+        editable_start = JsCode(f"""
         function(p){{
           const SUPER = {str(is_super).lower()};
           if(SUPER) return true;
           const v = String(p.value||'').trim();
           return v === '-' || v === '';
-        }}"""
-        )
-        editable_end = JsCode(
-            f"""
+        }}""")
+        editable_end = JsCode(f"""
         function(p){{
           const SUPER = {str(is_super).lower()};
           if(SUPER) return true;
           const v = String(p.value||'').trim();
           const hasStart = String(p.data['Fecha inicio']||'').trim() !== '' && String(p.data['Fecha inicio']||'').trim() !== '-';
           return (v === '' || v === '-') && hasStart;
-        }}"""
-        )
+        }}""")
 
         gob = GridOptionsBuilder.from_dataframe(df_view)
-        gob.configure_grid_options(
-            suppressMovableColumns=True,
-            domLayout="normal",
-            ensureDomOrder=True,
-            rowHeight=38,
-            headerHeight=60,
-            suppressHorizontalScroll=True,
-        )
+        gob.configure_grid_options(suppressMovableColumns=True, domLayout="normal", ensureDomOrder=True,
+                                   rowHeight=38, headerHeight=60, suppressHorizontalScroll=True)
         gob.configure_default_column(wrapHeaderText=True, autoHeaderHeight=True)
         gob.configure_selection("single", use_checkbox=False)
 
@@ -597,7 +514,6 @@ def render(user: dict | None = None):
         gob.configure_column("Hora de registro", editable=False, minWidth=140)
         gob.configure_column("Tarea", editable=False, minWidth=260)
         gob.configure_column("Id", editable=False, minWidth=110)
-
         gob.configure_column("Fecha inicio", editable=editable_start, cellEditor=date_editor, minWidth=160)
         gob.configure_column("Hora de inicio", editable=False, minWidth=140)
         gob.configure_column("Fecha terminada", editable=editable_end, cellEditor=date_editor, minWidth=170)
@@ -634,7 +550,6 @@ def render(user: dict | None = None):
 
                         def norm(s: pd.Series) -> pd.Series:
                             s = s.fillna("").astype(str).str.strip()
-                            # map "-" visual a vacío real
                             return s.replace(to_replace=r"^\-$", value="", regex=True)
 
                         fi_new = norm(g_i.get("Fecha inicio", pd.Series(index=g_i.index)))
@@ -651,7 +566,6 @@ def render(user: dict | None = None):
                             return
                         full_before["Id"] = full_before["Id"].astype(str)
 
-                        # Subconjunto editable (si no eres súper)
                         base = full_before.copy()
                         me = _display_name().strip()
                         is_super = _is_super_editor()
@@ -659,25 +573,18 @@ def render(user: dict | None = None):
                             mask_me = base["Responsable"].astype(str).str.contains(me, case=False, na=False)
                             base = base[mask_me]
 
-                        # Asegurar columnas en subset editable
                         for need in [
-                            "Estado",
-                            "Fecha Registro","Hora Registro",
-                            "Fecha inicio","Hora de inicio",
-                            "Fecha Terminado","Hora Terminado",
-                            "Fecha estado actual","Hora estado actual",
-                            "Link de archivo",
+                            "Estado","Fecha Registro","Hora Registro","Fecha inicio","Hora de inicio",
+                            "Fecha Terminado","Hora Terminado","Fecha estado actual","Hora estado actual","Link de archivo",
                         ]:
                             if need not in base.columns:
                                 base[need] = ""
 
-                        # Limitar ids a los presentes en base filtrada
                         ids_ok = [i for i in ids_view if i in set(base["Id"].astype(str))]
 
-                        # Validación: fin sin inicio (no super) → no permitir
                         if not is_super:
-                            # lookup actual de inicio + nuevos candidatos
-                            cur_start = base.set_index("Id")["Fecha inicio"].astype(str).str.strip()
+                            # usar última 'Fecha inicio' por Id
+                            cur_start = base.groupby("Id", as_index=True)["Fecha inicio"].last().astype(str).str.strip()
                             bad = [i for i in ids_ok if (ft_new.get(i, "") and not (cur_start.get(i, "") or fi_new.get(i, "")))]
                             if bad:
                                 st.warning("No puedes registrar 'Fecha terminada' sin 'Fecha inicio' en algunas tareas.")
@@ -685,21 +592,16 @@ def render(user: dict | None = None):
                                     ft_new[i] = ""
                                     ht_new[i] = ""
 
-                        # Sellos de hora actuales
                         local_now = _now_lima_trimmed_local()
                         h_now = local_now.strftime("%H:%M")
 
                         changed_ids: set[str] = set()
-
-                        # === APLICAR CAMBIOS POR MAPEO (robusto con Ids duplicados en full_before) ===
                         full_updated = full_before.copy()
-                        # Construir diccionarios Id -> valor actualizado
+
                         base_idx = base.copy().set_index("Id")
-                        # asegurar índice único en los diccionarios tomando el último
                         base_idx = base_idx[~base_idx.index.duplicated(keep="last")]
 
                         for i in ids_ok:
-                            # START
                             prev_fi = str(base_idx.at[i, "Fecha inicio"]) if i in base_idx.index else ""
                             prev_hi = str(base_idx.at[i, "Hora de inicio"]) if i in base_idx.index else ""
                             new_fi = fi_new.get(i, "")
@@ -707,21 +609,17 @@ def render(user: dict | None = None):
 
                             if is_super:
                                 if new_fi != prev_fi:
-                                    base_idx.at[i, "Fecha inicio"] = new_fi
-                                    changed_ids.add(i)
+                                    base_idx.at[i, "Fecha inicio"] = new_fi; changed_ids.add(i)
                                 if new_fi:
-                                    if not new_hi:
-                                        new_hi = h_now
+                                    if not new_hi: new_hi = h_now
                                     if new_hi != prev_hi:
-                                        base_idx.at[i, "Hora de inicio"] = new_hi
-                                        changed_ids.add(i)
+                                        base_idx.at[i, "Hora de inicio"] = new_hi; changed_ids.add(i)
                             else:
                                 if (not prev_fi) and new_fi:
                                     base_idx.at[i, "Fecha inicio"] = new_fi
                                     base_idx.at[i, "Hora de inicio"] = (new_hi or h_now)
                                     changed_ids.add(i)
 
-                            # FIN
                             prev_ft = str(base_idx.at[i, "Fecha Terminado"]) if i in base_idx.index else ""
                             prev_ht = str(base_idx.at[i, "Hora Terminado"]) if i in base_idx.index else ""
                             new_ft = ft_new.get(i, "")
@@ -732,28 +630,22 @@ def render(user: dict | None = None):
 
                             if is_super:
                                 if new_ft != prev_ft:
-                                    base_idx.at[i, "Fecha Terminado"] = new_ft
-                                    changed_ids.add(i)
+                                    base_idx.at[i, "Fecha Terminado"] = new_ft; changed_ids.add(i)
                                 if new_ft:
-                                    if not new_ht:
-                                        new_ht = h_now
+                                    if not new_ht: new_ht = h_now
                                     if new_ht != prev_ht:
-                                        base_idx.at[i, "Hora Terminado"] = new_ht
-                                        changed_ids.add(i)
+                                        base_idx.at[i, "Hora Terminado"] = new_ht; changed_ids.add(i)
                             else:
                                 if (not prev_ft) and new_ft and has_start_now:
                                     base_idx.at[i, "Fecha Terminado"] = new_ft
                                     base_idx.at[i, "Hora Terminado"] = (new_ht or h_now)
                                     changed_ids.add(i)
 
-                            # LINK
                             prev_lk = str(base_idx.at[i, "Link de archivo"]) if i in base_idx.index else ""
                             new_lk = lk_new.get(i, "")
                             if new_lk != prev_lk:
-                                base_idx.at[i, "Link de archivo"] = new_lk
-                                changed_ids.add(i)
+                                base_idx.at[i, "Link de archivo"] = new_lk; changed_ids.add(i)
 
-                            # Estado + sello actual
                             fi_eff = str(base_idx.at[i, "Fecha inicio"]) if i in base_idx.index else ""
                             ft_eff = str(base_idx.at[i, "Fecha Terminado"]) if i in base_idx.index else ""
                             if ft_eff.strip():
@@ -769,11 +661,10 @@ def render(user: dict | None = None):
                                 base_idx.at[i, "Fecha estado actual"] = str(base_idx.at[i, "Fecha Registro"]).strip()
                                 base_idx.at[i, "Hora estado actual"] = str(base_idx.at[i, "Hora Registro"]).strip()
 
-                        # Aplicar a TODA la base por mapeo (soporta Id duplicados)
+                        # ⬇️ APLICACIÓN DIRECTA POR Id (sin .map, no borra valores)
                         if changed_ids:
                             cols_apply = [
-                                "Estado",
-                                "Fecha estado actual","Hora estado actual",
+                                "Estado","Fecha estado actual","Hora estado actual",
                                 "Fecha inicio","Hora de inicio",
                                 "Fecha Terminado","Hora Terminado",
                                 "Link de archivo",
@@ -781,9 +672,12 @@ def render(user: dict | None = None):
                             for col in cols_apply:
                                 if col not in full_updated.columns:
                                     full_updated[col] = ""
-                                dic = base_idx[col].to_dict()
-                                mask = full_updated["Id"].astype(str).isin(changed_ids)
-                                full_updated.loc[mask, col] = full_updated.loc[mask, "Id"].astype(str).map(dic)
+
+                            for i in changed_ids:
+                                if i in base_idx.index:
+                                    for col in cols_apply:
+                                        val = base_idx.at[i, col]
+                                        full_updated.loc[full_updated["Id"].astype(str) == i, col] = val
 
                         # Persistir en sesión
                         st.session_state["df_main"] = full_updated.copy()
