@@ -135,7 +135,7 @@ def _col_letter(n: int) -> str:
     return s
 
 def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
-    """Actualiza en Sheets por 'Id' estado/sellos y Link de archivo."""
+    """Actualiza en Sheets por 'Id' estado/sellos y **Link de archivo** (si la hoja tiene esa columna)."""
     try:
         ss, ws, ws_name = _gsheets_client()
     except Exception as e:
@@ -186,7 +186,7 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
     last_col_letter = _col_letter(len(headers))
     body, ranges = [], []
 
-    # ⬅️ FIX: deduplicar por Id antes de indexar (evita reindex con duplicados)
+    # Evitar duplicados en df_base para el upsert
     if "Id" in df_base.columns:
         df_base = df_base.drop_duplicates(subset=["Id"], keep="last").copy()
 
@@ -563,7 +563,7 @@ def render(user: dict | None = None):
         editable_start = JsCode(
             f"""
         function(p){{
-          const SUPER = {str(_is_super_editor()).lower()};
+          const SUPER = {str(is_super).lower()};
           if(SUPER) return true;
           const v = String(p.value||'').trim();
           return v === '-' || v === '';
@@ -572,7 +572,7 @@ def render(user: dict | None = None):
         editable_end = JsCode(
             f"""
         function(p){{
-          const SUPER = {str(_is_super_editor()).lower()};
+          const SUPER = {str(is_super).lower()};
           if(SUPER) return true;
           const v = String(p.value||'').trim();
           const hasStart = String(p.data['Fecha inicio']||'').trim() !== '' && String(p.data['Fecha inicio']||'').trim() !== '-';
@@ -610,7 +610,6 @@ def render(user: dict | None = None):
         grid = AgGrid(
             df_view,
             gridOptions=grid_opts,
-            # Recibir datos editados reales
             data_return_mode=DataReturnMode.AS_INPUT,
             update_mode=GridUpdateMode.MODEL_CHANGED,
             fit_columns_on_grid_load=True,
@@ -630,31 +629,13 @@ def render(user: dict | None = None):
                     if grid_data.empty or "Id" not in grid_data.columns:
                         st.info("No hay cambios para guardar.")
                     else:
-                        # ⬅️ FIX: deduplicar por Id en la vista editada
                         grid_data["Id"] = grid_data["Id"].astype(str)
-                        grid_data = grid_data.drop_duplicates(subset=["Id"], keep="last").copy()
                         g_i = grid_data.set_index("Id")
 
                         def norm(s: pd.Series) -> pd.Series:
                             s = s.fillna("").astype(str).str.strip()
                             # map "-" visual a vacío real
                             return s.replace(to_replace=r"^\-$", value="", regex=True)
-
-                        # Helper: asegurar escalar por Id (si queda algo repetido)
-                        def _scalar_get(series_like: pd.Series, key: str) -> str:
-                            v = series_like.get(key, "")
-                            try:
-                                if isinstance(v, pd.Series):
-                                    v = v.dropna()
-                                    v = v.iloc[-1] if not v.empty else ""
-                                elif isinstance(v, (list, tuple)):
-                                    v = v[-1] if v else ""
-                            except Exception:
-                                v = ""
-                            if v is None or (isinstance(v, float) and pd.isna(v)):
-                                return ""
-                            v = str(v).strip()
-                            return "" if v.lower() in {"nan","none","nat"} else v
 
                         fi_new = norm(g_i.get("Fecha inicio", pd.Series(index=g_i.index)))
                         hi_new = norm(g_i.get("Hora de inicio", pd.Series(index=g_i.index)))
@@ -669,8 +650,6 @@ def render(user: dict | None = None):
                             st.warning("No hay base para actualizar.")
                             return
                         full_before["Id"] = full_before["Id"].astype(str)
-                        # ⬅️ FIX: deduplicar base completa
-                        full_before = full_before.drop_duplicates(subset=["Id"], keep="last").copy()
 
                         # Subconjunto editable (si no eres súper)
                         base = full_before.copy()
@@ -680,13 +659,7 @@ def render(user: dict | None = None):
                             mask_me = base["Responsable"].astype(str).str.contains(me, case=False, na=False)
                             base = base[mask_me]
 
-                        # ⬅️ FIX: deduplicar subset antes de indexar
-                        if "Id" in base.columns:
-                            base = base.drop_duplicates(subset=["Id"], keep="last").copy()
-
-                        b_i = base.set_index("Id")
-
-                        # Asegurar columnas
+                        # Asegurar columnas en subset editable
                         for need in [
                             "Estado",
                             "Fecha Registro","Hora Registro",
@@ -695,102 +668,122 @@ def render(user: dict | None = None):
                             "Fecha estado actual","Hora estado actual",
                             "Link de archivo",
                         ]:
-                            if need not in b_i.columns:
-                                b_i[need] = ""
+                            if need not in base.columns:
+                                base[need] = ""
 
                         # Limitar ids a los presentes en base filtrada
-                        ids_ok = [i for i in ids_view if i in b_i.index]
-
-                        # Pre-cálculo escalar para validación
-                        new_ft_map = {i: _scalar_get(ft_new, i) for i in ids_ok}
-                        new_fi_map = {i: _scalar_get(fi_new, i) for i in ids_ok}
+                        ids_ok = [i for i in ids_view if i in set(base["Id"].astype(str))]
 
                         # Validación: fin sin inicio (no super) → no permitir
                         if not is_super:
-                            bad = [i for i in ids_ok if (new_ft_map[i] and not (str(b_i.at[i, "Fecha inicio"]).strip() or new_fi_map[i]))]
+                            # lookup actual de inicio + nuevos candidatos
+                            cur_start = base.set_index("Id")["Fecha inicio"].astype(str).str.strip()
+                            bad = [i for i in ids_ok if (ft_new.get(i, "") and not (cur_start.get(i, "") or fi_new.get(i, "")))]
                             if bad:
                                 st.warning("No puedes registrar 'Fecha terminada' sin 'Fecha inicio' en algunas tareas.")
                                 for i in bad:
-                                    new_ft_map[i] = ""
+                                    ft_new[i] = ""
+                                    ht_new[i] = ""
 
+                        # Sellos de hora actuales
                         local_now = _now_lima_trimmed_local()
                         h_now = local_now.strftime("%H:%M")
 
                         changed_ids: set[str] = set()
 
+                        # === APLICAR CAMBIOS POR MAPEO (robusto con Ids duplicados en full_before) ===
+                        full_updated = full_before.copy()
+                        # Construir diccionarios Id -> valor actualizado
+                        base_idx = base.copy().set_index("Id")
+                        # asegurar índice único en los diccionarios tomando el último
+                        base_idx = base_idx[~base_idx.index.duplicated(keep="last")]
+
                         for i in ids_ok:
-                            # START (huella)
-                            prev_fi = str(b_i.at[i, "Fecha inicio"]).strip()
-                            prev_hi = str(b_i.at[i, "Hora de inicio"]).strip()
-                            new_fi = new_fi_map[i]
-                            new_hi = _scalar_get(hi_new, i)
+                            # START
+                            prev_fi = str(base_idx.at[i, "Fecha inicio"]) if i in base_idx.index else ""
+                            prev_hi = str(base_idx.at[i, "Hora de inicio"]) if i in base_idx.index else ""
+                            new_fi = fi_new.get(i, "")
+                            new_hi = hi_new.get(i, "")
 
                             if is_super:
                                 if new_fi != prev_fi:
-                                    b_i.at[i, "Fecha inicio"] = new_fi
+                                    base_idx.at[i, "Fecha inicio"] = new_fi
                                     changed_ids.add(i)
-                                if new_fi and not new_hi:
-                                    new_hi = h_now
-                                if new_hi != prev_hi:
-                                    b_i.at[i, "Hora de inicio"] = new_hi
-                                    changed_ids.add(i)
+                                if new_fi:
+                                    if not new_hi:
+                                        new_hi = h_now
+                                    if new_hi != prev_hi:
+                                        base_idx.at[i, "Hora de inicio"] = new_hi
+                                        changed_ids.add(i)
                             else:
                                 if (not prev_fi) and new_fi:
-                                    b_i.at[i, "Fecha inicio"] = new_fi
-                                    b_i.at[i, "Hora de inicio"] = (new_hi or h_now)
+                                    base_idx.at[i, "Fecha inicio"] = new_fi
+                                    base_idx.at[i, "Hora de inicio"] = (new_hi or h_now)
                                     changed_ids.add(i)
 
-                            # FIN (huella)
-                            prev_ft = str(b_i.at[i, "Fecha Terminado"]).strip()
-                            prev_ht = str(b_i.at[i, "Hora Terminado"]).strip()
-                            new_ft = new_ft_map[i]
-                            new_ht = _scalar_get(ht_new, i)
+                            # FIN
+                            prev_ft = str(base_idx.at[i, "Fecha Terminado"]) if i in base_idx.index else ""
+                            prev_ht = str(base_idx.at[i, "Hora Terminado"]) if i in base_idx.index else ""
+                            new_ft = ft_new.get(i, "")
+                            new_ht = ht_new.get(i, "")
 
-                            has_start_now = str(b_i.at[i, "Fecha inicio"]).strip() != ""
+                            has_start_now = str(base_idx.at[i, "Fecha inicio"]) if i in base_idx.index else ""
+                            has_start_now = bool(str(has_start_now).strip())
 
                             if is_super:
                                 if new_ft != prev_ft:
-                                    b_i.at[i, "Fecha Terminado"] = new_ft
+                                    base_idx.at[i, "Fecha Terminado"] = new_ft
                                     changed_ids.add(i)
                                 if new_ft:
                                     if not new_ht:
                                         new_ht = h_now
                                     if new_ht != prev_ht:
-                                        b_i.at[i, "Hora Terminado"] = new_ht
+                                        base_idx.at[i, "Hora Terminado"] = new_ht
                                         changed_ids.add(i)
                             else:
                                 if (not prev_ft) and new_ft and has_start_now:
-                                    b_i.at[i, "Fecha Terminado"] = new_ft
-                                    b_i.at[i, "Hora Terminado"] = (new_ht or h_now)
+                                    base_idx.at[i, "Fecha Terminado"] = new_ft
+                                    base_idx.at[i, "Hora Terminado"] = (new_ht or h_now)
                                     changed_ids.add(i)
 
-                            # LINK (editable siempre; map "-" a vacío)
-                            prev_lk = str(b_i.at[i, "Link de archivo"]).strip()
-                            new_lk = _scalar_get(lk_new, i)
+                            # LINK
+                            prev_lk = str(base_idx.at[i, "Link de archivo"]) if i in base_idx.index else ""
+                            new_lk = lk_new.get(i, "")
                             if new_lk != prev_lk:
-                                b_i.at[i, "Link de archivo"] = new_lk
+                                base_idx.at[i, "Link de archivo"] = new_lk
                                 changed_ids.add(i)
 
-                            # === Estado + sello actual (interno; no se muestra) ===
-                            fi_eff = str(b_i.at[i, "Fecha inicio"]).strip()
-                            ft_eff = str(b_i.at[i, "Fecha Terminado"]).strip()
-                            if ft_eff:
-                                b_i.at[i, "Estado"] = "Terminado"
-                                b_i.at[i, "Fecha estado actual"] = ft_eff
-                                b_i.at[i, "Hora estado actual"] = str(b_i.at[i, "Hora Terminado"]).strip() or h_now
-                            elif fi_eff:
-                                b_i.at[i, "Estado"] = "En curso"
-                                b_i.at[i, "Fecha estado actual"] = fi_eff
-                                b_i.at[i, "Hora estado actual"] = str(b_i.at[i, "Hora de inicio"]).strip() or h_now
+                            # Estado + sello actual
+                            fi_eff = str(base_idx.at[i, "Fecha inicio"]) if i in base_idx.index else ""
+                            ft_eff = str(base_idx.at[i, "Fecha Terminado"]) if i in base_idx.index else ""
+                            if ft_eff.strip():
+                                base_idx.at[i, "Estado"] = "Terminado"
+                                base_idx.at[i, "Fecha estado actual"] = ft_eff
+                                base_idx.at[i, "Hora estado actual"] = str(base_idx.at[i, "Hora Terminado"]).strip() or h_now
+                            elif fi_eff.strip():
+                                base_idx.at[i, "Estado"] = "En curso"
+                                base_idx.at[i, "Fecha estado actual"] = fi_eff
+                                base_idx.at[i, "Hora estado actual"] = str(base_idx.at[i, "Hora de inicio"]).strip() or h_now
                             else:
-                                b_i.at[i, "Estado"] = "No iniciado"
-                                b_i.at[i, "Fecha estado actual"] = str(b_i.at[i, "Fecha Registro"]).strip()
-                                b_i.at[i, "Hora estado actual"] = str(b_i.at[i, "Hora Registro"]).strip()
+                                base_idx.at[i, "Estado"] = "No iniciado"
+                                base_idx.at[i, "Fecha estado actual"] = str(base_idx.at[i, "Fecha Registro"]).strip()
+                                base_idx.at[i, "Hora estado actual"] = str(base_idx.at[i, "Hora Registro"]).strip()
 
-                        # Fusionar con TODA la base (sin reindex con duplicados)
-                        full_idx = full_before.set_index("Id")
-                        full_idx.update(b_i)  # ya sin duplicados
-                        full_updated = full_idx.reset_index()
+                        # Aplicar a TODA la base por mapeo (soporta Id duplicados)
+                        if changed_ids:
+                            cols_apply = [
+                                "Estado",
+                                "Fecha estado actual","Hora estado actual",
+                                "Fecha inicio","Hora de inicio",
+                                "Fecha Terminado","Hora Terminado",
+                                "Link de archivo",
+                            ]
+                            for col in cols_apply:
+                                if col not in full_updated.columns:
+                                    full_updated[col] = ""
+                                dic = base_idx[col].to_dict()
+                                mask = full_updated["Id"].astype(str).isin(changed_ids)
+                                full_updated.loc[mask, col] = full_updated.loc[mask, "Id"].astype(str).map(dic)
 
                         # Persistir en sesión
                         st.session_state["df_main"] = full_updated.copy()
