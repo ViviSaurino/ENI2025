@@ -233,7 +233,7 @@ def render(user: dict | None = None):
 
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
-    if st.session_state["est_visible"]]:
+    if st.session_state["est_visible"]:
         A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
         st.markdown('<div id="est-section">', unsafe_allow_html=True)
