@@ -82,6 +82,25 @@ def _fmt_hhmm(v) -> str:
     except Exception:
         return ""
 
+# ============== Helpers ACL (super editores y nombre visible) ==============
+def _display_name() -> str:
+    u = st.session_state.get("acl_user", {}) or {}
+    return (
+        u.get("display")
+        or st.session_state.get("user_display_name", "")
+        or u.get("name", "")
+        or (st.session_state.get("user") or {}).get("name", "")
+        or ""
+    )
+
+def _is_super_editor() -> bool:
+    u = st.session_state.get("acl_user", {}) or {}
+    flag = str(u.get("can_edit_all", "")).strip().lower()
+    if flag in {"1", "true", "yes", "si", "sí"}:
+        return True
+    dn = _display_name().strip().lower()
+    return dn.startswith("vivi") or dn.startswith("enrique")
+
 # --- Cliente GSheets y upsert por Id ---
 def _gsheets_client():
     if "gcp_service_account" not in st.secrets:
@@ -146,17 +165,11 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
         if id_idx < len(row):
             id_to_row[str(row[id_idx]).strip()] = r_i
 
-    # Columnas a reflejar (incluye auxiliares y sellos)
     base_push_cols = [
         "Estado", "Estado actual",
         "Fecha estado actual", "Hora estado actual",
-        "Duración",
-        "Estado modificado", "Fecha estado modificado", "Hora estado modificado",
         "Fecha inicio", "Hora de inicio",
         "Fecha Terminado", "Hora Terminado",
-        "Fecha Pausado", "Hora Pausado",
-        "Fecha Cancelado", "Hora Cancelado",
-        "Fecha Eliminado", "Hora Eliminado",
         "Link de archivo",
     ]
     cols_to_push = [c for c in base_push_cols if c in col_map]
@@ -177,7 +190,6 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
     def _get_val(_id, h):
         if h in df_idx.columns:
             return df_idx.loc[_id, h]
-        # Si la hoja tiene 'Estado actual', úsalo desde 'Estado'
         if h == "Estado actual" and "Estado" in df_idx.columns:
             return df_idx.loc[_id, "Estado"]
         return ""
@@ -263,30 +275,31 @@ def render(user: dict | None = None):
             unsafe_allow_html=True,
         )
 
-        # Base
+        # Base global
         df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
-        # 🔐 ACL
+
+        # 🔐 ACL: primero apply_scope, luego refuerzo por Responsable si no eres super
         df_all = apply_scope(df_all, user=user)
+        me = _display_name().strip()
+        is_super = _is_super_editor()
+        if not is_super and isinstance(df_all, pd.DataFrame) and "Responsable" in df_all.columns and me:
+            try:
+                mask = df_all["Responsable"].astype(str).str.contains(me, case=False, na=False)
+                df_all = df_all[mask]
+            except Exception:
+                pass
 
         # ===== Rango por defecto (min–max del dataset) =====
         def _first_valid_date_series(df: pd.DataFrame) -> pd.Series:
-            """
-            Devuelve una serie con *todas* las fechas encontradas para calcular min/max
-            (solo para defaults). Cubre cualquier columna 'Fecha*'.
-            """
             if df.empty:
                 return pd.Series([], dtype="datetime64[ns]")
             pri = [
-                "Fecha inicio","Fecha estado actual","Fecha Registro","Fecha",
-                "Fecha Terminado","Fecha Pausado","Fecha Cancelado","Fecha Eliminado",
-                "Fecha estado modificado"
+                "Fecha inicio","Fecha Registro","Fecha",
+                "Fecha Terminado"
             ]
             s_list = []
             for c in pri:
                 if c in df.columns:
-                    s_list.append(pd.to_datetime(df[c], errors="coerce"))
-            for c in df.columns:
-                if c not in pri and str(c).strip().lower().startswith("fecha"):
                     s_list.append(pd.to_datetime(df[c], errors="coerce"))
             if not s_list:
                 return pd.Series([], dtype="datetime64[ns]")
@@ -303,7 +316,7 @@ def render(user: dict | None = None):
             max_date = dates_all.max().date()
 
         # ===== FILTROS =====
-        with st.form("est_filtros_v3", clear_on_submit=False):
+        with st.form("est_filtros_v4", clear_on_submit=False):
             c_area, c_fase, c_resp, c_desde, c_hasta, c_buscar = st.columns(
                 [A, Fw, T_width, D, R, C], gap="medium"
             )
@@ -315,8 +328,7 @@ def render(user: dict | None = None):
                         [
                             x
                             for x in df_all.get("Área", pd.Series([], dtype=str))
-                            .astype(str)
-                            .unique()
+                            .astype(str).unique()
                             if x and x != "nan"
                         ]
                     ),
@@ -329,8 +341,7 @@ def render(user: dict | None = None):
                 [
                     x
                     for x in df_all.get("Fase", pd.Series([], dtype=str))
-                    .astype(str)
-                    .unique()
+                    .astype(str).unique()
                     if x and x != "nan"
                 ]
             )
@@ -345,8 +356,7 @@ def render(user: dict | None = None):
                 [
                     x
                     for x in df_resp_src.get("Responsable", pd.Series([], dtype=str))
-                    .astype(str)
-                    .unique()
+                    .astype(str).unique()
                     if x and x != "nan"
                 ]
             )
@@ -373,36 +383,23 @@ def render(user: dict | None = None):
             if est_resp != "Todos" and "Responsable" in df_tasks.columns:
                 df_tasks = df_tasks[df_tasks["Responsable"].astype(str) == est_resp]
 
-            # NUEVO: prioriza varias columnas de fecha para el filtro de rango
-            date_priority = [
-                "Fecha inicio","Fecha estado actual","Fecha Registro","Fecha",
-                "Fecha Terminado","Fecha Pausado","Fecha Cancelado","Fecha Eliminado",
-                "Fecha estado modificado"
-            ]
-            fcol = pd.Series(pd.NaT, index=df_tasks.index)
-            for c in date_priority:
-                if c in df_tasks.columns:
-                    tmp = pd.to_datetime(df_tasks[c], errors="coerce")
-                    if tmp.notna().any():
-                        fcol = tmp
-                        break
-
+            # rango: prioriza inicio/registro
+            fcol = pd.to_datetime(df_tasks.get("Fecha inicio", pd.Series([], dtype=object)), errors="coerce")
+            if fcol.isna().all():
+                fcol = pd.to_datetime(df_tasks.get("Fecha Registro", pd.Series([], dtype=object)), errors="coerce")
             if est_desde:
                 df_tasks = df_tasks[fcol >= pd.to_datetime(est_desde)]
             if est_hasta:
-                df_tasks = df_tasks[
-                    fcol <= (pd.to_datetime(est_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))
-                ]
+                df_tasks = df_tasks[fcol <= (pd.to_datetime(est_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
 
         # ===== Tabla "Resultados" =====
         st.markdown("**Resultados**")
 
-        def _fmt_date(s):
+        def _fmt_date_series(s):
             s = pd.to_datetime(s, errors="coerce")
             return s.dt.strftime("%Y-%m-%d").fillna("")
 
-        def _fmt_time(s):
-            """Devuelve HH:MM. Acepta Series/Index o escalares ('17:05', '17:05:33', datetimes)."""
+        def _fmt_time_series(s):
             def _one(x):
                 x = "" if x is None or (isinstance(x, float) and pd.isna(x)) else str(x).strip()
                 if not x or x.lower() in {"nan", "nat", "none", "null"}:
@@ -417,109 +414,92 @@ def render(user: dict | None = None):
                     return f"{int(d.hour):02d}:{int(d.minute):02d}"
                 except Exception:
                     return ""
-            if isinstance(s, (pd.Series, pd.Index)):
-                return s.astype(str).map(_one)
-            return _one(s)
+            return s.astype(str).map(_one)
 
         cols_out = [
             "Id",
             "Tarea",
             "Estado actual",
-            "Fecha estado actual",
-            "Hora estado actual",
-            "Estado modificado",
-            "Fecha estado modificado",
-            "Hora estado modificado",
+            "Fecha de registro",
+            "Hora de registro",
+            "Fecha inicio",
+            "Hora de inicio",
+            "Fecha terminada",
+            "Hora terminada",
             "Link de archivo",
         ]
 
         df_view = pd.DataFrame(columns=cols_out)
         if not df_tasks.empty:
             base = df_tasks.copy()
+
+            # columnas mínimas
             for need in [
-                "Id","Tarea","Estado","Fecha Registro","Hora Registro","Fecha","Hora",
-                "Fecha inicio","Hora de inicio","Fecha Terminado","Hora Terminado",
-                "Fecha Pausado","Hora Pausado","Fecha Cancelado","Hora Cancelado",
-                "Fecha Eliminado","Hora Eliminado","Fecha estado actual","Hora estado actual",
-                "Estado modificado","Fecha estado modificado","Hora estado modificado","Link de archivo",
+                "Id", "Tarea", "Estado",
+                "Fecha Registro", "Hora Registro",
+                "Fecha inicio","Hora de inicio",
+                "Fecha Terminado","Hora Terminado",
+                "Link de archivo",
             ]:
                 if need not in base.columns:
                     base[need] = ""
 
-            base["Estado"] = base["Estado"].astype(str)
-            base.loc[base["Estado"].str.strip().isin(["", "nan"]), "Estado"] = "No iniciado"
+            # Estado automático para vista
+            fr = pd.to_datetime(base["Fecha Registro"], errors="coerce")
+            hr = base["Hora Registro"].astype(str)
+            fi = pd.to_datetime(base["Fecha inicio"], errors="coerce")
+            hi = base["Hora de inicio"].astype(str)
+            ft = pd.to_datetime(base["Fecha Terminado"], errors="coerce")
+            ht = base["Hora Terminado"].astype(str)
 
-            def _date_norm(col_main, col_fb=None):
-                s = pd.to_datetime(base[col_main], errors="coerce").dt.normalize()
-                if col_fb:
-                    s = s.fillna(pd.to_datetime(base[col_fb], errors="coerce").dt.normalize())
-                return s
-
-            def _time_norm(col_main, col_fb=None):
-                s = _fmt_time(base[col_main])
-                if col_fb:
-                    s_fb = _fmt_time(base[col_fb])
-                    s = s.where(s.str.strip() != "", s_fb)
-                return s
-
-            fr_noini = _date_norm("Fecha Registro", "Fecha")
-            hr_noini = _time_norm("Hora Registro", "Hora")
-            fr_enc = _date_norm("Fecha inicio")
-            hr_enc = _time_norm("Hora de inicio")
-            fr_fin = _date_norm("Fecha Terminado")
-            hr_fin = _time_norm("Hora Terminado")
-            fr_pau, hr_pau = _date_norm("Fecha Pausado"), _time_norm("Hora Pausado")
-            fr_can, hr_can = _date_norm("Fecha Cancelado"), _time_norm("Hora Cancelado")
-            fr_eli, hr_eli = _date_norm("Fecha Eliminado"), _time_norm("Hora Eliminado")
-
-            estado_now = base["Estado"].astype(str)
-            fecha_from_estado = pd.Series(pd.NaT, index=base.index, dtype="datetime64[ns]")
-            hora_from_estado = pd.Series("", index=base.index, dtype="object")
-
-            m0 = estado_now == "No iniciado"
-            m1 = estado_now == "En curso"
-            m2 = estado_now == "Terminado"
-            m3 = estado_now == "Pausado"
-            m4 = estado_now == "Cancelado"
-            m5 = estado_now == "Eliminado"
-
-            fecha_from_estado[m0] = fr_noini[m0];   hora_from_estado[m0] = hr_noini[m0]
-            fecha_from_estado[m1] = fr_enc[m1];     hora_from_estado[m1] = hr_enc[m1]
-            fecha_from_estado[m2] = fr_fin[m2];     hora_from_estado[m2] = hr_fin[m2]
-            fecha_from_estado[m3] = fr_pau[m3];     hora_from_estado[m3] = hr_pau[m3]
-            fecha_from_estado[m4] = fr_can[m4];     hora_from_estado[m4] = hr_can[m4]
-            fecha_from_estado[m5] = fr_eli[m5];     hora_from_estado[m5] = hr_eli[m5]
-
-            fecha_estado_exist = pd.to_datetime(base["Fecha estado actual"], errors="coerce").dt.normalize()
-            hora_estado_exist = base["Hora estado actual"].astype(str)
-
-            fecha_estado_final = fecha_estado_exist.where(fecha_estado_exist.notna(), fecha_from_estado)
-            hora_estado_final  = hora_estado_exist.where(hora_estado_exist.str.strip() != "", hora_from_estado)
-
-            fecha_estado_final = fecha_estado_final.where(
-                fecha_estado_final.notna(),
-                pd.to_datetime(base.get("Fecha Registro"), errors="coerce").dt.normalize(),
-            )
-            hora_reg_str = base.get("Hora Registro", pd.Series("", index=base.index)).astype(str)
-            hora_estado_final = hora_estado_final.where(hora_estado_final.str.strip() != "", hora_reg_str)
+            est_now = pd.Series("No iniciado", index=base.index, dtype="object")
+            est_now = est_now.mask(fi.notna() & ft.isna(), "En curso")
+            est_now = est_now.mask(ft.notna(), "Terminado")
 
             df_view = pd.DataFrame(
                 {
                     "Id": base["Id"].astype(str),
                     "Tarea": base["Tarea"].astype(str),
-                    "Estado actual": estado_now,
-                    "Fecha estado actual": _fmt_date(fecha_estado_final),
-                    "Hora estado actual": _fmt_time(hora_estado_final),
-                    "Estado modificado": base["Estado modificado"].astype(str),
-                    "Fecha estado modificado": _fmt_date(base["Fecha estado modificado"]),
-                    "Hora estado modificado": _fmt_time(base["Hora estado modificado"]),
+                    "Estado actual": est_now,
+                    "Fecha de registro": _fmt_date_series(fr),
+                    "Hora de registro": _fmt_time_series(hr),
+                    "Fecha inicio": _fmt_date_series(fi),
+                    "Hora de inicio": _fmt_time_series(hi),
+                    "Fecha terminada": _fmt_date_series(ft),
+                    "Hora terminada": _fmt_time_series(ht),
                     "Link de archivo": base["Link de archivo"].astype(str),
                 }
             )[cols_out].copy()
 
         # ========= editores y estilo =========
-        estados_editables = ["En curso", "Terminado", "Pausado", "Cancelado", "Eliminado"]
+        estado_emoji_fmt = JsCode(
+            """
+        function(p){
+          const v = String(p.value || '');
+          const M = {
+            "No iniciado":"🍼 No iniciado",
+            "En curso":"🟣 En curso",
+            "Terminado":"✅ Terminado"
+          };
+          return M[v] || v;
+        }"""
+        )
 
+        estado_cell_style = JsCode(
+            """
+        function(p){
+          const v = String(p.value || '');
+          const S = {
+            "No iniciado":{bg:"#E3F2FD", fg:"#0D47A1"},
+            "En curso":   {bg:"#EDE7F6", fg:"#4A148C"},
+            "Terminado":  {bg:"#E8F5E9", fg:"#1B5E20"},
+          };
+          const m = S[v]; if(!m) return {};
+          return {backgroundColor:m.bg, color:m.fg, fontWeight:'600', textAlign:'center', borderRadius:'12px'};
+        }"""
+        )
+
+        # Editor de fecha (calendar)
         date_editor = JsCode(
             """
         class DateEditor{
@@ -544,54 +524,52 @@ def render(user: dict | None = None):
         }"""
         )
 
-        # Emojis
-        estado_emoji_fmt = JsCode(
-            """
-        function(p){
-          const v = String(p.value || '');
-          const M = {
-            "No iniciado":"🍼 No iniciado",
-            "En curso":"🟣 En curso",
-            "Terminado":"✅ Terminado",
-            "Pausado":"⏸️ Pausado",
-            "Cancelado":"⛔ Cancelado",
-            "Eliminado":"🗑️ Eliminado"
-          };
-          return M[v] || v;
-        }"""
+        # Mostrar "—" en link vacío
+        link_formatter = JsCode(
+            """function(p){ const s=String(p.value||'').trim(); return s? s : '—'; }"""
         )
 
-        # Colores
-        estado_cell_style = JsCode(
-            """
-        function(p){
-          const v = String(p.value || '');
-          const S = {
-            "No iniciado":{bg:"#E3F2FD", fg:"#0D47A1"},
-            "En curso":   {bg:"#EDE7F6", fg:"#4A148C"},
-            "Terminado":  {bg:"#E8F5E9", fg:"#1B5E20"},
-            "Pausado":    {bg:"#FFF8E1", fg:"#E65100"},
-            "Cancelado":  {bg:"#FFEBEE", fg:"#B71C1C"},
-            "Eliminado":  {bg:"#ECEFF1", fg:"#263238"}
-          };
-          const m = S[v]; if(!m) return {};
-          return {backgroundColor:m.bg, color:m.fg, fontWeight:'600', textAlign:'center', borderRadius:'12px'};
-        }"""
-        )
-
-        # Front: al cambiar fecha, setea hora Lima actual
+        # Al cambiar fecha → poner hora Lima y estado actual
         on_cell_changed = JsCode(
-            """
-        function(params){
-          if (params.colDef.field === 'Fecha estado modificado'){
-            const pad = n => String(n).padStart(2,'0');
-            const now = new Date();
-            const utcMs = now.getTime() + now.getTimezoneOffset()*60000;
-            const lima = new Date(utcMs - 5*60*60000);
-            const hhmm = pad(lima.getHours()) + ':' + pad(lima.getMinutes());
-            params.node.setDataValue('Hora estado modificado', hhmm);
-          }
-        }"""
+            f"""
+        function(params){{
+          const field = params.colDef.field;
+          const pad = n => String(n).padStart(2,'0');
+          const now = new Date();
+          const utcMs = now.getTime() + now.getTimezoneOffset()*60000;
+          const lima = new Date(utcMs - 5*60*60000);
+          const hhmm = pad(lima.getHours()) + ':' + pad(lima.getMinutes());
+          if (field === 'Fecha inicio') {{
+            params.node.setDataValue('Hora de inicio', hhmm);
+            params.node.setDataValue('Estado actual', 'En curso');
+          }}
+          if (field === 'Fecha terminada') {{
+            params.node.setDataValue('Hora terminada', hhmm);
+            params.node.setDataValue('Estado actual', 'Terminado');
+          }}
+        }}"""
+        )
+
+        # Editable condicional por rol y huella
+        editable_start = JsCode(
+            f"""
+        function(p){{
+          const SUPER = {str(is_super).lower()};
+          if(SUPER) return true;
+          const v = String(p.value||'').trim();
+          return v === '';
+        }}"""
+        )
+        editable_end = JsCode(
+            f"""
+        function(p){{
+          const SUPER = {str(is_super).lower()};
+          if(SUPER) return true;
+          // Si ya hay fecha terminada, no editar; si no hay inicio, tampoco permitir colocar fin
+          const v = String(p.value||'').trim();
+          const hasStart = String(p.data['Fecha inicio']||'').trim() !== '';
+          return (v === '') && hasStart;
+        }}"""
         )
 
         gob = GridOptionsBuilder.from_dataframe(df_view)
@@ -606,19 +584,17 @@ def render(user: dict | None = None):
         gob.configure_default_column(wrapHeaderText=True, autoHeaderHeight=True)
         gob.configure_selection("single", use_checkbox=False)
 
-        gob.configure_column("Estado actual", valueFormatter=estado_emoji_fmt, cellStyle=estado_cell_style, minWidth=160)
-        gob.configure_column(
-            "Estado modificado",
-            editable=True,
-            cellEditor="agSelectCellEditor",
-            cellEditorParams={"values": estados_editables},
-            valueFormatter=estado_emoji_fmt,
-            cellStyle=estado_cell_style,
-            minWidth=180,
-        )
-        gob.configure_column("Fecha estado modificado", editable=True, cellEditor=date_editor, minWidth=170)
-        gob.configure_column("Hora estado modificado", editable=False, minWidth=150)
-        gob.configure_column("Link de archivo", editable=True, minWidth=260)
+        gob.configure_column("Estado actual", valueFormatter=estado_emoji_fmt, cellStyle=estado_cell_style, minWidth=170, editable=False)
+        gob.configure_column("Fecha de registro", editable=False, minWidth=150)
+        gob.configure_column("Hora de registro", editable=False, minWidth=140)
+        gob.configure_column("Tarea", editable=False, minWidth=260)
+        gob.configure_column("Id", editable=False, minWidth=110)
+
+        gob.configure_column("Fecha inicio", editable=editable_start, cellEditor=date_editor, minWidth=160)
+        gob.configure_column("Hora de inicio", editable=False, minWidth=140)
+        gob.configure_column("Fecha terminada", editable=editable_end, cellEditor=date_editor, minWidth=170)
+        gob.configure_column("Hora terminada", editable=False, minWidth=150)
+        gob.configure_column("Link de archivo", editable=True, minWidth=260, valueFormatter=link_formatter)
 
         grid_opts = gob.build()
         grid_opts["onCellValueChanged"] = on_cell_changed.js_code
@@ -631,7 +607,7 @@ def render(user: dict | None = None):
             fit_columns_on_grid_load=True,
             enable_enterprise_modules=False,
             reload_data=False,
-            height=260,
+            height=300,
             allow_unsafe_jscode=True,
             theme="balham",
         )
@@ -639,7 +615,7 @@ def render(user: dict | None = None):
         # ===== Guardar cambios =====
         _, u2 = st.columns([A + Fw + T_width + D + R, C], gap="medium")
         with u2:
-            if st.button("💾 Guardar", use_container_width=True, key="est_guardar_inline_v3"):
+            if st.button("💾 Guardar", use_container_width=True, key="est_guardar_inline_v4"):
                 try:
                     grid_data = pd.DataFrame(grid.get("data", []))
                     if grid_data.empty or "Id" not in grid_data.columns:
@@ -648,164 +624,160 @@ def render(user: dict | None = None):
                         grid_data["Id"] = grid_data["Id"].astype(str)
                         g_i = grid_data.set_index("Id")
 
-                        # --- Lectura robusta de campos editables ---
                         nz = lambda s: s.fillna("").astype(str).str.strip()
-                        st_mod = nz(g_i.get("Estado modificado", pd.Series(index=g_i.index)))
-                        dt_mod = nz(g_i.get("Fecha estado modificado", pd.Series(index=g_i.index)))
-                        tm_mod = nz(g_i.get("Hora estado modificado", pd.Series(index=g_i.index)))
-                        ln_mod = nz(g_i.get("Link de archivo", pd.Series(index=g_i.index)))
 
-                        ids_estado = list(st_mod[st_mod != ""].index)
-                        ids_fechahora = list(set(dt_mod[dt_mod != ""].index.tolist() + tm_mod[tm_mod != ""].index.tolist()))
+                        fi_new = nz(g_i.get("Fecha inicio", pd.Series(index=g_i.index)))
+                        hi_new = nz(g_i.get("Hora de inicio", pd.Series(index=g_i.index)))
+                        ft_new = nz(g_i.get("Fecha terminada", pd.Series(index=g_i.index)))
+                        ht_new = nz(g_i.get("Hora terminada", pd.Series(index=g_i.index)))
+                        lk_new = nz(g_i.get("Link de archivo", pd.Series(index=g_i.index)))
+
+                        ids_view = list(g_i.index)
 
                         base = st.session_state.get("df_main", pd.DataFrame()).copy()
-                        if base.empty:
+                        if base.empty or "Id" not in base.columns:
                             st.warning("No hay base para actualizar.")
-                        else:
-                            base["Id"] = base["Id"].astype(str)
-                            for need in [
-                                "Estado","Fecha estado actual","Hora estado actual",
-                                "Fecha inicio","Hora de inicio","Fecha Terminado","Hora Terminado",
-                                "Fecha Pausado","Hora Pausado","Fecha Cancelado","Hora Cancelado",
-                                "Fecha Eliminado","Hora Eliminado",
-                                "Estado modificado","Fecha estado modificado","Hora estado modificado",
-                                "Duración","Link de archivo",
-                            ]:
-                                if need not in base.columns:
-                                    base[need] = ""
+                            return
+                        base["Id"] = base["Id"].astype(str)
 
-                            # ==== Hora Lima exacta para sellos ====
-                            _local_now = _now_lima_trimmed_local()
-                            f_now = _local_now.strftime("%Y-%m-%d")
-                            h_now = _local_now.strftime("%H:%M")
+                        # 🔐 Si no eres super, limita a tus propias filas por Responsable
+                        if not is_super and "Responsable" in base.columns and me:
+                            mask_me = base["Responsable"].astype(str).str.contains(me, case=False, na=False)
+                            base = base[mask_me]
 
-                            b_i = base.set_index("Id")
+                        b_i = base.set_index("Id")
 
-                            # ---- 1) Aplicar Estado modificado -> actualizar Estado actual + sellos ----
-                            if len(ids_estado) > 0:
-                                new_state = st_mod.loc[ids_estado].astype(str)
-                                # Dejar registrado también en auxiliares:
-                                b_i.loc[ids_estado, "Estado modificado"] = new_state.values
-                                # Estado actual + sellos actuales
-                                b_i.loc[ids_estado, "Estado"] = new_state.values
-                                b_i.loc[ids_estado, "Fecha estado actual"] = f_now
-                                b_i.loc[ids_estado, "Hora estado actual"] = h_now
-                                # Auxiliares de fecha/hora de modificación: usar lo ingresado o "ahora"
-                                dt_vals = dt_mod.reindex(ids_estado).where(dt_mod.reindex(ids_estado).str.strip() != "", f_now)
-                                tm_vals = tm_mod.reindex(ids_estado).where(tm_mod.reindex(ids_estado).str.strip() != "", h_now)
-                                b_i.loc[ids_estado, "Fecha estado modificado"] = dt_vals.values
-                                b_i.loc[ids_estado, "Hora estado modificado"] = tm_vals.values
+                        # Asegurar columnas
+                        for need in [
+                            "Estado",
+                            "Fecha Registro","Hora Registro",
+                            "Fecha inicio","Hora de inicio",
+                            "Fecha Terminado","Hora Terminado",
+                            "Fecha estado actual","Hora estado actual",
+                            "Link de archivo",
+                        ]:
+                            if need not in b_i.columns:
+                                b_i[need] = ""
 
-                                # Sellos por estado (solo si vacíos)
-                                def _is_blank_dt(s):  # fecha vacía
-                                    return pd.to_datetime(s, errors="coerce").isna()
-                                def _is_blank_tm(s):  # hora vacía
-                                    return s.astype(str).str.strip().isin(["", "00:00", "nan", "NaN"])
+                        # Limitar ids a los presentes en base filtrada
+                        ids_ok = [i for i in ids_view if i in b_i.index]
 
-                                # En curso
-                                m = new_state.eq("En curso"); to_fix = list(pd.Index(ids_estado)[m.values])
-                                if to_fix and "Fecha inicio" in b_i.columns and "Hora de inicio" in b_i.columns:
-                                    mask_f = _is_blank_dt(b_i.loc[to_fix, "Fecha inicio"])
-                                    mask_h = _is_blank_tm(b_i.loc[to_fix, "Hora de inicio"])
-                                    b_i.loc[pd.Index(to_fix)[mask_f], "Fecha inicio"] = f_now
-                                    b_i.loc[pd.Index(to_fix)[mask_h], "Hora de inicio"] = h_now
-                                # Terminado
-                                m = new_state.eq("Terminado"); to_fix = list(pd.Index(ids_estado)[m.values])
-                                if to_fix and "Fecha Terminado" in b_i.columns and "Hora Terminado" in b_i.columns:
-                                    mask_f = _is_blank_dt(b_i.loc[to_fix, "Fecha Terminado"])
-                                    mask_h = _is_blank_tm(b_i.loc[to_fix, "Hora Terminado"])
-                                    b_i.loc[pd.Index(to_fix)[mask_f], "Fecha Terminado"] = f_now
-                                    b_i.loc[pd.Index(to_fix)[mask_h], "Hora Terminado"] = h_now
-                                # Pausado
-                                m = new_state.eq("Pausado"); to_fix = list(pd.Index(ids_estado)[m.values])
-                                if to_fix and "Fecha Pausado" in b_i.columns and "Hora Pausado" in b_i.columns:
-                                    mask_f = _is_blank_dt(b_i.loc[to_fix, "Fecha Pausado"])
-                                    mask_h = _is_blank_tm(b_i.loc[to_fix, "Hora Pausado"])
-                                    b_i.loc[pd.Index(to_fix)[mask_f], "Fecha Pausado"] = f_now
-                                    b_i.loc[pd.Index(to_fix)[mask_h], "Hora Pausado"] = h_now
-                                # Cancelado
-                                m = new_state.eq("Cancelado"); to_fix = list(pd.Index(ids_estado)[m.values])
-                                if to_fix and "Fecha Cancelado" in b_i.columns and "Hora Cancelado" in b_i.columns:
-                                    mask_h = _is_blank_tm(b_i.loc[to_fix, "Hora Cancelado"])
-                                    mask_f = _is_blank_dt(b_i.loc[to_fix, "Fecha Cancelado"])
-                                    b_i.loc[pd.Index(to_fix)[mask_h], "Hora Cancelado"] = h_now
-                                    b_i.loc[pd.Index(to_fix)[mask_f], "Fecha Cancelado"] = f_now
-                                # Eliminado
-                                m = new_state.eq("Eliminado"); to_fix = list(pd.Index(ids_estado)[m.values])
-                                if to_fix and "Fecha Eliminado" in b_i.columns and "Hora Eliminado" in b_i.columns:
-                                    mask_f = _is_blank_dt(b_i.loc[to_fix, "Fecha Eliminado"])
-                                    mask_h = _is_blank_tm(b_i.loc[to_fix, "Hora Eliminado"])
-                                    b_i.loc[pd.Index(to_fix)[mask_f], "Fecha Eliminado"] = f_now
-                                    b_i.loc[pd.Index(to_fix)[mask_h], "Hora Eliminado"] = h_now
+                        # Validación: si quieren poner fecha terminada sin inicio (no super) → no permitir
+                        if not is_super:
+                            bad = [i for i in ids_ok if (ft_new.get(i, "") and not (b_i.at[i, "Fecha inicio"] or fi_new.get(i, "")))]
+                            if bad:
+                                st.warning("No puedes registrar 'Fecha terminada' sin 'Fecha inicio' en algunas tareas.")
+                                # limpiar esos intentos
+                                for i in bad:
+                                    ft_new[i] = ""
+                                    ht_new[i] = ""
 
-                            # ---- 2) Si solo editaron Fecha/Hora estado modificado, también persistir ----
-                            if ids_fechahora:
-                                dt_vals = dt_mod.reindex(ids_fechahora)
-                                tm_vals = tm_mod.reindex(ids_fechahora)
-                                # Defaults “ahora” si vienen vacíos en alguno de los dos
-                                dt_vals = dt_vals.where(dt_vals.str.strip() != "", f_now)
-                                tm_vals = tm_vals.where(tm_vals.str.strip() != "", h_now)
-                                b_i.loc[ids_fechahora, "Fecha estado modificado"] = dt_vals.values
-                                b_i.loc[ids_fechahora, "Hora estado modificado"] = tm_vals.values
+                        # Aplicar cambios respetando huellas (no-super no puede modificar si ya existe)
+                        local_now = _now_lima_trimmed_local()
+                        f_now = local_now.strftime("%Y-%m-%d")
+                        h_now = local_now.strftime("%H:%M")
 
-                            # ---- 3) Link de archivo (única) ----
-                            ids_link = []
-                            if "Link de archivo" in g_i.columns:
-                                new_links = ln_mod
-                                if "Link de archivo" not in b_i.columns:
-                                    b_i["Link de archivo"] = ""
-                                prev_links = b_i["Link de archivo"].reindex(new_links.index).fillna("").astype(str)
-                                ids_link = list(new_links.index[prev_links.str.strip() != new_links.str.strip()])
-                                if ids_link:
-                                    b_i.loc[ids_link, "Link de archivo"] = new_links.loc[ids_link].values
+                        changed_ids: set[str] = set()
 
-                            # ---- 4) Duración (mins desde Fecha Registro, si existe) ----
-                            if "Duración" in b_i.columns and "Fecha Registro" in b_i.columns:
-                                ts_naive = pd.Timestamp(_local_now).tz_localize(None)
-                                def _mins_since(fr_val):
-                                    d = _to_naive_local_one(fr_val)
-                                    if pd.isna(d):
-                                        return 0
-                                    try:
-                                        return int((ts_naive - d).total_seconds() / 60)
-                                    except Exception:
-                                        return 0
-                                idx_for_dur = pd.Index(sorted(set(ids_estado + ids_fechahora)))
-                                if len(idx_for_dur) > 0:
-                                    dur_min = b_i.loc[idx_for_dur, "Fecha Registro"].apply(_mins_since)
-                                    try:
-                                        b_i.loc[idx_for_dur, "Duración"] = dur_min.values
-                                    except Exception:
-                                        pass
+                        for i in ids_ok:
+                            # START
+                            prev_fi = str(b_i.at[i, "Fecha inicio"]).strip()
+                            prev_hi = str(b_i.at[i, "Hora de inicio"]).strip()
+                            new_fi = fi_new.get(i, "")
+                            new_hi = hi_new.get(i, "")
 
-                            base = b_i.reset_index()
-                            st.session_state["df_main"] = base.copy()
-
-                            # Guardado local
-                            def _persist(_df: pd.DataFrame):
-                                try:
-                                    os.makedirs("data", exist_ok=True)
-                                    _df.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig")
-                                    return {"ok": True, "msg": "Cambios guardados."}
-                                except Exception as _e:
-                                    return {"ok": False, "msg": f"Error al guardar: {_e}"}
-
-                            maybe_save = st.session_state.get("maybe_save")
-                            res = maybe_save(_persist, base.copy()) if callable(maybe_save) else _persist(base.copy())
-
-                            # Upsert a Sheets: incluir todos los casos editados
-                            ids_to_push = sorted(set(list(ids_estado) + list(ids_fechahora) + list(ids_link)))
-                            try:
-                                if ids_to_push:
-                                    _sheet_upsert_estado_by_id(base.copy(), ids_to_push)
-                            except Exception as ee:
-                                st.info(f"Guardado local OK. No pude actualizar Sheets: {ee}")
-
-                            if res.get("ok", False):
-                                st.success(res.get("msg", "Cambios guardados."))
-                                st.rerun()
+                            if is_super:
+                                # Super puede sobreescribir libremente
+                                if new_fi != prev_fi:
+                                    b_i.at[i, "Fecha inicio"] = new_fi
+                                    changed_ids.add(i)
+                                if new_fi and not new_hi:
+                                    new_hi = h_now
+                                if new_hi != prev_hi:
+                                    b_i.at[i, "Hora de inicio"] = new_hi
+                                    changed_ids.add(i)
                             else:
-                                st.info(res.get("msg", "Guardado deshabilitado."))
+                                # Usuario normal: solo si estaba vacío
+                                if (not prev_fi) and new_fi:
+                                    b_i.at[i, "Fecha inicio"] = new_fi
+                                    b_i.at[i, "Hora de inicio"] = (new_hi or h_now)
+                                    changed_ids.add(i)
+
+                            # FIN
+                            prev_ft = str(b_i.at[i, "Fecha Terminado"]).strip()
+                            prev_ht = str(b_i.at[i, "Hora Terminado"]).strip()
+                            new_ft = ft_new.get(i, "")
+                            new_ht = ht_new.get(i, "")
+
+                            # Para permitir fin: debe existir fecha inicio (prev o nueva ya fijada)
+                            has_start_now = str(b_i.at[i, "Fecha inicio"]).strip() != ""
+
+                            if is_super:
+                                if new_ft != prev_ft:
+                                    b_i.at[i, "Fecha Terminado"] = new_ft
+                                    changed_ids.add(i)
+                                if new_ft:
+                                    if not new_ht:
+                                        new_ht = h_now
+                                    if new_ht != prev_ht:
+                                        b_i.at[i, "Hora Terminado"] = new_ht
+                                        changed_ids.add(i)
+                            else:
+                                if (not prev_ft) and new_ft and has_start_now:
+                                    b_i.at[i, "Fecha Terminado"] = new_ft
+                                    b_i.at[i, "Hora Terminado"] = (new_ht or h_now)
+                                    changed_ids.add(i)
+
+                            # LINK (editable siempre)
+                            prev_lk = str(b_i.at[i, "Link de archivo"]).strip()
+                            new_lk = lk_new.get(i, "")
+                            if new_lk != prev_lk:
+                                b_i.at[i, "Link de archivo"] = new_lk
+                                changed_ids.add(i)
+
+                            # === Estado + sello actual ===
+                            fi_eff = str(b_i.at[i, "Fecha inicio"]).strip()
+                            ft_eff = str(b_i.at[i, "Fecha Terminado"]).strip()
+                            if ft_eff:
+                                b_i.at[i, "Estado"] = "Terminado"
+                                b_i.at[i, "Fecha estado actual"] = ft_eff
+                                b_i.at[i, "Hora estado actual"] = str(b_i.at[i, "Hora Terminado"]).strip() or h_now
+                            elif fi_eff:
+                                b_i.at[i, "Estado"] = "En curso"
+                                b_i.at[i, "Fecha estado actual"] = fi_eff
+                                b_i.at[i, "Hora estado actual"] = str(b_i.at[i, "Hora de inicio"]).strip() or h_now
+                            else:
+                                b_i.at[i, "Estado"] = "No iniciado"
+                                b_i.at[i, "Fecha estado actual"] = str(b_i.at[i, "Fecha Registro"]).strip()
+                                b_i.at[i, "Hora estado actual"] = str(b_i.at[i, "Hora Registro"]).strip()
+
+                        base_updated = b_i.reset_index()
+                        st.session_state["df_main"] = base_updated.copy()
+
+                        # Guardado local
+                        def _persist(_df: pd.DataFrame):
+                            try:
+                                os.makedirs("data", exist_ok=True)
+                                _df.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig")
+                                return {"ok": True, "msg": "Cambios guardados."}
+                            except Exception as _e:
+                                return {"ok": False, "msg": f"Error al guardar: {_e}"}
+
+                        maybe_save = st.session_state.get("maybe_save")
+                        res = maybe_save(_persist, base_updated.copy()) if callable(maybe_save) else _persist(base_updated.copy())
+
+                        # Upsert a Sheets (solo ids cambiados)
+                        try:
+                            if changed_ids:
+                                _sheet_upsert_estado_by_id(base_updated.copy(), sorted(changed_ids))
+                        except Exception as ee:
+                            st.info(f"Guardado local OK. No pude actualizar Sheets: {ee}")
+
+                        if res.get("ok", False):
+                            st.success(res.get("msg", "Cambios guardados."))
+                            st.rerun()
+                        else:
+                            st.info(res.get("msg", "Guardado deshabilitado."))
                 except Exception as e:
                     st.error(f"No pude guardar: {e}")
 
