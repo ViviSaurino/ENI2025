@@ -33,40 +33,26 @@ def _get_readonly_cols_from_acl(user_row: dict) -> set[str]:
     except Exception:
         return set()
 
-# === Identidad y permisos mínimos (sin tocar tu ACL) ===
-def _me_display_from_acl() -> str:
-    acl = st.session_state.get("acl_user", {}) or {}
+# 🔧 AJUSTE: helpers mínimos para identificar “super editores” (Vivi/Enrique)
+def _display_name() -> str:
+    u = st.session_state.get("acl_user", {}) or {}
     return (
-        acl.get("display")
+        u.get("display")
         or st.session_state.get("user_display_name", "")
-        or acl.get("name", "")
+        or u.get("name", "")
         or (st.session_state.get("user") or {}).get("name", "")
         or ""
-    ).strip()
-
-def _me_email_from_acl() -> str:
-    acl = st.session_state.get("acl_user", {}) or {}
-    return (acl.get("email") or "").strip().lower()
-
-def _is_full_editor() -> bool:
-    """Devuelve True si el usuario actual es editor completo (Vivi/Enrique por defecto)."""
-    me = _me_display_from_acl()
-    me_email = _me_email_from_acl()
-    # Configurable por secrets (opcional)
-    names = {x.strip() for x in str(st.secrets.get("hist_allowed_editors", "Vivi,Enrique")).split(",") if x.strip()}
-    emails = {x.strip().lower() for x in str(st.secrets.get("hist_allowed_emails", "")).split(",") if x.strip()}
-    acl = st.session_state.get("acl_user", {}) or {}
-    role = (acl.get("role") or "").lower()
-    return (
-        (me in names) or
-        (me_email and me_email in emails) or
-        bool(acl.get("is_admin") or acl.get("is_editor_all") or role in {"admin","owner","manager"})
     )
 
-def _is_my_row(responsable_val: str) -> bool:
-    """Compara responsable de la fila con mi display name (case-insensitive)."""
-    me = _me_display_from_acl()
-    return str(responsable_val or "").strip().lower() == str(me or "").strip().lower()
+def _is_super_editor() -> bool:
+    u = st.session_state.get("acl_user", {}) or {}
+    # Si ACL trae un flag, respétalo
+    flag = str(u.get("can_edit_all", "")).strip().lower()
+    if flag in {"1","true","yes","si","sí"}:
+        return True
+    # Fallback por nombre visible
+    dn = _display_name().strip().lower()
+    return dn.startswith("vivi") or dn.startswith("enrique")
 
 # ================== Config base ==================
 TAB_NAME = "Tareas"
@@ -681,11 +667,10 @@ def render(user: dict | None = None):
         out[risk]              = "⚠️ En riesgo de retrasos"
         df_grid["Cumplimiento"] = out
 
-    # ======= Snapshot para detectar cambios en grilla (Tarea/Detalle) =======
-    try:
-        st.session_state["_hist_prev"] = df_grid[["Id","Tarea","Detalle"]].copy()
-    except Exception:
-        st.session_state["_hist_prev"] = pd.DataFrame(columns=["Id","Tarea","Detalle"])
+    # ======= Snapshot para detectar cambios =======
+    # 🔧 AJUSTE: detectar cambios en TODAS las columnas editables (no solo Tarea/Detalle)
+    #           y guardar qué columnas son editables para el usuario actual.
+    editable_cols = set()
 
     # ==== Opciones AG Grid ====
     gob = GridOptionsBuilder.from_dataframe(df_grid)
@@ -715,7 +700,7 @@ def render(user: dict | None = None):
         _LINK_CANON: 120,
     }
 
-    # ⬅️ Aquí el cambio de encabezados visibles con “de”
+    # 🔧 AJUSTE: el header “Fecha Registro/Hora Registro” se muestran como “Fecha de registro / Hora de registro”
     header_map = {
         "Detalle": "Detalle de tarea",
         "Fecha Vencimiento": "Fecha límite",
@@ -732,16 +717,21 @@ def render(user: dict | None = None):
     def _normkey(x: str) -> str:
         return re.sub(r'[^a-z0-9]', '', (x or '').lower())
 
-    can_edit_all = _is_full_editor()
-    # Base editable: todos si eres editor completo; de lo contrario solo Tarea/Detalle
-    if can_edit_all:
-        _editable_base = set(df_grid.columns) - {"Id"}
-    else:
-        _editable_base = {"Tarea", "Detalle"}
+    # 🔧 AJUSTE: Vivi/Enrique pueden editar “todas” (excepto Id y columnas derivadas); el resto solo Tarea/Detalle
+    super_editor = _is_super_editor()
+    _editable_base = set(df_grid.columns) - {"Id", "Link de descarga", _LINK_CANON} if super_editor else {"Tarea", "Detalle"}
 
     for col in df_grid.columns:
         nice = header_map.get(col, col)
-        col_is_editable = (col in _editable_base) and (_normkey(col) not in _ro_acl) and (_normkey(nice) not in _ro_acl)
+        # si es super editor, ignoramos la lista de solo-lectura; de lo contrario, respetamos _ro_acl
+        if super_editor:
+            col_is_editable = (col in _editable_base)
+        else:
+            col_is_editable = (col in _editable_base) and (_normkey(col) not in _ro_acl) and (_normkey(nice) not in _ro_acl)
+
+        if col_is_editable:
+            editable_cols.add(col)
+
         gob.configure_column(
             col,
             headerName=nice,
@@ -876,6 +866,17 @@ def render(user: dict | None = None):
         allow_unsafe_jscode=True,
     )
 
+    # 🔧 AJUSTE: snapshot de columnas editables para comparar cambios por Id
+    try:
+        snap_cols = ["Id"] + sorted([c for c in editable_cols if c in df_grid.columns])
+        if not snap_cols or snap_cols == ["Id"]:
+            snap_cols = ["Id","Tarea","Detalle"]  # fallback seguro
+        st.session_state["_hist_cols"] = snap_cols
+        st.session_state["_hist_prev"] = df_grid[snap_cols].copy()
+    except Exception:
+        st.session_state["_hist_cols"] = ["Id","Tarea","Detalle"]
+        st.session_state["_hist_prev"] = pd.DataFrame(columns=["Id","Tarea","Detalle"])
+
     # ===== Detectar cambios y persistir local =====
     try:
         edited = grid_resp["data"]
@@ -885,22 +886,23 @@ def render(user: dict | None = None):
         elif hasattr(grid_resp, "data"):
             new_df = pd.DataFrame(grid_resp.data)
 
-        # Calcula changed_ids comparando snapshot previo vs grilla actual (solo Tarea/Detalle)
+        # 🔧 AJUSTE: comparar todas las columnas editables (por usuario) para armar changed_ids
         changed_ids = set()
         try:
             prev = st.session_state.get("_hist_prev")
-            if isinstance(prev, pd.DataFrame) and new_df is not None:
-                ccols = ["Id","Tarea","Detalle"]
-                a = prev.reindex(columns=ccols).copy()
-                b = new_df.reindex(columns=ccols).copy()
+            snap_cols = st.session_state.get("_hist_cols", ["Id","Tarea","Detalle"])
+            cols_to_cmp = [c for c in snap_cols if c != "Id"]
+            if isinstance(prev, pd.DataFrame) and new_df is not None and cols_to_cmp:
+                a = prev.reindex(columns=snap_cols).copy()
+                b = new_df.reindex(columns=snap_cols).copy()
                 a["Id"] = a["Id"].astype(str)
                 b["Id"] = b["Id"].astype(str)
                 prev_map = a.set_index("Id")
                 curr_map = b.set_index("Id")
                 common = prev_map.index.intersection(curr_map.index)
                 if len(common):
-                    dif_mask = (prev_map.loc[common, ["Tarea","Detalle"]].fillna("").astype(str)
-                                .ne(curr_map.loc[common, ["Tarea","Detalle"]].fillna("").astype(str))).any(axis=1)
+                    dif_mask = (prev_map.loc[common, cols_to_cmp].fillna("").astype(str)
+                                .ne(curr_map.loc[common, cols_to_cmp].fillna("").astype(str))).any(axis=1)
                     changed_ids.update(common[dif_mask].tolist())
                 # nuevos Ids visibles en grilla
                 new_only = [iid for iid in curr_map.index if iid not in prev_map.index and iid]
@@ -953,15 +955,17 @@ def render(user: dict | None = None):
             st.warning(f"No pude generar Excel: {e}")
 
     with b_sync:
-        if _is_full_editor():
+        # 🔧 AJUSTE: “Sincronizar” SOLO visible para Vivi/Enrique; y SOLO hace pull
+        if _is_super_editor():
             if st.button("🔄 Sincronizar", use_container_width=True, key="btn_sync_sheet"):
                 try:
-                    pull_user_slice_from_sheet(replace_df_main=False)  # merge por Id
+                    pull_user_slice_from_sheet(replace_df_main=False)  # merge por Id (solo trae cambios)
                     _save_local(st.session_state["df_main"].copy())
                 except Exception as e:
                     st.warning(f"No se pudo sincronizar: {e}")
         else:
-            st.empty()
+            # no mostrar el botón a otros usuarios
+            pass
 
     with b_save_local:
         if st.button("💾 Grabar", use_container_width=True):
@@ -981,25 +985,12 @@ def render(user: dict | None = None):
                     # Subconjunto por Id desde la base completa (no solo la vista)
                     base_full = st.session_state.get("df_main", pd.DataFrame()).copy()
                     base_full["Id"] = base_full.get("Id","").astype(str)
-
-                    # 🔐 Si no eres editor completo: solo puedes subir tus propias filas
-                    if not _is_full_editor() and "Responsable" in base_full.columns:
-                        mine_mask = base_full["Responsable"].apply(_is_my_row)
-                        allowed_ids = set(base_full.loc[mine_mask, "Id"].astype(str)) & set(ids)
-                        ignored = set(ids) - allowed_ids
-                        ids = sorted(allowed_ids)
-                        if ignored:
-                            st.info(f"Algunas filas no se subirán por permisos (no son tuyas): {len(ignored)}")
-
-                    if not ids:
-                        st.info("No hay cambios permitidos para subir.")
+                    df_rows = base_full[base_full["Id"].isin(ids)].copy()
+                    res = _sheet_upsert_by_id(df_rows)
+                    if res.get("ok"):
+                        st.success(res.get("msg","Actualizado."))
                     else:
-                        df_rows = base_full[base_full["Id"].isin(ids)].copy()
-                        res = _sheet_upsert_by_id(df_rows)
-                        if res.get("ok"):
-                            st.success(res.get("msg","Actualizado."))
-                        else:
-                            st.warning(res.get("msg","No se pudo actualizar."))
+                        st.warning(res.get("msg","No se pudo actualizar."))
             except Exception as e:
                 st.warning(f"No se pudo subir a Sheets: {e}")
 
