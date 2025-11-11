@@ -558,7 +558,7 @@ def render(user: dict | None = None):
         editable_start = JsCode(
             f"""
         function(p){{
-          const SUPER = {str(is_super).lower()};
+          const SUPER = {str(_is_super_editor()).lower()};
           if(SUPER) return true;
           const v = String(p.value||'').trim();
           return v === '-' || v === '';
@@ -567,7 +567,7 @@ def render(user: dict | None = None):
         editable_end = JsCode(
             f"""
         function(p){{
-          const SUPER = {str(is_super).lower()};
+          const SUPER = {str(_is_super_editor()).lower()};
           if(SUPER) return true;
           const v = String(p.value||'').trim();
           const hasStart = String(p.data['Fecha inicio']||'').trim() !== '' && String(p.data['Fecha inicio']||'').trim() !== '-';
@@ -605,8 +605,9 @@ def render(user: dict | None = None):
         grid = AgGrid(
             df_view,
             gridOptions=grid_opts,
-            data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
-            update_mode=(GridUpdateMode.VALUE_CHANGED | GridUpdateMode.SELECTION_CHANGED),
+            # ⬇️ Ajuste 1: recibir datos editados reales
+            data_return_mode=DataReturnMode.AS_INPUT,
+            update_mode=GridUpdateMode.MODEL_CHANGED,
             fit_columns_on_grid_load=True,
             enable_enterprise_modules=False,
             reload_data=False,
@@ -640,13 +641,16 @@ def render(user: dict | None = None):
 
                         ids_view = list(g_i.index)
 
-                        base = st.session_state.get("df_main", pd.DataFrame()).copy()
-                        if base.empty or "Id" not in base.columns:
+                        full_before = st.session_state.get("df_main", pd.DataFrame()).copy()
+                        if full_before.empty or "Id" not in full_before.columns:
                             st.warning("No hay base para actualizar.")
                             return
-                        base["Id"] = base["Id"].astype(str)
+                        full_before["Id"] = full_before["Id"].astype(str)
 
-                        # 🔐 Si no eres super, limita a tus propias filas por Responsable
+                        # Subconjunto editable (si no eres súper)
+                        base = full_before.copy()
+                        me = _display_name().strip()
+                        is_super = _is_super_editor()
                         if not is_super and "Responsable" in base.columns and me:
                             mask_me = base["Responsable"].astype(str).str.contains(me, case=False, na=False)
                             base = base[mask_me]
@@ -668,7 +672,7 @@ def render(user: dict | None = None):
                         # Limitar ids a los presentes en base filtrada
                         ids_ok = [i for i in ids_view if i in b_i.index]
 
-                        # Validación: si quieren poner fin sin inicio (no super) → no permitir
+                        # Validación: fin sin inicio (no super) → no permitir
                         if not is_super:
                             bad = [i for i in ids_ok if (ft_new.get(i, "") and not (b_i.at[i, "Fecha inicio"] or fi_new.get(i, "")))]
                             if bad:
@@ -678,7 +682,6 @@ def render(user: dict | None = None):
                                     ht_new[i] = ""
 
                         local_now = _now_lima_trimmed_local()
-                        f_now = local_now.strftime("%Y-%m-%d")
                         h_now = local_now.strftime("%H:%M")
 
                         changed_ids: set[str] = set()
@@ -690,7 +693,7 @@ def render(user: dict | None = None):
                             new_fi = fi_new.get(i, "")
                             new_hi = hi_new.get(i, "")
 
-                            if _is_super_editor():
+                            if is_super:
                                 if new_fi != prev_fi:
                                     b_i.at[i, "Fecha inicio"] = new_fi
                                     changed_ids.add(i)
@@ -713,7 +716,7 @@ def render(user: dict | None = None):
 
                             has_start_now = str(b_i.at[i, "Fecha inicio"]).strip() != ""
 
-                            if _is_super_editor():
+                            if is_super:
                                 if new_ft != prev_ft:
                                     b_i.at[i, "Fecha Terminado"] = new_ft
                                     changed_ids.add(i)
@@ -752,8 +755,17 @@ def render(user: dict | None = None):
                                 b_i.at[i, "Fecha estado actual"] = str(b_i.at[i, "Fecha Registro"]).strip()
                                 b_i.at[i, "Hora estado actual"] = str(b_i.at[i, "Hora Registro"]).strip()
 
-                        base_updated = b_i.reset_index()
-                        st.session_state["df_main"] = base_updated.copy()
+                        # Subset actualizado
+                        subset_updated = b_i.reset_index()
+
+                        # ⬇️ Ajuste 2: fusionar subset con TODA la base (no reemplazarla)
+                        full_idx = full_before.set_index("Id")
+                        # Solo actualizamos filas tocadas o presentes en subset
+                        full_idx.update(b_i)
+                        full_updated = full_idx.reset_index()
+
+                        # Persistir en sesión
+                        st.session_state["df_main"] = full_updated.copy()
 
                         # Guardado local
                         def _persist(_df: pd.DataFrame):
@@ -765,12 +777,12 @@ def render(user: dict | None = None):
                                 return {"ok": False, "msg": f"Error al guardar: {_e}"}
 
                         maybe_save = st.session_state.get("maybe_save")
-                        res = maybe_save(_persist, base_updated.copy()) if callable(maybe_save) else _persist(base_updated.copy())
+                        res = maybe_save(_persist, full_updated.copy()) if callable(maybe_save) else _persist(full_updated.copy())
 
                         # Upsert a Sheets (solo ids cambiados)
                         try:
                             if changed_ids:
-                                _sheet_upsert_estado_by_id(base_updated.copy(), sorted(changed_ids))
+                                _sheet_upsert_estado_by_id(full_updated.copy(), sorted(changed_ids))
                         except Exception as ee:
                             st.info(f"Guardado local OK. No pude actualizar Sheets: {ee}")
 
