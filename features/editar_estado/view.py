@@ -17,10 +17,8 @@ try:
     from shared import now_lima_trimmed, apply_scope
 except Exception:
     from datetime import datetime, timedelta
-    # Fallback robusto: siempre hora Lima (UTC-5)
     def now_lima_trimmed():
         return (datetime.utcnow() - timedelta(hours=5)).replace(second=0, microsecond=0)
-    # Fallback por si no carga shared (no filtra)
     def apply_scope(df, user=None, resp_col="Responsable"):
         return df
 
@@ -32,7 +30,6 @@ except Exception:
     _TZ = None
 
 def _now_lima_trimmed_local():
-    """Devuelve datetime (Lima) sin segundos/microsegundos."""
     from datetime import datetime, timedelta
     try:
         if _TZ:
@@ -42,7 +39,6 @@ def _now_lima_trimmed_local():
         return now_lima_trimmed()
 
 def _to_naive_local_one(x):
-    """Convierte x a datetime naive en hora local; tolera strings/ tz."""
     if x is None or (isinstance(x, float) and pd.isna(x)):
         return pd.NaT
     try:
@@ -82,16 +78,26 @@ def _fmt_hhmm(v) -> str:
     except Exception:
         return ""
 
-# ======== Helpers de normalización (AJUSTE) ========
+# ============ Helpers de normalización y deduplicado ============
 def _is_blank_str(x) -> bool:
     s = str(x).strip().lower()
-    return s in {"", "nan", "nat", "none", "null", "-"}
+    return s in {"", "-", "nan", "none", "null"}
 
 def _canon_str(x) -> str:
-    """Normaliza a '' si está vacío/NaN/'-'; sino, str(x) sin espacios."""
     return "" if _is_blank_str(x) else str(x).strip()
 
-# ============== Helpers ACL (super editores y nombre visible) ==============
+def _dedup_keep_last_with_id(df: pd.DataFrame) -> pd.DataFrame:
+    """Filtra filas sin Id y quita duplicados por Id (conserva la última)."""
+    if df is None or df.empty or "Id" not in df.columns:
+        return df if isinstance(df, pd.DataFrame) else pd.DataFrame()
+    out = df.copy()
+    out["Id"] = out["Id"].astype(str).str.strip()
+    mask_valid = ~out["Id"].str.lower().isin({"", "-", "nan", "none", "null"})
+    out = out[mask_valid]
+    out = out[~out["Id"].duplicated(keep="last")]
+    return out
+
+# ============== Helpers ACL ==============
 def _display_name() -> str:
     u = st.session_state.get("acl_user", {}) or {}
     return (
@@ -144,7 +150,6 @@ def _col_letter(n: int) -> str:
     return s
 
 def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
-    """Actualiza en Sheets por 'Id' estado/sellos y **Link de archivo** (si la hoja tiene esa columna)."""
     try:
         ss, ws, ws_name = _gsheets_client()
     except Exception as e:
@@ -172,7 +177,7 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
     id_to_row = {}
     for r_i, row in enumerate(values[1:], start=2):
         if id_idx < len(row):
-            id_to_row[str(row[id_idx]).strip()] = r_i
+            id_to_row[str(row[id_idx]).strip()] = r_i  # si hay duplicados en hoja, usa el último
 
     base_push_cols = [
         "Estado", "Estado actual",
@@ -196,7 +201,7 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
     body, ranges = [], []
 
     if "Id" in df_base.columns:
-        df_base = df_base.drop_duplicates(subset=["Id"], keep="last").copy()
+        df_base = _dedup_keep_last_with_id(df_base)
     df_idx = df_base.set_index("Id")
 
     def _get_val(_id, h):
@@ -215,18 +220,15 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
             for h in headers:
                 v = _get_val(_id, h)
                 new_row.append(_fmt_out(h, v))
-            values.append(new_row)
             ws.append_row(new_row, value_input_option="USER_ENTERED")
             continue
 
         current_row = values[row_idx - 1].copy()
         if len(current_row) < len(headers):
             current_row += [""] * (len(headers) - len(current_row))
-
         for h in cols_to_push:
             v = _get_val(_id, h)
             current_row[col_map[h] - 1] = _fmt_out(h, v)
-
         ranges.append(f"A{row_idx}:{last_col_letter}{row_idx}")
         body.append(current_row[: len(headers)])
 
@@ -237,9 +239,7 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
 # ===============================================================================
 
 def render(user: dict | None = None):
-    # ================== EDITAR ESTADO ==================
     st.session_state.setdefault("est_visible", True)
-
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
     if st.session_state["est_visible"]:
@@ -250,22 +250,11 @@ def render(user: dict | None = None):
             """
         <style>
           #est-section .stButton > button { width: 100% !important; }
-          #est-section .ag-header-cell-label{
-            font-weight: 400 !important;
-            white-space: normal !important;
-            line-height: 1.15 !important;
-          }
-          #est-section .ag-body-horizontal-scroll,
-          #est-section .ag-center-cols-viewport { overflow-x: hidden !important; }
+          #est-section .ag-header-cell-label{ font-weight: 400 !important; white-space: normal !important; line-height: 1.15 !important; }
+          #est-section .ag-body-horizontal-scroll, #est-section .ag-center-cols-viewport { overflow-x: hidden !important; }
           .section-est .help-strip + .form-card{ margin-top: 6px !important; }
-          .est-pill{
-            width:100%; height:38px; border-radius:12px;
-            display:flex; align-items:center; justify-content:center;
-            background:#A7C8F0; color:#ffffff; font-weight:700;
-            box-shadow:0 6px 14px rgba(167,200,240,.35);
-            user-select:none;
-            margin: 4px 0 16px;
-          }
+          .est-pill{ width:100%; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center;
+            background:#A7C8F0; color:#ffffff; font-weight:700; box-shadow:0 6px 14px rgba(167,200,240,.35); user-select:none; margin: 4px 0 16px; }
           .est-pill span{ display:inline-flex; gap:8px; align-items:center; }
         </style>
         """,
@@ -279,16 +268,16 @@ def render(user: dict | None = None):
         st.markdown(
             """
         <div class="section-est">
-          <div class="help-strip">
-            🔷 <strong>Actualiza el estado</strong> de una tarea ya registrada usando los filtros
-          </div>
+          <div class="help-strip">🔷 <strong>Actualiza el estado</strong> de una tarea ya registrada usando los filtros</div>
           <div class="form-card">
         """,
             unsafe_allow_html=True,
         )
 
-        # Base global
+        # Base global (LIMPIA y sin duplicados)
         df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
+        df_all = _dedup_keep_last_with_id(df_all)
+        st.session_state["df_main"] = df_all.copy()  # mantiene la base sin “feos”
 
         # 🔐 ACL
         df_all = apply_scope(df_all, user=user)
@@ -301,7 +290,7 @@ def render(user: dict | None = None):
             except Exception:
                 pass
 
-        # ===== Rango por defecto (min–max del dataset) =====
+        # ===== Rango por defecto =====
         def _first_valid_date_series(df: pd.DataFrame) -> pd.Series:
             if df.empty:
                 return pd.Series([], dtype="datetime64[ns]")
@@ -320,21 +309,14 @@ def render(user: dict | None = None):
             today = pd.Timestamp.today().normalize().date()
             min_date = today; max_date = today
         else:
-            min_date = dates_all.min().date()
-            max_date = dates_all.max().date()
+            min_date = dates_all.min().date(); max_date = dates_all.max().date()
 
         # ===== FILTROS =====
         with st.form("est_filtros_v4", clear_on_submit=False):
-            c_area, c_fase, c_resp, c_desde, c_hasta, c_buscar = st.columns(
-                [A, Fw, T_width, D, R, C], gap="medium"
-            )
+            c_area, c_fase, c_resp, c_desde, c_hasta, c_buscar = st.columns([A, Fw, T_width, D, R, C], gap="medium")
 
-            AREAS_OPC = (
-                st.session_state.get(
-                    "AREAS_OPC",
-                    sorted([x for x in df_all.get("Área", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"]),
-                ) or []
-            )
+            AREAS_OPC = (st.session_state.get("AREAS_OPC",
+                           sorted([x for x in df_all.get("Área", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])) or [])
             est_area = c_area.selectbox("Área", ["Todas"] + AREAS_OPC, index=0)
 
             fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
@@ -371,6 +353,9 @@ def render(user: dict | None = None):
                 df_tasks = df_tasks[fcol >= pd.to_datetime(est_desde)]
             if est_hasta:
                 df_tasks = df_tasks[fcol <= (pd.to_datetime(est_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
+
+        # 🔹 Solo filas con Id y sin duplicados ANTES de mostrar
+        df_tasks = _dedup_keep_last_with_id(df_tasks)
 
         # ===== Tabla "Resultados" =====
         st.markdown("**Resultados**")
@@ -589,20 +574,19 @@ def render(user: dict | None = None):
                             if need not in base.columns:
                                 base[need] = ""
 
+                        # Solo Id válidos y sin duplicados
+                        base = _dedup_keep_last_with_id(base)
                         ids_ok = [i for i in ids_view if i in set(base["Id"].astype(str))]
 
                         if not is_super:
-                            # usar última 'Fecha inicio' por Id (normalizada)
                             cur_start = base.groupby("Id", as_index=True)["Fecha inicio"].last().map(_canon_str)
                             bad = [i for i in ids_ok if (_canon_str(ft_new.get(i, "")) and not (_canon_str(cur_start.get(i, "")) or _canon_str(fi_new.get(i, ""))))]
                             if bad:
                                 st.warning("No puedes registrar 'Fecha terminada' sin 'Fecha inicio' en algunas tareas.")
                                 for i in bad:
-                                    ft_new[i] = ""
-                                    ht_new[i] = ""
+                                    ft_new[i] = ""; ht_new[i] = ""
 
-                        local_now = _now_lima_trimmed_local()
-                        h_now = local_now.strftime("%H:%M")
+                        h_now = _now_lima_trimmed_local().strftime("%H:%M")
 
                         changed_ids: set[str] = set()
                         full_updated = full_before.copy()
@@ -611,11 +595,9 @@ def render(user: dict | None = None):
                         base_idx = base_idx[~base_idx.index.duplicated(keep="last")]
 
                         for i in ids_ok:
-                            # START (normalizado)
                             prev_fi = _canon_str(base_idx.at[i, "Fecha inicio"]) if i in base_idx.index else ""
                             prev_hi = _canon_str(base_idx.at[i, "Hora de inicio"]) if i in base_idx.index else ""
-                            new_fi  = _canon_str(fi_new.get(i, ""))
-                            new_hi  = _canon_str(hi_new.get(i, ""))
+                            new_fi  = _canon_str(fi_new.get(i, "")); new_hi  = _canon_str(hi_new.get(i, ""))
 
                             if is_super:
                                 if new_fi != prev_fi:
@@ -630,11 +612,9 @@ def render(user: dict | None = None):
                                     base_idx.at[i, "Hora de inicio"] = (new_hi or h_now)
                                     changed_ids.add(i)
 
-                            # FIN (normalizado)
                             prev_ft = _canon_str(base_idx.at[i, "Fecha Terminado"]) if i in base_idx.index else ""
                             prev_ht = _canon_str(base_idx.at[i, "Hora Terminado"]) if i in base_idx.index else ""
-                            new_ft  = _canon_str(ft_new.get(i, ""))
-                            new_ht  = _canon_str(ht_new.get(i, ""))
+                            new_ft  = _canon_str(ft_new.get(i, "")); new_ht  = _canon_str(ht_new.get(i, ""))
 
                             has_start_now = bool(_canon_str(base_idx.at[i, "Fecha inicio"]) if i in base_idx.index else "")
 
@@ -651,13 +631,11 @@ def render(user: dict | None = None):
                                     base_idx.at[i, "Hora Terminado"] = (new_ht or h_now)
                                     changed_ids.add(i)
 
-                            # LINK (normalizado)
                             prev_lk = _canon_str(base_idx.at[i, "Link de archivo"]) if i in base_idx.index else ""
                             new_lk  = _canon_str(lk_new.get(i, ""))
                             if new_lk != prev_lk:
                                 base_idx.at[i, "Link de archivo"] = new_lk; changed_ids.add(i)
 
-                            # Estado + sello actual (normalizado)
                             fi_eff = _canon_str(base_idx.at[i, "Fecha inicio"]) if i in base_idx.index else ""
                             ft_eff = _canon_str(base_idx.at[i, "Fecha Terminado"]) if i in base_idx.index else ""
                             if ft_eff:
@@ -673,7 +651,7 @@ def render(user: dict | None = None):
                                 base_idx.at[i, "Fecha estado actual"] = _canon_str(base_idx.at[i, "Fecha Registro"])
                                 base_idx.at[i, "Hora estado actual"] = _canon_str(base_idx.at[i, "Hora Registro"])
 
-                        # ⬇️ APLICACIÓN DIRECTA POR Id (sin .map, no borra valores)
+                        # Aplicación directa por Id + DEDUP final
                         if changed_ids:
                             cols_apply = [
                                 "Estado","Fecha estado actual","Hora estado actual",
@@ -691,7 +669,9 @@ def render(user: dict | None = None):
                                         val = base_idx.at[i, col]
                                         full_updated.loc[full_updated["Id"].astype(str) == i, col] = val
 
-                        # Persistir en sesión
+                            full_updated = _dedup_keep_last_with_id(full_updated)
+
+                        # Persistir en sesión (lo que leen otras pestañas como Tareas recientes)
                         st.session_state["df_main"] = full_updated.copy()
 
                         # Guardado local
