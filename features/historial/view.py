@@ -33,6 +33,41 @@ def _get_readonly_cols_from_acl(user_row: dict) -> set[str]:
     except Exception:
         return set()
 
+# === Identidad y permisos mínimos (sin tocar tu ACL) ===
+def _me_display_from_acl() -> str:
+    acl = st.session_state.get("acl_user", {}) or {}
+    return (
+        acl.get("display")
+        or st.session_state.get("user_display_name", "")
+        or acl.get("name", "")
+        or (st.session_state.get("user") or {}).get("name", "")
+        or ""
+    ).strip()
+
+def _me_email_from_acl() -> str:
+    acl = st.session_state.get("acl_user", {}) or {}
+    return (acl.get("email") or "").strip().lower()
+
+def _is_full_editor() -> bool:
+    """Devuelve True si el usuario actual es editor completo (Vivi/Enrique por defecto)."""
+    me = _me_display_from_acl()
+    me_email = _me_email_from_acl()
+    # Configurable por secrets (opcional)
+    names = {x.strip() for x in str(st.secrets.get("hist_allowed_editors", "Vivi,Enrique")).split(",") if x.strip()}
+    emails = {x.strip().lower() for x in str(st.secrets.get("hist_allowed_emails", "")).split(",") if x.strip()}
+    acl = st.session_state.get("acl_user", {}) or {}
+    role = (acl.get("role") or "").lower()
+    return (
+        (me in names) or
+        (me_email and me_email in emails) or
+        bool(acl.get("is_admin") or acl.get("is_editor_all") or role in {"admin","owner","manager"})
+    )
+
+def _is_my_row(responsable_val: str) -> bool:
+    """Compara responsable de la fila con mi display name (case-insensitive)."""
+    me = _me_display_from_acl()
+    return str(responsable_val or "").strip().lower() == str(me or "").strip().lower()
+
 # ================== Config base ==================
 TAB_NAME = "Tareas"
 DEFAULT_COLS = [
@@ -204,7 +239,7 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
         keep = alerta_cols[0]
         if keep != "N° alerta":
             df.rename(columns={keep: "N° alerta"}, inplace=True)
-        for c in alerta_cols[1:]            :
+        for c in alerta_cols[1:]:
             df.drop(columns=c, inplace=True, errors="ignore")
 
     # Merge por Id
@@ -680,6 +715,7 @@ def render(user: dict | None = None):
         _LINK_CANON: 120,
     }
 
+    # ⬅️ Aquí el cambio de encabezados visibles con “de”
     header_map = {
         "Detalle": "Detalle de tarea",
         "Fecha Vencimiento": "Fecha límite",
@@ -696,12 +732,15 @@ def render(user: dict | None = None):
     def _normkey(x: str) -> str:
         return re.sub(r'[^a-z0-9]', '', (x or '').lower())
 
-    # Columnas base editables en historial
-    _editable_base = {"Tarea", "Detalle"}
+    can_edit_all = _is_full_editor()
+    # Base editable: todos si eres editor completo; de lo contrario solo Tarea/Detalle
+    if can_edit_all:
+        _editable_base = set(df_grid.columns) - {"Id"}
+    else:
+        _editable_base = {"Tarea", "Detalle"}
 
     for col in df_grid.columns:
         nice = header_map.get(col, col)
-        # editable si está en base y NO está en la lista de solo-lectura del usuario (normalizada)
         col_is_editable = (col in _editable_base) and (_normkey(col) not in _ro_acl) and (_normkey(nice) not in _ro_acl)
         gob.configure_column(
             col,
@@ -914,12 +953,15 @@ def render(user: dict | None = None):
             st.warning(f"No pude generar Excel: {e}")
 
     with b_sync:
-        if st.button("🔄 Sincronizar", use_container_width=True, key="btn_sync_sheet"):
-            try:
-                pull_user_slice_from_sheet(replace_df_main=False)  # merge por Id
-                _save_local(st.session_state["df_main"].copy())
-            except Exception as e:
-                st.warning(f"No se pudo sincronizar: {e}")
+        if _is_full_editor():
+            if st.button("🔄 Sincronizar", use_container_width=True, key="btn_sync_sheet"):
+                try:
+                    pull_user_slice_from_sheet(replace_df_main=False)  # merge por Id
+                    _save_local(st.session_state["df_main"].copy())
+                except Exception as e:
+                    st.warning(f"No se pudo sincronizar: {e}")
+        else:
+            st.empty()
 
     with b_save_local:
         if st.button("💾 Grabar", use_container_width=True):
@@ -939,12 +981,25 @@ def render(user: dict | None = None):
                     # Subconjunto por Id desde la base completa (no solo la vista)
                     base_full = st.session_state.get("df_main", pd.DataFrame()).copy()
                     base_full["Id"] = base_full.get("Id","").astype(str)
-                    df_rows = base_full[base_full["Id"].isin(ids)].copy()
-                    res = _sheet_upsert_by_id(df_rows)
-                    if res.get("ok"):
-                        st.success(res.get("msg","Actualizado."))
+
+                    # 🔐 Si no eres editor completo: solo puedes subir tus propias filas
+                    if not _is_full_editor() and "Responsable" in base_full.columns:
+                        mine_mask = base_full["Responsable"].apply(_is_my_row)
+                        allowed_ids = set(base_full.loc[mine_mask, "Id"].astype(str)) & set(ids)
+                        ignored = set(ids) - allowed_ids
+                        ids = sorted(allowed_ids)
+                        if ignored:
+                            st.info(f"Algunas filas no se subirán por permisos (no son tuyas): {len(ignored)}")
+
+                    if not ids:
+                        st.info("No hay cambios permitidos para subir.")
                     else:
-                        st.warning(res.get("msg","No se pudo actualizar."))
+                        df_rows = base_full[base_full["Id"].isin(ids)].copy()
+                        res = _sheet_upsert_by_id(df_rows)
+                        if res.get("ok"):
+                            st.success(res.get("msg","Actualizado."))
+                        else:
+                            st.warning(res.get("msg","No se pudo actualizar."))
             except Exception as e:
                 st.warning(f"No se pudo subir a Sheets: {e}")
 
