@@ -1,4 +1,3 @@
-# features/historial/view.py
 from __future__ import annotations
 
 import os, re
@@ -618,4 +617,324 @@ def render(user: dict | None = None):
         has_fv = ~fv_n.isna(); has_ft = ~ft_n.isna()
         delivered_on_time = has_fv & has_ft & (ft_n <= fv_n)
         delivered_late    = has_fv & has_ft & (ft_n >  fv_n)
-        days_left = (fv_n - today_ts)
+        days_left = (fv_n - today_ts).dt.days
+        no_delivered = has_fv & (~has_ft) & (days_left < 0)
+        risk         = has_fv & (~has_ft) & (days_left >= 1) & (days_left <= 2)
+
+        out = pd.Series("", index=df_grid.index, dtype="object")
+        out[delivered_on_time] = "✅ Entregado a tiempo"
+        out[delivered_late]    = "⏰ Entregado fuera de tiempo"
+        out[no_delivered]      = "❌ No entregado"
+        out[risk]              = "⚠️ En riesgo de retrasos"
+        df_grid["Cumplimiento"] = out
+
+    # ======= Snapshot / Detección de cambios =======
+    editable_cols = set()
+
+    gob = GridOptionsBuilder.from_dataframe(df_grid)
+    gob.configure_default_column(
+        resizable=True, editable=False, filter=False, floatingFilter=False,
+        sortable=False, suppressMenu=True, wrapText=False, autoHeight=False,
+        cellStyle={"white-space":"nowrap","overflow":"hidden","textOverflow":"ellipsis"}
+    )
+
+    width_map = {
+        "Id": 90, "Área": 140, "Fase": 180, "Responsable": 220,
+        "Tarea": 280, "Detalle": 360, "Detalle de tarea": 360,
+        "Tipo": 140, "Ciclo de mejora": 150, "Complejidad": 140, "Prioridad": 130,
+        "Estado": 150, "Duración": 120,
+        "Fecha Registro": 150, "Hora Registro": 130,
+        "Fecha inicio": 150, "Hora de inicio": 130,
+        "Fecha Vencimiento": 150, "Hora Vencimiento": 130,
+        "Fecha Terminado": 150, "Hora Terminado": 130,
+        "¿Generó alerta?": 160, "N° alerta": 130,
+        "Fecha de detección": 170, "Hora de detección": 150,
+        "¿Se corrigió?": 140, "Fecha de corrección": 170, "Hora de corrección": 150,
+        "Cumplimiento": 200, "Evaluación": 150, "Calificación": 140,
+        "Fecha Pausado": 150, "Hora Pausado": 130,
+        "Fecha Cancelado": 150, "Hora Cancelado": 130,
+        "Fecha Eliminado": 150, "Hora Eliminado": 130,
+        "Link de descarga": 260,
+        _LINK_CANON: 120,
+    }
+
+    header_map = {
+        "Detalle": "Detalle de tarea",
+        "Fecha Vencimiento": "Fecha límite",
+        "Hora Vencimiento": "Hora límite",
+        "Fecha inicio": "Fecha de inicio",
+        "Hora de inicio": "Hora de inicio",
+        "Fecha Registro": "Fecha de registro",
+        "Hora Registro": "Hora de registro",
+    }
+
+    _acl_user = st.session_state.get("acl_user", {}) or {}
+    _ro_acl = {re.sub(r'[^a-z0-9]', '', x.lower()) for x in _get_readonly_cols_from_acl(_acl_user)}
+    def _normkey(x: str) -> str:
+        return re.sub(r'[^a-z0-9]', '', (x or '').lower())
+
+    super_editor = _is_super_editor()
+    _editable_base = set(df_grid.columns) - {"Id", "Link de descarga", _LINK_CANON} if super_editor else {"Tarea", "Detalle"}
+
+    for col in df_grid.columns:
+        nice = header_map.get(col, col)
+        if super_editor:
+            col_is_editable = (col in _editable_base)
+        else:
+            col_is_editable = (col in _editable_base) and (_normkey(col) not in _ro_acl) and (_normkey(nice) not in _ro_acl)
+        if col_is_editable:
+            editable_cols.add(col)
+        gob.configure_column(
+            col,
+            headerName=nice,
+            minWidth=width_map.get(nice, width_map.get(col, 120)),
+            editable=col_is_editable,
+            suppressMenu=True,
+            filter=False, floatingFilter=False, sortable=False
+        )
+
+    gob.configure_column(_LINK_CANON, hide=True)
+
+    date_only_fmt = JsCode(r"""
+    function(p){
+      const v = p.value;
+      if(v===null || v===undefined) return '—';
+      const s = String(v).trim();
+      if(!s || ['nan','nat','null'].includes(s.toLowerCase())) return '—';
+      let y,m,d;
+      const m1 = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if(m1){ y=+m1[1]; m=+m1[2]; d=+m1[3]; }
+      if(!y && /^\d{12,13}$/.test(s)){
+        const dt = new Date(Number(s));
+        if(!isNaN(dt)){ y=dt.getFullYear(); m=dt.getMonth()+1; d=dt.getDate(); }
+      }
+      if(!y){
+        const dt = new Date(s);
+        if(!isNaN(dt)){ y=dt.getFullYear(); m=dt.getMonth()+1; d=dt.getDate(); }
+      }
+      if(!y) return s.split(' ')[0];
+      return String(d).padStart(2,'0') + '/' + String(m).padStart(2,'0') + '/' + y;
+    }""")
+    for col in ["Fecha Registro","Fecha inicio","Fecha Vencimiento","Fecha Terminado",
+                "Fecha Pausado","Fecha Cancelado","Fecha Eliminado",
+                "Fecha de detección","Fecha de corrección"]:
+        if col in df_grid.columns:
+            gob.configure_column(col, valueFormatter=date_only_fmt)
+
+    link_value_getter = JsCode(r"""
+    function(p){
+      const text = String((p && p.data && p.data['Link de archivo']) || '').trim();
+      if(!text) return '';
+      const m = text.match(/https?:\/\/\S+/i);
+      return m ? m[0].replace(/[),.]+$/, '') : '';
+    }""")
+    link_renderer = JsCode(r"""
+    class LinkRenderer{
+      init(params){
+        const url = (params && params.value) ? String(params.value) : '';
+        this.eGui = document.createElement('a');
+        if(url){
+          this.eGui.href = encodeURI(url);
+          this.eGui.target = '_blank';
+          this.eGui.rel='noopener';
+          this.eGui.textContent = url;
+          this.eGui.style.textDecoration='underline';
+        }else{
+          this.eGui.textContent = '—';
+          this.eGui.style.opacity='0.8';
+        }
+      }
+      getGui(){ return this.eGui; }
+      refresh(){ return false; }
+    }""")
+    gob.configure_column("Link de descarga",
+                         valueGetter=link_value_getter,
+                         cellRenderer=link_renderer,
+                         tooltipField="Link de descarga",
+                         minWidth=width_map["Link de descarga"],
+                         flex=1)
+
+    cumplimiento_style = JsCode(r"""
+    function(p){
+      const v = (p.value || '').toLowerCase();
+      if(!v) return {};
+      if(v.includes('a tiempo')){
+        return {backgroundColor:'#DCFCE7', color:'#065F46', fontWeight:'600',
+                borderRadius:'12px', padding:'4px 8px', textAlign:'center'};
+      }
+      if(v.includes('fuera de tiempo')){
+        return {backgroundColor:'#FFE4E6', color:'#9F1239', fontWeight:'600',
+                borderRadius:'12px', padding:'4px 8px', textAlign:'center'};
+      }
+      if(v.includes('no entregado')){
+        return {backgroundColor:'#FEE2E2', color:'#7F1D1D', fontWeight:'600',
+                borderRadius:'12px', padding:'4px 8px', textAlign:'center'};
+      }
+      if(v.includes('riesgo')){
+        return {backgroundColor:'#FEF9C3', color:'#92400E', fontWeight:'600',
+                borderRadius:'12px', padding:'4px 8px', textAlign:'center'};
+      }
+      return {};
+    }""")
+    gob.configure_column("Cumplimiento", cellStyle=cumplimiento_style)
+
+    gob.configure_column("Fecha inicio", filter=False, floatingFilter=False, sortable=False, suppressMenu=True)
+
+    gob.configure_grid_options(
+        domLayout="normal",
+        rowHeight=34,
+        headerHeight=64,
+        enableRangeSelection=True,
+        enableCellTextSelection=True,
+        singleClickEdit=True,
+        stopEditingWhenCellsLoseFocus=True,
+        undoRedoCellEditing=False,
+        ensureDomOrder=True,
+        suppressMovableColumns=False,
+        suppressHeaderVirtualisation=True,
+    )
+
+    grid_opts = gob.build()
+    grid_opts["rememberSelection"] = True
+    grid_opts["floatingFilter"] = False
+
+    grid_resp = AgGrid(
+        df_grid,
+        key="grid_historial",
+        gridOptions=grid_opts,
+        theme="balham",
+        height=500,
+        fit_columns_on_grid_load=False,
+        data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+        update_mode=(GridUpdateMode.MODEL_CHANGED
+                     | GridUpdateMode.FILTERING_CHANGED
+                     | GridUpdateMode.SORTING_CHANGED
+                     | GridUpdateMode.VALUE_CHANGED),
+        allow_unsafe_jscode=True,
+    )
+
+    # === NUEVO: preparar snap_cols SIN pisar snapshot previo ===
+    try:
+        snap_cols = st.session_state.get("_hist_cols")
+        if not snap_cols:
+            snap_cols = ["Id"] + sorted([c for c in editable_cols if c in df_grid.columns])
+            if not snap_cols or snap_cols == ["Id"]:
+                snap_cols = ["Id","Tarea","Detalle"]
+            st.session_state["_hist_cols"] = snap_cols
+    except Exception:
+        snap_cols = ["Id","Tarea","Detalle"]
+        st.session_state["_hist_cols"] = snap_cols
+
+    prev = st.session_state.get("_hist_prev")  # <-- usamos snapshot previo
+
+    # ===== Detectar cambios y persistir local =====
+    try:
+        edited = grid_resp["data"]
+        new_df = None
+        if isinstance(edited, list):
+            new_df = pd.DataFrame(edited)
+        elif hasattr(grid_resp, "data"):
+            new_df = pd.DataFrame(grid_resp.data)
+
+        changed_ids = set()
+        try:
+            cols_to_cmp = [c for c in snap_cols if c != "Id"]
+            if isinstance(prev, pd.DataFrame) and new_df is not None and cols_to_cmp:
+                a = prev.reindex(columns=snap_cols).copy()
+                b = new_df.reindex(columns=snap_cols).copy()
+                a["Id"] = a["Id"].astype(str); b["Id"] = b["Id"].astype(str)
+                prev_map = a.set_index("Id"); curr_map = b.set_index("Id")
+                common = prev_map.index.intersection(curr_map.index)
+                if len(common):
+                    dif_mask = (prev_map.loc[common, cols_to_cmp].fillna("").astype(str)
+                                .ne(curr_map.loc[common, cols_to_cmp].fillna("").astype(str))).any(axis=1)
+                    changed_ids.update(common[dif_mask].tolist())
+                new_only = [iid for iid in curr_map.index if iid not in prev_map.index and iid]
+                changed_ids.update(new_only)
+            elif new_df is not None:
+                # primera corrida sin snapshot previo → no marcamos cambios todavía
+                pass
+        except Exception:
+            pass
+        st.session_state["_hist_changed_ids"] = sorted(changed_ids)
+
+        # Merge edición en df_main y guarda local
+        if new_df is not None:
+            base = st.session_state.get("df_main", pd.DataFrame()).copy()
+            base = _canonicalize_link_column(base); new_df = _canonicalize_link_column(new_df)
+            if ("Id" in base.columns) and ("Id" in new_df.columns):
+                base["Id"] = base["Id"].astype(str); new_df["Id"] = new_df["Id"].astype(str)
+                base_idx = base.set_index("Id"); new_idx  = new_df.set_index("Id")
+                cols_to_update = [c for c in new_idx.columns if c in base_idx.columns]
+                base_idx.update(new_idx[cols_to_update])
+                st.session_state["df_main"] = base_idx.reset_index()
+            else:
+                st.session_state["df_main"] = new_df
+            try: _save_local(st.session_state["df_main"].copy())
+            except Exception: pass
+
+            # 🔑 IMPORTANTE: actualizar snapshot DESPUÉS de comparar
+            try:
+                st.session_state["_hist_prev"] = new_df.reindex(columns=snap_cols).copy()
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    # ===== Botonera =====
+    st.markdown('<div style="padding:0 16px; border-top:2px solid #EF4444">', unsafe_allow_html=True)
+    _sp, b_xlsx, b_sync, b_save_local, b_save_sheets = st.columns([4.9, 1.6, 1.4, 1.4, 2.2], gap="medium")
+
+    with b_xlsx:
+        try:
+            base = st.session_state["df_main"].copy()
+            for c in ["__SEL__","__DEL__","¿Eliminar?"]:
+                if c in base.columns:
+                    base.drop(columns=[c], inplace=True, errors="ignore")
+            xlsx_b = export_excel(base, sheet_name=TAB_NAME)
+            st.download_button(
+                "⬇️ Exportar Excel",
+                data=xlsx_b,
+                file_name="tareas.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
+        except Exception as e:
+            st.warning(f"No pude generar Excel: {e}")
+
+    with b_sync:
+        if _is_super_editor():
+            if st.button("🔄 Sincronizar", use_container_width=True, key="btn_sync_sheet"):
+                try:
+                    pull_user_slice_from_sheet(replace_df_main=False)
+                    _save_local(st.session_state["df_main"].copy())
+                except Exception as e:
+                    st.warning(f"No se pudo sincronizar: {e}")
+
+    with b_save_local:
+        if st.button("💾 Grabar", use_container_width=True):
+            try:
+                _save_local(st.session_state["df_main"].copy())
+                st.success("Datos grabados en data/tareas.csv.")
+            except Exception as e:
+                st.warning(f"No se pudo grabar localmente: {e}")
+
+    with b_save_sheets:
+        if st.button("📤 Subir a Sheets", use_container_width=True):
+            try:
+                ids = st.session_state.get("_hist_changed_ids", [])
+                if not ids:
+                    st.info("No hay cambios detectados en la grilla para enviar.")
+                else:
+                    base_full = st.session_state.get("df_main", pd.DataFrame()).copy()
+                    base_full["Id"] = base_full.get("Id","").astype(str)
+                    df_rows = base_full[base_full["Id"].isin(ids)].copy()
+                    res = _sheet_upsert_by_id(df_rows)
+                    if res.get("ok"):
+                        st.success(res.get("msg","Actualizado."))
+                    else:
+                        st.warning(res.get("msg","No se pudo actualizar."))
+            except Exception as e:
+                st.warning(f"No se pudo subir a Sheets: {e}")
+
+    st.markdown('</div>', unsafe_allow_html=True)
