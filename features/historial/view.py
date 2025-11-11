@@ -414,7 +414,8 @@ def render(user: dict | None = None):
       .hist-hint + div[data-testid="stTextInput"]{ display:none !important; }
       .hist-hint + div:has(> div[data-testid="stTextInput"]){ display:none !important; }
       .hist-hint + div:has(input[type="text"]){ display:none !important; }
-      .hist-search .stButton>button{ margin-top:8px; }
+      /* Alinea el botón con los controles en la misma fila */
+      .hist-search .stButton>button{ margin-top:28px; }
       .ag-theme-balham .ag-cell{ white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
       .ag-theme-balham .ag-header-cell-label{ white-space: nowrap !important; line-height: 1.1 !important; overflow: visible !important; text-overflow: clip !important; }
       .ag-theme-balham .ag-header .ag-icon, .ag-theme-balham .ag-header-cell .ag-icon, .ag-theme-balham .ag-header-cell-menu-button, .ag-theme-balham .ag-floating-filter, .ag-theme-balham .ag-header-row.ag-header-row-column-filter { display: none !important; }
@@ -484,34 +485,55 @@ def render(user: dict | None = None):
         _min_date = _max_date = date.today()
 
     with st.container():
-        c1, c2, c3, c4, c5, c6 = st.columns([1.05, 1.10, 1.70, 1.05, 1.05, 0.90], gap="medium")
-        with c1:
-            area_sel = st.selectbox(
-                "Área",
-                options=["Todas"] + st.session_state.get("AREAS_OPC",
-                    ["Jefatura","Gestión","Metodología","Base de datos","Monitoreo","Capacitación","Consistencia"]),
-                index=0, key="hist_area"
-            )
+        # Catálogos para selects
         fases_all = sorted([x for x in df_scope.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x!="nan"])
-        with c2:
-            fase_sel = st.selectbox("Fase", options=["Todas"]+fases_all, index=0, key="hist_fase")
+        tipos_all = sorted([x for x in df_scope.get("Tipo", pd.Series([], dtype=str)).astype(str).unique() if x and x!="nan"])
 
-        df_resp_src = df_scope.copy()
-        if area_sel!="Todas": df_resp_src = df_resp_src[df_resp_src.get("Área","").astype(str)==area_sel]
-        if fase_sel!="Todas" and "Fase" in df_resp_src.columns:
-            df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str)==fase_sel]
-        responsables = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x!="nan"])
-        with c3:
-            resp_multi = st.multiselect("Responsable", options=responsables, default=[], key="hist_resp",
-                                        placeholder="Selecciona responsable(s)")
-        with c4:
-            f_desde = st.date_input("Desde (Fecha de registro)", value=_min_date, key="hist_desde")
-        with c5:
-            f_hasta = st.date_input("Hasta (Fecha de registro)", value=_max_date, key="hist_hasta")
-        with c6:
-            st.markdown('<div class="hist-search">', unsafe_allow_html=True)
-            hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
-            st.markdown('</div>', unsafe_allow_html=True)
+        if super_editor:
+            # ===== Vista Vivi/Enrique (completa) =====
+            c1, c2, c3, c4, c5, c6 = st.columns([1.05, 1.10, 1.70, 1.05, 1.05, 0.90], gap="medium")
+            with c1:
+                area_sel = st.selectbox(
+                    "Área",
+                    options=["Todas"] + st.session_state.get("AREAS_OPC",
+                        ["Jefatura","Gestión","Metodología","Base de datos","Monitoreo","Capacitación","Consistencia"]),
+                    index=0, key="hist_area"
+                )
+            with c2:
+                fase_sel = st.selectbox("Fase", options=["Todas"]+fases_all, index=0, key="hist_fase")
+
+            df_resp_src = df_scope.copy()
+            if area_sel!="Todas": df_resp_src = df_resp_src[df_resp_src.get("Área","").astype(str)==area_sel]
+            if fase_sel!="Todas" and "Fase" in df_resp_src.columns:
+                df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str)==fase_sel]
+            responsables = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x!="nan"])
+            with c3:
+                resp_multi = st.multiselect("Responsable", options=responsables, default=[], key="hist_resp",
+                                            placeholder="Selecciona responsable(s)")
+            with c4:
+                f_desde = st.date_input("Desde (Fecha de registro)", value=_min_date, key="hist_desde")
+            with c5:
+                f_hasta = st.date_input("Hasta (Fecha de registro)", value=_max_date, key="hist_hasta")
+            with c6:
+                st.markdown('<div class="hist-search">', unsafe_allow_html=True)
+                hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
+                st.markdown('</div>', unsafe_allow_html=True)
+        else:
+            # ===== Vista resto de usuarios (solo Fase, Tipo, fechas y Buscar) =====
+            c1, c2, c3, c4, c5 = st.columns([1.10, 1.30, 1.05, 1.05, 0.90], gap="medium")
+            with c1:
+                fase_sel = st.selectbox("Fase", options=["Todas"]+fases_all, index=0, key="hist_fase")
+            with c2:
+                tipo_sel = st.selectbox("Tipo de tarea", options=["Todos"]+tipos_all, index=0, key="hist_tipo")
+            with c3:
+                f_desde = st.date_input("Desde (Fecha de registro)", value=_min_date, key="hist_desde")
+            with c4:
+                f_hasta = st.date_input("Hasta (Fecha de registro)", value=_max_date, key="hist_hasta")
+            with c5:
+                st.markdown('<div class="hist-search">', unsafe_allow_html=True)
+                hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
+                st.markdown('</div>', unsafe_allow_html=True)
+
     st.markdown('</div>', unsafe_allow_html=True)
 
     show_deleted = st.toggle("Mostrar eliminadas (tachadas)", value=True, key="hist_show_deleted")
@@ -526,12 +548,22 @@ def render(user: dict | None = None):
         df_view["Fecha inicio"] = to_naive_local_series(df_view["Fecha inicio"])
 
     if hist_do_buscar:
-        if area_sel!="Todas":
-            df_view = df_view[df_view.get("Área","").astype(str)==area_sel]
+        # Fase (común)
         if fase_sel!="Todas" and "Fase" in df_view.columns:
             df_view = df_view[df_view["Fase"].astype(str)==fase_sel]
-        if resp_multi:
-            df_view = df_view[df_view["Responsable"].astype(str).isin(resp_multi)]
+
+        if super_editor:
+            # Área y Responsable solo para Vivi/Enrique
+            if 'area_sel' in locals() and area_sel!="Todas":
+                df_view = df_view[df_view.get("Área","").astype(str)==area_sel]
+            if 'resp_multi' in locals() and resp_multi:
+                df_view = df_view[df_view["Responsable"].astype(str).isin(resp_multi)]
+        else:
+            # Tipo de tarea solo para el resto
+            if 'tipo_sel' in locals() and tipo_sel!="Todos" and "Tipo" in df_view.columns:
+                df_view = df_view[df_view["Tipo"].astype(str)==tipo_sel]
+
+        # Fechas (común)
         if f_desde is not None and "Fecha Registro" in df_view.columns:
             df_view = df_view[df_view["Fecha Registro"].dt.date >= f_desde]
         if f_hasta is not None and "Fecha Registro" in df_view.columns:
@@ -913,7 +945,7 @@ def render(user: dict | None = None):
             if ("Id" in base.columns) and ("Id" in new_df.columns):
                 base["Id"] = base["Id"].astype(str); new_df["Id"] = new_df["Id"].astype(str)
                 base_idx = base.set_index("Id"); new_idx  = new_df.set_index("Id")
-                cols_to_update = [c for c in new_idx.columns if c in base_idx.columns]
+                cols_to_update = [c for c in new_idx.columns si en base_idx.columns]
                 base_idx.update(new_idx[cols_to_update])
                 st.session_state["df_main"] = base_idx.reset_index()
             else:
