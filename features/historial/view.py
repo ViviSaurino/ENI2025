@@ -70,6 +70,9 @@ DEFAULT_COLS = [
     "Archivo"
 ]
 
+# ⬇️ NUEVO: intervalo de auto-pull configurable (segundos)
+PULL_INTERVAL_SECS = int(st.secrets.get("hist_pull_secs", 30))
+
 # ====== TZ helpers ======
 try:
     from zoneinfo import ZoneInfo
@@ -431,9 +434,10 @@ def render(user: dict | None = None):
         try: _save_local(st.session_state["df_main"].copy())
         except Exception: pass
 
-    # === Auto-sync pull (debounce 60s) ===
+    # === Auto-sync pull (debounce configurable) ===
     try:
-        if (time.time() - st.session_state.get("_last_pull_hist", 0)) > 60:
+        last = float(st.session_state.get("_last_pull_hist", 0) or 0)
+        if (time.time() - last) > PULL_INTERVAL_SECS:
             pull_user_slice_from_sheet(replace_df_main=False)
             st.session_state["_last_pull_hist"] = time.time()
     except Exception:
@@ -965,20 +969,51 @@ def render(user: dict | None = None):
                 st.warning(f"No se pudo grabar localmente: {e}")
 
     with b_save_sheets:
-        if _is_super_editor():
-            if st.button("📤 Subir a Sheets", use_container_width=True):
-                try:
-                    pend_ids  = st.session_state.get("_hist_changed_ids", []) or []
-                    pend_diff = st.session_state.get("_hist_cell_diff", {}) or {}
-                    new_ids   = set(st.session_state.get("_hist_new_ids", []) or [])
+        # ⬇️ NUEVO: botón habilitado para todos con reglas por rol
+        if st.button("📤 Subir a Sheets", use_container_width=True):
+            try:
+                pend_ids  = set(st.session_state.get("_hist_changed_ids", []) or [])
+                pend_diff = dict(st.session_state.get("_hist_cell_diff", {}) or {})
+                new_ids   = set(st.session_state.get("_hist_new_ids", []) or [])
 
-                    ids_to_push = set(pend_ids) | set(new_ids)
-                    if not ids_to_push:
-                        st.info("No hay cambios detectados en la grilla para enviar.")
+                ids_to_push = set(pend_ids) | set(new_ids)
+                if not ids_to_push:
+                    st.info("No hay cambios detectados en la grilla para enviar.")
+                else:
+                    base_full = st.session_state.get("df_main", pd.DataFrame()).copy()
+                    if base_full.empty or "Id" not in base_full.columns:
+                        st.warning("No hay base para subir.")
                     else:
-                        base_full = st.session_state.get("df_main", pd.DataFrame()).copy()
                         base_full["Id"] = base_full.get("Id","").astype(str)
-                        df_rows = base_full[base_full["Id"].isin(ids_to_push)].copy()
+
+                        if not _is_super_editor():
+                            # Solo sus propias filas (por Responsable contiene su nombre)
+                            me = _display_name().strip()
+                            if "Responsable" in base_full.columns and me:
+                                mask_mias = base_full["Responsable"].astype(str).str.contains(me, case=False, na=False)
+                                base_full = base_full[mask_mias]
+
+                            # Limitar a columnas permitidas
+                            ALLOWED_USER_COLS = {"Tarea", "Detalle", "Detalle de tarea"}
+                            filtered_cell_diff = {}
+                            for rid, cols in pend_diff.items():
+                                keep = {c for c in set(cols) if c in ALLOWED_USER_COLS}
+                                if keep:
+                                    filtered_cell_diff[str(rid)] = keep
+                            pend_diff = filtered_cell_diff
+
+                            # Limitar ids a los que realmente tienen difs permitidos y existen en su base filtrada
+                            ids_in_base = set(base_full["Id"].astype(str))
+                            pend_ids = {rid for rid in pend_ids if (rid in ids_in_base and rid in pend_diff)}
+                            new_ids  = {rid for rid in new_ids  if rid in ids_in_base}
+                            ids_to_push = set(pend_ids) | set(new_ids)
+
+                            if not ids_to_push:
+                                st.info("No hay cambios permitidos para subir (solo ‘Tarea’ y ‘Detalle’ de tus tareas).")
+                                st.stop()
+
+                        # Subconjunto a subir
+                        df_rows = base_full[base_full["Id"].astype(str).isin(ids_to_push)].copy()
 
                         res = _sheet_upsert_by_id_partial(
                             df_rows,
@@ -991,12 +1026,18 @@ def render(user: dict | None = None):
                             st.session_state["_hist_changed_ids"] = []
                             st.session_state["_hist_cell_diff"]  = {}
                             st.session_state["_hist_new_ids"]    = []
+
+                            # ⬇️ NUEVO: refresco inmediato desde Sheets + rerun
+                            try:
+                                st.session_state["_last_pull_hist"] = 0  # forzar próximo pull
+                                pull_user_slice_from_sheet(replace_df_main=False)
+                                _save_local(st.session_state["df_main"].copy())
+                                st.rerun()
+                            except Exception as e:
+                                st.info(f"Actualizado. No pude refrescar desde Sheets: {e}")
                         else:
                             st.warning(res.get("msg","No se pudo actualizar."))
-                except Exception as e:
-                    st.warning(f"No se pudo subir a Sheets: {e}")
-        else:
-            st.button("📤 Subir a Sheets", use_container_width=True, disabled=True)
-            st.caption("Solo Vivi y Enrique pueden subir cambios a Sheets.")
+            except Exception as e:
+                st.warning(f"No se pudo subir a Sheets: {e}")
 
     st.markdown('</div>', unsafe_allow_html=True)
