@@ -843,7 +843,7 @@ def render(user: dict | None = None):
         allow_unsafe_jscode=True,
     )
 
-    # === TRACKING de cambios (incluye Id para detectar nuevos)
+    # === TRACKING de cambios (incluye Id para detectar nuevos) — ACUMULATIVO ===
     base_cols = list(st.session_state.get("df_main", pd.DataFrame()).columns) or list(df_grid.columns)
     persist_cols = [c for c in df_grid.columns if c in base_cols]
     snap_cols = persist_cols  # incluye Id
@@ -855,28 +855,25 @@ def render(user: dict | None = None):
         edited = grid_resp["data"]
         new_df = pd.DataFrame(edited) if isinstance(edited, list) else pd.DataFrame(grid_resp.data)
 
-        changed_ids = set()
-        cell_diff: dict[str, set[str]] = {}
-        new_only_ids = set()
+        # === 1) Deltas de esta corrida ===
+        changed_ids_run = set()
+        cell_diff_run: dict[str, set[str]] = {}
+        new_only_ids_run = set()
 
         if isinstance(prev, pd.DataFrame) and new_df is not None:
             a = prev.reindex(columns=snap_cols).copy()
             b = new_df.reindex(columns=snap_cols).copy()
-            if "Id" not in a.columns and "Id" in b.columns:
-                a["Id"] = ""
-            if "Id" not in b.columns and "Id" in a.columns:
-                b["Id"] = ""
+            if "Id" not in a.columns and "Id" in b.columns: a["Id"] = ""
+            if "Id" not in b.columns and "Id" in a.columns: b["Id"] = ""
             a["Id"] = a["Id"].astype(str); b["Id"] = b["Id"].astype(str)
             prev_map = a.set_index("Id", drop=False)
             curr_map = b.set_index("Id", drop=False)
 
-            # Detectar filas nuevas (Id nuevo o antes vacío)
+            # Filas nuevas
             for iid, row in curr_map.iterrows():
-                if not iid or iid == "nan":
-                    continue
-                if iid not in prev_map.index:
-                    new_only_ids.add(iid)
-                    changed_ids.add(iid)
+                if iid and iid != "nan" and iid not in prev_map.index:
+                    new_only_ids_run.add(iid)
+                    changed_ids_run.add(iid)
 
             common_ids = prev_map.index.intersection(curr_map.index)
             cols_to_cmp = [c for c in snap_cols if c != "Id"]
@@ -885,21 +882,27 @@ def render(user: dict | None = None):
                 curr_block = curr_map.loc[common_ids, cols_to_cmp].fillna("").astype(str)
                 neq = prev_block.ne(curr_block)
                 changed_any = neq.any(axis=1)
-                changed_ids.update(common_ids[changed_any].tolist())
+                changed_ids_run.update(common_ids[changed_any].tolist())
                 for rid in common_ids[changed_any]:
                     diff_cols = set(neq.columns[neq.loc[rid]].tolist())
                     if diff_cols:
-                        cell_diff[str(rid)] = diff_cols
-        else:
-            # Primera corrida: grabar snapshot inicial
-            if new_df is not None:
-                st.session_state["_hist_prev"] = new_df.reindex(columns=snap_cols).copy()
+                        cell_diff_run[str(rid)] = diff_cols
 
-        st.session_state["_hist_changed_ids"] = sorted(changed_ids)
-        st.session_state["_hist_cell_diff"] = cell_diff
-        st.session_state["_hist_new_ids"] = sorted(new_only_ids)
+        # === 2) Acumular pendientes a través de reruns ===
+        pend_ids  = set(st.session_state.get("_hist_changed_ids", []) or [])
+        pend_diff = {k: set(v) for k, v in (st.session_state.get("_hist_cell_diff", {}) or {}).items()}
+        pend_new  = set(st.session_state.get("_hist_new_ids", []) or [])
 
-        # Merge edición en df_main y guarda local
+        pend_ids |= changed_ids_run
+        pend_new |= new_only_ids_run
+        for rid, cols in cell_diff_run.items():
+            pend_diff[rid] = (pend_diff.get(rid, set())) | set(cols)
+
+        st.session_state["_hist_changed_ids"] = sorted(pend_ids)
+        st.session_state["_hist_cell_diff"]  = {k: sorted(v) for k, v in pend_diff.items()}
+        st.session_state["_hist_new_ids"]    = sorted(pend_new)
+
+        # === Persistir edición en df_main y snapshot ===
         if new_df is not None:
             base = st.session_state.get("df_main", pd.DataFrame()).copy()
             base = _canonicalize_link_column(base); new_df = _canonicalize_link_column(new_df)
@@ -914,7 +917,7 @@ def render(user: dict | None = None):
             try: _save_local(st.session_state["df_main"].copy())
             except Exception: pass
 
-            # Actualizar snapshot
+            # Snapshot (los pendientes ya quedaron guardados)
             try:
                 st.session_state["_hist_prev"] = new_df.reindex(columns=snap_cols).copy()
             except Exception:
@@ -965,18 +968,29 @@ def render(user: dict | None = None):
         if _is_super_editor():
             if st.button("📤 Subir a Sheets", use_container_width=True):
                 try:
-                    ids = st.session_state.get("_hist_changed_ids", [])
-                    if not ids:
+                    pend_ids  = st.session_state.get("_hist_changed_ids", []) or []
+                    pend_diff = st.session_state.get("_hist_cell_diff", {}) or {}
+                    new_ids   = set(st.session_state.get("_hist_new_ids", []) or [])
+
+                    ids_to_push = set(pend_ids) | set(new_ids)
+                    if not ids_to_push:
                         st.info("No hay cambios detectados en la grilla para enviar.")
                     else:
                         base_full = st.session_state.get("df_main", pd.DataFrame()).copy()
                         base_full["Id"] = base_full.get("Id","").astype(str)
-                        df_rows = base_full[base_full["Id"].isin(ids)].copy()
-                        cell_diff = st.session_state.get("_hist_cell_diff", {}) or {}
-                        new_ids = set(st.session_state.get("_hist_new_ids", []) or [])
-                        res = _sheet_upsert_by_id_partial(df_rows, cell_diff_map=cell_diff, new_ids=new_ids)
+                        df_rows = base_full[base_full["Id"].isin(ids_to_push)].copy()
+
+                        res = _sheet_upsert_by_id_partial(
+                            df_rows,
+                            cell_diff_map=pend_diff,
+                            new_ids=new_ids
+                        )
                         if res.get("ok"):
                             st.success(res.get("msg","Actualizado."))
+                            # ✅ limpiar pendientes SOLO si subió bien
+                            st.session_state["_hist_changed_ids"] = []
+                            st.session_state["_hist_cell_diff"]  = {}
+                            st.session_state["_hist_new_ids"]    = []
                         else:
                             st.warning(res.get("msg","No se pudo actualizar."))
                 except Exception as e:
