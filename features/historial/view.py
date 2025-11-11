@@ -273,12 +273,14 @@ def _sheet_upsert_by_id(df_rows: pd.DataFrame) -> dict:
     Actualiza o inserta filas por Id en la pestaña configurada (sin borrar nada).
     df_rows: subconjunto con las filas a upsert (debe incluir 'Id').
 
-    🔄 Ajuste solicitado: usa utils.gsheets.upsert_rows_by_id si está disponible.
+    Comportamiento:
+    1) Intenta utils.gsheets.upsert_rows_by_id (si existe).
+    2) Si el helper falla o no retorna ok, cae a fallback local con gspread.
     """
     if df_rows is None or df_rows.empty or "Id" not in df_rows.columns:
         return {"ok": False, "msg": "No hay filas con Id para actualizar."}
 
-    # ⇨ Preferir helper centralizado
+    # ===== 1) Helper centralizado (si existe) =====
     if upsert_rows_by_id is not None:
         try:
             ss_url = (st.secrets.get("gsheets_doc_url")
@@ -286,16 +288,30 @@ def _sheet_upsert_by_id(df_rows: pd.DataFrame) -> dict:
                       or (st.secrets.get("sheets",{}) or {}).get("sheet_url"))
             ws_name = (st.secrets.get("gsheets",{}) or {}).get("worksheet","TareasRecientes")
             ids = df_rows["Id"].astype(str).tolist()
-            return upsert_rows_by_id(ss_url=ss_url, ws_name=ws_name, df=df_rows, ids=ids)
-        except Exception as e:
-            return {"ok": False, "msg": f"Upsert falló: {e}"}
 
-    # ⇨ Fallback local (por si no se pudo importar utils.gsheets)
+            res = upsert_rows_by_id(ss_url=ss_url, ws_name=ws_name, df=df_rows, ids=ids)
+
+            # Normaliza posibles formatos de retorno
+            if isinstance(res, dict):
+                if res.get("ok"):
+                    return res
+                # si vino dict pero sin ok True, continuamos a fallback
+            elif isinstance(res, tuple) and len(res) >= 1:
+                if bool(res[0]):  # (True, "msg")
+                    return {"ok": True, "msg": res[1] if len(res) > 1 else "Actualizado."}
+            # si llegó aquí, hacemos fallback
+        except Exception as e:
+            # Detecta el error de payload inválido y cualquier otro → fallback
+            _err = str(e)
+            if st.session_state.get("_debug_hist_upsert"):
+                st.info(f"Helper upsert_rows_by_id falló, usando fallback. Detalle: {_err}")
+            # no hacemos return: seguimos al fallback
+
+    # ===== 2) Fallback local con gspread =====
     ss, ws_name = _gsheets_client()
     try:
         ws = ss.worksheet(ws_name)
     except Exception:
-        # Crea hoja si no existe
         rows = str(max(1000, len(df_rows) + 10))
         cols = str(max(26, len(df_rows.columns) + 5))
         ws = ss.add_worksheet(title=ws_name, rows=rows, cols=cols)
@@ -324,8 +340,7 @@ def _sheet_upsert_by_id(df_rows: pd.DataFrame) -> dict:
             id_to_row[str(v).strip()] = i
 
     last_col_letter = _a1_col(len(headers))
-    updates = []
-    appends = []
+    updates, appends = [], []
 
     df_rows = df_rows.copy()
     df_rows["Id"] = df_rows["Id"].astype(str)
@@ -349,7 +364,7 @@ def _sheet_upsert_by_id(df_rows: pd.DataFrame) -> dict:
         ws.append_rows(appends, value_input_option="USER_ENTERED")
 
     total = len(updates) + len(appends)
-    return {"ok": True, "msg": f"Upsert completado (fallback): {total} fila(s) actualizada(s)/insertada(s)."}
+    return {"ok": True, "msg": f"Upsert completado: {total} fila(s) actualizada(s)/insertada(s) (fallback)."}
 
 # ===== Exportación =====
 def export_excel(df: pd.DataFrame, sheet_name: str = TAB_NAME) -> bytes:
