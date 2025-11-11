@@ -278,7 +278,7 @@ def render(user: dict | None = None):
         # Base global
         df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
 
-        # 🔐 ACL: primero apply_scope, luego refuerzo por Responsable si no eres super
+        # 🔐 ACL: primero apply_scope; en Editar estado, si NO eres super → ver solo tus tareas
         df_all = apply_scope(df_all, user=user)
         me = _display_name().strip()
         is_super = _is_super_editor()
@@ -294,8 +294,7 @@ def render(user: dict | None = None):
             if df.empty:
                 return pd.Series([], dtype="datetime64[ns]")
             pri = [
-                "Fecha inicio","Fecha Registro","Fecha",
-                "Fecha Terminado"
+                "Fecha inicio","Fecha Registro","Fecha","Fecha Terminado"
             ]
             s_list = []
             for c in pri:
@@ -395,25 +394,26 @@ def render(user: dict | None = None):
         # ===== Tabla "Resultados" =====
         st.markdown("**Resultados**")
 
-        def _fmt_date_series(s):
+        def _fmt_date_series(s: pd.Series) -> pd.Series:
             s = pd.to_datetime(s, errors="coerce")
-            return s.dt.strftime("%Y-%m-%d").fillna("")
+            out = s.dt.strftime("%Y-%m-%d")
+            return out.fillna("-")
 
-        def _fmt_time_series(s):
+        def _fmt_time_series(s: pd.Series) -> pd.Series:
             def _one(x):
                 x = "" if x is None or (isinstance(x, float) and pd.isna(x)) else str(x).strip()
-                if not x or x.lower() in {"nan", "nat", "none", "null"}:
-                    return ""
+                if not x or x.lower() in {"nan", "nat", "none", "null", "-"}:
+                    return "-"
                 m = re.match(r"^(\d{1,2}):(\d{2})(?::\d{2})?$", x)
                 if m:
                     return f"{int(m.group(1)):02d}:{int(m.group(2)):02d}"
                 try:
                     d = pd.to_datetime(x, errors="coerce")
                     if pd.isna(d):
-                        return ""
+                        return "-"
                     return f"{int(d.hour):02d}:{int(d.minute):02d}"
                 except Exception:
-                    return ""
+                    return "-"
             return s.astype(str).map(_one)
 
         cols_out = [
@@ -456,10 +456,14 @@ def render(user: dict | None = None):
             est_now = est_now.mask(fi.notna() & ft.isna(), "En curso")
             est_now = est_now.mask(ft.notna(), "Terminado")
 
+            link_col = base["Link de archivo"].astype(str).replace(
+                {"nan": "-", "NaN": "-", "None": "-", "": "-"}
+            )
+
             df_view = pd.DataFrame(
                 {
                     "Id": base["Id"].astype(str),
-                    "Tarea": base["Tarea"].astype(str),
+                    "Tarea": base["Tarea"].astype(str).replace({"nan": "-", "NaN": "-", "": "-"}),
                     "Estado actual": est_now,
                     "Fecha de registro": _fmt_date_series(fr),
                     "Hora de registro": _fmt_time_series(hr),
@@ -467,7 +471,7 @@ def render(user: dict | None = None):
                     "Hora de inicio": _fmt_time_series(hi),
                     "Fecha terminada": _fmt_date_series(ft),
                     "Hora terminada": _fmt_time_series(ht),
-                    "Link de archivo": base["Link de archivo"].astype(str),
+                    "Link de archivo": link_col,
                 }
             )[cols_out].copy()
 
@@ -524,9 +528,9 @@ def render(user: dict | None = None):
         }"""
         )
 
-        # Mostrar "—" en link vacío
+        # Mostrar "-" en link vacío (pero permitimos editar texto)
         link_formatter = JsCode(
-            """function(p){ const s=String(p.value||'').trim(); return s? s : '—'; }"""
+            """function(p){ const s=String(p.value||'').trim(); return s? s : '-'; }"""
         )
 
         # Al cambiar fecha → poner hora Lima y estado actual
@@ -557,7 +561,7 @@ def render(user: dict | None = None):
           const SUPER = {str(is_super).lower()};
           if(SUPER) return true;
           const v = String(p.value||'').trim();
-          return v === '';
+          return v === '-' || v === '';
         }}"""
         )
         editable_end = JsCode(
@@ -565,10 +569,9 @@ def render(user: dict | None = None):
         function(p){{
           const SUPER = {str(is_super).lower()};
           if(SUPER) return true;
-          // Si ya hay fecha terminada, no editar; si no hay inicio, tampoco permitir colocar fin
           const v = String(p.value||'').trim();
-          const hasStart = String(p.data['Fecha inicio']||'').trim() !== '';
-          return (v === '') && hasStart;
+          const hasStart = String(p.data['Fecha inicio']||'').trim() !== '' && String(p.data['Fecha inicio']||'').trim() !== '-';
+          return (v === '' || v === '-') && hasStart;
         }}"""
         )
 
@@ -624,13 +627,16 @@ def render(user: dict | None = None):
                         grid_data["Id"] = grid_data["Id"].astype(str)
                         g_i = grid_data.set_index("Id")
 
-                        nz = lambda s: s.fillna("").astype(str).str.strip()
+                        def norm(s: pd.Series) -> pd.Series:
+                            s = s.fillna("").astype(str).str.strip()
+                            # map "-" visual a vacío real
+                            return s.replace(to_replace=r"^\-$", value="", regex=True)
 
-                        fi_new = nz(g_i.get("Fecha inicio", pd.Series(index=g_i.index)))
-                        hi_new = nz(g_i.get("Hora de inicio", pd.Series(index=g_i.index)))
-                        ft_new = nz(g_i.get("Fecha terminada", pd.Series(index=g_i.index)))
-                        ht_new = nz(g_i.get("Hora terminada", pd.Series(index=g_i.index)))
-                        lk_new = nz(g_i.get("Link de archivo", pd.Series(index=g_i.index)))
+                        fi_new = norm(g_i.get("Fecha inicio", pd.Series(index=g_i.index)))
+                        hi_new = norm(g_i.get("Hora de inicio", pd.Series(index=g_i.index)))
+                        ft_new = norm(g_i.get("Fecha terminada", pd.Series(index=g_i.index)))
+                        ht_new = norm(g_i.get("Hora terminada", pd.Series(index=g_i.index)))
+                        lk_new = norm(g_i.get("Link de archivo", pd.Series(index=g_i.index)))
 
                         ids_view = list(g_i.index)
 
@@ -662,17 +668,15 @@ def render(user: dict | None = None):
                         # Limitar ids a los presentes en base filtrada
                         ids_ok = [i for i in ids_view if i in b_i.index]
 
-                        # Validación: si quieren poner fecha terminada sin inicio (no super) → no permitir
+                        # Validación: si quieren poner fin sin inicio (no super) → no permitir
                         if not is_super:
                             bad = [i for i in ids_ok if (ft_new.get(i, "") and not (b_i.at[i, "Fecha inicio"] or fi_new.get(i, "")))]
                             if bad:
                                 st.warning("No puedes registrar 'Fecha terminada' sin 'Fecha inicio' en algunas tareas.")
-                                # limpiar esos intentos
                                 for i in bad:
                                     ft_new[i] = ""
                                     ht_new[i] = ""
 
-                        # Aplicar cambios respetando huellas (no-super no puede modificar si ya existe)
                         local_now = _now_lima_trimmed_local()
                         f_now = local_now.strftime("%Y-%m-%d")
                         h_now = local_now.strftime("%H:%M")
@@ -680,14 +684,13 @@ def render(user: dict | None = None):
                         changed_ids: set[str] = set()
 
                         for i in ids_ok:
-                            # START
+                            # START (huella)
                             prev_fi = str(b_i.at[i, "Fecha inicio"]).strip()
                             prev_hi = str(b_i.at[i, "Hora de inicio"]).strip()
                             new_fi = fi_new.get(i, "")
                             new_hi = hi_new.get(i, "")
 
-                            if is_super:
-                                # Super puede sobreescribir libremente
+                            if _is_super_editor():
                                 if new_fi != prev_fi:
                                     b_i.at[i, "Fecha inicio"] = new_fi
                                     changed_ids.add(i)
@@ -697,22 +700,20 @@ def render(user: dict | None = None):
                                     b_i.at[i, "Hora de inicio"] = new_hi
                                     changed_ids.add(i)
                             else:
-                                # Usuario normal: solo si estaba vacío
                                 if (not prev_fi) and new_fi:
                                     b_i.at[i, "Fecha inicio"] = new_fi
                                     b_i.at[i, "Hora de inicio"] = (new_hi or h_now)
                                     changed_ids.add(i)
 
-                            # FIN
+                            # FIN (huella)
                             prev_ft = str(b_i.at[i, "Fecha Terminado"]).strip()
                             prev_ht = str(b_i.at[i, "Hora Terminado"]).strip()
                             new_ft = ft_new.get(i, "")
                             new_ht = ht_new.get(i, "")
 
-                            # Para permitir fin: debe existir fecha inicio (prev o nueva ya fijada)
                             has_start_now = str(b_i.at[i, "Fecha inicio"]).strip() != ""
 
-                            if is_super:
+                            if _is_super_editor():
                                 if new_ft != prev_ft:
                                     b_i.at[i, "Fecha Terminado"] = new_ft
                                     changed_ids.add(i)
@@ -728,14 +729,14 @@ def render(user: dict | None = None):
                                     b_i.at[i, "Hora Terminado"] = (new_ht or h_now)
                                     changed_ids.add(i)
 
-                            # LINK (editable siempre)
+                            # LINK (editable siempre; map "-" a vacío)
                             prev_lk = str(b_i.at[i, "Link de archivo"]).strip()
                             new_lk = lk_new.get(i, "")
                             if new_lk != prev_lk:
                                 b_i.at[i, "Link de archivo"] = new_lk
                                 changed_ids.add(i)
 
-                            # === Estado + sello actual ===
+                            # === Estado + sello actual (interno; no se muestra) ===
                             fi_eff = str(b_i.at[i, "Fecha inicio"]).strip()
                             ft_eff = str(b_i.at[i, "Fecha Terminado"]).strip()
                             if ft_eff:
