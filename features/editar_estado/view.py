@@ -82,6 +82,15 @@ def _fmt_hhmm(v) -> str:
     except Exception:
         return ""
 
+# ======== Helpers de normalización (AJUSTE) ========
+def _is_blank_str(x) -> bool:
+    s = str(x).strip().lower()
+    return s in {"", "nan", "nat", "none", "null", "-"}
+
+def _canon_str(x) -> str:
+    """Normaliza a '' si está vacío/NaN/'-'; sino, str(x) sin espacios."""
+    return "" if _is_blank_str(x) else str(x).strip()
+
 # ============== Helpers ACL (super editores y nombre visible) ==============
 def _display_name() -> str:
     u = st.session_state.get("acl_user", {}) or {}
@@ -583,9 +592,9 @@ def render(user: dict | None = None):
                         ids_ok = [i for i in ids_view if i in set(base["Id"].astype(str))]
 
                         if not is_super:
-                            # usar última 'Fecha inicio' por Id
-                            cur_start = base.groupby("Id", as_index=True)["Fecha inicio"].last().astype(str).str.strip()
-                            bad = [i for i in ids_ok if (ft_new.get(i, "") and not (cur_start.get(i, "") or fi_new.get(i, "")))]
+                            # usar última 'Fecha inicio' por Id (normalizada)
+                            cur_start = base.groupby("Id", as_index=True)["Fecha inicio"].last().map(_canon_str)
+                            bad = [i for i in ids_ok if (_canon_str(ft_new.get(i, "")) and not (_canon_str(cur_start.get(i, "")) or _canon_str(fi_new.get(i, ""))))]
                             if bad:
                                 st.warning("No puedes registrar 'Fecha terminada' sin 'Fecha inicio' en algunas tareas.")
                                 for i in bad:
@@ -602,10 +611,11 @@ def render(user: dict | None = None):
                         base_idx = base_idx[~base_idx.index.duplicated(keep="last")]
 
                         for i in ids_ok:
-                            prev_fi = str(base_idx.at[i, "Fecha inicio"]) if i in base_idx.index else ""
-                            prev_hi = str(base_idx.at[i, "Hora de inicio"]) if i in base_idx.index else ""
-                            new_fi = fi_new.get(i, "")
-                            new_hi = hi_new.get(i, "")
+                            # START (normalizado)
+                            prev_fi = _canon_str(base_idx.at[i, "Fecha inicio"]) if i in base_idx.index else ""
+                            prev_hi = _canon_str(base_idx.at[i, "Hora de inicio"]) if i in base_idx.index else ""
+                            new_fi  = _canon_str(fi_new.get(i, ""))
+                            new_hi  = _canon_str(hi_new.get(i, ""))
 
                             if is_super:
                                 if new_fi != prev_fi:
@@ -620,13 +630,13 @@ def render(user: dict | None = None):
                                     base_idx.at[i, "Hora de inicio"] = (new_hi or h_now)
                                     changed_ids.add(i)
 
-                            prev_ft = str(base_idx.at[i, "Fecha Terminado"]) if i in base_idx.index else ""
-                            prev_ht = str(base_idx.at[i, "Hora Terminado"]) if i in base_idx.index else ""
-                            new_ft = ft_new.get(i, "")
-                            new_ht = ht_new.get(i, "")
+                            # FIN (normalizado)
+                            prev_ft = _canon_str(base_idx.at[i, "Fecha Terminado"]) if i in base_idx.index else ""
+                            prev_ht = _canon_str(base_idx.at[i, "Hora Terminado"]) if i in base_idx.index else ""
+                            new_ft  = _canon_str(ft_new.get(i, ""))
+                            new_ht  = _canon_str(ht_new.get(i, ""))
 
-                            has_start_now = str(base_idx.at[i, "Fecha inicio"]) if i in base_idx.index else ""
-                            has_start_now = bool(str(has_start_now).strip())
+                            has_start_now = bool(_canon_str(base_idx.at[i, "Fecha inicio"]) if i in base_idx.index else "")
 
                             if is_super:
                                 if new_ft != prev_ft:
@@ -641,25 +651,27 @@ def render(user: dict | None = None):
                                     base_idx.at[i, "Hora Terminado"] = (new_ht or h_now)
                                     changed_ids.add(i)
 
-                            prev_lk = str(base_idx.at[i, "Link de archivo"]) if i in base_idx.index else ""
-                            new_lk = lk_new.get(i, "")
+                            # LINK (normalizado)
+                            prev_lk = _canon_str(base_idx.at[i, "Link de archivo"]) if i in base_idx.index else ""
+                            new_lk  = _canon_str(lk_new.get(i, ""))
                             if new_lk != prev_lk:
                                 base_idx.at[i, "Link de archivo"] = new_lk; changed_ids.add(i)
 
-                            fi_eff = str(base_idx.at[i, "Fecha inicio"]) if i in base_idx.index else ""
-                            ft_eff = str(base_idx.at[i, "Fecha Terminado"]) if i in base_idx.index else ""
-                            if ft_eff.strip():
+                            # Estado + sello actual (normalizado)
+                            fi_eff = _canon_str(base_idx.at[i, "Fecha inicio"]) if i in base_idx.index else ""
+                            ft_eff = _canon_str(base_idx.at[i, "Fecha Terminado"]) if i in base_idx.index else ""
+                            if ft_eff:
                                 base_idx.at[i, "Estado"] = "Terminado"
                                 base_idx.at[i, "Fecha estado actual"] = ft_eff
-                                base_idx.at[i, "Hora estado actual"] = str(base_idx.at[i, "Hora Terminado"]).strip() or h_now
-                            elif fi_eff.strip():
+                                base_idx.at[i, "Hora estado actual"] = _canon_str(base_idx.at[i, "Hora Terminado"]) or h_now
+                            elif fi_eff:
                                 base_idx.at[i, "Estado"] = "En curso"
                                 base_idx.at[i, "Fecha estado actual"] = fi_eff
-                                base_idx.at[i, "Hora estado actual"] = str(base_idx.at[i, "Hora de inicio"]).strip() or h_now
+                                base_idx.at[i, "Hora estado actual"] = _canon_str(base_idx.at[i, "Hora de inicio"]) or h_now
                             else:
                                 base_idx.at[i, "Estado"] = "No iniciado"
-                                base_idx.at[i, "Fecha estado actual"] = str(base_idx.at[i, "Fecha Registro"]).strip()
-                                base_idx.at[i, "Hora estado actual"] = str(base_idx.at[i, "Hora Registro"]).strip()
+                                base_idx.at[i, "Fecha estado actual"] = _canon_str(base_idx.at[i, "Fecha Registro"])
+                                base_idx.at[i, "Hora estado actual"] = _canon_str(base_idx.at[i, "Hora Registro"])
 
                         # ⬇️ APLICACIÓN DIRECTA POR Id (sin .map, no borra valores)
                         if changed_ids:
