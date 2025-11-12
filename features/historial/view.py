@@ -385,7 +385,7 @@ def _add_business_days(start_dates: pd.Series, days: pd.Series) -> pd.Series:
     sd = pd.to_datetime(start_dates, errors="coerce").dt.date
     n  = pd.to_numeric(days, errors="coerce").fillna(0).astype(int)
     ok = (~pd.isna(sd)) & (n > 0)
-    out = pd.Series(pd.NaT, index=start_dates.index, dtype="datetime64[ns]")
+    out = pd.Series(pd.NaT, index=start_dates.index, dtype="datetime64[ns]")  # ← FIX de bracket
     if ok.any():
         a = np.array(sd[ok], dtype="datetime64[D]"); b = n[ok].to_numpy()
         res = np.busday_offset(a, b, weekmask="Mon Tue Wed Thu Fri")
@@ -799,13 +799,16 @@ def render(user: dict | None = None):
         nice = _header_map_norm.get(_normkey(col), header_map.get(col, col))
         col_is_editable = (col in _editable_base) if super_editor else ((col in _editable_base) and (_normkey(col) not in _ro_acl) and (_normkey(nice) not in _ro_acl))
 
-        hdr_class, cell_class = None, None
+        hdr_class, cell_class, cell_style = None, None, None
         if col in ("Fecha Registro","Hora Registro"):
             hdr_class, cell_class = "hdr-registro", "col-reg"
+            cell_style = {"backgroundColor":"var(--hdr-reg)", "borderRadius":"8px"}
         elif col in ("Fecha inicio","Hora de inicio"):
             hdr_class, cell_class = "hdr-inicio", "col-ini"
+            cell_style = {"backgroundColor":"var(--hdr-ini)", "borderRadius":"8px"}
         elif col in ("Fecha Terminado","Hora Terminado"):
             hdr_class, cell_class = "hdr-termino", "col-ter"
+            cell_style = {"backgroundColor":"var(--hdr-ter)", "borderRadius":"8px"}
 
         kwargs = dict(
             headerName=nice,
@@ -814,10 +817,9 @@ def render(user: dict | None = None):
             suppressMenu=True,
             filter=False, floatingFilter=False, sortable=False
         )
-        if hdr_class:
-            kwargs["headerClass"] = hdr_class
-        if cell_class:
-            kwargs["cellClass"] = cell_class
+        if hdr_class:  kwargs["headerClass"] = hdr_class
+        if cell_class: kwargs["cellClass"]  = cell_class
+        if cell_style: kwargs["cellStyle"]  = cell_style
 
         gob.configure_column(col, **kwargs)
 
@@ -1128,4 +1130,3 @@ def render(user: dict | None = None):
                 st.warning(f"No se pudo subir a Sheets: {e}")
 
     st.markdown('</div>', unsafe_allow_html=True)
-
