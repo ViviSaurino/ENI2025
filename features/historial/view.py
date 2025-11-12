@@ -385,7 +385,7 @@ def _add_business_days(start_dates: pd.Series, days: pd.Series) -> pd.Series:
     sd = pd.to_datetime(start_dates, errors="coerce").dt.date
     n  = pd.to_numeric(days, errors="coerce").fillna(0).astype(int)
     ok = (~pd.isna(sd)) & (n > 0)
-    out = pd.Series(pd.NaT, index=start_dates.index, dtype="datetime64[ns]")
+    out = pd.Series(pd.NaT, index=start_dates.index, dtype="datetime64[ns]"])
     if ok.any():
         a = np.array(sd[ok], dtype="datetime64[D]"); b = n[ok].to_numpy()
         res = np.busday_offset(a, b, weekmask="Mon Tue Wed Thu Fri")
@@ -398,43 +398,67 @@ def _add_business_days(start_dates: pd.Series, days: pd.Series) -> pd.Series:
 def render(user: dict | None = None):
     st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-    # ====== CSS (ajustes visuales pedidos) ======
+    # ====== CSS (AJUSTES pedidos) ======
     st.markdown("""
     <style>
       :root{
         --pill-salmon:#F28B85;
         --card-border:#E5E7EB;
         --card-bg:#FFFFFF;
-        --hint-bg:#F3F8FF;           /* más claro (igual a Nueva tarea) */
-        --hint-border:#BDD7FF;       /* línea punteada más fina */
-        --hint-color:#0B3B76;
-        --hdr-reg:#EDE9FE;           /* Registro: lila */
-        --hdr-ini:#DCFCE7;           /* Inicio: verde */
-        --hdr-ter:#E0F2FE;           /* Terminado: celeste */
-      }
-      .hist-card{ border:0 !important; background:transparent !important; border-radius:0 !important; padding:0 !important; margin:0 0 8px 0 !important; }
-      .hist-title-pill{ display:inline-flex; align-items:center; gap:8px; padding:10px 16px; border-radius:10px; background: var(--pill-salmon); color:#fff; font-weight:600; font-size:1.05rem; line-height:1.1; box-shadow: inset 0 -2px 0 rgba(0,0,0,0.06); margin-bottom:10px; }
-      .hist-hint{ background:var(--hint-bg); border:1px dashed var(--hint-border); border-radius:10px; padding:10px 12px; color:var(--hint-color); margin: 2px 0 12px 0; font-size:0.95rem; }
-      .hist-hint + div[data-testid="stTextInput"]{ display:none !important; }
-      .hist-hint + div:has(> div[data-testid="stTextInput"]){ display:none !important; }
-      .hist-hint + div:has(input[type="text"]){ display:none !important; }
 
-      /* Contenedor de filtros como "rectángulo" */
+        /* Indicaciones (coral muy claro + trazo fino) */
+        --hint-bg:#FFE7E3;
+        --hint-border:#F28B85;
+        --hint-color:#7F1D1D;
+
+        /* Colores de bloques de fecha/hora (igual Editar estado) */
+        --hdr-reg:#EDE9FE;   /* Registro: lila */
+        --hdr-ini:#DCFCE7;   /* Inicio: verde */
+        --hdr-ter:#E0F2FE;   /* Terminado: celeste */
+      }
+
+      .hist-card{ border:0!important; background:transparent!important; border-radius:0!important; padding:0!important; margin:0 0 8px 0!important; }
+
+      .hist-title-pill{
+        display:inline-flex; align-items:center; gap:8px; padding:10px 16px;
+        border-radius:10px; background: var(--pill-salmon); color:#fff;
+        font-weight:600; font-size:1.05rem; line-height:1.1;
+        box-shadow: inset 0 -2px 0 rgba(0,0,0,0.06); margin-bottom:10px;
+      }
+
+      /* Indicaciones coral */
+      .hist-hint{
+        background:var(--hint-bg); border:1px dashed var(--hint-border);
+        border-radius:10px; padding:10px 12px; color:var(--hint-color);
+        margin: 2px 0 12px 0; font-size:0.95rem;
+      }
+
+      /* Ocultar input fantasma directamente debajo de la hint */
+      .hist-hint + div[data-testid="stTextInput"]{ display:none!important; }
+      .hist-hint + div:has(div[data-testid="stTextInput"]){ display:none!important; }
+      .hist-hint + div:has(input[type="text"]){ display:none!important; }
+
+      /* Contenedor de filtros: rectángulo alrededor de las celdas */
       .hist-filters{ border:1px solid var(--card-border); background:#F8FAFC; border-radius:12px; padding:16px; }
 
-      /* Botón buscar debajo del último filtro con mismo ancho */
+      /* Botón buscar del ancho de su celda (debajo de Hasta) */
       .hist-search .stButton>button{ width:100%; }
 
-      /* AG Grid: evitar cortes en header */
-      .ag-theme-balham .ag-cell{ white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
-      .ag-theme-balham .ag-header-cell-label{ white-space: nowrap !important; line-height: 1.1 !important; overflow: visible !important; text-overflow: clip !important; }
+      /* AG Grid */
+      .ag-theme-balham .ag-cell{ white-space:nowrap!important; overflow:hidden!important; text-overflow:ellipsis!important; }
+      .ag-theme-balham .ag-header-cell-label{ white-space:nowrap!important; line-height:1.1!important; overflow:visible!important; text-overflow:clip!important; }
       .ag-theme-balham .ag-header .ag-icon, .ag-theme-balham .ag-header-cell .ag-icon, .ag-theme-balham .ag-header-cell-menu-button,
-      .ag-theme-balham .ag-floating-filter, .ag-theme-balham .ag-header-row.ag-header-row-column-filter { display: none !important; }
+      .ag-theme-balham .ag-floating-filter, .ag-theme-balham .ag-header-row.ag-header-row-column-filter { display:none!important; }
 
       /* Encabezados coloreados (armonía con Editar estado) */
-      .ag-theme-balham .ag-header-cell.hdr-registro{ background:var(--hdr-reg) !important; border-radius:8px; }
-      .ag-theme-balham .ag-header-cell.hdr-inicio{   background:var(--hdr-ini) !important; border-radius:8px; }
-      .ag-theme-balham .ag-header-cell.hdr-termino{  background:var(--hdr-ter) !important; border-radius:8px; }
+      .ag-theme-balham .ag-header-cell.hdr-registro{ background:var(--hdr-reg)!important; border-radius:8px; }
+      .ag-theme-balham .ag-header-cell.hdr-inicio{   background:var(--hdr-ini)!important; border-radius:8px; }
+      .ag-theme-balham .ag-header-cell.hdr-termino{  background:var(--hdr-ter)!important; border-radius:8px; }
+
+      /* ✅ Colorear también las CELDAS de esas columnas */
+      .ag-theme-balham .ag-cell.col-reg{ background:var(--hdr-reg)!important; border-radius:8px; }
+      .ag-theme-balham .ag-cell.col-ini{ background:var(--hdr-ini)!important; border-radius:8px; }
+      .ag-theme-balham .ag-cell.col-ter{ background:var(--hdr-ter)!important; border-radius:8px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -498,24 +522,16 @@ def render(user: dict | None = None):
         _min_date = _max_date = date.today()
 
     # Catálogos para selects
-    # Estado actual canonical + emojis (solo etiqueta)
     ESTADO_CHOICES = [
-        ("Todos", ""),
-        ("🟤 No iniciado", "no iniciado"),
-        ("▶️ En curso", "en curso"),
-        ("✅ Terminada", "terminada"),
-        ("⏸️ Pausada", "pausada"),
-        ("🛑 Cancelada", "cancelada"),
-        ("🗑️ Eliminada", "eliminad"),  # usamos prefijo para cubrir Eliminado/Eliminada
+        ("Todos", ""), ("🟤 No iniciado", "no iniciado"), ("▶️ En curso", "en curso"),
+        ("✅ Terminada", "terminada"), ("⏸️ Pausada", "pausada"),
+        ("🛑 Cancelada", "cancelada"), ("🗑️ Eliminada", "eliminad"),
     ]
     PRIORIDAD_CHOICES = [("Todas",""), ("🔴 Alta","alta"), ("🟡 Media","media"), ("🟢 Baja","baja")]
     COMPLEJIDAD_CHOICES = [("Todas",""), ("🔴 Alta","alta"), ("🟡 Media","media"), ("🟢 Baja","baja")]
     CUMPL_CHOICES = [
-        ("Todos",""),
-        ("✅ A tiempo","a tiempo"),
-        ("⏰ Fuera de tiempo","fuera de tiempo"),
-        ("❌ No entregado","no entregado"),
-        ("⚠️ En riesgo","riesgo"),
+        ("Todos",""), ("✅ A tiempo","a tiempo"), ("⏰ Fuera de tiempo","fuera de tiempo"),
+        ("❌ No entregado","no entregado"), ("⚠️ En riesgo","riesgo"),
     ]
 
     def _sel(label_value_list, label: str, key: str, index0: int = 0):
@@ -528,45 +544,33 @@ def render(user: dict | None = None):
                 return val
         return ""
 
-    # —— UI de filtros (contenedor rectangular). Orden solicitado.
     with st.container():
+        # 👉 Rectángulo SOLO alrededor de filtros
         st.markdown('<div class="hist-filters">', unsafe_allow_html=True)
 
         if super_editor:
-            # 7 celdas: Responsable → Estado → Prioridad → Complejidad → Cumplimiento → Desde → Hasta
             responsables = sorted([x for x in df_scope.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x!="nan"])
             c1, c2, c3, c4, c5, c6, c7 = st.columns([1.30, 1.20, 1.10, 1.10, 1.30, 1.00, 1.00], gap="medium")
             with c1:
                 resp_multi = st.multiselect("Responsable", options=responsables, default=[], key="hist_resp",
                                             placeholder="Selecciona responsable(s)")
-            with c2:
-                _est_lbl = _sel(ESTADO_CHOICES, "Estado actual", "hist_estado")
-            with c3:
-                _pri_lbl = _sel(PRIORIDAD_CHOICES, "Prioridad", "hist_prio")
-            with c4:
-                _com_lbl = _sel(COMPLEJIDAD_CHOICES, "Complejidad", "hist_comp")
-            with c5:
-                _cum_lbl = _sel(CUMPL_CHOICES, "Cumplimiento", "hist_cumpl")
-            with c6:
-                f_desde = st.date_input("Desde", value=_min_date, key="hist_desde")
+            with c2: _est_lbl = _sel(ESTADO_CHOICES, "Estado actual", "hist_estado")
+            with c3: _pri_lbl = _sel(PRIORIDAD_CHOICES, "Prioridad", "hist_prio")
+            with c4: _com_lbl = _sel(COMPLEJIDAD_CHOICES, "Complejidad", "hist_comp")
+            with c5: _cum_lbl = _sel(CUMPL_CHOICES, "Cumplimiento", "hist_cumpl")
+            with c6: f_desde = st.date_input("Desde", value=_min_date, key="hist_desde")
             with c7:
                 f_hasta = st.date_input("Hasta", value=_max_date, key="hist_hasta")
                 st.markdown('<div class="hist-search">', unsafe_allow_html=True)
                 hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
                 st.markdown('</div>', unsafe_allow_html=True)
         else:
-            # 6 celdas: Estado → Prioridad → Complejidad → Cumplimiento → Desde → Hasta
             c1, c2, c3, c4, c5, c6 = st.columns([1.20, 1.10, 1.10, 1.30, 1.00, 1.00], gap="medium")
-            with c1:
-                _est_lbl = _sel(ESTADO_CHOICES, "Estado actual", "hist_estado")
-            with c2:
-                _pri_lbl = _sel(PRIORIDAD_CHOICES, "Prioridad", "hist_prio")
-            with c3:
-                _com_lbl = _sel(COMPLEJIDAD_CHOICES, "Complejidad", "hist_comp")
-            with c4:
-                _cum_lbl = _sel(CUMPL_CHOICES, "Cumplimiento", "hist_cumpl")
-            with c5:
-                f_desde = st.date_input("Desde", value=_min_date, key="hist_desde")
+            with c1: _est_lbl = _sel(ESTADO_CHOICES, "Estado actual", "hist_estado")
+            with c2: _pri_lbl = _sel(PRIORIDAD_CHOICES, "Prioridad", "hist_prio")
+            with c3: _com_lbl = _sel(COMPLEJIDAD_CHOICES, "Complejidad", "hist_comp")
+            with c4: _cum_lbl = _sel(CUMPL_CHOICES, "Cumplimiento", "hist_cumpl")
+            with c5: f_desde = st.date_input("Desde", value=_min_date, key="hist_desde")
             with c6:
                 f_hasta = st.date_input("Hasta", value=_max_date, key="hist_hasta")
                 st.markdown('<div class="hist-search">', unsafe_allow_html=True)
@@ -589,17 +593,14 @@ def render(user: dict | None = None):
         df_view["Fecha inicio"] = to_naive_local_series(df_view["Fecha inicio"])
 
     if hist_do_buscar:
-        # Responsable (solo super editores)
         if super_editor and 'resp_multi' in locals() and resp_multi:
             df_view = df_view[df_view["Responsable"].astype(str).isin(resp_multi)]
 
-        # Estado (busca por prefijo canónico dentro del texto, tolerante a emoji)
         _estado_val = _value_of(ESTADO_CHOICES, _est_lbl)
         if _estado_val:
             mask_est = df_view.get("Estado", pd.Series([], dtype=str)).astype(str).str.lower().str.contains(_estado_val)
             df_view = df_view[mask_est]
 
-        # Prioridad / Complejidad (coincidencia por palabra clave)
         _prio_val = _value_of(PRIORIDAD_CHOICES, _pri_lbl)
         if _prio_val:
             mask_pri = df_view.get("Prioridad", pd.Series([], dtype=str)).astype(str).str.lower().str.contains(_prio_val)
@@ -610,20 +611,17 @@ def render(user: dict | None = None):
             mask_com = df_view.get("Complejidad", pd.Series([], dtype=str)).astype(str).str.lower().str.contains(_comp_val)
             df_view = df_view[mask_com]
 
-        # Cumplimiento (substring)
         _cum_val = _value_of(CUMPL_CHOICES, _cum_lbl)
         if _cum_val:
             mask_cum = df_view.get("Cumplimiento", pd.Series([], dtype=str)).astype(str).str.lower().str.contains(_cum_val)
             df_view = df_view[mask_cum]
 
-        # Fechas (sobre "Fecha Registro" si existe)
         if f_desde is not None and "Fecha Registro" in df_view.columns:
             df_view = df_view[df_view["Fecha Registro"].dt.date >= f_desde]
         if f_hasta is not None and "Fecha Registro" in df_view.columns:
             df_view = df_view[df_view["Fecha Registro"].dt.date <= f_hasta]
 
     if not show_deleted and "Estado" in df_view.columns:
-        # cubrir Eliminado / Eliminada
         df_view = df_view[~df_view["Estado"].astype(str).str.lower().str.contains("eliminad")]
 
     # ===== Normalizaciones mínimas =====
@@ -646,8 +644,8 @@ def render(user: dict | None = None):
         "Fecha Pausado","Hora Pausado",
         "Fecha Cancelado","Hora Cancelado",
         "Fecha Eliminado","Hora Eliminado",
-        _LINK_CANON,                 # (oculta)
-        "Link de descarga"           # ← ÚLTIMA. Después de esta, no se muestran más columnas.
+        _LINK_CANON,
+        "Link de descarga"
     ]
     hidden_cols = [
         "Archivo","__ts__","__SEL__","__DEL__","¿Eliminar?","Tipo de alerta",
@@ -659,7 +657,6 @@ def render(user: dict | None = None):
         if c not in df_view.columns:
             df_view[c] = ""
 
-    # ⬇️ IMPORTANTE: limitar SOLO a target_cols (nada después de Link de descarga)
     df_grid = df_view.reindex(columns=list(dict.fromkeys(target_cols))).copy()
     df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()
 
@@ -776,7 +773,6 @@ def render(user: dict | None = None):
         _LINK_CANON: 120,
     }
 
-    # ⬇️ SOLO cambios de encabezado solicitados (sin tocar nada más)
     header_map = {
         "Detalle": "Detalle de tarea",
         "Fecha Vencimiento": "Fecha límite",
@@ -795,36 +791,21 @@ def render(user: dict | None = None):
         return re.sub(r'[^a-z0-9]', '', (x or '').lower())
 
     super_editor = _is_super_editor()
-    # 👉 Super editores: TODO editable (incluye Id). Resto: solo Tarea y Detalle.
     _editable_base = (set(df_grid.columns) - {"Link de descarga", _LINK_CANON}) if super_editor else {"Tarea", "Detalle"}
-
-    # 🔧 NUEVO (robusto): mapeo normalizado para aplicar “Fecha de inicio / Fecha de registro”
     _header_map_norm = {_normkey(k): v for k, v in header_map.items()}
 
-    # Estilos de celdas para columnas de fechas/horas (armonía con Editar estado)
-    cell_style_reg = {"backgroundColor":"var(--hdr-reg)","borderRadius":"8px"}
-    cell_style_ini = {"backgroundColor":"var(--hdr-ini)","borderRadius":"8px"}
-    cell_style_ter = {"backgroundColor":"var(--hdr-ter)","borderRadius":"8px"}
-
+    # Estilos/clases para columnas de fecha/hora (celdas y encabezados)
     for col in df_grid.columns:
-        # Usa primero el mapeo normalizado; si no, cae al exacto
         nice = _header_map_norm.get(_normkey(col), header_map.get(col, col))
+        col_is_editable = (col in _editable_base) if super_editor else ((col in _editable_base) and (_normkey(col) not in _ro_acl) and (_normkey(nice) not in _ro_acl))
 
-        if super_editor:
-            col_is_editable = (col in _editable_base)
-        else:
-            col_is_editable = (col in _editable_base) and (_normkey(col) not in _ro_acl) and (_normkey(nice) not in _ro_acl)
-        if col_is_editable:
-            editable_cols.add(col)
-
-        hdr_class = None
-        cstyle = None
+        hdr_class, cell_class = None, None
         if col in ("Fecha Registro","Hora Registro"):
-            hdr_class = "hdr-registro"; cstyle = cell_style_reg
+            hdr_class, cell_class = "hdr-registro", "col-reg"
         elif col in ("Fecha inicio","Hora de inicio"):
-            hdr_class = "hdr-inicio";   cstyle = cell_style_ini
+            hdr_class, cell_class = "hdr-inicio", "col-ini"
         elif col in ("Fecha Terminado","Hora Terminado"):
-            hdr_class = "hdr-termino";  cstyle = cell_style_ter
+            hdr_class, cell_class = "hdr-termino", "col-ter"
 
         kwargs = dict(
             headerName=nice,
@@ -835,8 +816,8 @@ def render(user: dict | None = None):
         )
         if hdr_class:
             kwargs["headerClass"] = hdr_class
-        if cstyle:
-            kwargs["cellStyle"] = cstyle
+        if cell_class:
+            kwargs["cellClass"] = cell_class
 
         gob.configure_column(col, **kwargs)
 
@@ -965,10 +946,10 @@ def render(user: dict | None = None):
         allow_unsafe_jscode=True,
     )
 
-    # === TRACKING de cambios (incluye Id para detectar nuevos) — ACUMULATIVO ===
+    # === TRACKING de cambios ===
     base_cols = list(st.session_state.get("df_main", pd.DataFrame()).columns) or list(df_grid.columns)
     persist_cols = [c for c in df_grid.columns if c in base_cols]
-    snap_cols = persist_cols  # incluye Id
+    snap_cols = persist_cols
     st.session_state["_hist_cols"] = snap_cols
 
     prev = st.session_state.get("_hist_prev")
@@ -977,7 +958,6 @@ def render(user: dict | None = None):
         edited = grid_resp["data"]
         new_df = pd.DataFrame(edited) if isinstance(edited, list) else pd.DataFrame(grid_resp.data)
 
-        # === 1) Deltas de esta corrida ===
         changed_ids_run = set()
         cell_diff_run: dict[str, set[str]] = {}
         new_only_ids_run = set()
@@ -991,7 +971,6 @@ def render(user: dict | None = None):
             prev_map = a.set_index("Id", drop=False)
             curr_map = b.set_index("Id", drop=False)
 
-            # Filas nuevas
             for iid, row in curr_map.iterrows():
                 if iid and iid != "nan" and iid not in prev_map.index:
                     new_only_ids_run.add(iid)
@@ -1010,7 +989,6 @@ def render(user: dict | None = None):
                     if diff_cols:
                         cell_diff_run[str(rid)] = diff_cols
 
-        # === 2) Acumular pendientes a través de reruns ===
         pend_ids  = set(st.session_state.get("_hist_changed_ids", []) or [])
         pend_diff = {k: set(v) for k, v in (st.session_state.get("_hist_cell_diff", {}) or {}).items()}
         pend_new  = set(st.session_state.get("_hist_new_ids", []) or [])
@@ -1024,7 +1002,6 @@ def render(user: dict | None = None):
         st.session_state["_hist_cell_diff"]  = {k: sorted(v) for k, v in pend_diff.items()}
         st.session_state["_hist_new_ids"]    = sorted(pend_new)
 
-        # === Persistir edición en df_main y snapshot ===
         if new_df is not None:
             base = st.session_state.get("df_main", pd.DataFrame()).copy()
             base = _canonicalize_link_column(base); new_df = _canonicalize_link_column(new_df)
@@ -1039,7 +1016,6 @@ def render(user: dict | None = None):
             try: _save_local(st.session_state["df_main"].copy())
             except Exception: pass
 
-            # Snapshot (los pendientes ya quedaron guardados)
             try:
                 st.session_state["_hist_prev"] = new_df.reindex(columns=snap_cols).copy()
             except Exception:
@@ -1087,7 +1063,6 @@ def render(user: dict | None = None):
                 st.warning(f"No se pudo grabar localmente: {e}")
 
     with b_save_sheets:
-        # ⬇️ NUEVO: botón habilitado para todos con reglas por rol
         if st.button("📤 Subir a Sheets", use_container_width=True):
             try:
                 pend_ids  = set(st.session_state.get("_hist_changed_ids", []) or [])
@@ -1105,13 +1080,11 @@ def render(user: dict | None = None):
                         base_full["Id"] = base_full.get("Id","").astype(str)
 
                         if not _is_super_editor():
-                            # Solo sus propias filas (por Responsable contiene su nombre)
                             me = _display_name().strip()
                             if "Responsable" in base_full.columns and me:
                                 mask_mias = base_full["Responsable"].astype(str).str.contains(me, case=False, na=False)
                                 base_full = base_full[mask_mias]
 
-                            # Limitar a columnas permitidas
                             ALLOWED_USER_COLS = {"Tarea", "Detalle", "Detalle de tarea"}
                             filtered_cell_diff = {}
                             for rid, cols in pend_diff.items():
@@ -1120,7 +1093,6 @@ def render(user: dict | None = None):
                                     filtered_cell_diff[str(rid)] = keep
                             pend_diff = filtered_cell_diff
 
-                            # Limitar ids a los que realmente tienen difs permitidos y existen en su base filtrada
                             ids_in_base = set(base_full["Id"].astype(str))
                             pend_ids = {rid for rid in pend_ids if (rid in ids_in_base and rid in pend_diff)}
                             new_ids  = {rid for rid in new_ids  if rid in ids_in_base}
@@ -1130,7 +1102,6 @@ def render(user: dict | None = None):
                                 st.info("No hay cambios permitidos para subir (solo ‘Tarea’ y ‘Detalle’ de tus tareas).")
                                 st.stop()
 
-                        # Subconjunto a subir
                         df_rows = base_full[base_full["Id"].astype(str).isin(ids_to_push)].copy()
 
                         res = _sheet_upsert_by_id_partial(
@@ -1140,14 +1111,12 @@ def render(user: dict | None = None):
                         )
                         if res.get("ok"):
                             st.success(res.get("msg","Actualizado."))
-                            # ✅ limpiar pendientes SOLO si subió bien
                             st.session_state["_hist_changed_ids"] = []
                             st.session_state["_hist_cell_diff"]  = {}
                             st.session_state["_hist_new_ids"]    = []
 
-                            # ⬇️ NUEVO: refresco inmediato desde Sheets + rerun
                             try:
-                                st.session_state["_last_pull_hist"] = 0  # forzar próximo pull
+                                st.session_state["_last_pull_hist"] = 0
                                 pull_user_slice_from_sheet(replace_df_main=False)
                                 _save_local(st.session_state["df_main"].copy())
                                 st.rerun()
@@ -1159,3 +1128,4 @@ def render(user: dict | None = None):
                 st.warning(f"No se pudo subir a Sheets: {e}")
 
     st.markdown('</div>', unsafe_allow_html=True)
+
