@@ -18,7 +18,8 @@ except Exception:
     from datetime import datetime
     import re
 
-    def blank_row() -> dict: return {}
+    def blank_row() -> dict: 
+        return {}
 
     def _clean3(s: str) -> str:
         s = (s or "").strip().upper()
@@ -30,7 +31,8 @@ except Exception:
         r = (resp or "").strip().upper()
         r_first = r.split()[0] if r.split() else r
         r3 = _clean3(r_first)
-        if not a3 and not r3: return "GEN"
+        if not a3 and not r3: 
+            return "GEN"
         return (a3 or "GEN") + (r3 or "")
 
     def next_id_by_person(df: pd.DataFrame, area: str, resp: str) -> str:
@@ -80,7 +82,7 @@ except Exception:
 
             # Normalizar hora → HH:MM
             def _fmt_hhmm(v) -> str:
-                if v is None:
+                if v is None: 
                     return ts.strftime("%H:%M")
                 try:
                     s = str(v).strip()
@@ -256,6 +258,12 @@ def render(user: dict | None = None):
         ]
     st.session_state.setdefault("nt_visible", True)
 
+    # Asegurar que "Tipo de tarea" no arranque con 'Otros' por cache previo
+    if st.session_state.get("nt_tipo", "").strip().lower() == "otros":
+        st.session_state["nt_tipo"] = ""
+    else:
+        st.session_state.setdefault("nt_tipo", "")
+
     _NT_SPACE = 36
     st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
 
@@ -273,7 +281,7 @@ def render(user: dict | None = None):
         if st.session_state.pop("nt_added_ok", False):
             st.success("Agregado a Tareas recientes")
 
-        # ===== Indicaciones (una sola línea, con 📤) =====
+        # ===== Indicaciones (una línea, con 📤) =====
         st.markdown("""
         <div class="help-strip">
           <strong>Indicaciones:</strong> ✳️ Completa los campos obligatorios → pulsa <b>➕ Agregar</b> → revisa en <b>🕑 Tareas recientes</b> → confirma con <b>💾 Grabar</b> y <b>📤 Subir a Sheets</b>.
@@ -411,4 +419,177 @@ def render(user: dict | None = None):
                         df_out = df_out.drop(columns=["DEL"])
                     elif "DEL" in df_out.columns:
                         df_out = df_out.rename(columns={"DEL": "__DEL__"})
-                    df_out = df
+                    df_out = df_out.loc[:, ~pd.Index(df_out.columns).duplicated()].copy()
+                    if not df_out.index.is_unique:
+                        df_out = df_out.reset_index(drop=True)
+                    if target_cols:
+                        target = list(dict.fromkeys(list(target_cols)))
+                        for c in target:
+                            if c not in df_out.columns:
+                                df_out[c] = None
+                        ordered = [c for c in target] + [c for c in df_out.columns if c not in target]
+                        df_out = df_out.loc[:, ordered].copy()
+                    return df_out
+
+                df = _sanitize(df, COLS if "COLS" in globals() else None)
+
+                reg_fecha = st.session_state.get("fi_d")
+                reg_hora_obj = st.session_state.get("fi_t")
+                try:
+                    reg_hora_txt = reg_hora_obj.strftime("%H:%M") if reg_hora_obj is not None else ""
+                except Exception:
+                    reg_hora_txt = str(reg_hora_obj) if reg_hora_obj is not None else ""
+
+                # Fase final:
+                fase_sel = st.session_state.get("nt_fase", "")
+                fase_otro = (st.session_state.get("nt_fase_otro", "") or "").strip()
+                if str(fase_sel).strip() == "Otros":
+                    fase_final = f"Otros — {fase_otro}" if fase_otro else "Otros"
+                else:
+                    fase_final = fase_sel
+
+                new = blank_row()
+                new.update({
+                    "Área": st.session_state.get("nt_area", area_fixed),
+                    "Id": next_id_by_person(df, st.session_state.get("nt_area", area_fixed), st.session_state.get("nt_resp", "")),
+                    "Tarea": st.session_state.get("nt_tarea", ""),
+                    "Tipo": st.session_state.get("nt_tipo", ""),
+                    "Responsable": st.session_state.get("nt_resp", ""),  # fijado al usuario logueado
+                    "Fase": fase_final,
+                    "Estado": "No iniciado",
+                    "Fecha": reg_fecha, "Hora": reg_hora_txt,
+                    "Fecha Registro": reg_fecha, "Hora Registro": reg_hora_txt,
+                    "Fecha inicio": None, "Hora de inicio": "",
+                    "Fecha Terminado": None, "Hora Terminado": "",
+                    "Ciclo de mejora": st.session_state.get("nt_ciclo_mejora", ""),
+                    "Detalle": st.session_state.get("nt_detalle", ""),
+                })
+
+                if str(st.session_state.get("nt_tipo", "")).strip().lower() == "otros":
+                    new["Complejidad"] = st.session_state.get("nt_complejidad", "")
+                    lbl = st.session_state.get("nt_duracion_label", "")
+                    try:
+                        _dur = int(str(lbl).split()[0])
+                    except Exception:
+                        _dur = ""  # dejar vacío si no se puede parsear
+
+                    # Guardar también con el encabezado usado por "Tareas recientes"
+                    new["Duración (días)"] = _dur
+                    # Compatibilidad hacia atrás
+                    new["Duración"] = _dur
+
+                df = pd.concat([df, pd.DataFrame([new])], ignore_index=True)
+                df = _sanitize(df, COLS if "COLS" in globals() else None)
+                st.session_state["df_main"] = df.copy()
+
+                # Persistencia (controlada por ACL)
+                def _persist(_df: pd.DataFrame):
+                    try:
+                        os.makedirs("data", exist_ok=True)
+                        _df.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig", mode="w")
+                        return {"ok": True, "msg": "Cambios guardados."}
+                    except Exception as _e:
+                        return {"ok": False, "msg": f"Error al guardar: {_e}"}
+
+                maybe_save = st.session_state.get("maybe_save")
+                res = maybe_save(_persist, df.copy()) if callable(maybe_save) else _persist(df.copy())
+                if not res.get("ok", False):
+                    st.info(res.get("msg", "Guardado deshabilitado."))
+
+                # ====== Log universal en TareasRecientes (sin ACL) ======
+                sheet = None
+                try:
+                    from utils.gsheets import open_sheet_by_url  # type: ignore
+                    url = st.secrets.get("gsheets_doc_url") or (st.secrets.get("gsheets", {}) or {}).get("spreadsheet_url")
+                    if url and callable(open_sheet_by_url):
+                        try:
+                            sheet = open_sheet_by_url(url)
+                        except Exception:
+                            sheet = None
+                except Exception:
+                    sheet = None
+
+                # --- Campos extra a registrar (si la hoja los tiene) ---
+                extra_kwargs = dict(
+                    area=new.get("Área",""),
+                    fase=new.get("Fase",""),
+                    tipo=new.get("Tipo",""),
+                    estado=new.get("Estado",""),
+                    ciclo_mejora=new.get("Ciclo de mejora",""),
+                    complejidad=new.get("Complejidad",""),
+                    duracion_dias=new.get("Duración (días)",""),
+                    duracion=new.get("Duración",""),
+                    link_archivo=new.get("Link de archivo",""),
+                )
+
+                try:
+                    # Intento con kwargs completos
+                    try:
+                        log_reciente(
+                            sheet,
+                            tarea_nombre=new.get("Tarea", ""),
+                            especialista=new.get("Responsable", ""),
+                            detalle="Asignada",
+                            id_val=new.get("Id", ""),
+                            fecha_reg=reg_fecha,
+                            hora_reg=reg_hora_txt,
+                            **extra_kwargs
+                        )
+                    except TypeError:
+                        # Versión importada sin **kwargs extra → registrar básico
+                        log_reciente(
+                            sheet,
+                            tarea_nombre=new.get("Tarea", ""),
+                            especialista=new.get("Responsable", ""),
+                            detalle="Asignada",
+                            id_val=new.get("Id", ""),
+                            fecha_reg=reg_fecha,
+                            hora_reg=reg_hora_txt,
+                        )
+                        # Post-update por Id para completar columnas extra si existen
+                        try:
+                            from utils.gsheets import read_df_from_worksheet, upsert_by_id  # type: ignore
+                            if sheet and callable(read_df_from_worksheet) and callable(upsert_by_id):
+                                df_rec = read_df_from_worksheet(sheet, "TareasRecientes")
+                                if isinstance(df_rec, pd.DataFrame) and not df_rec.empty:
+                                    id_col = "Id" if "Id" in df_rec.columns else ("id" if "id" in df_rec.columns else None)
+                                    if id_col:
+                                        row = {id_col: str(new.get("Id",""))}
+                                        # Solo setear las que existan en la hoja
+                                        for k_sheet, v_val in {
+                                            "Área": new.get("Área",""),
+                                            "Fase": new.get("Fase",""),
+                                            "Tipo": new.get("Tipo",""),
+                                            "Estado": new.get("Estado",""),
+                                            "Ciclo de mejora": new.get("Ciclo de mejora",""),
+                                            "Complejidad": new.get("Complejidad",""),
+                                            "Duración (días)": new.get("Duración (días)",""),
+                                            "Duración": new.get("Duración",""),
+                                            "Detalle": new.get("Detalle",""),
+                                        }.items():
+                                            if k_sheet in df_rec.columns:
+                                                row[k_sheet] = v_val
+                                        upsert_by_id(sheet, "TareasRecientes", pd.DataFrame([row]), id_col=id_col)
+                        except Exception:
+                            pass
+                except Exception:
+                    # No romper el flujo si no hay gsheets
+                    pass
+
+                # limpiar campos
+                for k in [
+                    "nt_area","nt_fase","nt_fase_otro","nt_tarea","nt_detalle","nt_resp",
+                    "nt_ciclo_mejora","nt_tipo","nt_complejidad","nt_duracion_label",
+                    "fi_d","fi_t","fi_t_view","nt_id_preview"
+                ]:
+                    st.session_state.pop(k, None)
+                st.session_state["nt_skip_date_init"] = True
+                st.session_state["nt_added_ok"] = True
+
+                st.rerun()
+
+            except Exception as e:
+                st.error(f"No pude guardar la nueva tarea: {e}")
+
+    gap = SECTION_GAP if 'SECTION_GAP' in globals() else 30
+    st.markdown(f"<div style='height:{gap}px;'></div>", unsafe_allow_html=True)
