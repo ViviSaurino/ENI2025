@@ -12,8 +12,8 @@ from st_aggrid import (
     JsCode,
 )
 
-# ======= Toggle: Upsert a Google Sheets (desactivado por defecto) =======
-DO_SHEETS_UPSERT = bool(st.secrets.get("edit_estado_upsert_to_sheets", False))
+# ======= Toggle: Upsert a Google Sheets (AHORA True por defecto si hay secrets) =======
+DO_SHEETS_UPSERT = bool(st.secrets.get("edit_estado_upsert_to_sheets", True))
 
 # Hora Lima para sellado de cambios + ACL
 try:
@@ -119,6 +119,28 @@ def _is_super_editor() -> bool:
     dn = _display_name().strip().lower()
     return dn.startswith("vivi") or dn.startswith("enrique")
 
+# --- I/O local robusto (para persistencia entre sesiones) ---
+def _load_local_if_exists() -> pd.DataFrame | None:
+    try:
+        p = os.path.join("data", "tareas.csv")
+        if os.path.exists(p):
+            df = pd.read_csv(p, dtype=str, keep_default_na=False).fillna("")
+            return df
+    except Exception:
+        pass
+    return None
+
+def _save_local(df: pd.DataFrame) -> dict:
+    try:
+        os.makedirs("data", exist_ok=True)
+        # escritura atómica simple
+        tmp = os.path.join("data", "_tareas.tmp.csv")
+        df.to_csv(tmp, index=False, encoding="utf-8-sig")
+        os.replace(tmp, os.path.join("data", "tareas.csv"))
+        return {"ok": True, "msg": "Cambios guardados."}
+    except Exception as _e:
+        return {"ok": False, "msg": f"Error al guardar: {_e}"}
+
 # --- Cliente GSheets y upsert por Id ---
 def _gsheets_client():
     if "gcp_service_account" not in st.secrets:
@@ -188,9 +210,9 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
         "Estado", "Estado actual",
         "Fecha estado actual", "Hora estado actual",
         "Fecha inicio", "Hora de inicio",
-        "Fecha de inicio",            # alias visible
+        "Fecha de inicio",
         "Fecha Terminado", "Hora Terminado",
-        "Fecha terminada",            # alias visible
+        "Fecha terminada",
         "Link de archivo",
     ]
     cols_to_push = [c for c in base_push_cols if c in col_map]
@@ -249,6 +271,12 @@ def render(user: dict | None = None):
     st.session_state.setdefault("est_visible", True)
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
+    # 🔒 Refuerzo: si no hay df_main en sesión, cargar desde disco
+    if ("df_main" not in st.session_state) or (not isinstance(st.session_state["df_main"], pd.DataFrame)) or st.session_state["df_main"].empty:
+        df_local = _load_local_if_exists()
+        if isinstance(df_local, pd.DataFrame) and not df_local.empty:
+            st.session_state["df_main"] = df_local.copy()
+
     if st.session_state["est_visible"]:
         A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
@@ -286,6 +314,19 @@ def render(user: dict | None = None):
         # Base global (LIMPIA y sin duplicados)
         df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
         df_all = _dedup_keep_last_with_id(df_all)
+
+        # Alias de columnas para coincidir con "Tareas recientes" (robusto)
+        if "Tipo de tarea" not in df_all.columns and "Tipo" in df_all.columns:
+            df_all["Tipo de tarea"] = df_all["Tipo"]
+        if "Fecha de inicio" not in df_all.columns and "Fecha inicio" in df_all.columns:
+            df_all["Fecha de inicio"] = df_all["Fecha inicio"]
+        if "Fecha terminada" not in df_all.columns and "Fecha Terminado" in df_all.columns:
+            df_all["Fecha terminada"] = df_all["Fecha Terminado"]
+        if "Fecha de registro" not in df_all.columns and "Fecha Registro" in df_all.columns:
+            df_all["Fecha de registro"] = df_all["Fecha Registro"]
+        if "Hora de registro" not in df_all.columns and "Hora Registro" in df_all.columns:
+            df_all["Hora de registro"] = df_all["Hora Registro"]
+
         st.session_state["df_main"] = df_all.copy()
 
         # 🔐 ACL
@@ -301,15 +342,14 @@ def render(user: dict | None = None):
 
         # ===== Rango por defecto (solo por Fecha de registro) =====
         fr_all = pd.to_datetime(df_all.get("Fecha Registro", pd.Series([], dtype=object)), errors="coerce")
-        valid_fr = fr_all[fr_all.notna()]
-        if valid_fr.empty:
+        if fr_all.notna().any():
+            min_date = fr_all.min().date()
+            max_date = fr_all.max().date()
+        else:
             today = pd.Timestamp.today().normalize().date()
             min_date = max_date = today
-        else:
-            min_date = valid_fr.min().date()
-            max_date = valid_fr.max().date()
 
-        # ===== FILTROS (solo los de la imagen) =====
+        # ===== FILTROS =====
         with st.form("est_filtros_v4", clear_on_submit=False):
             c_fase, c_tipo, c_desde, c_hasta, c_buscar = st.columns([Fw, T_width, D, R, C], gap="medium")
 
@@ -378,7 +418,6 @@ def render(user: dict | None = None):
                 return s1
             return s1.where(s1.notna(), s2)
 
-        # Nota: en la grilla visible renombramos "Fecha inicio" -> "Fecha de inicio"
         cols_out = [
             "Id","Tarea","Estado actual",
             "Fecha de registro","Hora de registro",
@@ -397,17 +436,14 @@ def render(user: dict | None = None):
 
             fr = pd.to_datetime(base["Fecha Registro"], errors="coerce")
             hr = base["Hora Registro"].astype(str)
-            # <- usa coalesce para inicio y terminado
             fi = _coalesce_dt(base, "Fecha inicio", "Fecha de inicio")
             hi = base["Hora de inicio"].astype(str)
             ft = _coalesce_dt(base, "Fecha Terminado", "Fecha terminada")
             ht = base["Hora Terminado"].astype(str)
 
-            # Calculado por fechas…
             est_now = pd.Series("No iniciado", index=base.index, dtype="object")
             est_now = est_now.mask(fi.notna() & ft.isna(), "En curso")
             est_now = est_now.mask(ft.notna(), "Terminado")
-            # …pero si hay Estado guardado, lo respetamos
             if "Estado" in base.columns:
                 estado_guardado = base["Estado"].astype(str).str.strip()
                 est_now = estado_guardado.where(~estado_guardado.isin(["", "nan", "NaN", "None"]), est_now)
@@ -467,7 +503,6 @@ def render(user: dict | None = None):
 
         link_formatter = JsCode("""function(p){ const s=String(p.value||'').trim(); return s? s : '-'; }""")
 
-        # Ajuste de dependencias al editar (usa el nombre visible "Fecha de inicio")
         on_cell_changed = JsCode(f"""
         function(params){{
           const field = params.colDef.field;
@@ -509,7 +544,7 @@ def render(user: dict | None = None):
             ensureDomOrder=True,
             rowHeight=38,
             headerHeight=60,
-            suppressHorizontalScroll=False  # <- habilita scroll inferior
+            suppressHorizontalScroll=False
         )
         gob.configure_default_column(wrapHeaderText=True, autoHeaderHeight=True)
         gob.configure_selection("single", use_checkbox=False)
@@ -519,7 +554,7 @@ def render(user: dict | None = None):
         gob.configure_column("Hora de registro", editable=False, minWidth=150)
         gob.configure_column("Tarea", editable=False, minWidth=320)
         gob.configure_column("Id", editable=False, minWidth=120)
-        gob.configure_column("Fecha de inicio", editable=editable_start, cellEditor=date_editor, minWidth=180)  # visible
+        gob.configure_column("Fecha de inicio", editable=editable_start, cellEditor=date_editor, minWidth=180)
         gob.configure_column("Hora de inicio", editable=False, minWidth=160)
         gob.configure_column("Fecha terminada", editable=editable_end, cellEditor=date_editor, minWidth=190)
         gob.configure_column("Hora terminada", editable=False, minWidth=160)
@@ -536,7 +571,7 @@ def render(user: dict | None = None):
             fit_columns_on_grid_load=False,
             enable_enterprise_modules=False,
             reload_data=False,
-            height=430,                       # más alto
+            height=430,
             allow_unsafe_jscode=True,
             theme="balham",
         )
@@ -557,7 +592,6 @@ def render(user: dict | None = None):
                             t = s.fillna("").astype(str).str.strip()
                             return t.replace({"-": "", "NaT": "", "NAT": "", "nat": "", "NaN": "", "nan": "", "None": "", "none": ""})
 
-                        # OJO: visible -> base
                         fi_new_vis = norm(g_i.get("Fecha de inicio", pd.Series(index=g_i.index)))
                         hi_new      = norm(g_i.get("Hora de inicio", pd.Series(index=g_i.index)))
                         ft_new_vis  = norm(g_i.get("Fecha terminada", pd.Series(index=g_i.index)))
@@ -582,6 +616,7 @@ def render(user: dict | None = None):
                         for need in [
                             "Estado","Fecha Registro","Hora Registro","Fecha inicio","Fecha de inicio","Hora de inicio",
                             "Fecha Terminado","Fecha terminada","Hora Terminado","Link de archivo",
+                            "Fecha de registro","Hora de registro"  # alias visibles
                         ]:
                             if need not in base.columns:
                                 base[need] = ""
@@ -590,7 +625,6 @@ def render(user: dict | None = None):
                         ids_ok = [i for i in ids_view if i in set(base["Id"].astype(str))]
 
                         if not is_super:
-                            # valida terminado con inicio (alias incluidos)
                             cur_start = base.groupby("Id", as_index=True)["Fecha inicio"].last().map(_canon_str)
                             cur_start_alias = base.groupby("Id", as_index=True)["Fecha de inicio"].last().map(_canon_str)
                             def _has_start(i): 
@@ -613,7 +647,7 @@ def render(user: dict | None = None):
                             prev_fi  = _canon_str(base_idx.at[i, "Fecha inicio"]) if i in base_idx.index else ""
                             prev_fiA = _canon_str(base_idx.at[i, "Fecha de inicio"]) if i in base_idx.index else ""
                             prev_hi  = _canon_str(base_idx.at[i, "Hora de inicio"]) if i in base_idx.index else ""
-                            new_fi   = _canon_str(fi_new_vis.get(i, ""))   # visible
+                            new_fi   = _canon_str(fi_new_vis.get(i, "")) 
                             new_hi   = _canon_str(hi_new.get(i, ""))
 
                             if is_super:
@@ -672,8 +706,8 @@ def render(user: dict | None = None):
                                 base_idx.at[i, "Hora estado actual"] = _canon_str(base_idx.at[i, "Hora de inicio"]) or h_now
                             else:
                                 base_idx.at[i, "Estado"] = "No iniciado"
-                                base_idx.at[i, "Fecha estado actual"] = _canon_str(base_idx.at[i, "Fecha Registro"])
-                                base_idx.at[i, "Hora estado actual"] = _canon_str(base_idx.at[i, "Hora Registro"])
+                                base_idx.at[i, "Fecha estado actual"] = _canon_str(base_idx.at[i, "Fecha Registro"]) or _canon_str(base_idx.at[i, "Fecha de registro"])
+                                base_idx.at[i, "Hora estado actual"] = _canon_str(base_idx.at[i, "Hora Registro"]) or _canon_str(base_idx.at[i, "Hora de registro"])
 
                         if changed_ids:
                             cols_apply = [
@@ -695,19 +729,19 @@ def render(user: dict | None = None):
                         # Persistir en sesión (Tareas recientes lee de aquí)
                         st.session_state["df_main"] = full_updated.copy()
 
-                        # Guardado local
-                        def _persist(_df: pd.DataFrame):
-                            try:
-                                os.makedirs("data", exist_ok=True)
-                                _df.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig")
-                                return {"ok": True, "msg": "Cambios guardados."}
-                            except Exception as _e:
-                                return {"ok": False, "msg": f"Error al guardar: {_e}"}
-
+                        # Guardado local (robusto, con fallback si hay wrapper maybe_save)
                         maybe_save = st.session_state.get("maybe_save")
-                        res = maybe_save(_persist, full_updated.copy()) if callable(maybe_save) else _persist(full_updated.copy())
+                        if callable(maybe_save):
+                            try:
+                                res = maybe_save(_save_local, full_updated.copy())
+                                if not isinstance(res, dict):
+                                    res = _save_local(full_updated.copy())
+                            except Exception:
+                                res = _save_local(full_updated.copy())
+                        else:
+                            res = _save_local(full_updated.copy())
 
-                        # Upsert a Sheets (opcional)
+                        # Upsert a Sheets (para evitar que el auto-pull posterior te pise cambios locales)
                         try:
                             if DO_SHEETS_UPSERT and changed_ids:
                                 _sheet_upsert_estado_by_id(full_updated.copy(), sorted(changed_ids))
