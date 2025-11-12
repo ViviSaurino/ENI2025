@@ -398,27 +398,43 @@ def _add_business_days(start_dates: pd.Series, days: pd.Series) -> pd.Series:
 def render(user: dict | None = None):
     st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-    # ====== CSS ======
+    # ====== CSS (ajustes visuales pedidos) ======
     st.markdown("""
     <style>
       :root{
         --pill-salmon:#F28B85;
         --card-border:#E5E7EB;
         --card-bg:#FFFFFF;
-        --hint-bg:#FFE7E3;
-        --hint-border:#F28B85;
+        --hint-bg:#F3F8FF;           /* más claro (igual a Nueva tarea) */
+        --hint-border:#BDD7FF;       /* línea punteada más fina */
+        --hint-color:#0B3B76;
+        --hdr-reg:#EDE9FE;           /* Registro: lila */
+        --hdr-ini:#DCFCE7;           /* Inicio: verde */
+        --hdr-ter:#E0F2FE;           /* Terminado: celeste */
       }
       .hist-card{ border:0 !important; background:transparent !important; border-radius:0 !important; padding:0 !important; margin:0 0 8px 0 !important; }
       .hist-title-pill{ display:inline-flex; align-items:center; gap:8px; padding:10px 16px; border-radius:10px; background: var(--pill-salmon); color:#fff; font-weight:600; font-size:1.05rem; line-height:1.1; box-shadow: inset 0 -2px 0 rgba(0,0,0,0.06); margin-bottom:10px; }
-      .hist-hint{ background:var(--hint-bg); border:2px dotted var(--hint-border); border-radius:10px; padding:10px 12px; color:#7F1D1D; margin: 2px 0 12px 0; font-size:0.95rem; }
+      .hist-hint{ background:var(--hint-bg); border:1px dashed var(--hint-border); border-radius:10px; padding:10px 12px; color:var(--hint-color); margin: 2px 0 12px 0; font-size:0.95rem; }
       .hist-hint + div[data-testid="stTextInput"]{ display:none !important; }
       .hist-hint + div:has(> div[data-testid="stTextInput"]){ display:none !important; }
       .hist-hint + div:has(input[type="text"]){ display:none !important; }
-      /* Alinea el botón con los controles en la misma fila */
-      .hist-search .stButton>button{ margin-top:28px; }
+
+      /* Contenedor de filtros como "rectángulo" */
+      .hist-filters{ border:1px solid var(--card-border); background:#F8FAFC; border-radius:12px; padding:16px; }
+
+      /* Botón buscar debajo del último filtro con mismo ancho */
+      .hist-search .stButton>button{ width:100%; }
+
+      /* AG Grid: evitar cortes en header */
       .ag-theme-balham .ag-cell{ white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
       .ag-theme-balham .ag-header-cell-label{ white-space: nowrap !important; line-height: 1.1 !important; overflow: visible !important; text-overflow: clip !important; }
-      .ag-theme-balham .ag-header .ag-icon, .ag-theme-balham .ag-header-cell .ag-icon, .ag-theme-balham .ag-header-cell-menu-button, .ag-theme-balham .ag-floating-filter, .ag-theme-balham .ag-header-row.ag-header-row-column-filter { display: none !important; }
+      .ag-theme-balham .ag-header .ag-icon, .ag-theme-balham .ag-header-cell .ag-icon, .ag-theme-balham .ag-header-cell-menu-button,
+      .ag-theme-balham .ag-floating-filter, .ag-theme-balham .ag-header-row.ag-header-row-column-filter { display: none !important; }
+
+      /* Encabezados coloreados (armonía con Editar estado) */
+      .ag-theme-balham .ag-header-cell.hdr-registro{ background:var(--hdr-reg) !important; border-radius:8px; }
+      .ag-theme-balham .ag-header-cell.hdr-inicio{   background:var(--hdr-ini) !important; border-radius:8px; }
+      .ag-theme-balham .ag-header-cell.hdr-termino{  background:var(--hdr-ter) !important; border-radius:8px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -452,18 +468,15 @@ def render(user: dict | None = None):
         unsafe_allow_html=True
     )
 
-    # ===== Filtros y alcance =====
+    # ===== Filtros (nuevo orden y opciones) =====
     st.markdown('<div class="hist-card">', unsafe_allow_html=True)
-
     df_all = st.session_state["df_main"].copy()
 
     super_editor = _is_super_editor()
     if super_editor:
         df_scope = df_all.copy()
     else:
-        # 1) Intentar ACL externo
         df_scope = apply_scope(df_all.copy(), user=user)
-        # 2) Fallback: filtrar por Responsable == usuario (contiene, case-insensitive)
         try:
             me = _display_name().strip()
             if isinstance(df_scope, pd.DataFrame) and "Responsable" in df_scope.columns and me:
@@ -472,11 +485,11 @@ def render(user: dict | None = None):
         except Exception:
             pass
 
-    # Rango de fechas base
-    if "Fecha inicio" in df_scope.columns:
-        _fseries = to_naive_local_series(df_scope["Fecha inicio"])
-    elif "Fecha Registro" in df_scope.columns:
+    # Serie de fechas base (Fecha Registro preferente)
+    if "Fecha Registro" in df_scope.columns:
         _fseries = to_naive_local_series(df_scope["Fecha Registro"])
+    elif "Fecha inicio" in df_scope.columns:
+        _fseries = to_naive_local_series(df_scope["Fecha inicio"])
     else:
         _fseries = to_naive_local_series(df_scope.get("Fecha", pd.Series([], dtype=object)))
     if _fseries.notna().any():
@@ -484,55 +497,83 @@ def render(user: dict | None = None):
     else:
         _min_date = _max_date = date.today()
 
+    # Catálogos para selects
+    # Estado actual canonical + emojis (solo etiqueta)
+    ESTADO_CHOICES = [
+        ("Todos", ""),
+        ("🟤 No iniciado", "no iniciado"),
+        ("▶️ En curso", "en curso"),
+        ("✅ Terminada", "terminada"),
+        ("⏸️ Pausada", "pausada"),
+        ("🛑 Cancelada", "cancelada"),
+        ("🗑️ Eliminada", "eliminad"),  # usamos prefijo para cubrir Eliminado/Eliminada
+    ]
+    PRIORIDAD_CHOICES = [("Todas",""), ("🔴 Alta","alta"), ("🟡 Media","media"), ("🟢 Baja","baja")]
+    COMPLEJIDAD_CHOICES = [("Todas",""), ("🔴 Alta","alta"), ("🟡 Media","media"), ("🟢 Baja","baja")]
+    CUMPL_CHOICES = [
+        ("Todos",""),
+        ("✅ A tiempo","a tiempo"),
+        ("⏰ Fuera de tiempo","fuera de tiempo"),
+        ("❌ No entregado","no entregado"),
+        ("⚠️ En riesgo","riesgo"),
+    ]
+
+    def _sel(label_value_list, label: str, key: str, index0: int = 0):
+        labels = [x[0] for x in label_value_list]
+        return st.selectbox(label, options=labels, index=index0, key=key)
+
+    def _value_of(label_value_list, selected_label: str) -> str:
+        for lab, val in label_value_list:
+            if lab == selected_label:
+                return val
+        return ""
+
+    # —— UI de filtros (contenedor rectangular). Orden solicitado.
     with st.container():
-        # Catálogos para selects
-        fases_all = sorted([x for x in df_scope.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x!="nan"])
-        tipos_all = sorted([x for x in df_scope.get("Tipo", pd.Series([], dtype=str)).astype(str).unique() if x and x!="nan"])
+        st.markdown('<div class="hist-filters">', unsafe_allow_html=True)
 
         if super_editor:
-            # ===== Vista Vivi/Enrique (completa) =====
-            c1, c2, c3, c4, c5, c6 = st.columns([1.05, 1.10, 1.70, 1.05, 1.05, 0.90], gap="medium")
+            # 7 celdas: Responsable → Estado → Prioridad → Complejidad → Cumplimiento → Desde → Hasta
+            responsables = sorted([x for x in df_scope.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x!="nan"])
+            c1, c2, c3, c4, c5, c6, c7 = st.columns([1.30, 1.20, 1.10, 1.10, 1.30, 1.00, 1.00], gap="medium")
             with c1:
-                area_sel = st.selectbox(
-                    "Área",
-                    options=["Todas"] + st.session_state.get("AREAS_OPC",
-                        ["Jefatura","Gestión","Metodología","Base de datos","Monitoreo","Capacitación","Consistencia"]),
-                    index=0, key="hist_area"
-                )
-            with c2:
-                fase_sel = st.selectbox("Fase", options=["Todas"]+fases_all, index=0, key="hist_fase")
-
-            df_resp_src = df_scope.copy()
-            if area_sel!="Todas": df_resp_src = df_resp_src[df_resp_src.get("Área","").astype(str)==area_sel]
-            if fase_sel!="Todas" and "Fase" in df_resp_src.columns:
-                df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str)==fase_sel]
-            responsables = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x!="nan"])
-            with c3:
                 resp_multi = st.multiselect("Responsable", options=responsables, default=[], key="hist_resp",
                                             placeholder="Selecciona responsable(s)")
+            with c2:
+                _est_lbl = _sel(ESTADO_CHOICES, "Estado actual", "hist_estado")
+            with c3:
+                _pri_lbl = _sel(PRIORIDAD_CHOICES, "Prioridad", "hist_prio")
             with c4:
-                f_desde = st.date_input("Desde (Fecha de registro)", value=_min_date, key="hist_desde")
+                _com_lbl = _sel(COMPLEJIDAD_CHOICES, "Complejidad", "hist_comp")
             with c5:
-                f_hasta = st.date_input("Hasta (Fecha de registro)", value=_max_date, key="hist_hasta")
+                _cum_lbl = _sel(CUMPL_CHOICES, "Cumplimiento", "hist_cumpl")
             with c6:
+                f_desde = st.date_input("Desde", value=_min_date, key="hist_desde")
+            with c7:
+                f_hasta = st.date_input("Hasta", value=_max_date, key="hist_hasta")
                 st.markdown('<div class="hist-search">', unsafe_allow_html=True)
                 hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
                 st.markdown('</div>', unsafe_allow_html=True)
         else:
-            # ===== Vista resto de usuarios (solo Fase, Tipo, fechas y Buscar) =====
-            c1, c2, c3, c4, c5 = st.columns([1.10, 1.30, 1.05, 1.05, 0.90], gap="medium")
+            # 6 celdas: Estado → Prioridad → Complejidad → Cumplimiento → Desde → Hasta
+            c1, c2, c3, c4, c5, c6 = st.columns([1.20, 1.10, 1.10, 1.30, 1.00, 1.00], gap="medium")
             with c1:
-                fase_sel = st.selectbox("Fase", options=["Todas"]+fases_all, index=0, key="hist_fase")
+                _est_lbl = _sel(ESTADO_CHOICES, "Estado actual", "hist_estado")
             with c2:
-                tipo_sel = st.selectbox("Tipo de tarea", options=["Todos"]+tipos_all, index=0, key="hist_tipo")
+                _pri_lbl = _sel(PRIORIDAD_CHOICES, "Prioridad", "hist_prio")
             with c3:
-                f_desde = st.date_input("Desde (Fecha de registro)", value=_min_date, key="hist_desde")
+                _com_lbl = _sel(COMPLEJIDAD_CHOICES, "Complejidad", "hist_comp")
             with c4:
-                f_hasta = st.date_input("Hasta (Fecha de registro)", value=_max_date, key="hist_hasta")
+                _cum_lbl = _sel(CUMPL_CHOICES, "Cumplimiento", "hist_cumpl")
             with c5:
+                f_desde = st.date_input("Desde", value=_min_date, key="hist_desde")
+            with c6:
+                f_hasta = st.date_input("Hasta", value=_max_date, key="hist_hasta")
                 st.markdown('<div class="hist-search">', unsafe_allow_html=True)
                 hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
                 st.markdown('</div>', unsafe_allow_html=True)
+
+        st.markdown('</div>', unsafe_allow_html=True)  # /hist-filters
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -548,29 +589,42 @@ def render(user: dict | None = None):
         df_view["Fecha inicio"] = to_naive_local_series(df_view["Fecha inicio"])
 
     if hist_do_buscar:
-        # Fase (común)
-        if fase_sel!="Todas" and "Fase" in df_view.columns:
-            df_view = df_view[df_view["Fase"].astype(str)==fase_sel]
+        # Responsable (solo super editores)
+        if super_editor and 'resp_multi' in locals() and resp_multi:
+            df_view = df_view[df_view["Responsable"].astype(str).isin(resp_multi)]
 
-        if super_editor:
-            # Área y Responsable solo para Vivi/Enrique
-            if 'area_sel' in locals() and area_sel!="Todas":
-                df_view = df_view[df_view.get("Área","").astype(str)==area_sel]
-            if 'resp_multi' in locals() and resp_multi:
-                df_view = df_view[df_view["Responsable"].astype(str).isin(resp_multi)]
-        else:
-            # Tipo de tarea solo para el resto
-            if 'tipo_sel' in locals() and tipo_sel!="Todos" and "Tipo" in df_view.columns:
-                df_view = df_view[df_view["Tipo"].astype(str)==tipo_sel]
+        # Estado (busca por prefijo canónico dentro del texto, tolerante a emoji)
+        _estado_val = _value_of(ESTADO_CHOICES, _est_lbl)
+        if _estado_val:
+            mask_est = df_view.get("Estado", pd.Series([], dtype=str)).astype(str).str.lower().str.contains(_estado_val)
+            df_view = df_view[mask_est]
 
-        # Fechas (común)
+        # Prioridad / Complejidad (coincidencia por palabra clave)
+        _prio_val = _value_of(PRIORIDAD_CHOICES, _pri_lbl)
+        if _prio_val:
+            mask_pri = df_view.get("Prioridad", pd.Series([], dtype=str)).astype(str).str.lower().str.contains(_prio_val)
+            df_view = df_view[mask_pri]
+
+        _comp_val = _value_of(COMPLEJIDAD_CHOICES, _com_lbl)
+        if _comp_val:
+            mask_com = df_view.get("Complejidad", pd.Series([], dtype=str)).astype(str).str.lower().str.contains(_comp_val)
+            df_view = df_view[mask_com]
+
+        # Cumplimiento (substring)
+        _cum_val = _value_of(CUMPL_CHOICES, _cum_lbl)
+        if _cum_val:
+            mask_cum = df_view.get("Cumplimiento", pd.Series([], dtype=str)).astype(str).str.lower().str.contains(_cum_val)
+            df_view = df_view[mask_cum]
+
+        # Fechas (sobre "Fecha Registro" si existe)
         if f_desde is not None and "Fecha Registro" in df_view.columns:
             df_view = df_view[df_view["Fecha Registro"].dt.date >= f_desde]
         if f_hasta is not None and "Fecha Registro" in df_view.columns:
             df_view = df_view[df_view["Fecha Registro"].dt.date <= f_hasta]
 
     if not show_deleted and "Estado" in df_view.columns:
-        df_view = df_view[df_view["Estado"].astype(str).str.strip()!="Eliminado"]
+        # cubrir Eliminado / Eliminada
+        df_view = df_view[~df_view["Estado"].astype(str).str.lower().str.contains("eliminad")]
 
     # ===== Normalizaciones mínimas =====
     for need in ["Estado","Hora de inicio","Fecha Terminado","Hora Terminado"]:
@@ -592,8 +646,8 @@ def render(user: dict | None = None):
         "Fecha Pausado","Hora Pausado",
         "Fecha Cancelado","Hora Cancelado",
         "Fecha Eliminado","Hora Eliminado",
-        _LINK_CANON,
-        "Link de descarga"
+        _LINK_CANON,                 # (oculta)
+        "Link de descarga"           # ← ÚLTIMA. Después de esta, no se muestran más columnas.
     ]
     hidden_cols = [
         "Archivo","__ts__","__SEL__","__DEL__","¿Eliminar?","Tipo de alerta",
@@ -605,9 +659,8 @@ def render(user: dict | None = None):
         if c not in df_view.columns:
             df_view[c] = ""
 
-    df_grid = df_view.reindex(
-        columns=list(dict.fromkeys(target_cols)) + [c for c in df_view.columns if c not in target_cols + hidden_cols]
-    ).copy()
+    # ⬇️ IMPORTANTE: limitar SOLO a target_cols (nada después de Link de descarga)
+    df_grid = df_view.reindex(columns=list(dict.fromkeys(target_cols))).copy()
     df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()
 
     import unicodedata, re as _re
@@ -651,7 +704,7 @@ def render(user: dict | None = None):
 
     for bcol in ["¿Generó alerta?","¿Se corrigió?"]:
         if bcol in df_grid.columns:
-            df_grid[bcol] = df_grid[bcol] = df_grid[bcol].map(_yesno)
+            df_grid[bcol] = df_grid[bcol].map(_yesno)
 
     if "Calificación" in df_grid.columns:
         df_grid["Calificación"] = pd.to_numeric(df_grid["Calificación"], errors="coerce").fillna(0)
@@ -748,6 +801,11 @@ def render(user: dict | None = None):
     # 🔧 NUEVO (robusto): mapeo normalizado para aplicar “Fecha de inicio / Fecha de registro”
     _header_map_norm = {_normkey(k): v for k, v in header_map.items()}
 
+    # Estilos de celdas para columnas de fechas/horas (armonía con Editar estado)
+    cell_style_reg = {"backgroundColor":"var(--hdr-reg)","borderRadius":"8px"}
+    cell_style_ini = {"backgroundColor":"var(--hdr-ini)","borderRadius":"8px"}
+    cell_style_ter = {"backgroundColor":"var(--hdr-ter)","borderRadius":"8px"}
+
     for col in df_grid.columns:
         # Usa primero el mapeo normalizado; si no, cae al exacto
         nice = _header_map_norm.get(_normkey(col), header_map.get(col, col))
@@ -758,14 +816,29 @@ def render(user: dict | None = None):
             col_is_editable = (col in _editable_base) and (_normkey(col) not in _ro_acl) and (_normkey(nice) not in _ro_acl)
         if col_is_editable:
             editable_cols.add(col)
-        gob.configure_column(
-            col,
-            headerName=nice,  # ← FIX principal
+
+        hdr_class = None
+        cstyle = None
+        if col in ("Fecha Registro","Hora Registro"):
+            hdr_class = "hdr-registro"; cstyle = cell_style_reg
+        elif col in ("Fecha inicio","Hora de inicio"):
+            hdr_class = "hdr-inicio";   cstyle = cell_style_ini
+        elif col in ("Fecha Terminado","Hora Terminado"):
+            hdr_class = "hdr-termino";  cstyle = cell_style_ter
+
+        kwargs = dict(
+            headerName=nice,
             minWidth=width_map.get(nice, width_map.get(col, 120)),
             editable=col_is_editable,
             suppressMenu=True,
             filter=False, floatingFilter=False, sortable=False
         )
+        if hdr_class:
+            kwargs["headerClass"] = hdr_class
+        if cstyle:
+            kwargs["cellStyle"] = cstyle
+
+        gob.configure_column(col, **kwargs)
 
     gob.configure_column(_LINK_CANON, hide=True)
 
@@ -793,7 +866,6 @@ def render(user: dict | None = None):
                 "Fecha Pausado","Fecha Cancelado","Fecha Eliminado",
                 "Fecha de detección","Fecha de corrección"]:
         if col in df_grid.columns:
-            # ← asegura que NO se pierda el título bonito
             nice = _header_map_norm.get(_normkey(col), header_map.get(col, col))
             gob.configure_column(col, headerName=nice, valueFormatter=date_only_fmt)
 
