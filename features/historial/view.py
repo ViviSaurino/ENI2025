@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import annotations 
 
 import os, re
 from io import BytesIO
@@ -723,6 +723,7 @@ def render(user: dict | None = None):
         _LINK_CANON: 120,
     }
 
+    # ⬇️ SOLO cambios de encabezado solicitados (sin tocar nada más)
     header_map = {
         "Detalle": "Detalle de tarea",
         "Fecha Vencimiento": "Fecha límite",
@@ -733,7 +734,6 @@ def render(user: dict | None = None):
         "Hora Registro": "Hora de registro",
         "Fecha Terminado": "Fecha terminada",
         "Hora Terminado": "Hora terminada",
-
     }
 
     _acl_user = st.session_state.get("acl_user", {}) or {}
