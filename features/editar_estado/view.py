@@ -12,6 +12,9 @@ from st_aggrid import (
     JsCode,
 )
 
+# ======= Toggle: Upsert a Google Sheets (desactivado por defecto) =======
+DO_SHEETS_UPSERT = bool(st.secrets.get("edit_estado_upsert_to_sheets", False))
+
 # Hora Lima para sellado de cambios + ACL
 try:
     from shared import now_lima_trimmed, apply_scope
@@ -81,7 +84,6 @@ def _fmt_hhmm(v) -> str:
 # ============ Helpers de normalización y deduplicado ============
 def _is_blank_str(x) -> bool:
     s = str(x).strip().lower()
-    # <- agregado 'nat'
     return s in {"", "-", "nan", "nat", "none", "null"}
 
 def _canon_str(x) -> str:
@@ -151,6 +153,8 @@ def _col_letter(n: int) -> str:
     return s
 
 def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
+    if not DO_SHEETS_UPSERT:
+        return
     try:
         ss, ws, ws_name = _gsheets_client()
     except Exception as e:
@@ -178,7 +182,7 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
     id_to_row = {}
     for r_i, row in enumerate(values[1:], start=2):
         if id_idx < len(row):
-            id_to_row[str(row[id_idx]).strip()] = r_i  # si hay duplicados en hoja, usa el último
+            id_to_row[str(row[id_idx]).strip()] = r_i
 
     base_push_cols = [
         "Estado", "Estado actual",
@@ -226,7 +230,7 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
 
         current_row = values[row_idx - 1].copy()
         if len(current_row) < len(headers):
-            current_row += [""] * (len(current_row) - len(headers))
+            current_row += [""] * (len(headers) - len(current_row))
         for h in cols_to_push:
             v = _get_val(_id, h)
             current_row[col_map[h] - 1] = _fmt_out(h, v)
@@ -252,7 +256,9 @@ def render(user: dict | None = None):
         <style>
           #est-section .stButton > button { width: 100% !important; }
           #est-section .ag-header-cell-label{ font-weight: 400 !important; white-space: normal !important; line-height: 1.15 !important; }
-          #est-section .ag-body-horizontal-scroll, #est-section .ag-center-cols-viewport { overflow-x: hidden !important; }
+          /* habilita scroll horizontal inferior */
+          #est-section .ag-body-horizontal-scroll,
+          #est-section .ag-center-cols-viewport { overflow-x: auto !important; }
           .section-est .help-strip + .form-card{ margin-top: 6px !important; }
           .est-pill{ width:100%; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center;
             background:#A7C8F0; color:#ffffff; font-weight:700; box-shadow:0 6px 14px rgba(167,200,240,.35); user-select:none; margin: 4px 0 16px; }
@@ -278,7 +284,7 @@ def render(user: dict | None = None):
         # Base global (LIMPIA y sin duplicados)
         df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
         df_all = _dedup_keep_last_with_id(df_all)
-        st.session_state["df_main"] = df_all.copy()  # mantiene la base sin “feos”
+        st.session_state["df_main"] = df_all.copy()
 
         # 🔐 ACL
         df_all = apply_scope(df_all, user=user)
@@ -291,48 +297,28 @@ def render(user: dict | None = None):
             except Exception:
                 pass
 
-        # ===== Rango por defecto =====
-        def _first_valid_date_series(df: pd.DataFrame) -> pd.Series:
-            if df.empty:
-                return pd.Series([], dtype="datetime64[ns]")
-            pri = ["Fecha inicio","Fecha Registro","Fecha","Fecha Terminado"]
-            s_list = []
-            for c in pri:
-                if c in df.columns:
-                    s_list.append(pd.to_datetime(df[c], errors="coerce"))
-            if not s_list:
-                return pd.Series([], dtype="datetime64[ns]")
-            all_dates = pd.concat(s_list, ignore_index=True)
-            return all_dates[all_dates.notna()]
-
-        dates_all = _first_valid_date_series(df_all)
-        if dates_all.empty:
+        # ===== Rango por defecto (solo por Fecha de registro) =====
+        fr_all = pd.to_datetime(df_all.get("Fecha Registro", pd.Series([], dtype=object)), errors="coerce")
+        valid_fr = fr_all[fr_all.notna()]
+        if valid_fr.empty:
             today = pd.Timestamp.today().normalize().date()
-            min_date = today; max_date = today
+            min_date = max_date = today
         else:
-            min_date = dates_all.min().date(); max_date = dates_all.max().date()
+            min_date = valid_fr.min().date()
+            max_date = valid_fr.max().date()
 
-        # ===== FILTROS =====
+        # ===== FILTROS (solo los de la imagen) =====
         with st.form("est_filtros_v4", clear_on_submit=False):
-            c_area, c_fase, c_resp, c_desde, c_hasta, c_buscar = st.columns([A, Fw, T_width, D, R, C], gap="medium")
-
-            AREAS_OPC = (st.session_state.get("AREAS_OPC",
-                           sorted([x for x in df_all.get("Área", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])) or [])
-            est_area = c_area.selectbox("Área", ["Todas"] + AREAS_OPC, index=0)
+            c_fase, c_tipo, c_desde, c_hasta, c_buscar = st.columns([Fw, T_width, D, R, C], gap="medium")
 
             fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
             est_fase = c_fase.selectbox("Fase", ["Todas"] + fases_all, index=0)
 
-            df_resp_src = df_all.copy()
-            if est_area != "Todas" and "Área" in df_resp_src.columns:
-                df_resp_src = df_resp_src[df_resp_src["Área"].astype(str) == est_area]
-            if est_fase != "Todas" and "Fase" in df_resp_src.columns:
-                df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str) == est_fase]
-            responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
-            est_resp = c_resp.selectbox("Responsable", ["Todos"] + responsables_all, index=0)
+            tipos_all = sorted([x for x in df_all.get("Tipo de tarea", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+            est_tipo = c_tipo.selectbox("Tipo de tarea", ["Todos"] + tipos_all, index=0)
 
-            est_desde = c_desde.date_input("Desde", value=min_date, min_value=min_date, max_value=max_date, key="est_desde")
-            est_hasta = c_hasta.date_input("Hasta", value=max_date, min_value=min_date, max_value=max_date, key="est_hasta")
+            est_desde = c_desde.date_input("Desde (Fecha de registro)", value=min_date, min_value=min_date, max_value=max_date, key="est_desde")
+            est_hasta = c_hasta.date_input("Hasta (Fecha de registro)", value=max_date, min_value=min_date, max_value=max_date, key="est_hasta")
 
             with c_buscar:
                 st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
@@ -341,15 +327,12 @@ def render(user: dict | None = None):
         # ===== Filtrado de tareas =====
         df_tasks = df_all.copy()
         if est_do_buscar:
-            if est_area != "Todas" and "Área" in df_tasks.columns:
-                df_tasks = df_tasks[df_tasks["Área"].astype(str) == est_area]
             if est_fase != "Todas" and "Fase" in df_tasks.columns:
                 df_tasks = df_tasks[df_tasks["Fase"].astype(str) == est_fase]
-            if est_resp != "Todos" and "Responsable" in df_tasks.columns:
-                df_tasks = df_tasks[df_tasks["Responsable"].astype(str) == est_resp]
-            fcol = pd.to_datetime(df_tasks.get("Fecha inicio", pd.Series([], dtype=object)), errors="coerce")
-            if fcol.isna().all():
-                fcol = pd.to_datetime(df_tasks.get("Fecha Registro", pd.Series([], dtype=object)), errors="coerce")
+            if est_tipo != "Todos" and "Tipo de tarea" in df_tasks.columns:
+                df_tasks = df_tasks[df_tasks["Tipo de tarea"].astype(str) == est_tipo]
+
+            fcol = pd.to_datetime(df_tasks.get("Fecha Registro", pd.Series([], dtype=object)), errors="coerce")
             if est_desde:
                 df_tasks = df_tasks[fcol >= pd.to_datetime(est_desde)]
             if est_hasta:
@@ -383,10 +366,11 @@ def render(user: dict | None = None):
                     return "-"
             return s.astype(str).map(_one)
 
+        # Nota: en la grilla visible renombramos "Fecha inicio" -> "Fecha de inicio"
         cols_out = [
             "Id","Tarea","Estado actual",
             "Fecha de registro","Hora de registro",
-            "Fecha inicio","Hora de inicio",
+            "Fecha de inicio","Hora de inicio",
             "Fecha terminada","Hora terminada",
             "Link de archivo",
         ]
@@ -417,7 +401,7 @@ def render(user: dict | None = None):
                 "Estado actual": est_now,
                 "Fecha de registro": _fmt_date_series(fr),
                 "Hora de registro": _fmt_time_series(hr),
-                "Fecha inicio": _fmt_date_series(fi),
+                "Fecha de inicio": _fmt_date_series(fi),      # <- renombrado visible
                 "Hora de inicio": _fmt_time_series(hi),
                 "Fecha terminada": _fmt_date_series(ft),
                 "Hora terminada": _fmt_time_series(ht),
@@ -450,11 +434,11 @@ def render(user: dict | None = None):
             const v = (p.value || '').toString().trim();
             if (/^\\d{4}-\\d{2}-\\d{2}$/.test(v)) { this.eInput.value = v; }
             else {
-                const d = new Date(v);
-                if (!isNaN(d.getTime())){
-                    const pad=n=>String(n).padStart(2,'0');
-                    this.eInput.value = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
-                }
+              const d = new Date(v);
+              if (!isNaN(d.getTime())){
+                const pad=n=>String(n).padStart(2,'0');
+                this.eInput.value = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+              }
             }
           }
           getGui(){ return this.eInput }
@@ -464,6 +448,7 @@ def render(user: dict | None = None):
 
         link_formatter = JsCode("""function(p){ const s=String(p.value||'').trim(); return s? s : '-'; }""")
 
+        # Ajuste de dependencias al editar (usa el nombre visible "Fecha de inicio")
         on_cell_changed = JsCode(f"""
         function(params){{
           const field = params.colDef.field;
@@ -472,7 +457,7 @@ def render(user: dict | None = None):
           const utcMs = now.getTime() + now.getTimezoneOffset()*60000;
           const lima = new Date(utcMs - 5*60*60000);
           const hhmm = pad(lima.getHours()) + ':' + pad(lima.getMinutes());
-          if (field === 'Fecha inicio') {{
+          if (field === 'Fecha de inicio') {{
             params.node.setDataValue('Hora de inicio', hhmm);
             params.node.setDataValue('Estado actual', 'En curso');
           }}
@@ -494,26 +479,32 @@ def render(user: dict | None = None):
           const SUPER = {str(is_super).lower()};
           if(SUPER) return true;
           const v = String(p.value||'').trim();
-          const hasStart = String(p.data['Fecha inicio']||'').trim() !== '' && String(p.data['Fecha inicio']||'').trim() !== '-';
+          const hasStart = String(p.data['Fecha de inicio']||'').trim() !== '' && String(p.data['Fecha de inicio']||'').trim() !== '-';
           return (v === '' || v === '-') && hasStart;
         }}""")
 
         gob = GridOptionsBuilder.from_dataframe(df_view)
-        gob.configure_grid_options(suppressMovableColumns=True, domLayout="normal", ensureDomOrder=True,
-                                   rowHeight=38, headerHeight=60, suppressHorizontalScroll=True)
+        gob.configure_grid_options(
+            suppressMovableColumns=True,
+            domLayout="normal",
+            ensureDomOrder=True,
+            rowHeight=38,
+            headerHeight=60,
+            suppressHorizontalScroll=False  # <- habilita scroll inferior
+        )
         gob.configure_default_column(wrapHeaderText=True, autoHeaderHeight=True)
         gob.configure_selection("single", use_checkbox=False)
 
         gob.configure_column("Estado actual", valueFormatter=estado_emoji_fmt, cellStyle=estado_cell_style, minWidth=170, editable=False)
-        gob.configure_column("Fecha de registro", editable=False, minWidth=150)
-        gob.configure_column("Hora de registro", editable=False, minWidth=140)
-        gob.configure_column("Tarea", editable=False, minWidth=260)
-        gob.configure_column("Id", editable=False, minWidth=110)
-        gob.configure_column("Fecha inicio", editable=editable_start, cellEditor=date_editor, minWidth=160)
-        gob.configure_column("Hora de inicio", editable=False, minWidth=140)
-        gob.configure_column("Fecha terminada", editable=editable_end, cellEditor=date_editor, minWidth=170)
-        gob.configure_column("Hora terminada", editable=False, minWidth=150)
-        gob.configure_column("Link de archivo", editable=True, minWidth=260, valueFormatter=link_formatter)
+        gob.configure_column("Fecha de registro", editable=False, minWidth=170)
+        gob.configure_column("Hora de registro", editable=False, minWidth=150)
+        gob.configure_column("Tarea", editable=False, minWidth=320)
+        gob.configure_column("Id", editable=False, minWidth=120)
+        gob.configure_column("Fecha de inicio", editable=editable_start, cellEditor=date_editor, minWidth=180)  # <- renombrado visible
+        gob.configure_column("Hora de inicio", editable=False, minWidth=160)
+        gob.configure_column("Fecha terminada", editable=editable_end, cellEditor=date_editor, minWidth=190)
+        gob.configure_column("Hora terminada", editable=False, minWidth=160)
+        gob.configure_column("Link de archivo", editable=True, minWidth=300, valueFormatter=link_formatter)
 
         grid_opts = gob.build()
         grid_opts["onCellValueChanged"] = on_cell_changed.js_code
@@ -522,11 +513,11 @@ def render(user: dict | None = None):
             df_view,
             gridOptions=grid_opts,
             data_return_mode=DataReturnMode.AS_INPUT,
-            update_mode=GridUpdateMode.VALUE_CHANGED,   # <- antes: MODEL_CHANGED
-            fit_columns_on_grid_load=True,
+            update_mode=GridUpdateMode.VALUE_CHANGED,
+            fit_columns_on_grid_load=False,
             enable_enterprise_modules=False,
             reload_data=False,
-            height=300,
+            height=430,                       # <- más alto
             allow_unsafe_jscode=True,
             theme="balham",
         )
@@ -545,14 +536,14 @@ def render(user: dict | None = None):
 
                         def norm(s: pd.Series) -> pd.Series:
                             t = s.fillna("").astype(str).str.strip()
-                            # convierte guiones y tokens a vacío real (incluye NaT)
                             return t.replace({"-": "", "NaT": "", "NAT": "", "nat": "", "NaN": "", "nan": "", "None": "", "none": ""})
 
-                        fi_new = norm(g_i.get("Fecha inicio", pd.Series(index=g_i.index)))
-                        hi_new = norm(g_i.get("Hora de inicio", pd.Series(index=g_i.index)))
-                        ft_new = norm(g_i.get("Fecha terminada", pd.Series(index=g_i.index)))
-                        ht_new = norm(g_i.get("Hora terminada", pd.Series(index=g_i.index)))
-                        lk_new = norm(g_i.get("Link de archivo", pd.Series(index=g_i.index)))
+                        # OJO: leemos "Fecha de inicio" visible y lo mapeamos al nombre base "Fecha inicio"
+                        fi_new_vis = norm(g_i.get("Fecha de inicio", pd.Series(index=g_i.index)))
+                        hi_new      = norm(g_i.get("Hora de inicio", pd.Series(index=g_i.index)))
+                        ft_new      = norm(g_i.get("Fecha terminada", pd.Series(index=g_i.index)))
+                        ht_new      = norm(g_i.get("Hora terminada", pd.Series(index=g_i.index)))
+                        lk_new      = norm(g_i.get("Link de archivo", pd.Series(index=g_i.index)))
 
                         ids_view = list(g_i.index)
 
@@ -576,15 +567,14 @@ def render(user: dict | None = None):
                             if need not in base.columns:
                                 base[need] = ""
 
-                        # Solo Id válidos y sin duplicados
                         base = _dedup_keep_last_with_id(base)
                         ids_ok = [i for i in ids_view if i in set(base["Id"].astype(str))]
 
                         if not is_super:
                             cur_start = base.groupby("Id", as_index=True)["Fecha inicio"].last().map(_canon_str)
-                            bad = [i for i in ids_ok if (_canon_str(ft_new.get(i, "")) and not (_canon_str(cur_start.get(i, "")) or _canon_str(fi_new.get(i, ""))))]
+                            bad = [i for i in ids_ok if (_canon_str(ft_new.get(i, "")) and not (_canon_str(cur_start.get(i, "")) or _canon_str(fi_new_vis.get(i, ""))))]
                             if bad:
-                                st.warning("No puedes registrar 'Fecha terminada' sin 'Fecha inicio' en algunas tareas.")
+                                st.warning("No puedes registrar 'Fecha terminada' sin 'Fecha de inicio' en algunas tareas.")
                                 for i in bad:
                                     ft_new[i] = ""; ht_new[i] = ""
 
@@ -599,7 +589,8 @@ def render(user: dict | None = None):
                         for i in ids_ok:
                             prev_fi = _canon_str(base_idx.at[i, "Fecha inicio"]) if i in base_idx.index else ""
                             prev_hi = _canon_str(base_idx.at[i, "Hora de inicio"]) if i in base_idx.index else ""
-                            new_fi  = _canon_str(fi_new.get(i, "")); new_hi  = _canon_str(hi_new.get(i, ""))
+                            new_fi  = _canon_str(fi_new_vis.get(i, ""))   # <- viene de la columna visible
+                            new_hi  = _canon_str(hi_new.get(i, ""))
 
                             if is_super:
                                 if new_fi != prev_fi:
@@ -653,7 +644,6 @@ def render(user: dict | None = None):
                                 base_idx.at[i, "Fecha estado actual"] = _canon_str(base_idx.at[i, "Fecha Registro"])
                                 base_idx.at[i, "Hora estado actual"] = _canon_str(base_idx.at[i, "Hora Registro"])
 
-                        # Aplicación directa por Id + DEDUP final
                         if changed_ids:
                             cols_apply = [
                                 "Estado","Fecha estado actual","Hora estado actual",
@@ -664,16 +654,14 @@ def render(user: dict | None = None):
                             for col in cols_apply:
                                 if col not in full_updated.columns:
                                     full_updated[col] = ""
-
                             for i in changed_ids:
                                 if i in base_idx.index:
                                     for col in cols_apply:
                                         val = base_idx.at[i, col]
                                         full_updated.loc[full_updated["Id"].astype(str) == i, col] = val
-
                             full_updated = _dedup_keep_last_with_id(full_updated)
 
-                        # Persistir en sesión (lo que leen otras pestañas como Tareas recientes)
+                        # Persistir en sesión (Tareas recientes lee de aquí)
                         st.session_state["df_main"] = full_updated.copy()
 
                         # Guardado local
@@ -688,9 +676,9 @@ def render(user: dict | None = None):
                         maybe_save = st.session_state.get("maybe_save")
                         res = maybe_save(_persist, full_updated.copy()) if callable(maybe_save) else _persist(full_updated.copy())
 
-                        # Upsert a Sheets (solo ids cambiados)
+                        # Upsert a Sheets (opcional)
                         try:
-                            if changed_ids:
+                            if DO_SHEETS_UPSERT and changed_ids:
                                 _sheet_upsert_estado_by_id(full_updated.copy(), sorted(changed_ids))
                         except Exception as ee:
                             st.info(f"Guardado local OK. No pude actualizar Sheets: {ee}")
