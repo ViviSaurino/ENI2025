@@ -633,7 +633,7 @@ def render(user: dict | None = None):
         # ===== Estilos por bloque =====
         style_reg = {"backgroundColor": "#F5F3FF"}   # lila (Registro)
         style_ini = {"backgroundColor": "#E0F2FE"}   # celeste (Inicio)
-        style_ter = {"backgroundColor": "#D1FAE5"}   # jade (Término)
+        style_ter = {"backgroundColor": "#ECFDF5"}   # jade (Término)
         style_del = {}  # Eliminación sin color
 
         gob = GridOptionsBuilder.from_dataframe(df_view)
