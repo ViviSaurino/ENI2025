@@ -305,7 +305,7 @@ def render(user: dict | None = None):
           /* Término — jade muy claro */
           #est-section .ag-header-cell[col-id="Fecha terminada"],
           #est-section .ag-header-cell[col-id="Hora terminada"] { background:#D1FAE5 !important; }
-          /* Eliminación sin color resaltado (se mantiene por defecto) */
+          /* Estado actual neutro (solo emojis en celdas) */
           #est-section .ag-header-cell[col-id="Estado actual"] { background:#F3F4F6 !important; color:#111827 !important; }
         </style>
         """,
@@ -485,13 +485,13 @@ def render(user: dict | None = None):
                 return s1
             return s1.where(s1.notna(), s2)
 
-        # >>> Orden de columnas actualizado: Link de archivo después de Inicio, antes de Término
+        # >>> Orden FINAL solicitado: Link de archivo DESPUÉS de "Hora terminada" y ANTES de "Fecha eliminada"
         cols_out = [
             "Id","Tarea","Estado actual",
             "Fecha de registro","Hora de registro",
             "Fecha de inicio","Hora de inicio",
-            "Link de archivo",
             "Fecha terminada","Hora terminada",
+            "Link de archivo",
             "Fecha eliminada","Hora eliminada",
         ]
 
@@ -532,9 +532,9 @@ def render(user: dict | None = None):
                 "Hora de registro": _fmt_time_series(hr),
                 "Fecha de inicio": _fmt_date_series(fi),
                 "Hora de inicio": _fmt_time_series(hi),
-                "Link de archivo": link_col,
                 "Fecha terminada": _fmt_date_series(ft),
                 "Hora terminada": _fmt_time_series(ht),
+                "Link de archivo": link_col,
                 "Fecha eliminada": _fmt_date_series(fe),
                 "Hora eliminada": _fmt_time_series(he),
             })[cols_out].copy()
@@ -630,11 +630,11 @@ def render(user: dict | None = None):
           return (v === '' || v === '-') && hasEnd;
         }}""")
 
-        # ===== Estilos por bloque (celdas) — Registro lila; Inicio celeste; Término jade; Eliminación sin color =====
-        style_reg = {"backgroundColor": "#F5F3FF"}   # lila
-        style_ini = {"backgroundColor": "#E0F2FE"}   # celeste muy claro
-        style_ter = {"backgroundColor": "#D1FAE5"}   # jade muy claro
-        style_del = {}  # sin color para “Fecha/Hora eliminada”
+        # ===== Estilos por bloque =====
+        style_reg = {"backgroundColor": "#F5F3FF"}   # lila (Registro)
+        style_ini = {"backgroundColor": "#E0F2FE"}   # celeste (Inicio)
+        style_ter = {"backgroundColor": "#D1FAE5"}   # jade (Término)
+        style_del = {}  # Eliminación sin color
 
         gob = GridOptionsBuilder.from_dataframe(df_view)
         gob.configure_grid_options(
@@ -648,29 +648,17 @@ def render(user: dict | None = None):
         gob.configure_default_column(wrapHeaderText=True, autoHeaderHeight=True)
         gob.configure_selection("single", use_checkbox=False)
 
-        # Estado actual: sin color (solo emojis)
+        # Orden de configuración acorde al orden de columnas
         gob.configure_column("Estado actual", valueFormatter=estado_emoji_fmt, cellStyle=estado_cell_style, minWidth=170, editable=False)
-
-        # Registro
         gob.configure_column("Fecha de registro", editable=False, minWidth=170, cellStyle=style_reg)
         gob.configure_column("Hora de registro", editable=False, minWidth=150, cellStyle=style_reg)
-
-        # Info base
         gob.configure_column("Tarea", editable=False, minWidth=320)
         gob.configure_column("Id", editable=False, minWidth=120)
-
-        # Inicio (celeste)
         gob.configure_column("Fecha de inicio", editable=editable_start, cellEditor=date_editor, minWidth=180, cellStyle=style_ini)
         gob.configure_column("Hora de inicio", editable=False, minWidth=160, cellStyle=style_ini)
-
-        # Link de archivo (ahora va después de Inicio)
-        gob.configure_column("Link de archivo", editable=True, minWidth=300, valueFormatter=link_formatter)
-
-        # Término (jade)
         gob.configure_column("Fecha terminada", editable=editable_end, cellEditor=date_editor, minWidth=190, cellStyle=style_ter)
         gob.configure_column("Hora terminada", editable=False, minWidth=160, cellStyle=style_ter)
-
-        # Eliminación (sin color)
+        gob.configure_column("Link de archivo", editable=True, minWidth=300, valueFormatter=link_formatter)
         gob.configure_column("Fecha eliminada", editable=editable_del, cellEditor=date_editor, minWidth=190, cellStyle=style_del)
         gob.configure_column("Hora eliminada", editable=False, minWidth=160, cellStyle=style_del)
 
@@ -882,7 +870,7 @@ def render(user: dict | None = None):
                         # Persistir en sesión (Tareas recientes lee de aquí)
                         st.session_state["df_main"] = full_updated.copy()
 
-                        # Guardado local (robusto, con fallback si hay wrapper maybe_save)
+                        # Guardado local
                         maybe_save = st.session_state.get("maybe_save")
                         if callable(maybe_save):
                             try:
