@@ -442,22 +442,18 @@ def render(user: dict | None = None):
       .hist-hint + div:has(div[data-testid="stTextInput"]){ display:none!important; }
       .hist-hint + div:has(input[type="text"]){ display:none!important; }
 
-      /* ❌ Quitar rectángulo de filtros */
+      /* ✅ Marco con dos líneas (arriba y abajo) alrededor de los filtros */
       .hist-filters{
         border:0!important; background:transparent!important; 
-        border-radius:0!important; padding:0!important; box-shadow:none!important;
-        position:relative;
+        border-radius:0!important; 
+        padding:0!important;                   /* espacio interno para separar líneas del contenido */
+        margin:6px 0 12px 0 !important;        /* espacio externo */
+        box-shadow:
+          inset 0 1px 0 var(--row-sep),        /* línea superior */
+          inset 0 -1px 0 var(--row-sep);       /* línea inferior */
       }
-      /* ✅ Líneas arriba y abajo del bloque de filtros */
-      .hist-filters::before{
-        content:""; display:block; height:0;
-        border-top:1px solid var(--row-sep); margin:6px 0 12px 0;
-      }
-      .hist-filters::after{
-        content:""; display:block; height:0;
-        border-top:1px solid var(--row-sep); margin:12px 0 6px 0;
-      }
-
+      /* (elimina cualquier regla .hist-filters::before / ::after previa) */
+       
       /* Botón buscar del ancho de su celda (debajo de Hasta) */
       .hist-search .stButton>button{ width:100%; }
 
