@@ -320,8 +320,8 @@ def render(user: dict | None = None):
             """
         <div class="section-est">
           <div class="help-strip">
-            <strong>Indicaciones:</strong> Usa los filtros para ubicar la tarea → ▶️ al registrar <em>fecha y hora de inicio</em> el estado pasa a “En curso” → ✅ al registrar <em>fecha y hora de término</em> pasa a “Terminada” → 💾 Guardar.<br> Al finalizar, sube el enlace de Drive en <em>Link de archivo</em>.
-            <strong>Importante:</strong> cada fecha y hora queda sellada al guardar; solo podrás completar el estado siguiente. 
+            <strong>Indicaciones:</strong> Usa los filtros para ubicar la tarea → ▶️ al registrar <em>fecha y hora de inicio</em> el estado pasa a “En curso” → ✅ al registrar <em>fecha y hora de término</em> pasa a “Terminada” → 💾 Guardar.<br>
+            <strong>Importante:</strong> Cada fecha y hora queda sellada al guardar; solo podrás completar el estado siguiente. Al finalizar, sube el enlace de Drive en <em>Link de archivo</em>.
           <div class="form-card">
         """,
             unsafe_allow_html=True,
