@@ -760,7 +760,7 @@ def render(user: dict | None = None):
             editable_cols.add(col)
         gob.configure_column(
             col,
-            headerName=nice,
+            header_name=nice, 
             minWidth=width_map.get(nice, width_map.get(col, 120)),
             editable=col_is_editable,
             suppressMenu=True,
