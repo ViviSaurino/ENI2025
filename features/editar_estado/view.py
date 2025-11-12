@@ -296,13 +296,16 @@ def render(user: dict | None = None):
           .est-pill span{ display:inline-flex; gap:8px; align-items:center; }
 
           /* ===== Colores de encabezados por bloques (sin emojis en headers) ===== */
+          /* Registro — lila */
           #est-section .ag-header-cell[col-id="Fecha de registro"],
           #est-section .ag-header-cell[col-id="Hora de registro"] { background:#F5F3FF !important; }
+          /* Inicio — celeste muy claro */
           #est-section .ag-header-cell[col-id="Fecha de inicio"],
-          #est-section .ag-header-cell[col-id="Hora de inicio"] { background:#ECFDF5 !important; }
+          #est-section .ag-header-cell[col-id="Hora de inicio"] { background:#E0F2FE !important; }
+          /* Término — jade muy claro */
           #est-section .ag-header-cell[col-id="Fecha terminada"],
-          #est-section .ag-header-cell[col-id="Hora terminada"] { background:#EFF6FF !important; }
-          /* Eliminación sin color resaltado */
+          #est-section .ag-header-cell[col-id="Hora terminada"] { background:#D1FAE5 !important; }
+          /* Eliminación sin color resaltado (se mantiene por defecto) */
           #est-section .ag-header-cell[col-id="Estado actual"] { background:#F3F4F6 !important; color:#111827 !important; }
         </style>
         """,
@@ -318,7 +321,7 @@ def render(user: dict | None = None):
         <div class="section-est">
           <div class="help-strip">
             <strong>Indicaciones:</strong> Usa los filtros para ubicar la tarea → ▶️ al registrar <em>fecha y hora de inicio</em> el estado pasa a “En curso” → ✅ al registrar <em>fecha y hora de término</em> pasa a “Terminada” → 💾 Guardar.<br>
-            <strong>Importante:</strong> cada fecha y hora queda sellada al guardar y no se puede editar; solo podrás completar el estado siguiente.
+            <strong>Importante:</strong> cada fecha y hora queda sellada al guardar; solo podrás completar el estado siguiente. Al finalizar, sube el enlace de Drive en <em>Link de archivo</em>.
           </div>
           <div class="form-card">
         """,
@@ -476,19 +479,20 @@ def render(user: dict | None = None):
         def _coalesce_dt(base: pd.DataFrame, a: str, b: str) -> pd.Series:
             s1 = pd.to_datetime(base.get(a, pd.Series([], dtype=object)), errors="coerce")
             s2 = pd.to_datetime(base.get(b, pd.Series([], dtype=object)), errors="coerce")
-            if len(s1) == 0: 
+            if len(s1) == 0:
                 return s2
             if len(s2) == 0:
                 return s1
             return s1.where(s1.notna(), s2)
 
+        # >>> Orden de columnas actualizado: Link de archivo después de Inicio, antes de Término
         cols_out = [
             "Id","Tarea","Estado actual",
             "Fecha de registro","Hora de registro",
             "Fecha de inicio","Hora de inicio",
+            "Link de archivo",
             "Fecha terminada","Hora terminada",
             "Fecha eliminada","Hora eliminada",
-            "Link de archivo",
         ]
 
         df_view = pd.DataFrame(columns=cols_out)
@@ -528,11 +532,11 @@ def render(user: dict | None = None):
                 "Hora de registro": _fmt_time_series(hr),
                 "Fecha de inicio": _fmt_date_series(fi),
                 "Hora de inicio": _fmt_time_series(hi),
+                "Link de archivo": link_col,
                 "Fecha terminada": _fmt_date_series(ft),
                 "Hora terminada": _fmt_time_series(ht),
                 "Fecha eliminada": _fmt_date_series(fe),
                 "Hora eliminada": _fmt_time_series(he),
-                "Link de archivo": link_col,
             })[cols_out].copy()
 
         # ========= editores y estilo =========
@@ -550,20 +554,10 @@ def render(user: dict | None = None):
           return M[v] || v;
         }""")
 
-        # ⚠️ "En curso" ahora usa naranja suave (#FFE4D6); Eliminada queda igual
+        # Sin color en "Estado actual" (solo emojis)
         estado_cell_style = JsCode("""
         function(p){
-          const v = String(p.value || '');
-          const S = {
-            "No iniciado":{bg:"#E3F2FD", fg:"#0D47A1"},
-            "En curso":{bg:"#FFE4D6", fg:"#7C2D12"},
-            "Terminada":{bg:"#E8F5E9", fg:"#1B5E20"},
-            "Pausada":{bg:"#FFF7ED", fg:"#7C2D12"},
-            "Cancelada":{bg:"#FEE2E2", fg:"#7F1D1D"},
-            "Eliminada":{bg:"#FFE4E6", fg:"#9F1239"}
-          };
-          const m = S[v]; if(!m) return {};
-          return {backgroundColor:m.bg, color:m.fg, fontWeight:'600', textAlign:'center', borderRadius:'12px'};
+          return {fontWeight:'600', textAlign:'center'};
         }""")
 
         date_editor = JsCode("""
@@ -636,10 +630,10 @@ def render(user: dict | None = None):
           return (v === '' || v === '-') && hasEnd;
         }}""")
 
-        # ===== Estilos por bloque (celdas) — pares más pasteles; Eliminación sin color =====
-        style_reg = {"backgroundColor": "#F5F3FF"}
-        style_ini = {"backgroundColor": "#ECFDF5"}
-        style_ter = {"backgroundColor": "#EFF6FF"}
+        # ===== Estilos por bloque (celdas) — Registro lila; Inicio celeste; Término jade; Eliminación sin color =====
+        style_reg = {"backgroundColor": "#F5F3FF"}   # lila
+        style_ini = {"backgroundColor": "#E0F2FE"}   # celeste muy claro
+        style_ter = {"backgroundColor": "#D1FAE5"}   # jade muy claro
         style_del = {}  # sin color para “Fecha/Hora eliminada”
 
         gob = GridOptionsBuilder.from_dataframe(df_view)
@@ -654,18 +648,31 @@ def render(user: dict | None = None):
         gob.configure_default_column(wrapHeaderText=True, autoHeaderHeight=True)
         gob.configure_selection("single", use_checkbox=False)
 
+        # Estado actual: sin color (solo emojis)
         gob.configure_column("Estado actual", valueFormatter=estado_emoji_fmt, cellStyle=estado_cell_style, minWidth=170, editable=False)
+
+        # Registro
         gob.configure_column("Fecha de registro", editable=False, minWidth=170, cellStyle=style_reg)
         gob.configure_column("Hora de registro", editable=False, minWidth=150, cellStyle=style_reg)
+
+        # Info base
         gob.configure_column("Tarea", editable=False, minWidth=320)
         gob.configure_column("Id", editable=False, minWidth=120)
+
+        # Inicio (celeste)
         gob.configure_column("Fecha de inicio", editable=editable_start, cellEditor=date_editor, minWidth=180, cellStyle=style_ini)
         gob.configure_column("Hora de inicio", editable=False, minWidth=160, cellStyle=style_ini)
+
+        # Link de archivo (ahora va después de Inicio)
+        gob.configure_column("Link de archivo", editable=True, minWidth=300, valueFormatter=link_formatter)
+
+        # Término (jade)
         gob.configure_column("Fecha terminada", editable=editable_end, cellEditor=date_editor, minWidth=190, cellStyle=style_ter)
         gob.configure_column("Hora terminada", editable=False, minWidth=160, cellStyle=style_ter)
+
+        # Eliminación (sin color)
         gob.configure_column("Fecha eliminada", editable=editable_del, cellEditor=date_editor, minWidth=190, cellStyle=style_del)
         gob.configure_column("Hora eliminada", editable=False, minWidth=160, cellStyle=style_del)
-        gob.configure_column("Link de archivo", editable=True, minWidth=300, valueFormatter=link_formatter)
 
         grid_opts = gob.build()
         grid_opts["onCellValueChanged"] = on_cell_changed.js_code
@@ -740,7 +747,7 @@ def render(user: dict | None = None):
                             # No permitir 'Término' sin 'Inicio'
                             cur_start = base.groupby("Id", as_index=True)["Fecha inicio"].last().map(_canon_str)
                             cur_start_alias = base.groupby("Id", as_index=True)["Fecha de inicio"].last().map(_canon_str)
-                            def _has_start(i): 
+                            def _has_start(i):
                                 return bool(_canon_str(cur_start.get(i,"")) or _canon_str(cur_start_alias.get(i,"")) or _canon_str(fi_new_vis.get(i,"")))
                             bad_term = [i for i in ids_ok if (_canon_str(ft_new_vis.get(i, "")) and not _has_start(i))]
                             if bad_term:
@@ -771,7 +778,7 @@ def render(user: dict | None = None):
                             prev_fi  = _canon_str(base_idx.at[i, "Fecha inicio"]) if i in base_idx.index else ""
                             prev_fiA = _canon_str(base_idx.at[i, "Fecha de inicio"]) if i in base_idx.index else ""
                             prev_hi  = _canon_str(base_idx.at[i, "Hora de inicio"]) if i in base_idx.index else ""
-                            new_fi   = _canon_str(fi_new_vis.get(i, "")) 
+                            new_fi   = _canon_str(fi_new_vis.get(i, ""))
                             new_hi   = _canon_str(hi_new.get(i, ""))
 
                             if is_super:
