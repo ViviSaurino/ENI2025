@@ -214,6 +214,8 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
         "Fecha Terminado", "Hora Terminado",
         "Fecha terminada",
         "Fecha eliminada", "Hora eliminada",
+        "Fecha cancelada", "Hora cancelada",
+        "Fecha pausada", "Hora pausada",
         "Link de archivo",
     ]
     cols_to_push = [c for c in base_push_cols if c in col_map]
@@ -305,6 +307,16 @@ def render(user: dict | None = None):
           /* Término — jade muy claro */
           #est-section .ag-header-cell[col-id="Fecha terminada"],
           #est-section .ag-header-cell[col-id="Hora terminada"] { background:#D1FAE5 !important; }
+          /* Bloque Eliminada / Cancelada / Pausada — gris suave */
+          #est-section .ag-header-cell[col-id="Fecha eliminada"],
+          #est-section .ag-header-cell[col-id="Hora eliminada"],
+          #est-section .ag-header-cell[col-id="Fecha cancelada"],
+          #est-section .ag-header-cell[col-id="Hora cancelada"],
+          #est-section .ag-header-cell[col-id="Fecha pausada"],
+          #est-section .ag-header-cell[col-id="Hora pausada"] {
+              background:#E5E7EB !important;
+              color:#374151 !important;
+          }
           /* Estado actual neutro (solo emojis en celdas) */
           #est-section .ag-header-cell[col-id="Estado actual"] { background:#F3F4F6 !important; color:#111827 !important; }
         </style>
@@ -343,8 +355,10 @@ def render(user: dict | None = None):
             df_all["Fecha de registro"] = df_all["Fecha Registro"]
         if "Hora de registro" not in df_all.columns and "Hora Registro" in df_all.columns:
             df_all["Hora de registro"] = df_all["Hora Registro"]
-        # Asegurar columnas de Eliminación
-        for need in ["Fecha eliminada", "Hora eliminada"]:
+        # Asegurar columnas de Eliminación / Cancelación / Pausa
+        for need in ["Fecha eliminada", "Hora eliminada",
+                     "Fecha cancelada", "Hora cancelada",
+                     "Fecha pausada", "Hora pausada"]:
             if need not in df_all.columns:
                 df_all[need] = ""
 
@@ -493,15 +507,23 @@ def render(user: dict | None = None):
             "Fecha terminada","Hora terminada",
             "Link de archivo",
             "Fecha eliminada","Hora eliminada",
+            "Fecha cancelada","Hora cancelada",
+            "Fecha pausada","Hora pausada",
         ]
 
         df_view = pd.DataFrame(columns=cols_out)
         if not df_tasks.empty:
             base = df_tasks.copy()
-            for need in ["Id","Tarea","Estado","Fecha Registro","Hora Registro","Fecha inicio","Fecha de inicio",
-                         "Hora de inicio","Fecha Terminado","Fecha terminada","Hora Terminado",
-                         "Fecha eliminada","Hora eliminada","Link de archivo",
-                         "Fecha de registro","Hora de registro"]:
+            for need in [
+                "Id","Tarea","Estado","Fecha Registro","Hora Registro",
+                "Fecha inicio","Fecha de inicio","Hora de inicio",
+                "Fecha Terminado","Fecha terminada","Hora Terminado",
+                "Fecha eliminada","Hora eliminada",
+                "Fecha cancelada","Hora cancelada",
+                "Fecha pausada","Hora pausada",
+                "Link de archivo",
+                "Fecha de registro","Hora de registro"
+            ]:
                 if need not in base.columns:
                     base[need] = ""
 
@@ -513,6 +535,10 @@ def render(user: dict | None = None):
             ht = base["Hora Terminado"].astype(str)
             fe = pd.to_datetime(base["Fecha eliminada"], errors="coerce")
             he = base["Hora eliminada"].astype(str)
+            fc = pd.to_datetime(base["Fecha cancelada"], errors="coerce")
+            hc = base["Hora cancelada"].astype(str)
+            fp = pd.to_datetime(base["Fecha pausada"], errors="coerce")
+            hp = base["Hora pausada"].astype(str)
 
             est_now = pd.Series("No iniciado", index=base.index, dtype="object")
             est_now = est_now.mask(fi.notna() & ft.isna() & fe.isna(), "En curso")
@@ -537,6 +563,10 @@ def render(user: dict | None = None):
                 "Link de archivo": link_col,
                 "Fecha eliminada": _fmt_date_series(fe),
                 "Hora eliminada": _fmt_time_series(he),
+                "Fecha cancelada": _fmt_date_series(fc),
+                "Hora cancelada": _fmt_time_series(hc),
+                "Fecha pausada": _fmt_date_series(fp),
+                "Hora pausada": _fmt_time_series(hp),
             })[cols_out].copy()
 
         # ========= editores y estilo =========
@@ -634,7 +664,7 @@ def render(user: dict | None = None):
         style_reg = {"backgroundColor": "#F5F3FF"}   # lila (Registro)
         style_ini = {"backgroundColor": "#E0F2FE"}   # celeste (Inicio)
         style_ter = {"backgroundColor": "#ECFDF5"}   # jade (Término)
-        style_del = {}  # Eliminación sin color
+        style_del = {"backgroundColor": "#F9FAFB"}   # Eliminada / Cancelada / Pausada (gris muy claro)
 
         gob = GridOptionsBuilder.from_dataframe(df_view)
         gob.configure_grid_options(
@@ -659,8 +689,12 @@ def render(user: dict | None = None):
         gob.configure_column("Fecha terminada", editable=editable_end, cellEditor=date_editor, minWidth=190, cellStyle=style_ter)
         gob.configure_column("Hora terminada", editable=False, minWidth=160, cellStyle=style_ter)
         gob.configure_column("Link de archivo", editable=True, minWidth=300, valueFormatter=link_formatter)
-        gob.configure_column("Fecha eliminada", editable=editable_del, cellEditor=date_editor, minWidth=190, cellStyle=style_del)
-        gob.configure_column("Hora eliminada", editable=False, minWidth=160, cellStyle=style_del)
+        gob.configure_column("Fecha eliminada", headerName="🗑️ Fecha eliminada", editable=editable_del, cellEditor=date_editor, minWidth=190, cellStyle=style_del)
+        gob.configure_column("Hora eliminada", headerName="🗑️ Hora eliminada", editable=False, minWidth=160, cellStyle=style_del)
+        gob.configure_column("Fecha cancelada", headerName="✖️ Fecha cancelada", editable=editable_start, cellEditor=date_editor, minWidth=190, cellStyle=style_del)
+        gob.configure_column("Hora cancelada", headerName="✖️ Hora cancelada", editable=False, minWidth=160, cellStyle=style_del)
+        gob.configure_column("Fecha pausada", headerName="⏸️ Fecha pausada", editable=editable_start, cellEditor=date_editor, minWidth=190, cellStyle=style_del)
+        gob.configure_column("Hora pausada", headerName="⏸️ Hora pausada", editable=False, minWidth=160, cellStyle=style_del)
 
         grid_opts = gob.build()
         grid_opts["onCellValueChanged"] = on_cell_changed.js_code
@@ -700,6 +734,10 @@ def render(user: dict | None = None):
                         ht_new      = norm(g_i.get("Hora terminada", pd.Series(index=g_i.index)))
                         fe_new_vis  = norm(g_i.get("Fecha eliminada", pd.Series(index=g_i.index)))
                         he_new      = norm(g_i.get("Hora eliminada", pd.Series(index=g_i.index)))
+                        fc_new_vis  = norm(g_i.get("Fecha cancelada", pd.Series(index=g_i.index)))
+                        hc_new      = norm(g_i.get("Hora cancelada", pd.Series(index=g_i.index)))
+                        fp_new_vis  = norm(g_i.get("Fecha pausada", pd.Series(index=g_i.index)))
+                        hp_new      = norm(g_i.get("Hora pausada", pd.Series(index=g_i.index)))
                         lk_new      = norm(g_i.get("Link de archivo", pd.Series(index=g_i.index)))
 
                         ids_view = list(g_i.index)
@@ -719,9 +757,12 @@ def render(user: dict | None = None):
 
                         for need in [
                             "Estado","Fecha estado actual","Hora estado actual",
-                            "Fecha Registro","Hora Registro","Fecha inicio","Fecha de inicio","Hora de inicio",
+                            "Fecha Registro","Hora Registro",
+                            "Fecha inicio","Fecha de inicio","Hora de inicio",
                             "Fecha Terminado","Fecha terminada","Hora Terminado",
                             "Fecha eliminada","Hora eliminada",
+                            "Fecha cancelada","Hora cancelada",
+                            "Fecha pausada","Hora pausada",
                             "Link de archivo",
                             "Fecha de registro","Hora de registro"
                         ]:
@@ -828,6 +869,42 @@ def render(user: dict | None = None):
                                     base_idx.at[i, "Hora eliminada"] = (new_he or h_now)
                                     changed_ids.add(i)
 
+                            # Cancelación
+                            prev_fc  = _canon_str(base_idx.at[i, "Fecha cancelada"]) if i in base_idx.index else ""
+                            prev_hc  = _canon_str(base_idx.at[i, "Hora cancelada"]) if i in base_idx.index else ""
+                            new_fc   = _canon_str(fc_new_vis.get(i, "")); new_hc = _canon_str(hc_new.get(i, ""))
+
+                            if is_super:
+                                if new_fc != prev_fc:
+                                    base_idx.at[i, "Fecha cancelada"] = new_fc; changed_ids.add(i)
+                                if new_fc:
+                                    if not new_hc: new_hc = h_now
+                                    if new_hc != prev_hc:
+                                        base_idx.at[i, "Hora cancelada"] = new_hc; changed_ids.add(i)
+                            else:
+                                if (not prev_fc) and new_fc:
+                                    base_idx.at[i, "Fecha cancelada"] = new_fc
+                                    base_idx.at[i, "Hora cancelada"] = (new_hc or h_now)
+                                    changed_ids.add(i)
+
+                            # Pausa
+                            prev_fp  = _canon_str(base_idx.at[i, "Fecha pausada"]) if i in base_idx.index else ""
+                            prev_hp  = _canon_str(base_idx.at[i, "Hora pausada"]) if i in base_idx.index else ""
+                            new_fp   = _canon_str(fp_new_vis.get(i, "")); new_hp = _canon_str(hp_new.get(i, ""))
+
+                            if is_super:
+                                if new_fp != prev_fp:
+                                    base_idx.at[i, "Fecha pausada"] = new_fp; changed_ids.add(i)
+                                if new_fp:
+                                    if not new_hp: new_hp = h_now
+                                    if new_hp != prev_hp:
+                                        base_idx.at[i, "Hora pausada"] = new_hp; changed_ids.add(i)
+                            else:
+                                if (not prev_fp) and new_fp:
+                                    base_idx.at[i, "Fecha pausada"] = new_fp
+                                    base_idx.at[i, "Hora pausada"] = (new_hp or h_now)
+                                    changed_ids.add(i)
+
                             # Estado actual y sellos
                             fe_eff = _canon_str(base_idx.at[i, "Fecha eliminada"])
                             ft_eff2 = _canon_str(base_idx.at[i, "Fecha Terminado"]) or _canon_str(base_idx.at[i, "Fecha terminada"])
@@ -855,6 +932,8 @@ def render(user: dict | None = None):
                                 "Fecha inicio","Fecha de inicio","Hora de inicio",
                                 "Fecha Terminado","Fecha terminada","Hora Terminado",
                                 "Fecha eliminada","Hora eliminada",
+                                "Fecha cancelada","Hora cancelada",
+                                "Fecha pausada","Hora pausada",
                                 "Link de archivo",
                             ]
                             for col in cols_apply:
