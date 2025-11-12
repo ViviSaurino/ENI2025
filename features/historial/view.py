@@ -745,8 +745,13 @@ def render(user: dict | None = None):
     # 👉 Super editores: TODO editable (incluye Id). Resto: solo Tarea y Detalle.
     _editable_base = (set(df_grid.columns) - {"Link de descarga", _LINK_CANON}) if super_editor else {"Tarea", "Detalle"}
 
+    # 🔧 NUEVO (robusto): mapeo normalizado para aplicar “Fecha de inicio / Fecha de registro”
+    _header_map_norm = {_normkey(k): v for k, v in header_map.items()}
+
     for col in df_grid.columns:
-        nice = header_map.get(col, col)
+        # Usa primero el mapeo normalizado; si no, cae al exacto
+        nice = _header_map_norm.get(_normkey(col), header_map.get(col, col))
+
         if super_editor:
             col_is_editable = (col in _editable_base)
         else:
