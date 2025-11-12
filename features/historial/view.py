@@ -447,16 +447,22 @@ def render(user: dict | None = None):
       /* Botón buscar del ancho de su celda (debajo de Hasta) */
       .hist-search .stButton>button{ width:100%; }
 
-      /* AG Grid */
+      /* AG Grid saneo*/
       .ag-theme-balham .ag-cell{ white-space:nowrap!important; overflow:hidden!important; text-overflow:ellipsis!important; }
       .ag-theme-balham .ag-header-cell-label{ white-space:nowrap!important; line-height:1.1!important; overflow:visible!important; text-overflow:clip!important; }
       .ag-theme-balham .ag-header .ag-icon, .ag-theme-balham .ag-header-cell .ag-icon, .ag-theme-balham .ag-header-cell-menu-button,
-      .ag-theme-balham .ag-floating-filter, .ag-theme-balham .ag-header-row.ag-header-row-column-filter { display:none!important; }
-
+      .ag-theme-balham .ag-floating-filter, .ag-theme-balham .ag-header-row.ag-header-row-column-filter { display:none!important; }          
+                     
       /* Encabezados coloreados (armonía con Editar estado) */
       .ag-theme-balham .ag-header-cell.hdr-registro{ background:var(--hdr-reg)!important; border-radius:8px; }
       .ag-theme-balham .ag-header-cell.hdr-inicio{   background:var(--hdr-ini)!important; border-radius:8px; }
       .ag-theme-balham .ag-header-cell.hdr-termino{  background:var(--hdr-ter)!important; border-radius:8px; }
+    
+      /* ✅ Pintado de CELDAS (como Editar estado) */
+     .ag-theme-balham .ag-cell.col-reg{ background:var(--hdr-reg)!important; border-radius:8px; }
+     .ag-theme-balham .ag-cell.col-ini{ background:var(--hdr-ini)!important; border-radius:8px; }
+     .ag-theme-balham .ag-cell.col-ter{ background:var(--hdr-ter)!important; border-radius:8px; }          
+                
     </style>
     """, unsafe_allow_html=True)
 
@@ -800,16 +806,20 @@ def render(user: dict | None = None):
     # Estilos/clases para columnas de fecha/hora (encabezados y celdas)
     for col in df_grid.columns:
         nice = _header_map_norm.get(_normkey(col), header_map.get(col, col))
-        col_is_editable = (col in _editable_base) if super_editor else ((col in _editable_base) and (_normkey(col) not in _ro_acl) and (_normkey(nice) not in _ro_acl))
-
+        
+        col_is_editable = (
+            (col in _editable_base) if super_editor
+            else ((col in _editable_base) and (_normkey(col) not in _ro_acl) and (_normkey(nice) not in _ro_acl))
+        )
+      
         hdr_class = None
-        cellStyle = None
-        if col in ("Fecha Registro","Hora Registro"):
-            hdr_class = "hdr-registro"; cellStyle = cell_style_reg
+        cellStyle = None  # ← usaremos clase para pintar celdas vía CSS
+        if col in ("Fecha Registro","Hora Registro"): 
+            hdr_class = "hdr-registro"; cell_class = "col-reg"
         elif col in ("Fecha inicio","Hora de inicio"):
-            hdr_class = "hdr-inicio";   cellStyle = cell_style_ini
+            hdr_class = "hdr-inicio";   cell_class = "col-ini"
         elif col in ("Fecha Terminado","Hora Terminado"):
-            hdr_class = "hdr-termino";  cellStyle = cell_style_ter
+            hdr_class = "hdr-termino";  cell_class = "col-ter"
 
         kwargs = dict(
             headerName=nice,
@@ -819,7 +829,7 @@ def render(user: dict | None = None):
             filter=False, floatingFilter=False, sortable=False
         )
         if hdr_class: kwargs["headerClass"] = hdr_class
-        if cellStyle: kwargs["cellStyle"]  = cellStyle
+        if cellStyle: kwargs["cellStyle"]  = cell_class  # ← activa el pintado de celdas
 
         gob.configure_column(col, **kwargs)
 
