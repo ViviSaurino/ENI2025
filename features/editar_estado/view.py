@@ -302,8 +302,7 @@ def render(user: dict | None = None):
           #est-section .ag-header-cell[col-id="Hora de inicio"] { background:#ECFDF5 !important; }
           #est-section .ag-header-cell[col-id="Fecha terminada"],
           #est-section .ag-header-cell[col-id="Hora terminada"] { background:#EFF6FF !important; }
-          #est-section .ag-header-cell[col-id="Fecha eliminada"],
-          #est-section .ag-header-cell[col-id="Hora eliminada"] { background:#FFF1E6 !important; }
+          /* Eliminación sin color resaltado */
           #est-section .ag-header-cell[col-id="Estado actual"] { background:#F3F4F6 !important; color:#111827 !important; }
         </style>
         """,
@@ -317,7 +316,10 @@ def render(user: dict | None = None):
         st.markdown(
             """
         <div class="section-est">
-          <div class="help-strip">🔷 <strong>Actualiza el estado</strong> de una tarea ya registrada usando los filtros</div>
+          <div class="help-strip">
+            <strong>Indicaciones:</strong> Usa los filtros para ubicar la tarea → ▶️ al registrar <em>fecha y hora de inicio</em> el estado pasa a “En curso” → ✅ al registrar <em>fecha y hora de término</em> pasa a “Terminada” → 💾 Guardar.<br>
+            <strong>Importante:</strong> cada fecha y hora queda sellada al guardar y no se puede editar; solo podrás completar el estado siguiente.
+          </div>
           <div class="form-card">
         """,
             unsafe_allow_html=True,
@@ -548,13 +550,13 @@ def render(user: dict | None = None):
           return M[v] || v;
         }""")
 
-        # ⚠️ Ajuste de color para "En curso" (amarillo pastel) + pares más suaves
+        # ⚠️ "En curso" ahora usa naranja suave (#FFE4D6); Eliminada queda igual
         estado_cell_style = JsCode("""
         function(p){
           const v = String(p.value || '');
           const S = {
             "No iniciado":{bg:"#E3F2FD", fg:"#0D47A1"},
-            "En curso":{bg:"#FEF9C3", fg:"#92400E"},
+            "En curso":{bg:"#FFE4D6", fg:"#7C2D12"},
             "Terminada":{bg:"#E8F5E9", fg:"#1B5E20"},
             "Pausada":{bg:"#FFF7ED", fg:"#7C2D12"},
             "Cancelada":{bg:"#FEE2E2", fg:"#7F1D1D"},
@@ -634,11 +636,11 @@ def render(user: dict | None = None):
           return (v === '' || v === '-') && hasEnd;
         }}""")
 
-        # ===== Estilos por bloque (celdas) — pares más pasteles =====
+        # ===== Estilos por bloque (celdas) — pares más pasteles; Eliminación sin color =====
         style_reg = {"backgroundColor": "#F5F3FF"}
         style_ini = {"backgroundColor": "#ECFDF5"}
         style_ter = {"backgroundColor": "#EFF6FF"}
-        style_del = {"backgroundColor": "#FFF1E6"}
+        style_del = {}  # sin color para “Fecha/Hora eliminada”
 
         gob = GridOptionsBuilder.from_dataframe(df_view)
         gob.configure_grid_options(
