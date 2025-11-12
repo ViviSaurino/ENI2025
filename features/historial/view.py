@@ -59,8 +59,9 @@ DEFAULT_COLS = [
     "Estado","Duración",
     "Fecha Registro","Hora Registro",
     "Fecha inicio","Hora de inicio",
-    "Fecha Vencimiento","Hora Vencimiento",
+    # ⬇️ REORDENADO: Terminada antes que Límite
     "Fecha Terminado","Hora Terminado",
+    "Fecha Vencimiento","Hora Vencimiento",
     "¿Generó alerta?","N° alerta","Fecha de detección","Hora de detección",
     "¿Se corrigió?","Fecha de corrección","Hora de corrección",
     "Cumplimiento","Evaluación","Calificación",
@@ -415,6 +416,9 @@ def render(user: dict | None = None):
         --hdr-reg:#EDE9FE;   /* Registro: lila */
         --hdr-ini:#DCFCE7;   /* Inicio: verde */
         --hdr-ter:#E0F2FE;   /* Terminado: celeste */
+
+        /* Separadores horizontales suaves */
+        --row-sep:#E5E7EB;
       }
 
       .hist-card{ border:0!important; background:transparent!important; border-radius:0!important; padding:0!important; margin:0 0 8px 0!important; }
@@ -447,8 +451,16 @@ def render(user: dict | None = None):
       /* Botón buscar del ancho de su celda (debajo de Hasta) */
       .hist-search .stButton>button{ width:100%; }
 
-      /* AG Grid */
-      .ag-theme-balham .ag-cell{ white-space:nowrap!important; overflow:hidden!important; text-overflow:ellipsis!important; }
+      /* AG Grid base */
+      .ag-theme-balham .ag-cell{
+        white-space:nowrap!important; overflow:hidden!important; text-overflow:ellipsis!important;
+        border-top:1px solid var(--row-sep)!important;
+        border-bottom:1px solid var(--row-sep)!important;
+      }
+      .ag-theme-balham .ag-header-cell{
+        border-top:1px solid var(--row-sep)!important;
+        border-bottom:1px solid var(--row-sep)!important;
+      }
       .ag-theme-balham .ag-header-cell-label{ white-space:nowrap!important; line-height:1.1!important; overflow:visible!important; text-overflow:clip!important; }
       .ag-theme-balham .ag-header .ag-icon, .ag-theme-balham .ag-header-cell .ag-icon, .ag-theme-balham .ag-header-cell-menu-button,
       .ag-theme-balham .ag-floating-filter, .ag-theme-balham .ag-header-row.ag-header-row-column-filter { display:none!important; }
@@ -457,8 +469,6 @@ def render(user: dict | None = None):
       .ag-theme-balham .ag-header-cell.hdr-registro{ background:var(--hdr-reg)!important; border-radius:8px; }
       .ag-theme-balham .ag-header-cell.hdr-inicio{   background:var(--hdr-ini)!important; border-radius:8px; }
       .ag-theme-balham .ag-header-cell.hdr-termino{  background:var(--hdr-ter)!important; border-radius:8px; }
-
-      /* (Las celdas se pintarán con cellStyle JS para asegurar aplicación) */
     </style>
     """, unsafe_allow_html=True)
 
@@ -636,8 +646,9 @@ def render(user: dict | None = None):
         "Estado","Duración",
         "Fecha Registro","Hora Registro",
         "Fecha inicio","Hora de inicio",
-        "Fecha Vencimiento","Hora Vencimiento",
+        # ⬇️ REORDENADO aquí también
         "Fecha Terminado","Hora Terminado",
+        "Fecha Vencimiento","Hora Vencimiento",
         "¿Generó alerta?","N° alerta","Fecha de detección","Hora de detección",
         "¿Se corrigió?","Fecha de corrección","Hora de corrección",
         "Cumplimiento","Evaluación","Calificación",
