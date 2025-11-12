@@ -760,7 +760,7 @@ def render(user: dict | None = None):
             editable_cols.add(col)
         gob.configure_column(
             col,
-            header_name=nice, 
+            headerName=nice,  # ← FIX principal
             minWidth=width_map.get(nice, width_map.get(col, 120)),
             editable=col_is_editable,
             suppressMenu=True,
@@ -793,7 +793,9 @@ def render(user: dict | None = None):
                 "Fecha Pausado","Fecha Cancelado","Fecha Eliminado",
                 "Fecha de detección","Fecha de corrección"]:
         if col in df_grid.columns:
-            gob.configure_column(col, valueFormatter=date_only_fmt)
+            # ← asegura que NO se pierda el título bonito
+            nice = _header_map_norm.get(_normkey(col), header_map.get(col, col))
+            gob.configure_column(col, headerName=nice, valueFormatter=date_only_fmt)
 
     link_value_getter = JsCode(r"""
     function(p){
@@ -852,7 +854,11 @@ def render(user: dict | None = None):
     }""")
     gob.configure_column("Cumplimiento", cellStyle=cumplimiento_style)
 
-    gob.configure_column("Fecha inicio", filter=False, floatingFilter=False, sortable=False, suppressMenu=True)
+    gob.configure_column(
+        "Fecha inicio",
+        headerName=_header_map_norm.get(_normkey("Fecha inicio"), header_map.get("Fecha inicio","Fecha inicio")),
+        filter=False, floatingFilter=False, sortable=False, suppressMenu=True
+    )
 
     gob.configure_grid_options(
         domLayout="normal",
