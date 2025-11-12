@@ -438,8 +438,11 @@ def render(user: dict | None = None):
       .hist-hint + div:has(div[data-testid="stTextInput"]){ display:none!important; }
       .hist-hint + div:has(input[type="text"]){ display:none!important; }
 
-      /* Contenedor de filtros: rectángulo alrededor de las celdas */
-      .hist-filters{ border:1px solid var(--card-border); background:#F8FAFC; border-radius:12px; padding:16px; }
+      /* ❌ Quitar el rectángulo de filtros */
+      .hist-filters{
+        border:0!important; background:transparent!important; 
+        border-radius:0!important; padding:0!important; box-shadow:none!important;
+      }
 
       /* Botón buscar del ancho de su celda (debajo de Hasta) */
       .hist-search .stButton>button{ width:100%; }
@@ -454,11 +457,6 @@ def render(user: dict | None = None):
       .ag-theme-balham .ag-header-cell.hdr-registro{ background:var(--hdr-reg)!important; border-radius:8px; }
       .ag-theme-balham .ag-header-cell.hdr-inicio{   background:var(--hdr-ini)!important; border-radius:8px; }
       .ag-theme-balham .ag-header-cell.hdr-termino{  background:var(--hdr-ter)!important; border-radius:8px; }
-
-      /* ✅ Colorear también las CELDAS de esas columnas */
-      .ag-theme-balham .ag-cell.col-reg{ background:var(--hdr-reg)!important; border-radius:8px; }
-      .ag-theme-balham .ag-cell.col-ini{ background:var(--hdr-ini)!important; border-radius:8px; }
-      .ag-theme-balham .ag-cell.col-ter{ background:var(--hdr-ter)!important; border-radius:8px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -545,7 +543,7 @@ def render(user: dict | None = None):
         return ""
 
     with st.container():
-        # 👉 Rectángulo SOLO alrededor de filtros
+        # 👉 Rectángulo SOLO alrededor de filtros (está desactivado por CSS)
         st.markdown('<div class="hist-filters">', unsafe_allow_html=True)
 
         if super_editor:
@@ -794,21 +792,24 @@ def render(user: dict | None = None):
     _editable_base = (set(df_grid.columns) - {"Link de descarga", _LINK_CANON}) if super_editor else {"Tarea", "Detalle"}
     _header_map_norm = {_normkey(k): v for k, v in header_map.items()}
 
-    # Estilos/clases para columnas de fecha/hora (celdas y encabezados)
+    # 🎨 Estilos de celdas con JsCode para asegurar pintado (como Editar estado)
+    cell_style_reg = JsCode("function(p){return {backgroundColor:'var(--hdr-reg)'};}")
+    cell_style_ini = JsCode("function(p){return {backgroundColor:'var(--hdr-ini)'};}")
+    cell_style_ter = JsCode("function(p){return {backgroundColor:'var(--hdr-ter)'};}")
+    
+    # Estilos/clases para columnas de fecha/hora (encabezados y celdas)
     for col in df_grid.columns:
         nice = _header_map_norm.get(_normkey(col), header_map.get(col, col))
         col_is_editable = (col in _editable_base) if super_editor else ((col in _editable_base) and (_normkey(col) not in _ro_acl) and (_normkey(nice) not in _ro_acl))
 
-        hdr_class, cell_class, cell_style = None, None, None
+        hdr_class = None
+        cellStyle = None
         if col in ("Fecha Registro","Hora Registro"):
-            hdr_class, cell_class = "hdr-registro", "col-reg"
-            cell_style = {"backgroundColor":"var(--hdr-reg)", "borderRadius":"8px"}
+            hdr_class = "hdr-registro"; cellStyle = cell_style_reg
         elif col in ("Fecha inicio","Hora de inicio"):
-            hdr_class, cell_class = "hdr-inicio", "col-ini"
-            cell_style = {"backgroundColor":"var(--hdr-ini)", "borderRadius":"8px"}
+            hdr_class = "hdr-inicio";   cellStyle = cell_style_ini
         elif col in ("Fecha Terminado","Hora Terminado"):
-            hdr_class, cell_class = "hdr-termino", "col-ter"
-            cell_style = {"backgroundColor":"var(--hdr-ter)", "borderRadius":"8px"}
+            hdr_class = "hdr-termino";  cellStyle = cell_style_ter
 
         kwargs = dict(
             headerName=nice,
@@ -817,9 +818,8 @@ def render(user: dict | None = None):
             suppressMenu=True,
             filter=False, floatingFilter=False, sortable=False
         )
-        if hdr_class:  kwargs["headerClass"] = hdr_class
-        if cell_class: kwargs["cellClass"]  = cell_class
-        if cell_style: kwargs["cellStyle"]  = cell_style
+        if hdr_class: kwargs["headerClass"] = hdr_class
+        if cellStyle: kwargs["cellStyle"]  = cellStyle
 
         gob.configure_column(col, **kwargs)
 
@@ -968,7 +968,7 @@ def render(user: dict | None = None):
             a = prev.reindex(columns=snap_cols).copy()
             b = new_df.reindex(columns=snap_cols).copy()
             if "Id" not in a.columns and "Id" in b.columns: a["Id"] = ""
-            if "Id" not in b.columns and "Id" in a.columns: b["Id"] = ""
+                       if "Id" not in b.columns and "Id" in a.columns: b["Id"] = ""
             a["Id"] = a["Id"].astype(str); b["Id"] = b["Id"].astype(str)
             prev_map = a.set_index("Id", drop=False)
             curr_map = b.set_index("Id", drop=False)
