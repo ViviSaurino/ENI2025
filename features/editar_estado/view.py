@@ -12,7 +12,7 @@ from st_aggrid import (
     JsCode,
 )
 
-# ======= Toggle: Upsert a Google Sheets (desactivado por defecto) =======
+# ======= Toggle: Upsert a Google Sheets (DESACTIVADO por defecto) =======
 DO_SHEETS_UPSERT = bool(st.secrets.get("edit_estado_upsert_to_sheets", False))
 
 # Hora Lima para sellado de cambios + ACL
@@ -256,7 +256,6 @@ def render(user: dict | None = None):
         <style>
           #est-section .stButton > button { width: 100% !important; }
           #est-section .ag-header-cell-label{ font-weight: 400 !important; white-space: normal !important; line-height: 1.15 !important; }
-          /* habilita scroll horizontal inferior */
           #est-section .ag-body-horizontal-scroll,
           #est-section .ag-center-cols-viewport { overflow-x: auto !important; }
           .section-est .help-strip + .form-card{ margin-top: 6px !important; }
@@ -281,8 +280,21 @@ def render(user: dict | None = None):
             unsafe_allow_html=True,
         )
 
-        # Base global (LIMPIA y sin duplicados)
+        # ===== Base global =====
+        # 1) Lo que tenga la sesión
         df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
+
+        # 2) Si existe CSV local guardado, úsalo como fuente (permite persistir al reiniciar sesión)
+        try:
+            local_path = os.path.join("data", "tareas.csv")
+            if os.path.exists(local_path):
+                df_local = pd.read_csv(local_path, dtype=str, keep_default_na=False)
+                if isinstance(df_local, pd.DataFrame) and not df_local.empty:
+                    df_all = _dedup_keep_last_with_id(df_local)
+        except Exception:
+            pass
+
+        # 3) Actualiza la sesión con lo cargado
         df_all = _dedup_keep_last_with_id(df_all)
         st.session_state["df_main"] = df_all.copy()
 
@@ -297,7 +309,7 @@ def render(user: dict | None = None):
             except Exception:
                 pass
 
-        # ===== Rango por defecto (solo por Fecha de registro) =====
+        # ===== Rango por defecto (Fecha de registro) =====
         fr_all = pd.to_datetime(df_all.get("Fecha Registro", pd.Series([], dtype=object)), errors="coerce")
         valid_fr = fr_all[fr_all.notna()]
         if valid_fr.empty:
@@ -366,7 +378,7 @@ def render(user: dict | None = None):
                     return "-"
             return s.astype(str).map(_one)
 
-        # Nota: en la grilla visible renombramos "Fecha inicio" -> "Fecha de inicio"
+        # Visible: "Fecha de inicio" (mapeo de "Fecha inicio")
         cols_out = [
             "Id","Tarea","Estado actual",
             "Fecha de registro","Hora de registro",
@@ -401,7 +413,7 @@ def render(user: dict | None = None):
                 "Estado actual": est_now,
                 "Fecha de registro": _fmt_date_series(fr),
                 "Hora de registro": _fmt_time_series(hr),
-                "Fecha de inicio": _fmt_date_series(fi),      # <- renombrado visible
+                "Fecha de inicio": _fmt_date_series(fi),
                 "Hora de inicio": _fmt_time_series(hi),
                 "Fecha terminada": _fmt_date_series(ft),
                 "Hora terminada": _fmt_time_series(ht),
@@ -448,7 +460,6 @@ def render(user: dict | None = None):
 
         link_formatter = JsCode("""function(p){ const s=String(p.value||'').trim(); return s? s : '-'; }""")
 
-        # Ajuste de dependencias al editar (usa el nombre visible "Fecha de inicio")
         on_cell_changed = JsCode(f"""
         function(params){{
           const field = params.colDef.field;
@@ -490,7 +501,7 @@ def render(user: dict | None = None):
             ensureDomOrder=True,
             rowHeight=38,
             headerHeight=60,
-            suppressHorizontalScroll=False  # <- habilita scroll inferior
+            suppressHorizontalScroll=False
         )
         gob.configure_default_column(wrapHeaderText=True, autoHeaderHeight=True)
         gob.configure_selection("single", use_checkbox=False)
@@ -500,7 +511,7 @@ def render(user: dict | None = None):
         gob.configure_column("Hora de registro", editable=False, minWidth=150)
         gob.configure_column("Tarea", editable=False, minWidth=320)
         gob.configure_column("Id", editable=False, minWidth=120)
-        gob.configure_column("Fecha de inicio", editable=editable_start, cellEditor=date_editor, minWidth=180)  # <- renombrado visible
+        gob.configure_column("Fecha de inicio", editable=editable_start, cellEditor=date_editor, minWidth=180)
         gob.configure_column("Hora de inicio", editable=False, minWidth=160)
         gob.configure_column("Fecha terminada", editable=editable_end, cellEditor=date_editor, minWidth=190)
         gob.configure_column("Hora terminada", editable=False, minWidth=160)
@@ -517,7 +528,7 @@ def render(user: dict | None = None):
             fit_columns_on_grid_load=False,
             enable_enterprise_modules=False,
             reload_data=False,
-            height=430,                       # <- más alto
+            height=430,
             allow_unsafe_jscode=True,
             theme="balham",
         )
@@ -538,7 +549,6 @@ def render(user: dict | None = None):
                             t = s.fillna("").astype(str).str.strip()
                             return t.replace({"-": "", "NaT": "", "NAT": "", "nat": "", "NaN": "", "nan": "", "None": "", "none": ""})
 
-                        # OJO: leemos "Fecha de inicio" visible y lo mapeamos al nombre base "Fecha inicio"
                         fi_new_vis = norm(g_i.get("Fecha de inicio", pd.Series(index=g_i.index)))
                         hi_new      = norm(g_i.get("Hora de inicio", pd.Series(index=g_i.index)))
                         ft_new      = norm(g_i.get("Fecha terminada", pd.Series(index=g_i.index)))
@@ -589,7 +599,7 @@ def render(user: dict | None = None):
                         for i in ids_ok:
                             prev_fi = _canon_str(base_idx.at[i, "Fecha inicio"]) if i in base_idx.index else ""
                             prev_hi = _canon_str(base_idx.at[i, "Hora de inicio"]) if i in base_idx.index else ""
-                            new_fi  = _canon_str(fi_new_vis.get(i, ""))   # <- viene de la columna visible
+                            new_fi  = _canon_str(fi_new_vis.get(i, ""))   # visible -> base
                             new_hi  = _canon_str(hi_new.get(i, ""))
 
                             if is_super:
