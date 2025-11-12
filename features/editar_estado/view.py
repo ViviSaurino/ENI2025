@@ -297,13 +297,13 @@ def render(user: dict | None = None):
 
           /* ===== Colores de encabezados por bloques (sin emojis en headers) ===== */
           #est-section .ag-header-cell[col-id="Fecha de registro"],
-          #est-section .ag-header-cell[col-id="Hora de registro"] { background:#EDE9FE !important; }
+          #est-section .ag-header-cell[col-id="Hora de registro"] { background:#F5F3FF !important; }
           #est-section .ag-header-cell[col-id="Fecha de inicio"],
-          #est-section .ag-header-cell[col-id="Hora de inicio"] { background:#DCFCE7 !important; }
+          #est-section .ag-header-cell[col-id="Hora de inicio"] { background:#ECFDF5 !important; }
           #est-section .ag-header-cell[col-id="Fecha terminada"],
-          #est-section .ag-header-cell[col-id="Hora terminada"] { background:#E0F2FE !important; }
+          #est-section .ag-header-cell[col-id="Hora terminada"] { background:#EFF6FF !important; }
           #est-section .ag-header-cell[col-id="Fecha eliminada"],
-          #est-section .ag-header-cell[col-id="Hora eliminada"] { background:#FFE4D6 !important; }
+          #est-section .ag-header-cell[col-id="Hora eliminada"] { background:#FFF1E6 !important; }
           #est-section .ag-header-cell[col-id="Estado actual"] { background:#F3F4F6 !important; color:#111827 !important; }
         </style>
         """,
@@ -548,12 +548,13 @@ def render(user: dict | None = None):
           return M[v] || v;
         }""")
 
+        # ⚠️ Ajuste de color para "En curso" (amarillo pastel) + pares más suaves
         estado_cell_style = JsCode("""
         function(p){
           const v = String(p.value || '');
           const S = {
             "No iniciado":{bg:"#E3F2FD", fg:"#0D47A1"},
-            "En curso":{bg:"#EDE7F6", fg:"#4A148C"},
+            "En curso":{bg:"#FEF9C3", fg:"#92400E"},
             "Terminada":{bg:"#E8F5E9", fg:"#1B5E20"},
             "Pausada":{bg:"#FFF7ED", fg:"#7C2D12"},
             "Cancelada":{bg:"#FEE2E2", fg:"#7F1D1D"},
@@ -633,11 +634,11 @@ def render(user: dict | None = None):
           return (v === '' || v === '-') && hasEnd;
         }}""")
 
-        # ===== Estilos por bloque (celdas) =====
-        style_reg = {"backgroundColor": "#EDE9FE"}
-        style_ini = {"backgroundColor": "#DCFCE7"}
-        style_ter = {"backgroundColor": "#E0F2FE"}
-        style_del = {"backgroundColor": "#FFE4D6"}
+        # ===== Estilos por bloque (celdas) — pares más pasteles =====
+        style_reg = {"backgroundColor": "#F5F3FF"}
+        style_ini = {"backgroundColor": "#ECFDF5"}
+        style_ter = {"backgroundColor": "#EFF6FF"}
+        style_del = {"backgroundColor": "#FFF1E6"}
 
         gob = GridOptionsBuilder.from_dataframe(df_view)
         gob.configure_grid_options(
@@ -725,7 +726,7 @@ def render(user: dict | None = None):
                             "Fecha Terminado","Fecha terminada","Hora Terminado",
                             "Fecha eliminada","Hora eliminada",
                             "Link de archivo",
-                            "Fecha de registro","Hora de registro"  # alias visibles
+                            "Fecha de registro","Hora de registro"
                         ]:
                             if need not in base.columns:
                                 base[need] = ""
