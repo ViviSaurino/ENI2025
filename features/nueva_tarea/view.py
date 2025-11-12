@@ -273,9 +273,10 @@ def render(user: dict | None = None):
         if st.session_state.pop("nt_added_ok", False):
             st.success("Agregado a Tareas recientes")
 
+        # ===== Indicaciones (en una sola línea, con 📤) =====
         st.markdown("""
         <div class="help-strip">
-          ✳️ Completa los campos obligatorios → pulsa <b>➕ Agregar</b> → revisa en <b>🕑 Tareas recientes</b> y confirma con <b>💾 Grabar</b>.
+          <strong>Indicaciones:</strong> ✳️ Completa los campos obligatorios → pulsa <b>➕ Agregar</b> → revisa en <b>🕑 Tareas recientes</b> → confirma con <b>💾 Grabar</b> y <b>📤 Subir a Sheets</b>.
         </div>
         """, unsafe_allow_html=True)
 
@@ -287,7 +288,7 @@ def render(user: dict | None = None):
             # ===== Responsable & Área desde ACL =====
             _acl = st.session_state.get("acl_user", {}) or {}
             _display_name = (
-                _acl.get("display")           # ← clave correcta según shared.hydrate_acl_flags()
+                _acl.get("display")
                 or st.session_state.get("user_display_name", "")
                 or _acl.get("name", "")
                 or (st.session_state.get("user") or {}).get("name", "")
@@ -318,8 +319,6 @@ def render(user: dict | None = None):
 
             # ---------- FILA 1 ----------
             if _is_fase_otros:
-                # Orden y anchos para que "Otros, Tarea, Detalle, Responsable"
-                # coincidan con los anchos de "Estado, Complejidad, Duración, Fecha"
                 r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
                 r1c1.text_input("Área", value=area_fixed, key="nt_area_view", disabled=True)
                 r1c2.selectbox("Fase", options=FASES, key="nt_fase", index=FASES.index("Otros"))
@@ -328,7 +327,6 @@ def render(user: dict | None = None):
                 r1c5.text_input("Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle")
                 r1c6.text_input("Responsable", key="nt_resp", disabled=True)
             else:
-                # Layout original (con Área fijo)
                 r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
                 r1c1.text_input("Área", value=area_fixed, key="nt_area_view", disabled=True)
                 r1c2.selectbox("Fase", options=FASES, index=None, placeholder="Selecciona una fase", key="nt_fase")
@@ -363,10 +361,11 @@ def render(user: dict | None = None):
 
             # ---------- FILA 2 ----------
             if _is_fase_otros:
-                # Ciclo, Tipo, Estado, Complejidad, Duración, Fecha
+                # Ciclo, Tipo (editable), Estado, Complejidad, Duración, Fecha
                 r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
                 ciclo_mejora = r2c1.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
-                r2c2.selectbox("Tipo de tarea", options=["Otros"], index=0, key="nt_tipo", disabled=True)
+                # *** Cambio: tipo editable (en blanco por defecto) ***
+                r2c2.text_input("Tipo de tarea", key="nt_tipo", placeholder="Escribe el tipo de tarea")
                 r2c3.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
                 r2c4.selectbox("Complejidad", options=["🟢 Baja", "🟡 Media", "🔴 Alta"], index=0, key="nt_complejidad")
                 r2c5.selectbox("Duración", options=[f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)], index=0, key="nt_duracion_label")
@@ -378,9 +377,10 @@ def render(user: dict | None = None):
                 r3c2.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
                 # r3c3..r3c6 vacíos (alineación)
             else:
-                # Layout original F2/F3
+                # Layout original F2/F3 con tipo editable
                 r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
-                r2c1.selectbox("Tipo de tarea", options=["Otros"], index=0, key="nt_tipo", disabled=True)
+                # *** Cambio: tipo editable (en blanco por defecto) ***
+                r2c1.text_input("Tipo de tarea", key="nt_tipo", placeholder="Escribe el tipo de tarea")
                 r2c2.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
                 r2c3.selectbox("Complejidad", options=["🟢 Baja", "🟡 Media", "🔴 Alta"], index=0, key="nt_complejidad")
                 r2c4.selectbox("Duración", options=[f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)], index=0, key="nt_duracion_label")
@@ -486,7 +486,6 @@ def render(user: dict | None = None):
                     st.info(res.get("msg", "Guardado deshabilitado."))
 
                 # ====== Log universal en TareasRecientes (sin ACL) ======
-                # Abrimos el spreadsheet si está configurado en secrets
                 sheet = None
                 try:
                     from utils.gsheets import open_sheet_by_url  # type: ignore
@@ -499,87 +498,10 @@ def render(user: dict | None = None):
                 except Exception:
                     sheet = None
 
-                # --- Campos extra a registrar (si la hoja los tiene) ---
                 extra_kwargs = dict(
                     area=new.get("Área",""),
                     fase=new.get("Fase",""),
                     tipo=new.get("Tipo",""),
                     estado=new.get("Estado",""),
                     ciclo_mejora=new.get("Ciclo de mejora",""),
-                    complejidad=new.get("Complejidad",""),
-                    duracion_dias=new.get("Duración (días)",""),
-                    duracion=new.get("Duración",""),
-                    link_archivo=new.get("Link de archivo",""),
-                )
-
-                try:
-                    # Intento con kwargs completos
-                    try:
-                        log_reciente(
-                            sheet,
-                            tarea_nombre=new.get("Tarea", ""),
-                            especialista=new.get("Responsable", ""),
-                            detalle="Asignada",
-                            id_val=new.get("Id", ""),
-                            fecha_reg=reg_fecha,
-                            hora_reg=reg_hora_txt,
-                            **extra_kwargs
-                        )
-                    except TypeError:
-                        # Versión importada sin **kwargs extra → registrar básico
-                        log_reciente(
-                            sheet,
-                            tarea_nombre=new.get("Tarea", ""),
-                            especialista=new.get("Responsable", ""),
-                            detalle="Asignada",
-                            id_val=new.get("Id", ""),
-                            fecha_reg=reg_fecha,
-                            hora_reg=reg_hora_txt,
-                        )
-                        # Post-update por Id para completar columnas extra si existen
-                        try:
-                            from utils.gsheets import read_df_from_worksheet, upsert_by_id  # type: ignore
-                            if sheet and callable(read_df_from_worksheet) and callable(upsert_by_id):
-                                df_rec = read_df_from_worksheet(sheet, "TareasRecientes")
-                                if isinstance(df_rec, pd.DataFrame) and not df_rec.empty:
-                                    id_col = "Id" if "Id" in df_rec.columns else ("id" if "id" in df_rec.columns else None)
-                                    if id_col:
-                                        row = {id_col: str(new.get("Id",""))}
-                                        # Solo setear las que existan en la hoja
-                                        for k_sheet, v_val in {
-                                            "Área": new.get("Área",""),
-                                            "Fase": new.get("Fase",""),
-                                            "Tipo": new.get("Tipo",""),
-                                            "Estado": new.get("Estado",""),
-                                            "Ciclo de mejora": new.get("Ciclo de mejora",""),
-                                            "Complejidad": new.get("Complejidad",""),
-                                            "Duración (días)": new.get("Duración (días)",""),
-                                            "Duración": new.get("Duración",""),
-                                            "Detalle": new.get("Detalle",""),
-                                        }.items():
-                                            if k_sheet in df_rec.columns:
-                                                row[k_sheet] = v_val
-                                        upsert_by_id(sheet, "TareasRecientes", pd.DataFrame([row]), id_col=id_col)
-                        except Exception:
-                            pass
-                except Exception:
-                    # No romper el flujo si no hay gsheets
-                    pass
-
-                # limpiar campos
-                for k in [
-                    "nt_area","nt_fase","nt_fase_otro","nt_tarea","nt_detalle","nt_resp",
-                    "nt_ciclo_mejora","nt_tipo","nt_complejidad","nt_duracion_label",
-                    "fi_d","fi_t","fi_t_view","nt_id_preview"
-                ]:
-                    st.session_state.pop(k, None)
-                st.session_state["nt_skip_date_init"] = True
-                st.session_state["nt_added_ok"] = True
-
-                st.rerun()
-
-            except Exception as e:
-                st.error(f"No pude guardar la nueva tarea: {e}")
-
-    gap = SECTION_GAP if 'SECTION_GAP' in globals() else 30
-    st.markdown(f"<div style='height:{gap}px;'></div>", unsafe_allow_html=True)
+                    complejidad=new.get("
