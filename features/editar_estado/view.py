@@ -81,7 +81,8 @@ def _fmt_hhmm(v) -> str:
 # ============ Helpers de normalización y deduplicado ============
 def _is_blank_str(x) -> bool:
     s = str(x).strip().lower()
-    return s in {"", "-", "nan", "none", "null"}
+    # <- agregado 'nat'
+    return s in {"", "-", "nan", "nat", "none", "null"}
 
 def _canon_str(x) -> str:
     return "" if _is_blank_str(x) else str(x).strip()
@@ -225,7 +226,7 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
 
         current_row = values[row_idx - 1].copy()
         if len(current_row) < len(headers):
-            current_row += [""] * (len(headers) - len(current_row))
+            current_row += [""] * (len(current_row) - len(headers))
         for h in cols_to_push:
             v = _get_val(_id, h)
             current_row[col_map[h] - 1] = _fmt_out(h, v)
@@ -449,11 +450,11 @@ def render(user: dict | None = None):
             const v = (p.value || '').toString().trim();
             if (/^\\d{4}-\\d{2}-\\d{2}$/.test(v)) { this.eInput.value = v; }
             else {
-              const d = new Date(v);
-              if (!isNaN(d.getTime())){
-                const pad=n=>String(n).padStart(2,'0');
-                this.eInput.value = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
-              }
+                const d = new Date(v);
+                if (!isNaN(d.getTime())){
+                    const pad=n=>String(n).padStart(2,'0');
+                    this.eInput.value = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+                }
             }
           }
           getGui(){ return this.eInput }
@@ -521,7 +522,7 @@ def render(user: dict | None = None):
             df_view,
             gridOptions=grid_opts,
             data_return_mode=DataReturnMode.AS_INPUT,
-            update_mode=GridUpdateMode.MODEL_CHANGED,
+            update_mode=GridUpdateMode.VALUE_CHANGED,   # <- antes: MODEL_CHANGED
             fit_columns_on_grid_load=True,
             enable_enterprise_modules=False,
             reload_data=False,
@@ -543,8 +544,9 @@ def render(user: dict | None = None):
                         g_i = grid_data.set_index("Id")
 
                         def norm(s: pd.Series) -> pd.Series:
-                            s = s.fillna("").astype(str).str.strip()
-                            return s.replace(to_replace=r"^\-$", value="", regex=True)
+                            t = s.fillna("").astype(str).str.strip()
+                            # convierte guiones y tokens a vacío real (incluye NaT)
+                            return t.replace({"-": "", "NaT": "", "NAT": "", "nat": "", "NaN": "", "nan": "", "None": "", "none": ""})
 
                         fi_new = norm(g_i.get("Fecha inicio", pd.Series(index=g_i.index)))
                         hi_new = norm(g_i.get("Hora de inicio", pd.Series(index=g_i.index)))
