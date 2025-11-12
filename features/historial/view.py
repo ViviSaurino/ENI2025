@@ -731,6 +731,9 @@ def render(user: dict | None = None):
         "Hora de inicio": "Hora de inicio",
         "Fecha Registro": "Fecha de registro",
         "Hora Registro": "Hora de registro",
+        "Fecha Terminado": "Fecha terminada",
+        "Hora Terminado": "Hora terminada",
+
     }
 
     _acl_user = st.session_state.get("acl_user", {}) or {}
