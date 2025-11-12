@@ -380,11 +380,11 @@ def render(user: dict | None = None):
                 r2c3.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
                 r2c4.selectbox("Complejidad", options=["🟢 Baja", "🟡 Media", "🔴 Alta"], index=0, key="nt_complejidad")
                 r2c5.selectbox("Duración", options=[f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)], index=0, key="nt_duracion_label")
-                r2c6.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date); _sync_time_from_date()
+                r2c6.date_input("Fecha de registro", key="fi_d", on_change=_auto_time_on_date); _sync_time_from_date()
 
                 # ---------- FILA 3 ----------
                 r3c1, r3c2, r3c3, r3c4, r3c5, r3c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
-                r3c1.text_input("Hora (auto)", key="fi_t_view", disabled=True, help="Se asigna al elegir la fecha")
+                r3c1.text_input("Hora de registro (auto)", key="fi_t_view", disabled=True, help="Se asigna al elegir la fecha")
                 r3c2.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
                 # r3c3..r3c6 vacíos (alineación)
             else:
@@ -395,8 +395,8 @@ def render(user: dict | None = None):
                 r2c2.text_input("Estado", value="No iniciado", disabled=True, key="nt_estado_view")
                 r2c3.selectbox("Complejidad", options=["🟢 Baja", "🟡 Media", "🔴 Alta"], index=0, key="nt_complejidad")
                 r2c4.selectbox("Duración", options=[f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)], index=0, key="nt_duracion_label")
-                r2c5.date_input("Fecha", key="fi_d", on_change=_auto_time_on_date); _sync_time_from_date()
-                r2c6.text_input("Hora (auto)", key="fi_t_view", disabled=True, help="Se asigna al elegir la fecha")
+                r2c5.date_input("Fecha de registro", key="fi_d", on_change=_auto_time_on_date); _sync_time_from_date()
+                r2c6.text_input("Hora de registro (auto)", key="fi_t_view", disabled=True, help="Se asigna al elegir la fecha")
 
                 r3c1, r3c2, r3c3, r3c4, r3c5, r3c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
                 r3c1.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
@@ -457,8 +457,13 @@ def render(user: dict | None = None):
                     "Responsable": st.session_state.get("nt_resp", ""),  # fijado al usuario logueado
                     "Fase": fase_final,
                     "Estado": "No iniciado",
-                    "Fecha": reg_fecha, "Hora": reg_hora_txt,
-                    "Fecha Registro": reg_fecha, "Hora Registro": reg_hora_txt,
+
+                    # ===== Ajuste solicitado: usar solo nombres parejos =====
+                    "Fecha de registro": reg_fecha,
+                    "Hora de registro": reg_hora_txt,
+                    "Fecha Registro": reg_fecha,
+                    "Hora Registro": reg_hora_txt,
+
                     "Fecha inicio": None, "Hora de inicio": "",
                     "Fecha Terminado": None, "Hora Terminado": "",
                     "Ciclo de mejora": st.session_state.get("nt_ciclo_mejora", ""),
