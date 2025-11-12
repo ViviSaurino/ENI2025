@@ -12,7 +12,7 @@ from st_aggrid import (
     JsCode,
 )
 
-# ======= Toggle: Upsert a Google Sheets (DESACTIVADO por defecto) =======
+# ======= Toggle: Upsert a Google Sheets (desactivado por defecto) =======
 DO_SHEETS_UPSERT = bool(st.secrets.get("edit_estado_upsert_to_sheets", False))
 
 # Hora Lima para sellado de cambios + ACL
@@ -188,7 +188,9 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
         "Estado", "Estado actual",
         "Fecha estado actual", "Hora estado actual",
         "Fecha inicio", "Hora de inicio",
+        "Fecha de inicio",            # alias visible
         "Fecha Terminado", "Hora Terminado",
+        "Fecha terminada",            # alias visible
         "Link de archivo",
     ]
     cols_to_push = [c for c in base_push_cols if c in col_map]
@@ -256,6 +258,7 @@ def render(user: dict | None = None):
         <style>
           #est-section .stButton > button { width: 100% !important; }
           #est-section .ag-header-cell-label{ font-weight: 400 !important; white-space: normal !important; line-height: 1.15 !important; }
+          /* habilita scroll horizontal inferior */
           #est-section .ag-body-horizontal-scroll,
           #est-section .ag-center-cols-viewport { overflow-x: auto !important; }
           .section-est .help-strip + .form-card{ margin-top: 6px !important; }
@@ -280,21 +283,8 @@ def render(user: dict | None = None):
             unsafe_allow_html=True,
         )
 
-        # ===== Base global =====
-        # 1) Lo que tenga la sesión
+        # Base global (LIMPIA y sin duplicados)
         df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
-
-        # 2) Si existe CSV local guardado, úsalo como fuente (permite persistir al reiniciar sesión)
-        try:
-            local_path = os.path.join("data", "tareas.csv")
-            if os.path.exists(local_path):
-                df_local = pd.read_csv(local_path, dtype=str, keep_default_na=False)
-                if isinstance(df_local, pd.DataFrame) and not df_local.empty:
-                    df_all = _dedup_keep_last_with_id(df_local)
-        except Exception:
-            pass
-
-        # 3) Actualiza la sesión con lo cargado
         df_all = _dedup_keep_last_with_id(df_all)
         st.session_state["df_main"] = df_all.copy()
 
@@ -309,7 +299,7 @@ def render(user: dict | None = None):
             except Exception:
                 pass
 
-        # ===== Rango por defecto (Fecha de registro) =====
+        # ===== Rango por defecto (solo por Fecha de registro) =====
         fr_all = pd.to_datetime(df_all.get("Fecha Registro", pd.Series([], dtype=object)), errors="coerce")
         valid_fr = fr_all[fr_all.notna()]
         if valid_fr.empty:
@@ -378,7 +368,17 @@ def render(user: dict | None = None):
                     return "-"
             return s.astype(str).map(_one)
 
-        # Visible: "Fecha de inicio" (mapeo de "Fecha inicio")
+        # Coalesce de alias:
+        def _coalesce_dt(base: pd.DataFrame, a: str, b: str) -> pd.Series:
+            s1 = pd.to_datetime(base.get(a, pd.Series([], dtype=object)), errors="coerce")
+            s2 = pd.to_datetime(base.get(b, pd.Series([], dtype=object)), errors="coerce")
+            if len(s1) == 0: 
+                return s2
+            if len(s2) == 0:
+                return s1
+            return s1.where(s1.notna(), s2)
+
+        # Nota: en la grilla visible renombramos "Fecha inicio" -> "Fecha de inicio"
         cols_out = [
             "Id","Tarea","Estado actual",
             "Fecha de registro","Hora de registro",
@@ -390,20 +390,27 @@ def render(user: dict | None = None):
         df_view = pd.DataFrame(columns=cols_out)
         if not df_tasks.empty:
             base = df_tasks.copy()
-            for need in ["Id","Tarea","Estado","Fecha Registro","Hora Registro","Fecha inicio","Hora de inicio","Fecha Terminado","Hora Terminado","Link de archivo"]:
+            for need in ["Id","Tarea","Estado","Fecha Registro","Hora Registro","Fecha inicio","Fecha de inicio",
+                         "Hora de inicio","Fecha Terminado","Fecha terminada","Hora Terminado","Link de archivo"]:
                 if need not in base.columns:
                     base[need] = ""
 
             fr = pd.to_datetime(base["Fecha Registro"], errors="coerce")
             hr = base["Hora Registro"].astype(str)
-            fi = pd.to_datetime(base["Fecha inicio"], errors="coerce")
+            # <- usa coalesce para inicio y terminado
+            fi = _coalesce_dt(base, "Fecha inicio", "Fecha de inicio")
             hi = base["Hora de inicio"].astype(str)
-            ft = pd.to_datetime(base["Fecha Terminado"], errors="coerce")
+            ft = _coalesce_dt(base, "Fecha Terminado", "Fecha terminada")
             ht = base["Hora Terminado"].astype(str)
 
+            # Calculado por fechas…
             est_now = pd.Series("No iniciado", index=base.index, dtype="object")
             est_now = est_now.mask(fi.notna() & ft.isna(), "En curso")
             est_now = est_now.mask(ft.notna(), "Terminado")
+            # …pero si hay Estado guardado, lo respetamos
+            if "Estado" in base.columns:
+                estado_guardado = base["Estado"].astype(str).str.strip()
+                est_now = estado_guardado.where(~estado_guardado.isin(["", "nan", "NaN", "None"]), est_now)
 
             link_col = base["Link de archivo"].astype(str).replace({"nan":"-","NaN":"-","None":"-","": "-"})
 
@@ -460,6 +467,7 @@ def render(user: dict | None = None):
 
         link_formatter = JsCode("""function(p){ const s=String(p.value||'').trim(); return s? s : '-'; }""")
 
+        # Ajuste de dependencias al editar (usa el nombre visible "Fecha de inicio")
         on_cell_changed = JsCode(f"""
         function(params){{
           const field = params.colDef.field;
@@ -501,7 +509,7 @@ def render(user: dict | None = None):
             ensureDomOrder=True,
             rowHeight=38,
             headerHeight=60,
-            suppressHorizontalScroll=False
+            suppressHorizontalScroll=False  # <- habilita scroll inferior
         )
         gob.configure_default_column(wrapHeaderText=True, autoHeaderHeight=True)
         gob.configure_selection("single", use_checkbox=False)
@@ -511,7 +519,7 @@ def render(user: dict | None = None):
         gob.configure_column("Hora de registro", editable=False, minWidth=150)
         gob.configure_column("Tarea", editable=False, minWidth=320)
         gob.configure_column("Id", editable=False, minWidth=120)
-        gob.configure_column("Fecha de inicio", editable=editable_start, cellEditor=date_editor, minWidth=180)
+        gob.configure_column("Fecha de inicio", editable=editable_start, cellEditor=date_editor, minWidth=180)  # visible
         gob.configure_column("Hora de inicio", editable=False, minWidth=160)
         gob.configure_column("Fecha terminada", editable=editable_end, cellEditor=date_editor, minWidth=190)
         gob.configure_column("Hora terminada", editable=False, minWidth=160)
@@ -528,7 +536,7 @@ def render(user: dict | None = None):
             fit_columns_on_grid_load=False,
             enable_enterprise_modules=False,
             reload_data=False,
-            height=430,
+            height=430,                       # más alto
             allow_unsafe_jscode=True,
             theme="balham",
         )
@@ -549,9 +557,10 @@ def render(user: dict | None = None):
                             t = s.fillna("").astype(str).str.strip()
                             return t.replace({"-": "", "NaT": "", "NAT": "", "nat": "", "NaN": "", "nan": "", "None": "", "none": ""})
 
+                        # OJO: visible -> base
                         fi_new_vis = norm(g_i.get("Fecha de inicio", pd.Series(index=g_i.index)))
                         hi_new      = norm(g_i.get("Hora de inicio", pd.Series(index=g_i.index)))
-                        ft_new      = norm(g_i.get("Fecha terminada", pd.Series(index=g_i.index)))
+                        ft_new_vis  = norm(g_i.get("Fecha terminada", pd.Series(index=g_i.index)))
                         ht_new      = norm(g_i.get("Hora terminada", pd.Series(index=g_i.index)))
                         lk_new      = norm(g_i.get("Link de archivo", pd.Series(index=g_i.index)))
 
@@ -571,8 +580,8 @@ def render(user: dict | None = None):
                             base = base[mask_me]
 
                         for need in [
-                            "Estado","Fecha Registro","Hora Registro","Fecha inicio","Hora de inicio",
-                            "Fecha Terminado","Hora Terminado","Fecha estado actual","Hora estado actual","Link de archivo",
+                            "Estado","Fecha Registro","Hora Registro","Fecha inicio","Fecha de inicio","Hora de inicio",
+                            "Fecha Terminado","Fecha terminada","Hora Terminado","Link de archivo",
                         ]:
                             if need not in base.columns:
                                 base[need] = ""
@@ -581,12 +590,16 @@ def render(user: dict | None = None):
                         ids_ok = [i for i in ids_view if i in set(base["Id"].astype(str))]
 
                         if not is_super:
+                            # valida terminado con inicio (alias incluidos)
                             cur_start = base.groupby("Id", as_index=True)["Fecha inicio"].last().map(_canon_str)
-                            bad = [i for i in ids_ok if (_canon_str(ft_new.get(i, "")) and not (_canon_str(cur_start.get(i, "")) or _canon_str(fi_new_vis.get(i, ""))))]
+                            cur_start_alias = base.groupby("Id", as_index=True)["Fecha de inicio"].last().map(_canon_str)
+                            def _has_start(i): 
+                                return bool(_canon_str(cur_start.get(i,"")) or _canon_str(cur_start_alias.get(i,"")) or _canon_str(fi_new_vis.get(i,"")))
+                            bad = [i for i in ids_ok if (_canon_str(ft_new_vis.get(i, "")) and not _has_start(i))]
                             if bad:
                                 st.warning("No puedes registrar 'Fecha terminada' sin 'Fecha de inicio' en algunas tareas.")
                                 for i in bad:
-                                    ft_new[i] = ""; ht_new[i] = ""
+                                    ft_new_vis[i] = ""; ht_new[i] = ""
 
                         h_now = _now_lima_trimmed_local().strftime("%H:%M")
 
@@ -597,40 +610,48 @@ def render(user: dict | None = None):
                         base_idx = base_idx[~base_idx.index.duplicated(keep="last")]
 
                         for i in ids_ok:
-                            prev_fi = _canon_str(base_idx.at[i, "Fecha inicio"]) if i in base_idx.index else ""
-                            prev_hi = _canon_str(base_idx.at[i, "Hora de inicio"]) if i in base_idx.index else ""
-                            new_fi  = _canon_str(fi_new_vis.get(i, ""))   # visible -> base
-                            new_hi  = _canon_str(hi_new.get(i, ""))
+                            prev_fi  = _canon_str(base_idx.at[i, "Fecha inicio"]) if i in base_idx.index else ""
+                            prev_fiA = _canon_str(base_idx.at[i, "Fecha de inicio"]) if i in base_idx.index else ""
+                            prev_hi  = _canon_str(base_idx.at[i, "Hora de inicio"]) if i in base_idx.index else ""
+                            new_fi   = _canon_str(fi_new_vis.get(i, ""))   # visible
+                            new_hi   = _canon_str(hi_new.get(i, ""))
 
                             if is_super:
-                                if new_fi != prev_fi:
-                                    base_idx.at[i, "Fecha inicio"] = new_fi; changed_ids.add(i)
+                                if new_fi != prev_fi or new_fi != prev_fiA:
+                                    base_idx.at[i, "Fecha inicio"] = new_fi
+                                    base_idx.at[i, "Fecha de inicio"] = new_fi
+                                    changed_ids.add(i)
                                 if new_fi:
                                     if not new_hi: new_hi = h_now
                                     if new_hi != prev_hi:
                                         base_idx.at[i, "Hora de inicio"] = new_hi; changed_ids.add(i)
                             else:
-                                if (not prev_fi) and new_fi:
+                                if (not prev_fi and not prev_fiA) and new_fi:
                                     base_idx.at[i, "Fecha inicio"] = new_fi
+                                    base_idx.at[i, "Fecha de inicio"] = new_fi
                                     base_idx.at[i, "Hora de inicio"] = (new_hi or h_now)
                                     changed_ids.add(i)
 
-                            prev_ft = _canon_str(base_idx.at[i, "Fecha Terminado"]) if i in base_idx.index else ""
-                            prev_ht = _canon_str(base_idx.at[i, "Hora Terminado"]) if i in base_idx.index else ""
-                            new_ft  = _canon_str(ft_new.get(i, "")); new_ht  = _canon_str(ht_new.get(i, ""))
+                            prev_ft  = _canon_str(base_idx.at[i, "Fecha Terminado"]) if i in base_idx.index else ""
+                            prev_ftA = _canon_str(base_idx.at[i, "Fecha terminada"]) if i in base_idx.index else ""
+                            prev_ht  = _canon_str(base_idx.at[i, "Hora Terminado"]) if i in base_idx.index else ""
+                            new_ft   = _canon_str(ft_new_vis.get(i, "")); new_ht  = _canon_str(ht_new.get(i, ""))
 
-                            has_start_now = bool(_canon_str(base_idx.at[i, "Fecha inicio"]) if i in base_idx.index else "")
+                            has_start_now = bool(_canon_str(base_idx.at[i, "Fecha inicio"]) or _canon_str(base_idx.at[i, "Fecha de inicio"]))
 
                             if is_super:
-                                if new_ft != prev_ft:
-                                    base_idx.at[i, "Fecha Terminado"] = new_ft; changed_ids.add(i)
+                                if new_ft != prev_ft or new_ft != prev_ftA:
+                                    base_idx.at[i, "Fecha Terminado"] = new_ft
+                                    base_idx.at[i, "Fecha terminada"] = new_ft
+                                    changed_ids.add(i)
                                 if new_ft:
                                     if not new_ht: new_ht = h_now
                                     if new_ht != prev_ht:
                                         base_idx.at[i, "Hora Terminado"] = new_ht; changed_ids.add(i)
                             else:
-                                if (not prev_ft) and new_ft and has_start_now:
+                                if (not prev_ft and not prev_ftA) and new_ft and has_start_now:
                                     base_idx.at[i, "Fecha Terminado"] = new_ft
+                                    base_idx.at[i, "Fecha terminada"] = new_ft
                                     base_idx.at[i, "Hora Terminado"] = (new_ht or h_now)
                                     changed_ids.add(i)
 
@@ -639,8 +660,8 @@ def render(user: dict | None = None):
                             if new_lk != prev_lk:
                                 base_idx.at[i, "Link de archivo"] = new_lk; changed_ids.add(i)
 
-                            fi_eff = _canon_str(base_idx.at[i, "Fecha inicio"]) if i in base_idx.index else ""
-                            ft_eff = _canon_str(base_idx.at[i, "Fecha Terminado"]) if i in base_idx.index else ""
+                            fi_eff = _canon_str(base_idx.at[i, "Fecha inicio"]) or _canon_str(base_idx.at[i, "Fecha de inicio"])
+                            ft_eff = _canon_str(base_idx.at[i, "Fecha Terminado"]) or _canon_str(base_idx.at[i, "Fecha terminada"])
                             if ft_eff:
                                 base_idx.at[i, "Estado"] = "Terminado"
                                 base_idx.at[i, "Fecha estado actual"] = ft_eff
@@ -657,8 +678,8 @@ def render(user: dict | None = None):
                         if changed_ids:
                             cols_apply = [
                                 "Estado","Fecha estado actual","Hora estado actual",
-                                "Fecha inicio","Hora de inicio",
-                                "Fecha Terminado","Hora Terminado",
+                                "Fecha inicio","Fecha de inicio","Hora de inicio",
+                                "Fecha Terminado","Fecha terminada","Hora Terminado",
                                 "Link de archivo",
                             ]
                             for col in cols_apply:
