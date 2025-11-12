@@ -446,12 +446,22 @@ def render(user: dict | None = None):
       .hist-filters{
         border:0!important; background:transparent!important; 
         border-radius:0!important; padding:0!important; box-shadow:none!important;
+        position:relative;
+      }
+      /* ✅ Líneas arriba y abajo del bloque de filtros */
+      .hist-filters::before{
+        content:""; display:block; height:0;
+        border-top:1px solid var(--row-sep); margin:6px 0 12px 0;
+      }
+      .hist-filters::after{
+        content:""; display:block; height:0;
+        border-top:1px solid var(--row-sep); margin:12px 0 6px 0;
       }
 
       /* Botón buscar del ancho de su celda (debajo de Hasta) */
       .hist-search .stButton>button{ width:100%; }
 
-      /* AG Grid base */
+      /* AG Grid base con líneas horizontales suaves */
       .ag-theme-balham .ag-cell{
         white-space:nowrap!important; overflow:hidden!important; text-overflow:ellipsis!important;
         border-top:1px solid var(--row-sep)!important;
@@ -838,6 +848,7 @@ def render(user: dict | None = None):
 
     gob.configure_column(_LINK_CANON, hide=True)
 
+    # ====== Formato de fecha DD/MM/YYYY SIN perder el pintado ======
     date_only_fmt = JsCode(r"""
     function(p){
       const v = p.value;
@@ -858,12 +869,26 @@ def render(user: dict | None = None):
       if(!y) return s.split(' ')[0];
       return String(d).padStart(2,'0') + '/' + String(m).padStart(2,'0') + '/' + y;
     }""")
+
+    # ⬇️ Al aplicar valueFormatter, re-inyectamos cellStyle + headerClass según grupo
     for col in ["Fecha Registro","Fecha inicio","Fecha Vencimiento","Fecha Terminado",
                 "Fecha Pausado","Fecha Cancelado","Fecha Eliminado",
                 "Fecha de detección","Fecha de corrección"]:
         if col in df_grid.columns:
             nice = _header_map_norm.get(_normkey(col), header_map.get(col, col))
-            gob.configure_column(col, headerName=nice, valueFormatter=date_only_fmt)
+            hdr_class = None
+            style = None
+            if col == "Fecha Registro":
+                hdr_class = "hdr-registro"; style = cell_style_reg
+            elif col == "Fecha inicio":
+                hdr_class = "hdr-inicio";   style = cell_style_ini
+            elif col == "Fecha Terminado":
+                hdr_class = "hdr-termino";  style = cell_style_ter
+            # Para otras fechas (venc., pausado, cancelado, eliminado) no se colorea el bloque
+            kwargs = dict(headerName=nice, valueFormatter=date_only_fmt)
+            if hdr_class: kwargs["headerClass"] = hdr_class
+            if style:     kwargs["cellStyle"]  = style
+            gob.configure_column(col, **kwargs)
 
     link_value_getter = JsCode(r"""
     function(p){
