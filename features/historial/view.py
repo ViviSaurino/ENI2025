@@ -968,7 +968,7 @@ def render(user: dict | None = None):
             a = prev.reindex(columns=snap_cols).copy()
             b = new_df.reindex(columns=snap_cols).copy()
             if "Id" not in a.columns and "Id" in b.columns: a["Id"] = ""
-                       if "Id" not in b.columns and "Id" in a.columns: b["Id"] = ""
+            if "Id" not in b.columns and "Id" in a.columns: b["Id"] = ""
             a["Id"] = a["Id"].astype(str); b["Id"] = b["Id"].astype(str)
             prev_map = a.set_index("Id", drop=False)
             curr_map = b.set_index("Id", drop=False)
