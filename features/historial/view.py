@@ -196,6 +196,11 @@ def _gsheets_client():
     ss = gc.open_by_url(url)
     return ss, ws_name
 
+def _gsheets_eval_name(default: str = "Evaluación") -> str:
+    return ((st.secrets.get("gsheets",{}) or {}).get("worksheet_eval")
+            or st.secrets.get("ws_eval_name")
+            or default)
+
 def pull_user_slice_from_sheet(replace_df_main: bool = True):
     ss, ws_name = _gsheets_client()
     try:
@@ -361,6 +366,67 @@ def _sheet_upsert_by_id_partial(df_rows: pd.DataFrame, cell_diff_map: dict[str, 
         msg.append(f"{len(appends)} fila(s) insertada(s)")
     return {"ok": True, "msg": "Upsert parcial: " + (", ".join(msg) if msg else "sin cambios.")}
 
+# ⬇️ NUEVO: upsert a hoja de Evaluación SOLO columna "Cumplimiento" por Id
+def _sheet_upsert_eval_cumpl(df_rows: pd.DataFrame) -> dict:
+    if df_rows is None or df_rows.empty or "Id" not in df_rows.columns or "Cumplimiento" not in df_rows.columns:
+        return {"ok": False, "msg": "No hay filas con Id y Cumplimiento para Evaluación."}
+    ss, _ = _gsheets_client()
+    ws_name = _gsheets_eval_name("Evaluación")
+    import gspread
+    try:
+        ws = ss.worksheet(ws_name)
+    except gspread.exceptions.WorksheetNotFound:
+        ws = ss.add_worksheet(title=ws_name, rows="2000", cols="10")
+        ws.update("A1", [["Id", "Cumplimiento"]])
+    headers = ws.row_values(1)
+    if not headers:
+        headers = ["Id", "Cumplimiento"]
+        ws.update("A1", [headers])
+
+    # buscar columna de cumplimiento (tolerante)
+    def _norm(s): return re.sub(r'[^a-z]', '', (s or '').lower())
+    cumpl_col_name = None
+    for h in headers:
+        if _norm(h).startswith("cumplimiento"):
+            cumpl_col_name = h; break
+    if not cumpl_col_name:
+        cumpl_col_name = "Cumplimiento"
+        if cumpl_col_name not in headers:
+            headers.append(cumpl_col_name)
+            ws.update("A1", [headers])
+
+    id_col_idx = (headers.index("Id") + 1)
+    cumpl_col_idx = (headers.index(cumpl_col_name) + 1)
+
+    existing_ids = ws.col_values(id_col_idx)
+    id_to_row = {}
+    for i, v in enumerate(existing_ids[1:], start=2):
+        if v:
+            id_to_row[str(v).strip()] = i
+
+    to_append = []
+    updates = 0
+    for _, r in df_rows.iterrows():
+        rid = str(r.get("Id", "")).strip()
+        cv = str(r.get("Cumplimiento", "")).strip()
+        if not rid:
+            continue
+        if rid in id_to_row:
+            a1 = f"{_a1_col(cumpl_col_idx)}{id_to_row[rid]}"
+            ws.update(a1, [[cv]], value_input_option="USER_ENTERED")
+            updates += 1
+        else:
+            row_vals = [""] * len(headers)
+            row_vals[id_col_idx-1] = rid
+            row_vals[cumpl_col_idx-1] = cv
+            to_append.append(row_vals)
+    if to_append:
+        ws.append_rows(to_append, value_input_option="USER_ENTERED")
+    msg = []
+    if updates: msg.append(f"{updates} actualización(es)")
+    if to_append: msg.append(f"{len(to_append)} inserción(es)")
+    return {"ok": True, "msg": "Evaluación: " + (", ".join(msg) if msg else "sin cambios.")}
+
 # ===== Exportación =====
 def export_excel(df: pd.DataFrame, sheet_name: str = TAB_NAME) -> bytes:
     try:
@@ -386,12 +452,28 @@ def _add_business_days(start_dates: pd.Series, days: pd.Series) -> pd.Series:
     sd = pd.to_datetime(start_dates, errors="coerce").dt.date
     n  = pd.to_numeric(days, errors="coerce").fillna(0).astype(int)
     ok = (~pd.isna(sd)) & (n > 0)
-    out = pd.Series(pd.NaT, index=start_dates.index, dtype="datetime64[ns]")  # ← FIX de bracket
+    out = pd.Series(pd.NaT, index=start_dates.index, dtype="datetime64[ns]")
     if ok.any():
         a = np.array(sd[ok], dtype="datetime64[D]"); b = n[ok].to_numpy()
         res = np.busday_offset(a, b, weekmask="Mon Tue Wed Thu Fri")
         out.loc[ok] = pd.to_datetime(res)
     return out
+
+# --- Bootstrap fuerte de df_main (garantiza que “pegue” en todas las pestañas) ---
+def _bootstrap_df_main_hist():
+    need = ("df_main" not in st.session_state
+            or not isinstance(st.session_state["df_main"], pd.DataFrame)
+            or st.session_state["df_main"].empty)
+    if not need:
+        return
+    df_local = _load_local_if_exists()
+    if isinstance(df_local, pd.DataFrame) and not df_local.empty:
+        st.session_state["df_main"] = df_local.copy()
+        return
+    try:
+        pull_user_slice_from_sheet(replace_df_main=True)
+    except Exception:
+        st.session_state["df_main"] = pd.DataFrame(columns=DEFAULT_COLS)
 
 # =======================================================
 #                       RENDER
@@ -447,7 +529,7 @@ def render(user: dict | None = None):
         border:0!important; background:transparent!important; 
         border-radius:0!important; 
         padding:0!important;
-        margin:6px 0 8px 0 !important; /* ⬅️ un poco más pegado */
+        margin:6px 0 8px 0 !important;
         box-shadow:
           inset 0 1px 0 var(--row-sep),
           inset 0 -1px 0 var(--row-sep);
@@ -477,10 +559,10 @@ def render(user: dict | None = None):
     </style>
     """, unsafe_allow_html=True)
 
-    # ====== DATA BASE ======
+    # ====== DATA BASE (bootstrap fuerte) ======
+    _bootstrap_df_main_hist()
     if "df_main" not in st.session_state or not isinstance(st.session_state["df_main"], pd.DataFrame):
-        df_local = _load_local_if_exists()
-        st.session_state["df_main"] = df_local if isinstance(df_local, pd.DataFrame) and not df_local.empty else pd.DataFrame(columns=DEFAULT_COLS)
+        st.session_state["df_main"] = pd.DataFrame(columns=DEFAULT_COLS)
 
     base0 = st.session_state["df_main"].copy()
     base0 = _canonicalize_link_column(base0)
@@ -513,7 +595,7 @@ def render(user: dict | None = None):
 
     super_editor = _is_super_editor()
     if super_editor:
-        df_scope = df_all.copy()
+        df_scope = df_all.copy()  # Vivi/Enrique ven todo
     else:
         df_scope = apply_scope(df_all.copy(), user=user)
         try:
@@ -637,10 +719,13 @@ def render(user: dict | None = None):
             mask_cum = df_view.get("Cumplimiento", pd.Series([], dtype=str)).astype(str).str.lower().str.contains(_cum_val)
             df_view = df_view[mask_cum]
 
+        # ⬇️ INCLUYE filas con fecha vacía (no las excluye)
         if f_desde is not None and "Fecha Registro" in df_view.columns:
-            df_view = df_view[df_view["Fecha Registro"].dt.date >= f_desde]
+            mask = df_view["Fecha Registro"].isna() | (df_view["Fecha Registro"].dt.date >= f_desde)
+            df_view = df_view[mask]
         if f_hasta is not None and "Fecha Registro" in df_view.columns:
-            df_view = df_view[df_view["Fecha Registro"].dt.date <= f_hasta]
+            mask = df_view["Fecha Registro"].isna() | (df_view["Fecha Registro"].dt.date <= f_hasta)
+            df_view = df_view[mask]
 
     if not show_deleted and "Estado" in df_view.columns:
         df_view = df_view[~df_view["Estado"].astype(str).str.lower().str.contains("eliminad")]
@@ -656,15 +741,12 @@ def render(user: dict | None = None):
 
     # ✅ NUEVO: Copiar "Duración" desde variantes (incl. Nueva tarea)
     try:
-        # Candidatas comunes que pueden venir desde "Nueva tarea"
         dur_candidates = [c for c in df_view.columns if re.match(r'^\s*duraci[oó]n', str(c), flags=re.I)] \
                          + [c for c in df_view.columns if re.match(r'^\s*d[ií]as?$', str(c), flags=re.I)]
-        dur_candidates = list(dict.fromkeys(dur_candidates))  # únicos, mantener orden
+        dur_candidates = list(dict.fromkeys(dur_candidates))
         if dur_candidates:
-            src = "Duración"
             if "Duración" not in df_view.columns:
                 df_view["Duración"] = ""
-            # Rellenar vacíos de "Duración" usando la primera candidata que tenga datos
             vacias = df_view["Duración"].astype(str).str.strip().isin(["", "nan", "none", "null"])
             for cand in dur_candidates:
                 if vacias.any():
@@ -762,14 +844,14 @@ def render(user: dict | None = None):
         for c in alerta_cols[1:]:
             df_grid.drop(columns=c, inplace=True, errors="ignore")
 
-    for bcol in ["¿Generó alerta?","¿Se corrigió?"]:
+    for bcol in ["¿Generó alerta?","¿Se corrigió?"] :
         if bcol in df_grid.columns:
             df_grid[bcol] = df_grid[bcol].map(_yesno)
 
     # === Duración → entero visual + Fecha límite (hábiles) ===
     if "Duración" in df_grid.columns:
         dur_num = pd.to_numeric(df_grid["Duración"], errors="coerce")
-        ok = dur_num.where(dur_num.between(1,5))
+        ok = dur_num.where(dur_num >= 1)  # ⬅️ permite cualquier valor ≥1 (antes estaba 1..5)
         # Calcular Fecha Vencimiento con días hábiles desde Fecha inicio
         if "Fecha inicio" in df_grid.columns:
             fi = to_naive_local_series(df_grid.get("Fecha inicio", pd.Series([], dtype=object)))
@@ -784,8 +866,9 @@ def render(user: dict | None = None):
 
     if "Hora Vencimiento" in df_grid.columns:
         hv = df_grid["Hora Vencimiento"].apply(_fmt_hhmm).astype(str)
-        df_grid["Hora Vencimiento"] = hv.mask(hv.str.strip()=="", "17:00")
+        df_grid["Hora Vencimiento"] = hv.mask(hv.strip()=="", "17:00")
 
+    # === Cumplimiento (auto) ===
     if "Cumplimiento" in df_grid.columns:
         fv = to_naive_local_series(df_grid.get("Fecha Vencimiento", pd.Series([], dtype=object)))
         ft = to_naive_local_series(df_grid.get("Fecha Terminado", pd.Series([], dtype=object)))
@@ -1118,7 +1201,6 @@ def render(user: dict | None = None):
         pass
 
     # ===== Botonera =====
-    # ⬅️ Se quita la línea roja superior; solo padding
     st.markdown('<div style="padding:0 16px;">', unsafe_allow_html=True)
     _sp, b_sync, b_xlsx, b_save_local, b_save_sheets = st.columns([4.9, 1.4, 1.6, 1.4, 2.2], gap="medium")
 
@@ -1173,6 +1255,7 @@ def render(user: dict | None = None):
                     else:
                         base_full["Id"] = base_full.get("Id","").astype(str)
 
+                        # 🔒 Usuarios no-super: restringir columnas permitidas
                         if not _is_super_editor():
                             me = _display_name().strip()
                             if "Responsable" in base_full.columns and me:
@@ -1196,13 +1279,28 @@ def render(user: dict | None = None):
                                 st.info("No hay cambios permitidos para subir (solo ‘Tarea’ y ‘Detalle’ de tus tareas).")
                                 st.stop()
 
+                        # ▶️ Upsert a TareasRecientes
                         df_rows = base_full[base_full["Id"].astype(str).isin(ids_to_push)].copy()
-
                         res = _sheet_upsert_by_id_partial(
                             df_rows,
                             cell_diff_map=pend_diff,
                             new_ids=new_ids
                         )
+
+                        # ▶️ Además, copiar Cumplimiento a la hoja de Evaluación para los Id que cambiaron ese campo
+                        ids_cumpl = {rid for rid, cols in (st.session_state.get("_hist_cell_diff", {}) or {}).items()
+                                     if "Cumplimiento" in set(cols)}
+                        if ids_cumpl:
+                            try:
+                                df_eval = base_full[base_full["Id"].astype(str).isin(ids_cumpl)][["Id","Cumplimiento"]].copy()
+                                res_eval = _sheet_upsert_eval_cumpl(df_eval)
+                                if res_eval.get("ok"):
+                                    st.success(res_eval.get("msg","Evaluación actualizada."))
+                                else:
+                                    st.info(res_eval.get("msg","No se pudo actualizar Evaluación."))
+                            except Exception as ee:
+                                st.info(f"No pude actualizar Evaluación: {ee}")
+
                         if res.get("ok"):
                             st.success(res.get("msg","Actualizado."))
                             st.session_state["_hist_changed_ids"] = []
