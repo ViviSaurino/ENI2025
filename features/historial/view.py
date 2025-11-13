@@ -246,8 +246,7 @@ def _ensure_row_ids(df: pd.DataFrame) -> tuple[pd.DataFrame, set[str]]:
     def _is_empty_id(s: str) -> bool:
         s = (s or "").strip().lower()
         return s in {"", "nan", "none", "null"}
-    mask = df2["Id"] = df2["Id"].astype(str).map(lambda x: _is_empty_id(str(x)))
-    mask = df2["Id"].map(lambda x: _is_empty_id(str(x)))  # asegura bool
+    mask = df2["Id"].map(lambda x: _is_empty_id(str(x)))  # <-- solo crea la máscara, no sobreescribe 'Id'
     n = int(mask.sum())
     new_ids: set[str] = set()
     if n > 0:
