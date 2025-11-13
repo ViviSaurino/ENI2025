@@ -17,25 +17,6 @@ except Exception:
     def apply_scope(df, user=None):  # fallback no-op
         return df
 
-# ⬇️⬇️⬇️ NUEVO: roles.editable_user_cols (con fallback) y helper de email
-try:
-    from shared import roles  # type: ignore
-except Exception:
-    class _DefaultRoles:
-        editable_user_cols = {
-            "Tarea","Detalle","Detalle de tarea",
-            "Duración","Fecha inicio",            # ⬅️ Incluye explícitamente
-            "Fecha Vencimiento","Hora Vencimiento","Cumplimiento"
-        }
-    roles = _DefaultRoles()
-
-def _user_email() -> str:
-    u = st.session_state.get("acl_user", {}) or {}
-    return (u.get("email")
-            or st.session_state.get("user_email")
-            or (st.session_state.get("user") or {}).get("email")
-            or "").strip()
-
 # 👇 Upsert centralizado (utils/gsheets)
 try:
     from utils.gsheets import upsert_rows_by_id  # type: ignore
@@ -246,7 +227,7 @@ def _ensure_row_ids(df: pd.DataFrame) -> tuple[pd.DataFrame, set[str]]:
     def _is_empty_id(s: str) -> bool:
         s = (s or "").strip().lower()
         return s in {"", "nan", "none", "null"}
-    mask = df2["Id"].map(lambda x: _is_empty_id(str(x)))  # <-- solo crea la máscara, no sobreescribe 'Id'
+    mask = df2["Id"].map(lambda x: _is_empty_id(str(x)))
     n = int(mask.sum())
     new_ids: set[str] = set()
     if n > 0:
@@ -565,8 +546,8 @@ def _ensure_deadline_and_compliance(df: pd.DataFrame) -> pd.DataFrame:
     mask_empty = hv.map(lambda x: (str(x).strip() if x is not None else "") == "")
     df["Hora Vencimiento"] = hv.mask(mask_empty, "17:00")
     # Cumplimiento
-    fv = to_naive_local_series(df["Fecha Vencimiento"]) if "Fecha Vencimiento" in df.columns else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]")
-    ft = to_naive_local_series(df["Fecha Terminado"]) if "Fecha Terminado" in df.columns else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]")
+    fv = to_naive_local_series(df["Fecha Vencimiento"]) if "Fecha Vencimiento" in df.columns else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]"])
+    ft = to_naive_local_series(df["Fecha Terminado"]) if "Fecha Terminado" in df.columns else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]"])
     today_ts = pd.Timestamp(date.today())
     fv_n = fv.dt.normalize(); ft_n = ft.dt.normalize()
     has_fv = ~fv_n.isna(); has_ft = ~ft_n.isna()
@@ -773,16 +754,11 @@ def render(user: dict | None = None):
         df_scope = df_all.copy()  # Vivi/Enrique ven todo
     else:
         df_scope = apply_scope(df_all.copy(), user=user)
-        # ⬇️⬇️⬇️ NUEVO: priorizar correo/OwnerEmail; si no, caer a Responsable
         try:
-            me_email = _user_email().lower()
-            if isinstance(df_scope, pd.DataFrame) and "OwnerEmail" in df_scope.columns and me_email:
-                df_scope = df_scope[df_scope["OwnerEmail"].astype(str).str.lower() == me_email]
-            else:
-                me = _display_name().strip()
-                if isinstance(df_scope, pd.DataFrame) and "Responsable" in df_scope.columns and me:
-                    mask = df_scope["Responsable"].astype(str).str.lower().str.contains(me.lower())
-                    df_scope = df_scope[mask]
+            me = _display_name().strip()
+            if isinstance(df_scope, pd.DataFrame) and "Responsable" in df_scope.columns and me:
+                mask = df_scope["Responsable"].astype(str).str.lower().str.contains(me.lower())
+                df_scope = df_scope[mask]
         except Exception:
             pass
 
@@ -1042,8 +1018,8 @@ def render(user: dict | None = None):
     # === Cumplimiento (auto; crear si falta) ===
     if "Cumplimiento" not in df_grid.columns:
         df_grid["Cumplimiento"] = ""
-    fv = to_naive_local_series(df_grid["Fecha Vencimiento"]) if "Fecha Vencimiento" in df_grid.columns else pd.Series(pd.NaT, index=df_grid.index, dtype="datetime64[ns]")
-    ft = to_naive_local_series(df_grid["Fecha Terminado"]) if "Fecha Terminado" in df_grid.columns else pd.Series(pd.NaT, index=df_grid.index, dtype="datetime64[ns]")
+    fv = to_naive_local_series(df_grid["Fecha Vencimiento"]) if "Fecha Vencimiento" in df_grid.columns else pd.Series(pd.NaT, index=df_grid.index, dtype="datetime64[ns]"])
+    ft = to_naive_local_series(df_grid["Fecha Terminado"]) if "Fecha Terminado" in df_grid.columns else pd.Series(pd.NaT, index=df_grid.index, dtype="datetime64[ns]"])
     today_ts = pd.Timestamp(date.today())
     fv_n = fv.dt.normalize(); ft_n = ft.dt.normalize()
     has_fv = ~fv_n.isna(); has_ft = ~ft_n.isna()
@@ -1414,4 +1390,117 @@ def render(user: dict | None = None):
     with b_save_sheets:
         if st.button("📤 Subir a Sheets", use_container_width=True):
             try:
-                # *** NUEVO
+                # *** NUEVO: asegurar derivados y IDs ANTES de subir
+                st.session_state["df_main"] = _ensure_deadline_and_compliance(st.session_state.get("df_main", pd.DataFrame()))
+                base_full = st.session_state.get("df_main", pd.DataFrame()).copy()
+
+                # ⬇️ generar Id para filas sin Id (p. ej. tareas creadas desde correo)
+                base_full, gen_ids = _ensure_row_ids(base_full)
+                if gen_ids:
+                    # persistir los nuevos Ids en sesión + disco
+                    st.session_state["df_main"] = base_full.copy()
+                    _save_local(base_full.copy())
+
+                pend_ids  = set(st.session_state.get("_hist_changed_ids", []) or [])
+                pend_diff = dict(st.session_state.get("_hist_cell_diff", {}) or {})
+                new_ids   = set(st.session_state.get("_hist_new_ids", []) or [])
+
+                # incluir Ids recién generados como "nuevos"
+                new_ids |= set(map(str, gen_ids))
+
+                # Fallback si no detectó cambios (reconstruir contra baseline)
+                if (not pend_ids) and (not new_ids):
+                    allowed = None if _is_super_editor() else {"Tarea","Detalle","Detalle de tarea","Duración","Fecha inicio","Fecha Vencimiento","Hora Vencimiento","Cumplimiento"}
+                    base_line = st.session_state.get("_hist_baseline")
+                    p_ids, p_diff, p_new = _derive_pending_from_baseline(base_full, base_line, allowed_cols=allowed)
+                    pend_ids, pend_diff, new_ids = p_ids, {k: set(v) for k,v in p_diff.items()}, p_new | new_ids
+
+                ids_to_push = set(pend_ids) | set(new_ids)
+                if not ids_to_push:
+                    st.info("No hay cambios detectados en la grilla para enviar.")
+                else:
+                    if base_full.empty or "Id" not in base_full.columns:
+                        st.warning("No hay base para subir.")
+                    else:
+                        base_full["Id"] = base_full.get("Id","").astype(str)
+
+                        # 🔒 Usuarios no-super: restringir columnas permitidas
+                        if not _is_super_editor():
+                            me = _display_name().strip()
+                            if "Responsable" in base_full.columns and me:
+                                mask_mias = base_full["Responsable"].astype(str).str.contains(me, case=False, na=False)
+                                base_full = base_full[mask_mias]
+
+                            ALLOWED_USER_COLS = {"Tarea","Detalle","Detalle de tarea","Duración","Fecha inicio","Fecha Vencimiento","Hora Vencimiento","Cumplimiento"}
+                            filtered_cell_diff = {}
+                            for rid, cols in pend_diff.items():
+                                keep = {c for c in set(cols) if c in ALLOWED_USER_COLS}
+                                if keep:
+                                    filtered_cell_diff[str(rid)] = keep
+                            pend_diff = filtered_cell_diff
+
+                            ids_in_base = set(base_full["Id"].astype(str))
+                            pend_ids = {rid for rid in pend_ids if (rid in ids_in_base and ((rid in pend_diff) or (rid in new_ids)))}
+                            new_ids  = {rid for rid in new_ids  if rid in ids_in_base}
+                            ids_to_push = set(pend_ids) | set(new_ids)
+
+                            if not ids_to_push:
+                                st.info("No hay cambios permitidos para subir (solo ‘Tarea’, ‘Detalle’, ‘Duración’ y derivados de tus tareas).")
+                                st.stop()
+
+                        # ▶️ Upsert a TareasRecientes
+                        df_rows = base_full[base_full["Id"].astype(str).isin(ids_to_push)].copy()
+                        res = _sheet_upsert_by_id_partial(
+                            df_rows,
+                            cell_diff_map=pend_diff,
+                            new_ids=new_ids
+                        )
+
+                        # ▶️ Además, copiar Cumplimiento a Evaluación si cambió
+                        ids_cumpl = {rid for rid, cols in (st.session_state.get("_hist_cell_diff", {}) or {}).items()
+                                     if "Cumplimiento" in set(cols)}
+                        if not ids_cumpl:
+                            base_line = st.session_state.get("_hist_baseline")
+                            if isinstance(base_line, pd.DataFrame):
+                                cur = base_full.set_index("Id")
+                                old = _ensure_deadline_and_compliance(base_line).set_index("Id")
+                                common = cur.index.intersection(old.index)
+                                if len(common) and "Cumplimiento" in cur.columns and "Cumplimiento" in old.columns:
+                                    ch = old.loc[common, "Cumplimiento"].astype(str) != cur.loc[common, "Cumplimiento"].astype(str)
+                                    ids_cumpl = set(common[ch])
+
+                        if ids_cumpl:
+                            try:
+                                df_eval = base_full[base_full["Id"].astype(str).isin(ids_cumpl)][["Id","Cumplimiento"]].copy()
+                                res_eval = _sheet_upsert_eval_cumpl(df_eval)
+                                if res_eval.get("ok"):
+                                    st.success(res_eval.get("msg","Evaluación actualizada."))
+                                else:
+                                    st.info(res_eval.get("msg","No se pudo actualizar Evaluación."))
+                            except Exception as ee:
+                                st.info(f"No pude actualizar Evaluación: {ee}")
+
+                        if res.get("ok"):
+                            st.success(res.get("msg","Actualizado."))
+                            # limpiar pendientes
+                            st.session_state["_hist_changed_ids"] = []
+                            st.session_state["_hist_cell_diff"]  = {}
+                            st.session_state["_hist_new_ids"]    = []
+                            # *** NUEVO: baseline = estado actual tras subir
+                            try:
+                                st.session_state["_hist_baseline"] = base_full.copy()
+                            except Exception:
+                                pass
+                            try:
+                                st.session_state["_last_pull_hist"] = 0
+                                pull_user_slice_from_sheet(replace_df_main=False)
+                                _save_local(st.session_state["df_main"].copy())
+                                st.rerun()
+                            except Exception as e:
+                                st.info(f"Actualizado. No pude refrescar desde Sheets: {e}")
+                        else:
+                            st.warning(res.get("msg","No se pudo actualizar."))
+            except Exception as e:
+                st.warning(f"No se pudo subir a Sheets: {e}")
+
+    st.markdown('</div>', unsafe_allow_html=True)
