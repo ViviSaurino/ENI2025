@@ -27,21 +27,65 @@ except Exception:
             return datetime.now().replace(second=0, microsecond=0)
 
 # ============================================================
-# Log propio y seguro para "TareasRecientes"
-# (NO usamos log_reciente de shared para evitar NameError)
+# SOLO Google Sheets (sin local)
+# ============================================================
+try:
+    from utils.gsheets import upsert_rows_by_id, open_sheet_by_url  # type: ignore
+except Exception:
+    upsert_rows_by_id = None
+    open_sheet_by_url = None
+
+
+def _get_sheet_conf():
+    ss_url = (
+        st.secrets.get("gsheets_doc_url")
+        or (st.secrets.get("gsheets", {}) or {}).get("spreadsheet_url")
+        or (st.secrets.get("sheets", {}) or {}).get("sheet_url")
+    )
+    ws_name = (st.secrets.get("gsheets", {}) or {}).get("worksheet", "TareasRecientes")
+    return ss_url, ws_name
+
+# ============================================================
+# Log propio y seguro para "Tareas recientes"
 # ============================================================
 
-def log_reciente_safe(sheet, tarea_nombre: str, especialista: str = "",
-                      detalle: str = "Asignada", tab_name: str = "TareasRecientes",
-                      **kwargs):
+def log_reciente_safe(
+    sheet,
+    tarea_nombre: str,
+    especialista: str = "",
+    detalle: str = "Asignada",
+    tab_name: str = "TareasRecientes",
+    **kwargs,
+):
     """
     Versión segura de log_reciente:
     - Si algo falla, simplemente hace 'pass' y NO rompe la app.
-    - Ajustado para escribir por append en la hoja de TareasRecientes.
+    - Intenta abrir el spreadsheet si sheet es None.
+    - Busca hoja 'TareasRecientes' o 'Tareas recientes' (nombre flexible).
     """
     try:
         from uuid import uuid4
         import pandas as _pd
+
+        # --- Si no nos pasan sheet, lo abrimos nosotros ---
+        if sheet is None:
+            try:
+                if callable(open_sheet_by_url):
+                    ss_url = (
+                        st.secrets.get("gsheets_doc_url")
+                        or (st.secrets.get("gsheets", {}) or {}).get(
+                            "spreadsheet_url"
+                        )
+                        or (st.secrets.get("sheets", {}) or {}).get("sheet_url")
+                    )
+                    if ss_url:
+                        sheet = open_sheet_by_url(ss_url)
+            except Exception:
+                sheet = None
+
+        if sheet is None:
+            # No hay forma de loguear, salimos silenciosamente
+            return
 
         ts = now_lima_trimmed()
         fecha_in = kwargs.get("fecha_reg", None)
@@ -102,10 +146,6 @@ def log_reciente_safe(sheet, tarea_nombre: str, especialista: str = "",
             **extras,
         }
 
-        if sheet is None:
-            return
-
-        # ---- NUEVO: append directo a la hoja, evitando depender de upsert_by_id ----
         try:
             from utils.gsheets import read_df_from_worksheet  # type: ignore
         except Exception:
@@ -127,11 +167,26 @@ def log_reciente_safe(sheet, tarea_nombre: str, especialista: str = "",
         else:
             payload_df = _pd.DataFrame([row_new])
 
+        # --- Obtener worksheet: nombre flexible ('TareasRecientes' o 'Tareas recientes') ---
         ws = None
         try:
+            # Intento directo con el nombre recibido
             ws = sheet.worksheet(tab_name)
         except Exception:
-            # Si la hoja no existe, intentamos crearla con cabeceras
+            # Fallback: buscar por nombre normalizado (sin espacios, minúsculas)
+            try:
+                target_norm = re.sub(r"\s+", "", tab_name).strip().lower()
+                for w in sheet.worksheets():
+                    title = getattr(w, "title", "")
+                    name_norm = re.sub(r"\s+", "", title).strip().lower()
+                    if name_norm in {target_norm, "tareasrecientes"}:
+                        ws = w
+                        break
+            except Exception:
+                ws = None
+
+        # Si no existe, la creamos con headers
+        if ws is None:
             try:
                 n_cols = len(payload_df.columns) or 20
                 ws = sheet.add_worksheet(
@@ -200,24 +255,6 @@ def next_id_by_person(df: pd.DataFrame, area: str, resp: str) -> str:
     else:
         n = len(df.index) + 1
     return f"{prefix}_{n}"
-
-
-# ====== SOLO Google Sheets (sin local) ======
-try:
-    from utils.gsheets import upsert_rows_by_id, open_sheet_by_url  # type: ignore
-except Exception:
-    upsert_rows_by_id = None
-    open_sheet_by_url = None
-
-
-def _get_sheet_conf():
-    ss_url = (
-        st.secrets.get("gsheets_doc_url")
-        or (st.secrets.get("gsheets", {}) or {}).get("spreadsheet_url")
-        or (st.secrets.get("sheets", {}) or {}).get("sheet_url")
-    )
-    ws_name = (st.secrets.get("gsheets", {}) or {}).get("worksheet", "TareasRecientes")
-    return ss_url, ws_name
 
 
 # --- helpers de hora para esta vista ---
@@ -683,9 +720,7 @@ def render(user: dict | None = None):
                         ),
                         "Tarea": st.session_state.get("nt_tarea", ""),
                         "Tipo": st.session_state.get("nt_tipo", ""),
-                        "Responsable": st.session_state.get(
-                            "nt_resp", ""
-                        ),
+                        "Responsable": st.session_state.get("nt_resp", ""),
                         "Fase": fase_final,
                         "Estado": "No iniciado",
                         "Fecha de registro": reg_fecha,
@@ -719,15 +754,12 @@ def render(user: dict | None = None):
                 df = _sanitize(df, COLS if COLS is not None else None)
                 st.session_state["df_main"] = df.copy()
 
-                # ======== Persistencia SOLO en Google Sheets ========
+                # ======== Persistencia SOLO en Google Sheets (silenciosa) ========
                 def _persist_to_sheets(df_rows: pd.DataFrame):
                     try:
                         ss_url, ws_name = _get_sheet_conf()
                         if upsert_rows_by_id is None or not ss_url:
-                            return {
-                                "ok": False,
-                                "msg": "Guardar en Sheets no disponible.",
-                            }
+                            return {"ok": False}
                         ids = (
                             df_rows["Id"].astype(str).tolist()
                             if "Id" in df_rows.columns
@@ -739,57 +771,21 @@ def render(user: dict | None = None):
                             df=df_rows,
                             ids=ids,
                         )
-                        if res.get("ok"):
-                            return {
-                                "ok": True,
-                                "msg": res.get("msg", "Guardado en Sheets."),
-                            }
-                        else:
-                            return {
-                                "ok": False,
-                                "msg": res.get(
-                                    "msg", "No se pudo guardar en Sheets."
-                                ),
-                            }
-                    except Exception as _e:
-                        return {
-                            "ok": False,
-                            "msg": f"Error al guardar en Sheets: {_e}",
-                        }
+                        return res
+                    except Exception:
+                        return {"ok": False}
 
                 df_rows = pd.DataFrame([new])
-                # 👉 Cualquier error en maybe_save también se captura,
-                # pero NO se muestra en la interfaz (se silencian mensajes).
+                # 👉 Guardado silencioso: cualquier error se ignora y NO se muestra en UI
                 try:
-                    maybe_save = st.session_state.get("maybe_save")
-                    if callable(maybe_save):
-                        res = maybe_save(_persist_to_sheets, df_rows.copy())
-                    else:
-                        res = _persist_to_sheets(df_rows.copy())
+                    _ = _persist_to_sheets(df_rows.copy())
                 except Exception:
-                    # Error interno al guardar en Sheets: se ignora para no afectar el flujo
-                    res = {"ok": False}
+                    pass
 
-                # ⬅️ IMPORTANTE: ya no se muestran mensajes azules en caso de error.
-                # (res se mantiene solo por si se necesita en el futuro)
-
-                # ====== Log universal en TareasRecientes (seguro) ======
-                sheet = None
-                try:
-                    url = st.secrets.get("gsheets_doc_url") or (
-                        st.secrets.get("gsheets", {}) or {}
-                    ).get("spreadsheet_url")
-                    if url and callable(open_sheet_by_url):
-                        try:
-                            sheet = open_sheet_by_url(url)
-                        except Exception:
-                            sheet = None
-                except Exception:
-                    sheet = None
-
+                # ====== Log universal en Tareas recientes (seguro) ======
                 try:
                     log_reciente_safe(
-                        sheet,
+                        None,  # dejamos que la función abra el sheet
                         tarea_nombre=new.get("Tarea", ""),
                         especialista=new.get("Responsable", ""),
                         detalle="Asignada",
@@ -834,6 +830,8 @@ def render(user: dict | None = None):
                 st.rerun()
 
             except Exception as e:
+                # Si llegas aquí es porque algo muy raro pasó;
+                # si aún ves este mensaje, dime el texto exacto.
                 st.error(f"No pude guardar la nueva tarea: {e}")
 
     gap = SECTION_GAP if "SECTION_GAP" in globals() else 30
