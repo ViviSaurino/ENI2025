@@ -37,6 +37,7 @@ def log_reciente_safe(sheet, tarea_nombre: str, especialista: str = "",
     """
     Versión segura de log_reciente:
     - Si algo falla, simplemente hace 'pass' y NO rompe la app.
+    - Ajustado para escribir por append en la hoja de TareasRecientes.
     """
     try:
         from uuid import uuid4
@@ -104,11 +105,11 @@ def log_reciente_safe(sheet, tarea_nombre: str, especialista: str = "",
         if sheet is None:
             return
 
+        # ---- NUEVO: append directo a la hoja, evitando depender de upsert_by_id ----
         try:
-            from utils.gsheets import read_df_from_worksheet, upsert_by_id  # type: ignore
+            from utils.gsheets import read_df_from_worksheet  # type: ignore
         except Exception:
-            read_df_from_worksheet = None
-            upsert_by_id = None
+            read_df_from_worksheet = None  # type: ignore[assignment]
 
         df_exist = None
         if callable(read_df_from_worksheet):
@@ -126,11 +127,28 @@ def log_reciente_safe(sheet, tarea_nombre: str, especialista: str = "",
         else:
             payload_df = _pd.DataFrame([row_new])
 
-        if callable(upsert_by_id) and ("Id" in payload_df.columns):
-            upsert_by_id(sheet, tab_name, payload_df, id_col="Id")
-        else:
+        ws = None
+        try:
             ws = sheet.worksheet(tab_name)
-            ws.append_rows(payload_df.astype(str).values.tolist())
+        except Exception:
+            # Si la hoja no existe, intentamos crearla con cabeceras
+            try:
+                n_cols = len(payload_df.columns) or 20
+                ws = sheet.add_worksheet(
+                    title=tab_name,
+                    rows=1000,
+                    cols=n_cols,
+                )
+                ws.append_rows([list(payload_df.columns)])
+            except Exception:
+                ws = None
+
+        if ws is not None:
+            try:
+                ws.append_rows(payload_df.astype(str).values.tolist())
+            except Exception:
+                # No debe romper la app aunque falle el append
+                pass
 
         try:
             st.cache_data.clear()
@@ -740,21 +758,20 @@ def render(user: dict | None = None):
                         }
 
                 df_rows = pd.DataFrame([new])
-                # 👉 Cualquier error en maybe_save también se captura
+                # 👉 Cualquier error en maybe_save también se captura,
+                # pero NO se muestra en la interfaz (se silencian mensajes).
                 try:
                     maybe_save = st.session_state.get("maybe_save")
                     if callable(maybe_save):
                         res = maybe_save(_persist_to_sheets, df_rows.copy())
                     else:
                         res = _persist_to_sheets(df_rows.copy())
-                except Exception as _e:
-                    res = {
-                        "ok": False,
-                        "msg": f"Error interno al guardar en Sheets: {_e}",
-                    }
+                except Exception:
+                    # Error interno al guardar en Sheets: se ignora para no afectar el flujo
+                    res = {"ok": False}
 
-                if not res.get("ok", False):
-                    st.info(res.get("msg", "Guardado en Sheets deshabilitado."))
+                # ⬅️ IMPORTANTE: ya no se muestran mensajes azules en caso de error.
+                # (res se mantiene solo por si se necesita en el futuro)
 
                 # ====== Log universal en TareasRecientes (seguro) ======
                 sheet = None
