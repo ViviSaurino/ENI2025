@@ -280,7 +280,7 @@ def render(user: dict | None = None):
         if isinstance(df_local, pd.DataFrame) and not df_local.empty:
             st.session_state["df_main"] = df_local.copy()
 
-    if st.session_state["est_visible"]:
+    if st.session_state["est_visible"]]:
         A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
         st.markdown('<div id="est-section">', unsafe_allow_html=True)
@@ -408,21 +408,21 @@ def render(user: dict | None = None):
             tipos_all = sorted([x for x in df_all.get("Tipo de tarea", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
             est_tipo = c_tipo.selectbox("Tipo de tarea", ["Todos"] + tipos_all, index=0)
 
-            # Estado (labels con emoji; valor canónico sin emoji)
+            # Estado actual (labels con emoji; valor canónico sin emoji)
             estado_labels = {
                 "No iniciado": "⏳ No iniciado",
-                "En curso": "▶️ En curso",
+                "En curso": "🟢 En curso",
                 "Terminada": "✅ Terminada",
                 "Pausada": "⏸️ Pausada",
                 "Cancelada": "✖️ Cancelada",
                 "Eliminada": "🗑️ Eliminada",
             }
             estado_opts_labels = ["Todos"] + [estado_labels[e] for e in estados_catalogo]
-            sel_label = c_estado.selectbox("Estado", estado_opts_labels, index=0)
+            sel_label = c_estado.selectbox("Estado actual", estado_opts_labels, index=0)
             est_estado = "Todos" if sel_label == "Todos" else [k for k, v in estado_labels.items() if v == sel_label][0]
 
-            est_desde = c_desde.date_input("Desde (Fecha de registro)", value=min_date, min_value=min_date, max_value=max_date, key="est_desde")
-            est_hasta = c_hasta.date_input("Hasta (Fecha de registro)", value=max_date, min_value=min_date, max_value=max_date, key="est_hasta")
+            est_desde = c_desde.date_input("Desde", value=min_date, min_value=min_date, max_value=max_date, key="est_desde")
+            est_hasta = c_hasta.date_input("Hasta", value=max_date, min_value=min_date, max_value=max_date, key="est_hasta")
 
             with c_buscar:
                 st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
@@ -575,7 +575,7 @@ def render(user: dict | None = None):
           const v = String(p.value || '');
           const M = {
             "No iniciado":"⏳ No iniciado",
-            "En curso":"▶️ En curso",
+            "En curso":"🟢 En curso",
             "Terminada":"✅ Terminada",
             "Pausada":"⏸️ Pausada",
             "Cancelada":"✖️ Cancelada",
@@ -679,10 +679,10 @@ def render(user: dict | None = None):
         gob.configure_selection("single", use_checkbox=False)
 
         # Orden de configuración acorde al orden de columnas
-        gob.configure_column("Estado actual", valueFormatter=estado_emoji_fmt, cellStyle=estado_cell_style, minWidth=170, editable=False)
+        gob.configure_column("Estado actual", headerName="⚙️ Estado actual", valueFormatter=estado_emoji_fmt, cellStyle=estado_cell_style, minWidth=170, editable=False)
         gob.configure_column("Fecha de registro", headerName="🕒 Fecha de registro", editable=False, minWidth=170, cellStyle=style_reg)
         gob.configure_column("Hora de registro", headerName="🕒 Hora de registro", editable=False, minWidth=150, cellStyle=style_reg)
-        gob.configure_column("Tarea", editable=False, minWidth=320)
+        gob.configure_column("Tarea", headerName="📝 Tarea", editable=False, minWidth=320)
         gob.configure_column("Id", editable=False, minWidth=120)
         gob.configure_column("Fecha de inicio", headerName="▶️ Fecha de inicio", editable=editable_start, cellEditor=date_editor, minWidth=180, cellStyle=style_ini)
         gob.configure_column("Hora de inicio", headerName="▶️ Hora de inicio", editable=False, minWidth=160, cellStyle=style_ini)
