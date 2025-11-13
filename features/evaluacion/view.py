@@ -1,15 +1,20 @@
 # features/evaluacion/view.py
 from __future__ import annotations
-import os
 import pandas as pd
 import streamlit as st
 from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode, JsCode
 
-# ✅ Upsert reutilizable (Google Sheets)
+# ✅ Google Sheets helpers (solo Sheets: leer/escribir)
 try:
-    from utils.gsheets import upsert_rows_by_id  # type: ignore
+    from utils.gsheets import (
+        upsert_rows_by_id,
+        open_sheet_by_url,
+        read_df_from_worksheet,  # type: ignore
+    )
 except Exception:
     upsert_rows_by_id = None
+    open_sheet_by_url = None
+    read_df_from_worksheet = None
 
 # 🔐 Alcance/visibilidad (apply_scope) y helpers de identidad
 try:
@@ -39,17 +44,48 @@ def _is_super_viewer(user: dict | None = None) -> bool:
     return dn.startswith("vivi") or dn.startswith("enrique")
 
 
+# ======== Config de Google Sheets (solo Sheets) ========
+def _get_sheet_conf():
+    ss_url = (
+        st.secrets.get("gsheets_doc_url")
+        or (st.secrets.get("gsheets", {}) or {}).get("spreadsheet_url")
+        or (st.secrets.get("sheets", {}) or {}).get("sheet_url")
+    )
+    ws_name = (st.secrets.get("gsheets", {}) or {}).get("worksheet", "TareasRecientes")
+    return ss_url, ws_name
+
+
+def _load_from_sheets() -> pd.DataFrame:
+    """Carga la base desde Google Sheets; nunca usa archivos locales."""
+    ss_url, ws_name = _get_sheet_conf()
+    if not ss_url:
+        st.warning("No se encontró la URL del Spreadsheet en secrets.")
+        return pd.DataFrame()
+    try:
+        if read_df_from_worksheet is not None:
+            df = read_df_from_worksheet(ss_url=ss_url, ws_name=ws_name)
+            return (df or pd.DataFrame()).fillna("")
+        elif open_sheet_by_url is not None:
+            ss = open_sheet_by_url(ss_url)
+            try:
+                ws = ss.worksheet(ws_name)
+            except Exception:
+                ws = ss.sheet1
+            values = ws.get_all_values()
+            if not values:
+                return pd.DataFrame()
+            headers, *rows = values
+            return pd.DataFrame(rows, columns=headers).fillna("")
+        else:
+            st.warning("utils.gsheets no disponible para lectura.")
+            return pd.DataFrame()
+    except Exception as e:
+        st.warning(f"No pude leer desde Sheets: {e}")
+        return pd.DataFrame()
+
+
 # Fallback seguro para separación vertical
 SECTION_GAP_DEF = globals().get("SECTION_GAP", 30)
-
-
-def _save_local(df: pd.DataFrame):
-    """Guardar CSV localmente sin romper si la carpeta no existe."""
-    try:
-        os.makedirs("data", exist_ok=True)
-        df.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig")
-    except Exception:
-        pass
 
 
 def render(user: dict | None = None):
@@ -166,29 +202,13 @@ def render(user: dict | None = None):
             unsafe_allow_html=True,
         )
 
-        # ===== Píldora alineada al ancho de "Área" =====
-        _pill, _, _, _, _, _ = st.columns([A, Fw, T_width, D, R, C], gap="medium")
-        with _pill:
-            st.markdown(
-                '<div class="eva-pill"><span>📝&nbsp;Evaluación</span></div>',
-                unsafe_allow_html=True,
-            )
+        # ====== DATA BASE (solo Sheets). Si no hay df_main, cargo de Sheets. ======
+        if "df_main" not in st.session_state or not isinstance(
+            st.session_state["df_main"], pd.DataFrame
+        ):
+            st.session_state["df_main"] = _load_from_sheets()
 
-        # ===== Wrapper UNIDO: help-strip + form-card =====
-        st.markdown(
-            f"""
-        <div class="section-eva">
-          <div class="help-strip help-strip-eval" id="eva-help"
-               style="background: var(--eva-help-bg); color: var(--eva-help-text);
-                      border:1px dashed var(--eva-help-border);">
-            📝 <strong>Indicaciones:</strong> Filtra tu tarea y revisa su evaluación, calificación y cumplimiento. Todas las personas pueden ver este campo, pero solo responsables autorizados pueden editarlo y guardar cambios.
-          </div>
-          <div class="form-card">
-        """,
-            unsafe_allow_html=True,
-        )
-
-        df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
+        df_all = (st.session_state.get("df_main") or pd.DataFrame()).copy()
         if df_all.empty:
             df_all = pd.DataFrame(
                 columns=[
@@ -211,9 +231,7 @@ def render(user: dict | None = None):
         IS_SUPER_VIEWER = _is_super_viewer(user=user)
         me = _get_display_name().strip()
         if not IS_SUPER_VIEWER:
-            # 1) Reglas externas (si existen)
             df_all = apply_scope(df_all, user=st.session_state.get("acl_user"))
-            # 2) Filtro por Responsable contiene mi nombre (case-insensitive)
             if "Responsable" in df_all.columns and me:
                 df_all = df_all[
                     df_all["Responsable"].astype(str).str.contains(
@@ -221,7 +239,6 @@ def render(user: dict | None = None):
                     )
                 ]
         else:
-            # Super viewer: toggle para ver todas o solo propias
             ver_todas = st.toggle(
                 "👀 Ver todas las tareas", value=True, key="eva_ver_todas"
             )
@@ -232,7 +249,7 @@ def render(user: dict | None = None):
                     )
                 ]
 
-        # ✅ Asegura columnas base (por defecto, Evaluación = "Sin evaluar")
+        # ✅ Asegura columnas base
         if "Evaluación" not in df_all.columns:
             df_all["Evaluación"] = "Sin evaluar"
         df_all["Evaluación"] = (
@@ -567,8 +584,8 @@ def render(user: dict | None = None):
         gob = GridOptionsBuilder.from_dataframe(df_view)
         gob.configure_default_column(
             resizable=True,
-            wrapText=False,      # una sola línea
-            autoHeight=False,    # sin crecer en altura por texto
+            wrapText=False,
+            autoHeight=False,
             minWidth=120,
             flex=1,
         )
@@ -576,7 +593,7 @@ def render(user: dict | None = None):
             suppressMovableColumns=True,
             domLayout="normal",
             ensureDomOrder=True,
-            rowHeight=42,        # ⬅️ un poquito más bajas
+            rowHeight=42,
             headerHeight=44,
             suppressHorizontalScroll=False,
         )
@@ -584,13 +601,11 @@ def render(user: dict | None = None):
         # Lectura
         gob.configure_column("Id", editable=False, minWidth=80, flex=0.8)
         gob.configure_column("Fase", editable=False, minWidth=180, flex=1.6)
-        gob.configure_column(
-            "Tipo de tarea", editable=False, minWidth=180, flex=1.4
-        )
+        gob.configure_column("Tipo de tarea", editable=False, minWidth=180, flex=1.4)
         gob.configure_column(
             "Tarea",
             editable=False,
-            minWidth=320,   # un poco más ancha
+            minWidth=320,
             flex=2.3,
             headerName="📝 Tarea",
         )
@@ -607,7 +622,7 @@ def render(user: dict | None = None):
             "Evaluación",
             editable=bool(IS_EDITOR),
             cellEditor="agSelectCellEditor",
-            cellEditorParams={"values": EVA_OPC_SHOW},
+            cellEditorParams={"values": ["Sin evaluar", "🟢 Aprobado", "🔴 Desaprobado", "🟠 Observado"]},
             cellClassRules=eva_cell_rules,
             flex=1.4,
             minWidth=180,
@@ -624,7 +639,7 @@ def render(user: dict | None = None):
             flex=1.1,
             minWidth=160,
             headerName="⭐ Calificación",
-            filter=False,        # sin filtro en esta columna
+            filter=False,
         )
 
         # 🔐 Editable (solo jefatura): Comentarios (texto libre)
@@ -635,7 +650,6 @@ def render(user: dict | None = None):
             minWidth=240,
         )
 
-        # CSS dentro del iframe de AgGrid
         custom_css_eval = {
             ".ag-header-cell-text": {"font-weight": "600 !important"},
             ".ag-header-cell-label": {"font-weight": "600 !important"},
@@ -645,7 +659,7 @@ def render(user: dict | None = None):
             ".eva-ok": {"color": "#16a34a !important"},
             ".eva-bad": {"color": "#dc2626 !important"},
             ".eva-obs": {"color": "#d97706 !important"},
-            ".ag-cell": {"white-space": "nowrap !important"},  # evita multi-línea
+            ".ag-cell": {"white-space": "nowrap !important"},
         }
 
         grid_eval = AgGrid(
@@ -653,25 +667,21 @@ def render(user: dict | None = None):
             gridOptions=gob.build(),
             data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
             update_mode=GridUpdateMode.VALUE_CHANGED,
-            fit_columns_on_grid_load=False,  # usamos flex
+            fit_columns_on_grid_load=False,
             enable_enterprise_modules=False,
             allow_unsafe_jscode=True,
             reload_data=False,
             theme="alpine",
             height=380,
             custom_css=custom_css_eval,
-            key="grid_evaluacion",  # KEY ÚNICO
+            key="grid_evaluacion",
         )
 
-        # ===== 🔐 Acción: solo botón Evaluar =====
-        _sp_eva, _btns_eva = st.columns(
-            [A + Fw + T_width + D + R, C], gap="medium"
-        )
+        # ===== 🔐 Acción: solo botón Evaluar (persistir SOLO en Sheets) =====
+        _sp_eva, _btns_eva = st.columns([A + Fw + T_width + D + R, C], gap="medium")
         with _btns_eva:
             if IS_EDITOR:
-                click_eval = st.button(
-                    "✅ Evaluar", use_container_width=True, key="eva_guardar_v1"
-                )
+                click_eval = st.button("✅ Evaluar", use_container_width=True, key="eva_guardar_v1")
             else:
                 click_eval = False
 
@@ -681,7 +691,7 @@ def render(user: dict | None = None):
                 if edited.empty or "Id" not in edited.columns:
                     st.info("No hay filas para actualizar.")
                 else:
-                    df_base = st.session_state.get("df_main", pd.DataFrame()).copy()
+                    df_base = (st.session_state.get("df_main") or pd.DataFrame()).copy()
                     if df_base.empty:
                         st.warning("No hay base para actualizar.")
                     else:
@@ -692,6 +702,17 @@ def render(user: dict | None = None):
                             df_base["Calificación"] = 0
                         if "Comentarios" not in df_base.columns:
                             df_base["Comentarios"] = ""
+
+                        EVA_TO_TEXT = {
+                            "🟢 Aprobado": "Aprobado",
+                            "🔴 Desaprobado": "Desaprobado",
+                            "🟠 Observado": "Observado",
+                            "Aprobado": "Aprobado",
+                            "Desaprobado": "Desaprobado",
+                            "Observado": "Observado",
+                            "Sin evaluar": "Sin evaluar",
+                            "": "Sin evaluar",
+                        }
 
                         cambios = 0
                         changed_ids: set[str] = set()
@@ -704,11 +725,9 @@ def render(user: dict | None = None):
                             if not m.any():
                                 continue
 
-                            # Mapear evaluación con/sin emoji -> texto limpio
                             eva_ui = str(row.get("Evaluación", "Sin evaluar")).strip()
                             eva_new = EVA_TO_TEXT.get(eva_ui, "Sin evaluar")
 
-                            # Calificación segura 0..5
                             cal_new = row.get("Calificación", 0)
                             try:
                                 cal_new = int(cal_new)
@@ -716,23 +735,11 @@ def render(user: dict | None = None):
                                 cal_new = 0
                             cal_new = max(0, min(5, cal_new))
 
-                            # Comentarios (texto)
                             com_new = str(row.get("Comentarios", "") or "").strip()
 
-                            # Valores previos
-                            prev_eva = (
-                                df_base.loc[m, "Evaluación"].iloc[0] if m.any() else None
-                            )
-                            prev_cal = (
-                                df_base.loc[m, "Calificación"].iloc[0]
-                                if m.any()
-                                else None
-                            )
-                            prev_com = (
-                                str(df_base.loc[m, "Comentarios"].iloc[0])
-                                if m.any()
-                                else ""
-                            )
+                            prev_eva = df_base.loc[m, "Evaluación"].iloc[0] if m.any() else None
+                            prev_cal = df_base.loc[m, "Calificación"].iloc[0] if m.any() else None
+                            prev_com = str(df_base.loc[m, "Comentarios"].iloc[0]) if m.any() else ""
 
                             any_change = False
                             if eva_new != prev_eva:
@@ -753,30 +760,12 @@ def render(user: dict | None = None):
                             new_df = df_base.copy()
                             st.session_state["df_main"] = new_df
 
-                            # Persistencia local
-                            _save_local(new_df)
-
                             # 📤 Upsert a Google Sheets por Id (solo filas cambiadas)
                             try:
                                 if upsert_rows_by_id is not None and changed_ids:
-                                    ss_url = (
-                                        st.secrets.get("gsheets_doc_url")
-                                        or (
-                                            st.secrets.get("gsheets", {}) or {}
-                                        ).get("spreadsheet_url")
-                                        or (
-                                            st.secrets.get("sheets", {}) or {}
-                                        ).get("sheet_url")
-                                    )
-                                    ws_name = (
-                                        (st.secrets.get("gsheets", {}) or {}).get(
-                                            "worksheet", "TareasRecientes"
-                                        )
-                                    )
+                                    ss_url, ws_name = _get_sheet_conf()
                                     df_rows = new_df[
-                                        new_df["Id"]
-                                        .astype(str)
-                                        .isin([str(x) for x in changed_ids])
+                                        new_df["Id"].astype(str).isin([str(x) for x in changed_ids])
                                     ].copy()
                                     res = upsert_rows_by_id(
                                         ss_url=ss_url,
@@ -785,25 +774,13 @@ def render(user: dict | None = None):
                                         ids=[str(x) for x in changed_ids],
                                     )
                                     if res.get("ok"):
-                                        st.success(
-                                            res.get(
-                                                "msg",
-                                                "Evaluaciones guardadas y subidas.",
-                                            )
-                                        )
+                                        st.success(res.get("msg", "Evaluaciones guardadas en Sheets."))
                                     else:
-                                        st.warning(
-                                            res.get(
-                                                "msg",
-                                                "Guardado local ok, no se pudo subir a Sheets.",
-                                            )
-                                        )
+                                        st.warning(res.get("msg", "No se pudo actualizar en Sheets."))
                                 else:
-                                    st.success("Evaluaciones guardadas (local).")
+                                    st.warning("Configura utils.gsheets.upsert_rows_by_id para guardar en Sheets.")
                             except Exception as e:
-                                st.warning(
-                                    f"Guardado local ok, pero falló la subida a Sheets: {e}"
-                                )
+                                st.warning(f"Falló la subida a Sheets: {e}")
 
                             st.rerun()
                         else:
