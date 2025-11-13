@@ -7,6 +7,27 @@ from st_aggrid import AgGrid, GridUpdateMode, DataReturnMode, JsCode
 
 SECTION_GAP_DEF = globals().get("SECTION_GAP", 30)
 
+# ==== Upsert GSheets (centralizado) ====
+try:
+    from utils.gsheets import upsert_rows_by_id, open_sheet_by_url, read_df_from_worksheet  # type: ignore
+except Exception:
+    upsert_rows_by_id = None
+    open_sheet_by_url = None
+    read_df_from_worksheet = None
+
+# Toggle para esta vista (true por defecto si hay secrets)
+DO_SHEETS_UPSERT = bool(st.secrets.get("nueva_alerta_upsert_to_sheets", True))
+
+def _secrets_sheet_url() -> str | None:
+    return (
+        st.secrets.get("gsheets_doc_url")
+        or (st.secrets.get("gsheets", {}) or {}).get("spreadsheet_url")
+        or (st.secrets.get("sheets", {}) or {}).get("sheet_url")
+    )
+
+def _secrets_ws_name(default: str = "TareasRecientes") -> str:
+    return (st.secrets.get("gsheets", {}) or {}).get("worksheet", default)
+
 # ==== ACL + hora Lima (compat con shared) ====
 try:
     from shared import apply_scope, now_lima_trimmed
@@ -33,6 +54,16 @@ def _now_lima_trimmed_local():
         return (datetime.utcnow() - timedelta(hours=5)).replace(second=0, microsecond=0)
     except Exception:
         return now_lima_trimmed()
+
+
+def _load_local_if_exists() -> pd.DataFrame | None:
+    try:
+        p = os.path.join("data", "tareas.csv")
+        if os.path.exists(p):
+            return pd.read_csv(p, dtype=str, keep_default_na=False).fillna("")
+    except Exception:
+        pass
+    return None
 
 
 def _save_local(df: pd.DataFrame):
@@ -66,6 +97,55 @@ def _is_super_alert_editor() -> bool:
     return dn.startswith("vivi") or dn.startswith("enrique")
 
 
+def _dedup_keep_last_with_id(df: pd.DataFrame) -> pd.DataFrame:
+    """Filtra filas sin Id y quita duplicados por Id (conserva la última)."""
+    if df is None or df.empty or "Id" not in df.columns:
+        return df if isinstance(df, pd.DataFrame) else pd.DataFrame()
+    out = df.copy()
+    out["Id"] = out["Id"].astype(str).str.strip()
+    mask_valid = ~out["Id"].str.lower().isin({"", "-", "nan", "none", "null"})
+    out = out[mask_valid]
+    out = out[~out["Id"].duplicated(keep="last")]
+    return out
+
+
+def _bootstrap_df_main():
+    """
+    Si df_main no existe o está vacío:
+      1) intenta leer CSV local
+      2) si hay utils.gsheets y secretos, lee de Google Sheets (worksheet por defecto 'TareasRecientes')
+    """
+    need_bootstrap = (
+        ("df_main" not in st.session_state)
+        or (not isinstance(st.session_state["df_main"], pd.DataFrame))
+        or st.session_state["df_main"].empty
+    )
+    if not need_bootstrap:
+        return
+
+    # 1) Local
+    df_local = _load_local_if_exists()
+    if isinstance(df_local, pd.DataFrame) and not df_local.empty:
+        st.session_state["df_main"] = df_local.copy()
+        return
+
+    # 2) Sheets
+    try:
+        if callable(read_df_from_worksheet):
+            ss_url = _secrets_sheet_url()
+            if ss_url:
+                ws_name = _secrets_ws_name("TareasRecientes")
+                df_sh = read_df_from_worksheet(ss_url, ws_name)
+                if isinstance(df_sh, pd.DataFrame) and not df_sh.empty:
+                    st.session_state["df_main"] = df_sh.fillna("").astype(str)
+                    return
+    except Exception:
+        pass
+
+    # 3) Vacío seguro
+    st.session_state["df_main"] = pd.DataFrame()
+
+
 def render(user: dict | None = None):
     st.session_state.setdefault("na_visible", True)
 
@@ -74,6 +154,9 @@ def render(user: dict | None = None):
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
     if st.session_state["na_visible"]:
+        # Bootstrap fuerte (hoja → sesión) si hace falta
+        _bootstrap_df_main()
+
         st.markdown('<div id="na-section">', unsafe_allow_html=True)
         st.markdown(
             """
@@ -129,6 +212,7 @@ def render(user: dict | None = None):
 
         # Base (filtrada por ACL)
         df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
+        df_all = _dedup_keep_last_with_id(df_all)
         df_all = apply_scope(df_all, user=user)
 
         # 🔒 Refuerzo local: si NO es super, solo ve sus propias tareas (Responsable)
@@ -194,7 +278,7 @@ def render(user: dict | None = None):
                 c_fase, c_tipo, c_estado, c_desde, c_hasta, c_buscar = st.columns(
                     [Fw, T_width, D, D, R, C], gap="medium"
                 )
-                c_resp = None  # no se usa, solo para tipado
+                c_resp = None  # placeholder
 
             fases_all = sorted(
                 [
@@ -300,9 +384,9 @@ def render(user: dict | None = None):
             "¿Se corrigió?",
             "Fecha de corrección",
             "Hora de corrección",
-            "N° alerta"
+            "N° alerta",
             "Tipo de alerta",
-        ]
+        ]  # ← coma corregida entre "N° alerta" y "Tipo de alerta"
 
         df_view = pd.DataFrame(columns=cols_out)
         if not df_tasks.empty and "Id" in df_tasks.columns:
@@ -352,7 +436,7 @@ def render(user: dict | None = None):
             """
         function(p){
           const v = String(p.value || '');
-          const M = {"Sí":"✅ Sí","No":"✖️ No","":"—"};
+          const M = {"Sí":"✅ Sí","No":"✖️ No","": "—"};
           return M[v] || v;
         }"""
         )
@@ -367,8 +451,8 @@ def render(user: dict | None = None):
             fontWeight:'600', textAlign:'center'
           };
           const v = String(p.value || '');
-          if (v === 'Sí') return Object.assign({}, base, {backgroundColor:'#FEF9C3', color:'#92400E'});  // amarillo suave
-          if (v === 'No') return Object.assign({}, base, {backgroundColor:'#DBEAFE', color:'#1E3A8A'});  // celeste suave
+          if (v === 'Sí') return Object.assign({}, base, {backgroundColor:'#FEF9C3', color:'#92400E'});
+          if (v === 'No') return Object.assign({}, base, {backgroundColor:'#DBEAFE', color:'#1E3A8A'});
           return {};
         }"""
         )
@@ -382,13 +466,13 @@ def render(user: dict | None = None):
             fontWeight:'600', textAlign:'center'
           };
           const v = String(p.value || '');
-          if (v === 'Sí') return Object.assign({}, base, {backgroundColor:'#DCFCE7', color:'#166534'});  // verde pastel
-          if (v === 'No') return Object.assign({}, base, {backgroundColor:'#EDE9FE', color:'#4C1D95'});  // lila pastel
+          if (v === 'Sí') return Object.assign({}, base, {backgroundColor:'#DCFCE7', color:'#166534'});
+          if (v === 'No') return Object.assign({}, base, {backgroundColor:'#EDE9FE', color:'#4C1D95'});
           return {};
         }"""
         )
 
-        # ✅ Ajuste: sellos en hora Lima (UTC-5) al cambiar la fecha en el grid
+        # ✅ Sellos en hora Lima (UTC-5) al cambiar fecha en el grid
         on_cell_changed = JsCode(
             """
         function(params){
@@ -406,9 +490,8 @@ def render(user: dict | None = None):
         }"""
         )
 
-        # Dejamos handlers vacíos (no usamos sizeColumnsToFit)
         on_ready_size = JsCode("function(p){}")
-        on_first_size = JsCode("function(p){}")
+        on_first_data = JsCode("function(p){}")
 
         col_defs = [
             {"field": "Id", "headerName": "Id", "editable": False, "minWidth": 100},
@@ -477,7 +560,7 @@ def render(user: dict | None = None):
                 "cellEditorParams": {"values": ["1", "2", "3", "+4"]},
                 "minWidth": 110,
             },
-            {   
+            {
                 "field": "Tipo de alerta",
                 "headerName": "⚠️ Tipo de alerta",
                 "editable": True,
@@ -504,7 +587,7 @@ def render(user: dict | None = None):
         }
         grid_opts["onCellValueChanged"] = on_cell_changed.js_code
         grid_opts["onGridReady"] = on_ready_size.js_code
-        grid_opts["onFirstDataRendered"] = on_first_size.js_code
+        grid_opts["onFirstDataRendered"] = on_first_data.js_code
 
         grid = AgGrid(
             df_view,
@@ -514,7 +597,7 @@ def render(user: dict | None = None):
             fit_columns_on_grid_load=False,
             enable_enterprise_modules=False,
             reload_data=False,
-            height=420,  # tabla alta
+            height=420,
             allow_unsafe_jscode=True,
             theme="balham",
         )
@@ -523,7 +606,7 @@ def render(user: dict | None = None):
         with _btn:
             if st.button("💾 Guardar", use_container_width=True):
                 try:
-                    df_edit = pd.DataFrame(grid["data"]).copy()
+                    df_edit = pd.DataFrame(grid.get("data", []))
                     df_base = st.session_state.get("df_main", pd.DataFrame()).copy()
 
                     if (
@@ -549,6 +632,7 @@ def render(user: dict | None = None):
                                 df_base[c] = ""
 
                         cambios = 0
+                        changed_ids: set[str] = set()
                         _now = _now_lima_trimmed_local()
                         h_now = _now.strftime("%H:%M")
 
@@ -561,24 +645,24 @@ def render(user: dict | None = None):
                                 continue
 
                             def _set(col_base, val):
-                                if val is None:
-                                    v = ""
-                                else:
-                                    v = str(val).strip()
+                                nonlocal cambios
+                                v = "" if val is None else str(val).strip()
                                 if v != "":
-                                    df_base.loc[m, col_base] = v
-                                    return 1
-                                return 0
+                                    prev = str(df_base.loc[m, col_base].iloc[0]).strip() if m.any() else ""
+                                    if v != prev:
+                                        df_base.loc[m, col_base] = v
+                                        cambios += 1
+                                        changed_ids.add(id_row)
 
                             # Set básicos (incluye Tipo de alerta)
-                            cambios += _set("¿Generó alerta?", row.get("¿Generó alerta?"))
-                            cambios += _set("N° alerta", row.get("N° alerta"))
-                            cambios += _set("Fecha de detección", row.get("Fecha de detección"))
-                            cambios += _set("Hora de detección", row.get("Hora de detección"))
-                            cambios += _set("¿Se corrigió?", row.get("¿Se corrigió?"))
-                            cambios += _set("Fecha de corrección", row.get("Fecha de corrección"))
-                            cambios += _set("Hora de corrección", row.get("Hora de corrección"))
-                            cambios += _set("Tipo de alerta", row.get("Tipo de alerta"))
+                            _set("¿Generó alerta?", row.get("¿Generó alerta?"))
+                            _set("N° alerta", row.get("N° alerta"))
+                            _set("Fecha de detección", row.get("Fecha de detección"))
+                            _set("Hora de detección", row.get("Hora de detección"))
+                            _set("¿Se corrigió?", row.get("¿Se corrigió?"))
+                            _set("Fecha de corrección", row.get("Fecha de corrección"))
+                            _set("Hora de corrección", row.get("Hora de corrección"))
+                            _set("Tipo de alerta", row.get("Tipo de alerta"))
 
                             # Si hay fecha y falta hora -> sellamos con hora Lima
                             if (
@@ -588,6 +672,7 @@ def render(user: dict | None = None):
                             ):
                                 df_base.loc[m, "Hora de detección"] = h_now
                                 cambios += 1
+                                changed_ids.add(id_row)
 
                             if (
                                 str(df_base.loc[m, "Fecha de corrección"].iloc[0]).strip()
@@ -596,25 +681,49 @@ def render(user: dict | None = None):
                             ):
                                 df_base.loc[m, "Hora de corrección"] = h_now
                                 cambios += 1
+                                changed_ids.add(id_row)
 
                         if cambios > 0:
+                            # Persistir en sesión
+                            df_base = _dedup_keep_last_with_id(df_base)
                             st.session_state["df_main"] = df_base.copy()
 
+                            # Guardado local (si hay maybe_save lo respeta)
                             def _persist(_df: pd.DataFrame):
                                 return _save_local(_df)
 
                             maybe_save = st.session_state.get("maybe_save")
-                            res = (
+                            res_local = (
                                 maybe_save(_persist, df_base.copy())
                                 if callable(maybe_save)
                                 else _persist(df_base.copy())
                             )
 
-                            if res.get("ok", False):
+                            # Upsert a Sheets (por Id)
+                            try:
+                                if DO_SHEETS_UPSERT and changed_ids and callable(upsert_rows_by_id):
+                                    ss_url = _secrets_sheet_url()
+                                    if ss_url:
+                                        ws_name = _secrets_ws_name("TareasRecientes")
+                                        df_rows = df_base[df_base["Id"].astype(str).isin(changed_ids)].copy()
+                                        up_res = upsert_rows_by_id(
+                                            ss_url=ss_url,
+                                            ws_name=ws_name,
+                                            df=df_rows,
+                                            ids=[str(x) for x in sorted(changed_ids)],
+                                        )
+                                        if up_res.get("ok"):
+                                            st.success(up_res.get("msg", "Actualizado en Sheets."))
+                                        else:
+                                            st.info(up_res.get("msg", "No se pudo actualizar en Sheets."))
+                            except Exception as ee:
+                                st.info(f"Guardado local OK. No pude actualizar Sheets: {ee}")
+
+                            if res_local.get("ok", False):
                                 st.success(f"✔ Cambios guardados: {cambios} actualización(es).")
                                 st.rerun()
                             else:
-                                st.info(res.get("msg", "Guardado deshabilitado."))
+                                st.info(res_local.get("msg", "Guardado deshabilitado."))
                         else:
                             st.info("No se detectaron cambios para guardar.")
                 except Exception as e:
