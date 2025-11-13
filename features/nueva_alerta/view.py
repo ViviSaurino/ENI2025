@@ -321,7 +321,7 @@ def render(user: dict | None = None):
                 if c not in df_tmp.columns:
                     df_tmp[c] = ""
             df_tmp["¿Generó alerta?"] = df_tmp["¿Generó alerta?"].replace("", "No")
-            df_tmp["N° alerta"] = df_tmp["N° alerta"].replace("", "1")
+            df_tmp["N° alerta"] = df_tmp["N° alerta"].replace([0, "0"], "")
             df_view = df_tmp[["Id", "Tarea"] + alert_cols].copy()
 
         date_editor = JsCode(
