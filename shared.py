@@ -191,8 +191,8 @@ def _ensure_defaults(df: pd.DataFrame) -> pd.DataFrame:
         base[c] = base[c].fillna("").replace({"nan": ""})
 
     if "¿Se corrigió?" not in base.columns:
-        base["¿Se corrigió?" ] = "No"
-    base["¿Se corrigió?" ] = base["¿Se corrigió?" ].fillna("No").replace({"": "No"})
+        base["¿Se corrigió?"] = "No"
+    base["¿Se corrigió?"] = base["¿Se corrigió?"].fillna("No").replace({"": "No"})
 
     return base
 
@@ -569,7 +569,7 @@ def hydrate_acl_flags(user: dict | None = None):
 
             # Guardar wrapper de persistencia según política
             def _maybe_save(fn, *args, **kwargs):
-                return _acl.maybe_save(user_row, fn, *args, **kwargs)
+                return _acl.maybe_save(user_row, fn, *a, **k)
 
             st.session_state["maybe_save"] = _maybe_save
 
@@ -645,11 +645,43 @@ def _owns_name(cell_value: str, allowed: set[str]) -> bool:
     # match exacto por token o substring tolerante
     return any((a in parts) or (a and a in nv) for a in allowed)
 
+# === NUEVO helper: verificación robusta por correo (prioritario) ===
+def _owns_mail(cell_value: str, allowed: set[str]) -> bool:
+    """
+    Devuelve True si en la celda hay un correo (o parte local) que coincide
+    con alguno de los tokens 'allowed'. Tolera múltiples correos separados por
+    coma/; / | y espacios.
+    """
+    nv = _norm_txt(cell_value)
+    if not nv:
+        return False
+    # split por separadores comunes + espacios
+    parts = {_norm_txt(p) for p in _re.split(r"[,\s;/|]+", nv) if p}
+    if not parts:
+        return False
+
+    for tok in allowed:
+        if not tok:
+            continue
+        if "@" in tok:
+            # match exacto case-insensitive
+            if tok in parts:
+                return True
+        else:
+            # tok es parte local; comparamos contra parte local de cada correo
+            for p in parts:
+                if "@" in p and p.split("@", 1)[0] == tok:
+                    return True
+                if p == tok:  # por si la columna guarda solo parte local
+                    return True
+    return False
+
 # ====== AJUSTE 3: early return en apply_scope por permisos altos ======
 def apply_scope(df: _pd.DataFrame, user: dict | None = None, resp_col: str = "Responsable") -> _pd.DataFrame:
     """
     Si user ∈ super_viewers o tiene can_edit_all_tabs => df completo.
-    Si no, filtra por 'Responsable'≈usuario (con alias opcional) y/o por columnas de correo.
+    Si no, **PRIORIZA CORREO**: filtra por columna de email si existe; si no hay match,
+    cae al filtro por nombre/alias.
     """
     if not isinstance(df, _pd.DataFrame) or df.empty:
         return df
@@ -659,50 +691,44 @@ def apply_scope(df: _pd.DataFrame, user: dict | None = None, resp_col: str = "Re
     if bool(acl.get("can_edit_all_tabs")) or bool(acl.get("is_super_viewer")) or is_super_viewer(user):
         return df
 
-    # 2) Identidad de usuario
-    toks = _user_tokens(user)  # incluye email, parte local, nombre display (normalizados)
+    # 1) Identidad y tokens
+    toks = _user_tokens(user)  # incluye email, parte local, nombre display
+    if not toks:
+        return df.iloc[0:0].copy()
+
     # Alias opcional (secrets: [resp_alias])
     alias_raw = dict(_st.secrets.get("resp_alias", {}))
     alias_map = {_norm_txt(k): _norm_txt(v) for k, v in alias_raw.items()}
-
     allowed = set(toks)
-    # Expande con alias si existen
     for t in list(toks):
         if t in alias_map:
             allowed.add(alias_map[t])
 
-    if not allowed:
-        # no sabemos quién es: no mostramos nada
-        return df.iloc[0:0].copy()
-
-    # 3) Columnas candidatas
+    # 2) Columnas candidatas (incluye OwnerEmail / UserEmail / variantes)
     name_cols = [c for c in df.columns if _norm_txt(c) in {
         "responsable","responsables","responsable/a","asignado a","asignada a"
     }]
     mail_cols = [c for c in df.columns if _norm_txt(c) in {
-        "correo","email","e-mail","useremail","user email"
+        "correo","email","e-mail","useremail","user email","owneremail","owner email","owner_email"
     }]
 
-    # 4) Construir máscara
-    mask = _pd.Series(False, index=df.index)
+    # 3) PRIORIDAD: filtrar por correo si hay columnas de mail
+    if mail_cols:
+        mask_mail = _pd.Series(False, index=df.index)
+        for mc in mail_cols:
+            ser = df[mc].astype(str).fillna("")
+            mask_mail = mask_mail | ser.map(lambda v: _owns_mail(v, allowed))
+        if mask_mail.any():
+            return df.loc[mask_mail].copy()
 
+    # 4) Fallback: filtrar por nombre/alias (Responsable)
     if name_cols:
         ser = df[name_cols[0]].astype(str).fillna("")
-        mask = mask | ser.map(lambda v: _owns_name(v, allowed))
-
-    # intenta por correo si hay columna y algún token parece correo/usuario
-    if mail_cols:
-        email_like = [t for t in allowed if "@" in t or t.isalnum()]
-        if email_like:
-            em = df[mail_cols[0]].astype(str).str.lower()
-            for t in email_like:
-                mask = mask | em.str.contains(_re.escape(t), na=False)
+        mask_name = ser.map(lambda v: _owns_name(v, allowed))
+        return df.loc[mask_name].copy()
 
     # 5) Si no hay columnas relevantes, por seguridad no mostrar nada
-    if not name_cols and not mail_cols:
-        return df.iloc[0:0].copy()
-
-    return df.loc[mask].copy()
+    return df.iloc[0:0].copy()
 # === fin ACL helper =============================================================
 
 # === Historial / TareasRecientes (log universal de "Nueva tarea") ===============
