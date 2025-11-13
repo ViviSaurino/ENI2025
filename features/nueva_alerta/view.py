@@ -120,7 +120,7 @@ def render(user: dict | None = None):
         <div class="section-na">
           <div class="help-strip help-strip-na" id="na-help">
             💡 <strong>Indicaciones:</strong> Cuando una tarea genere una alerta, regístrala en la tabla. 
-            Consigna la fecha y hora de detección y de corrección, y especifica el tipo de alerta.
+            Consigna la fecha y hora de detección/corrección. Por último, especifica el tipo de alerta.
           </div>
           <div class="form-card">
         """,
