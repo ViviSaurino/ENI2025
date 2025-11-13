@@ -447,7 +447,7 @@ def render(user: dict | None = None):
         border:0!important; background:transparent!important; 
         border-radius:0!important; 
         padding:0!important;
-        margin:6px 0 12px 0 !important;
+        margin:6px 0 8px 0 !important; /* ⬅️ un poco más pegado */
         box-shadow:
           inset 0 1px 0 var(--row-sep),
           inset 0 -1px 0 var(--row-sep);
@@ -560,6 +560,9 @@ def render(user: dict | None = None):
         return ""
 
     with st.container():
+        # ➕ NUEVA raya superior (pegada a los filtros)
+        st.markdown('<div style="height:0; border-top:1px solid var(--row-sep); margin:0 0 6px 0;"></div>', unsafe_allow_html=True)
+
         # 👉 Rectángulo SOLO alrededor de filtros
         st.markdown('<div class="hist-filters">', unsafe_allow_html=True)
 
@@ -594,8 +597,8 @@ def render(user: dict | None = None):
 
         st.markdown('</div>', unsafe_allow_html=True)  # /hist-filters
 
-        # ⬅️ Nueva línea gris justo debajo de los filtros (y del botón Buscar)
-        st.markdown('<div style="height:0; border-bottom:1px solid var(--row-sep); margin:6px 0 10px 0;"></div>', unsafe_allow_html=True)
+        # ⬇️ Línea gris inferior MÁS pegada al botón (márgenes reducidos)
+        st.markdown('<div style="height:0; border-bottom:1px solid var(--row-sep); margin:2px 0 6px 0;"></div>', unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -651,22 +654,25 @@ def render(user: dict | None = None):
     if "Tipo de tarea" not in df_view.columns and "Tipo" in df_view.columns:
         df_view["Tipo de tarea"] = df_view["Tipo"]
 
-    # ✅ NUEVO: Copiar "Duración" desde variantes (p.ej., "Duracion", "Duración (Nueva tarea)")
+    # ✅ NUEVO: Copiar "Duración" desde variantes (incl. Nueva tarea)
     try:
-        dur_like = [c for c in df_view.columns if re.match(r'^\s*duraci[oó]n', str(c), flags=re.I)]
-        if dur_like:
-            # Preferir una fuente distinta a "Duración" si existe
-            if "Duración" in dur_like:
-                otros = [c for c in dur_like if c != "Duración"]
-                src = otros[0] if otros else "Duración"
-            else:
-                src = dur_like[0]
-
+        # Candidatas comunes que pueden venir desde "Nueva tarea"
+        dur_candidates = [c for c in df_view.columns if re.match(r'^\s*duraci[oó]n', str(c), flags=re.I)] \
+                         + [c for c in df_view.columns if re.match(r'^\s*d[ií]as?$', str(c), flags=re.I)]
+        dur_candidates = list(dict.fromkeys(dur_candidates))  # únicos, mantener orden
+        if dur_candidates:
+            src = "Duración"
             if "Duración" not in df_view.columns:
-                df_view["Duración"] = df_view[src]
-            else:
-                vacias = df_view["Duración"].astype(str).str.strip().isin(["", "nan", "none", "null"])
-                df_view.loc[vacias, "Duración"] = df_view.loc[vacias, src]
+                df_view["Duración"] = ""
+            # Rellenar vacíos de "Duración" usando la primera candidata que tenga datos
+            vacias = df_view["Duración"].astype(str).str.strip().isin(["", "nan", "none", "null"])
+            for cand in dur_candidates:
+                if vacias.any():
+                    tmp = pd.to_numeric(df_view[cand], errors="coerce")
+                    df_view.loc[vacias, "Duración"] = tmp.loc[vacias]
+                    vacias = df_view["Duración"].isna() | (df_view["Duración"].astype(str).str.strip()=="")
+                else:
+                    break
     except Exception:
         pass
 
@@ -760,15 +766,11 @@ def render(user: dict | None = None):
         if bcol in df_grid.columns:
             df_grid[bcol] = df_grid[bcol].map(_yesno)
 
-    # ⛔ No forzar a numérico “Calificación” (queremos "Sin calificar")
-    # if "Calificación" in df_grid.columns:
-    #     df_grid["Calificación"] = pd.to_numeric(df_grid["Calificación"], errors="coerce").fillna(0)
-
+    # === Duración → entero visual + Fecha límite (hábiles) ===
     if "Duración" in df_grid.columns:
         dur_num = pd.to_numeric(df_grid["Duración"], errors="coerce")
         ok = dur_num.where(dur_num.between(1,5))
-        df_grid["Duración"] = ok.where(ok.between(1,5)).fillna("").astype(object)
-
+        # Calcular Fecha Vencimiento con días hábiles desde Fecha inicio
         if "Fecha inicio" in df_grid.columns:
             fi = to_naive_local_series(df_grid.get("Fecha inicio", pd.Series([], dtype=object)))
             fv_calc = _add_business_days(fi, ok.fillna(0))
@@ -776,6 +778,9 @@ def render(user: dict | None = None):
             if "Fecha Vencimiento" not in df_grid.columns:
                 df_grid["Fecha Vencimiento"] = pd.NaT
             df_grid.loc[mask_set, "Fecha Vencimiento"] = fv_calc.loc[mask_set]
+        # Mostrar "Duración" sin decimales
+        dur_int = ok.round(0).astype("Int64")
+        df_grid["Duración"] = dur_int.astype(str).replace({"<NA>": ""})
 
     if "Hora Vencimiento" in df_grid.columns:
         hv = df_grid["Hora Vencimiento"].apply(_fmt_hhmm).astype(str)
@@ -841,6 +846,13 @@ def render(user: dict | None = None):
         "Hora Registro": "Hora de registro",
         "Fecha Terminado": "Fecha terminada",
         "Hora Terminado": "Hora terminada",
+        # ⬇️ Renombres pedidos
+        "Fecha Eliminado": "Fecha eliminada",
+        "Hora Eliminado": "Hora eliminada",
+        "Fecha Cancelado": "Fecha cancelada",
+        "Hora Cancelado": "Hora cancelada",
+        "Fecha Pausado":  "Fecha pausada",
+        "Hora Pausado":   "Hora pausada",
     }
 
     _acl_user = st.session_state.get("acl_user", {}) or {}
@@ -1090,7 +1102,7 @@ def render(user: dict | None = None):
                 base["Id"] = base["Id"].astype(str); new_df["Id"] = new_df["Id"].astype(str)
                 base_idx = base.set_index("Id"); new_idx  = new_df.set_index("Id")
                 cols_to_update = [c for c in new_idx.columns if c in base_idx.columns]
-                base_idx.update(new_idx[cols_to_update])
+                base_idx.update(new_df[cols_to_update])
                 st.session_state["df_main"] = base_idx.reset_index()
             else:
                 st.session_state["df_main"] = new_df
