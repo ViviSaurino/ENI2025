@@ -229,7 +229,7 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
         keep = alerta_cols[0]
         if keep != "N° alerta":
             df.rename(columns={keep: "N° alerta"}, inplace=True)
-        for c in alerta_cols[1:]:
+        for c in alerta_cols[1:]        :
             df.drop(columns=c, inplace=True, errors="ignore")
 
     if "Id" in df.columns and isinstance(st.session_state.get("df_main"), pd.DataFrame) and "Id" in st.session_state["df_main"].columns:
@@ -479,29 +479,29 @@ def _ensure_deadline_and_compliance(df: pd.DataFrame) -> pd.DataFrame:
             df["Fecha Vencimiento"] = pd.NaT
         mask_set = ~fv_calc.isna()
         df.loc[mask_set, "Fecha Vencimiento"] = fv_calc.loc[mask_set]
-    # Hora límite
-    if "Hora Vencimiento" in df.columns:
-        hv = df["Hora Vencimiento"].map(_fmt_hhmm)
-        mask_empty = hv.map(lambda x: (str(x).strip() if x is not None else "") == "")
-        df["Hora Vencimiento"] = hv.mask(mask_empty, "17:00")
-    # Cumplimiento
-    if "Cumplimiento" in df.columns:
-        fv = to_naive_local_series(df.get("Fecha Vencimiento", pd.Series([], dtype=object)))
-        ft = to_naive_local_series(df.get("Fecha Terminado", pd.Series([], dtype=object)))
-        today_ts = pd.Timestamp(date.today())
-        fv_n = fv.dt.normalize(); ft_n = ft.dt.normalize()
-        has_fv = ~fv_n.isna(); has_ft = ~ft_n.isna()
-        delivered_on_time = has_fv & has_ft & (ft_n <= fv_n)
-        delivered_late    = has_fv & has_ft & (ft_n >  fv_n)
-        days_left = (fv_n - today_ts).dt.days
-        no_delivered = has_fv & (~has_ft) & (days_left < 0)
-        risk         = has_fv & (~has_ft) & (days_left >= 1) & (days_left <= 2)
-        out = pd.Series("", index=df.index, dtype="object")
-        out[delivered_on_time] = "✅ Entregado a tiempo"
-        out[delivered_late]    = "⏰ Entregado fuera de tiempo"
-        out[no_delivered]      = "❌ No entregado"
-        out[risk]              = "⚠️ En riesgo de retrasos"
-        df["Cumplimiento"] = out
+    # Hora límite (crear si falta)
+    if "Hora Vencimiento" not in df.columns:
+        df["Hora Vencimiento"] = ""
+    hv = df["Hora Vencimiento"].map(_fmt_hhmm)
+    mask_empty = hv.map(lambda x: (str(x).strip() if x is not None else "") == "")
+    df["Hora Vencimiento"] = hv.mask(mask_empty, "17:00")
+    # Cumplimiento (crear siempre, evitando índices no alineados)
+    fv = to_naive_local_series(df["Fecha Vencimiento"]) if "Fecha Vencimiento" in df.columns else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]")
+    ft = to_naive_local_series(df["Fecha Terminado"]) if "Fecha Terminado" in df.columns else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]")
+    today_ts = pd.Timestamp(date.today())
+    fv_n = fv.dt.normalize(); ft_n = ft.dt.normalize()
+    has_fv = ~fv_n.isna(); has_ft = ~ft_n.isna()
+    delivered_on_time = has_fv & has_ft & (ft_n <= fv_n)
+    delivered_late    = has_fv & has_ft & (ft_n >  fv_n)
+    days_left = (fv_n - today_ts).dt.days
+    no_delivered = has_fv & (~has_ft) & (days_left < 0)
+    risk         = has_fv & (~has_ft) & (days_left >= 1) & (days_left <= 2)
+    out = pd.Series("", index=df.index, dtype="object")
+    out[delivered_on_time] = "✅ Entregado a tiempo"
+    out[delivered_late]    = "⏰ Entregado fuera de tiempo"
+    out[no_delivered]      = "❌ No entregado"
+    out[risk]              = "⚠️ En riesgo de retrasos"
+    df["Cumplimiento"] = out
     return df
 
 # *** NUEVO: baseline diff (reconstrucción si no hay snapshot por edición)
@@ -540,9 +540,11 @@ def _derive_pending_from_baseline(curr: pd.DataFrame, base: pd.DataFrame,
         d = c_idx.loc[common, cols].fillna("").astype(str)
         neq = a.ne(d)
         changed_any = neq.any(axis=1)
-        for rid in common[changed_any]:
+        ids_changed = changed_any[changed_any].index
+        for rid in ids_changed:
             pend_ids.add(rid)
-            cols_changed = set(neq.columns[neq.loc[rid]].tolist())
+            diff_mask = neq.loc[rid].to_numpy()
+            cols_changed = set(neq.columns[diff_mask].tolist())
             if allowed_cols:
                 cols_changed = {x for x in cols_changed if x in allowed_cols}
             if cols_changed:
@@ -947,29 +949,31 @@ def render(user: dict | None = None):
         dur_int = ok.round(0).astype("Int64")
         df_grid["Duración"] = dur_int.astype(str).replace({"<NA>": ""})
 
-    if "Hora Vencimiento" in df_grid.columns:
-        hv = df_grid["Hora Vencimiento"].map(_fmt_hhmm)
-        mask_empty = hv.map(lambda x: (str(x).strip() if x is not None else "") == "")
-        df_grid["Hora Vencimiento"] = hv.mask(mask_empty, "17:00")
+    if "Hora Vencimiento" not in df_grid.columns:
+        df_grid["Hora Vencimiento"] = ""
+    hv = df_grid["Hora Vencimiento"].map(_fmt_hhmm)
+    mask_empty = hv.map(lambda x: (str(x).strip() if x is not None else "") == "")
+    df_grid["Hora Vencimiento"] = hv.mask(mask_empty, "17:00")
 
-    # === Cumplimiento (auto) ===
-    if "Cumplimiento" in df_grid.columns:
-        fv = to_naive_local_series(df_grid.get("Fecha Vencimiento", pd.Series([], dtype=object)))
-        ft = to_naive_local_series(df_grid.get("Fecha Terminado", pd.Series([], dtype=object)))
-        today_ts = pd.Timestamp(date.today())
-        fv_n = fv.dt.normalize(); ft_n = ft.dt.normalize()
-        has_fv = ~fv_n.isna(); has_ft = ~ft_n.isna()
-        delivered_on_time = has_fv & has_ft & (ft_n <= fv_n)
-        delivered_late    = has_fv & has_ft & (ft_n >  fv_n)
-        days_left = (fv_n - today_ts).dt.days
-        no_delivered = has_fv & (~has_ft) & (days_left < 0)
-        risk         = has_fv & (~has_ft) & (days_left >= 1) & (days_left <= 2)
-        out = pd.Series("", index=df_grid.index, dtype="object")
-        out[delivered_on_time] = "✅ Entregado a tiempo"
-        out[delivered_late]    = "⏰ Entregado fuera de tiempo"
-        out[no_delivered]      = "❌ No entregado"
-        out[risk]              = "⚠️ En riesgo de retrasos"
-        df_grid["Cumplimiento"] = out
+    # === Cumplimiento (auto; crear si falta) ===
+    if "Cumplimiento" not in df_grid.columns:
+        df_grid["Cumplimiento"] = ""
+    fv = to_naive_local_series(df_grid["Fecha Vencimiento"]) if "Fecha Vencimiento" in df_grid.columns else pd.Series(pd.NaT, index=df_grid.index, dtype="datetime64[ns]")
+    ft = to_naive_local_series(df_grid["Fecha Terminado"]) if "Fecha Terminado" in df_grid.columns else pd.Series(pd.NaT, index=df_grid.index, dtype="datetime64[ns]")
+    today_ts = pd.Timestamp(date.today())
+    fv_n = fv.dt.normalize(); ft_n = ft.dt.normalize()
+    has_fv = ~fv_n.isna(); has_ft = ~ft_n.isna()
+    delivered_on_time = has_fv & has_ft & (ft_n <= fv_n)
+    delivered_late    = has_fv & has_ft & (ft_n >  fv_n)
+    days_left = (fv_n - today_ts).dt.days
+    no_delivered = has_fv & (~has_ft) & (days_left < 0)
+    risk         = has_fv & (~has_ft) & (days_left >= 1) & (days_left <= 2)
+    out = pd.Series("", index=df_grid.index, dtype="object")
+    out[delivered_on_time] = "✅ Entregado a tiempo"
+    out[delivered_late]    = "⏰ Entregado fuera de tiempo"
+    out[no_delivered]      = "❌ No entregado"
+    out[risk]              = "⚠️ En riesgo de retrasos"
+    df_grid["Cumplimiento"] = out
 
     # ======= Snapshot / Detección de cambios =======
     editable_cols = set()
@@ -1238,16 +1242,17 @@ def render(user: dict | None = None):
                 curr_block = curr_map.loc[common_ids, cols_to_cmp].fillna("").astype(str)
                 neq = prev_block.ne(curr_block)
                 changed_any = neq.any(axis=1)
-                changed_ids_run.update(common_ids[changed_any].tolist())
-                for rid in common_ids[changed_any]:
-                    diff_cols = set(neq.columns[neq.loc[rid]].tolist())
-                    if diff_cols:
-                        # *** NUEVO: si cambian campos base, forzar derivados si variaron
-                        if {"Duración","Fecha inicio"} & diff_cols:
-                            diff_cols |= {"Fecha Vencimiento","Hora Vencimiento"}
-                        if {"Fecha Vencimiento","Fecha Terminado"} & diff_cols:
-                            diff_cols |= {"Cumplimiento"}
-                        cell_diff_run[str(rid)] = diff_cols
+                ids_changed = changed_any[changed_any].index
+                changed_ids_run.update(ids_changed.tolist())
+                for rid in ids_changed:
+                    diff_mask = neq.loc[rid].to_numpy()
+                    diff_cols = set(neq.columns[diff_mask].tolist())
+                    # *** NUEVO: si cambian campos base, forzar derivados si variaron
+                    if {"Duración","Fecha inicio"} & diff_cols:
+                        diff_cols |= {"Fecha Vencimiento","Hora Vencimiento"}
+                    if {"Fecha Vencimiento","Fecha Terminado"} & diff_cols:
+                        diff_cols |= {"Cumplimiento"}
+                    cell_diff_run[str(rid)] = diff_cols
 
         pend_ids  = set(st.session_state.get("_hist_changed_ids", []) or [])
         pend_diff = {k: set(v) for k, v in (st.session_state.get("_hist_cell_diff", {}) or {}).items()}
