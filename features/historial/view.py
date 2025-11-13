@@ -446,13 +446,12 @@ def render(user: dict | None = None):
       .hist-filters{
         border:0!important; background:transparent!important; 
         border-radius:0!important; 
-        padding:0!important;                   /* espacio interno para separar líneas del contenido */
-        margin:6px 0 12px 0 !important;        /* espacio externo */
+        padding:0!important;
+        margin:6px 0 12px 0 !important;
         box-shadow:
-          inset 0 1px 0 var(--row-sep),        /* línea superior */
-          inset 0 -1px 0 var(--row-sep);       /* línea inferior */
+          inset 0 1px 0 var(--row-sep),
+          inset 0 -1px 0 var(--row-sep);
       }
-      /* (elimina cualquier regla .hist-filters::before / ::after previa) */
        
       /* Botón buscar del ancho de su celda (debajo de Hasta) */
       .hist-search .stButton>button{ width:100%; }
@@ -561,7 +560,7 @@ def render(user: dict | None = None):
         return ""
 
     with st.container():
-        # 👉 Rectángulo SOLO alrededor de filtros (está desactivado por CSS)
+        # 👉 Rectángulo SOLO alrededor de filtros
         st.markdown('<div class="hist-filters">', unsafe_allow_html=True)
 
         if super_editor:
@@ -681,12 +680,20 @@ def render(user: dict | None = None):
     df_grid = df_view.reindex(columns=list(dict.fromkeys(target_cols))).copy()
     df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()
 
-    # ⬇️ Prioridad por defecto (solo visual)
+    # ======== Defaults SOLO visuales (Prioridad/Evaluación/Calificación) ========
+    def _as_default_label(series: pd.Series, default_label: str) -> pd.Series:
+        s = series.astype(str)
+        nullish = s.str.strip().str.lower().isin(["", "none", "null", "nan", "nat"])
+        return s.mask(nullish, default_label)
+
     if "Prioridad" in df_grid.columns:
-        df_grid["Prioridad"] = df_grid["Prioridad"].astype(str).fillna("")
-        df_grid["Prioridad"] = df_grid["Prioridad"].apply(
-            lambda s: "Sin asignar prioridad" if not str(s).strip() else s
-        )
+        df_grid["Prioridad"] = _as_default_label(df_grid["Prioridad"], "Sin asignar")
+
+    if "Evaluación" in df_grid.columns:
+        df_grid["Evaluación"] = _as_default_label(df_grid["Evaluación"], "Sin evaluar")
+
+    if "Calificación" in df_grid.columns:
+        df_grid["Calificación"] = _as_default_label(df_grid["Calificación"], "Sin calificar")
 
     import unicodedata, re as _re
     def _normcol_hist(x: str) -> str:
@@ -731,8 +738,9 @@ def render(user: dict | None = None):
         if bcol in df_grid.columns:
             df_grid[bcol] = df_grid[bcol].map(_yesno)
 
-    if "Calificación" in df_grid.columns:
-        df_grid["Calificación"] = pd.to_numeric(df_grid["Calificación"], errors="coerce").fillna(0)
+    # ⛔ Se elimina la coerción a numérico para respetar “Sin calificar”
+    # if "Calificación" in df_grid.columns:
+    #     df_grid["Calificación"] = pd.to_numeric(df_grid["Calificación"], errors="coerce").fillna(0)
 
     if "Duración" in df_grid.columns:
         dur_num = pd.to_numeric(df_grid["Duración"], errors="coerce")
@@ -877,7 +885,7 @@ def render(user: dict | None = None):
       return String(d).padStart(2,'0') + '/' + String(m).padStart(2,'0') + '/' + y;
     }""")
 
-    # ⬇️ Al aplicar valueFormatter, re-inyectamos cellStyle + headerClass según grupo
+    # ⬇️ Reaplicar pintado para fechas clave
     for col in ["Fecha Registro","Fecha inicio","Fecha Vencimiento","Fecha Terminado",
                 "Fecha Pausado","Fecha Cancelado","Fecha Eliminado",
                 "Fecha de detección","Fecha de corrección"]:
@@ -891,7 +899,6 @@ def render(user: dict | None = None):
                 hdr_class = "hdr-inicio";   style = cell_style_ini
             elif col == "Fecha Terminado":
                 hdr_class = "hdr-termino";  style = cell_style_ter
-            # Para otras fechas (venc., pausado, cancelado, eliminado) no se colorea el bloque
             kwargs = dict(headerName=nice, valueFormatter=date_only_fmt)
             if hdr_class: kwargs["headerClass"] = hdr_class
             if style:     kwargs["cellStyle"]  = style
@@ -959,7 +966,7 @@ def render(user: dict | None = None):
         "Fecha inicio",
         headerName=_header_map_norm.get(_normkey("Fecha inicio"), header_map.get("Fecha inicio","Fecha inicio")),
         filter=False, floatingFilter=False, sortable=False, suppressMenu=True,
-        cellStyle=cell_style_ini  # ⬅️ preserva el pintado
+        cellStyle=cell_style_ini
     )
 
     gob.configure_grid_options(
