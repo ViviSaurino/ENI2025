@@ -158,137 +158,62 @@ def _save_local(df: pd.DataFrame) -> dict:
     except Exception as _e:
         return {"ok": False, "msg": f"Error al guardar: {_e}"}
 
-# --- Cliente GSheets y upsert por Id ---
-def _gsheets_client():
-    if "gcp_service_account" not in st.secrets:
-        raise KeyError("Falta 'gcp_service_account' en secrets.")
-    url = (
-        st.secrets.get("gsheets_doc_url")
-        or (st.secrets.get("gsheets", {}) or {}).get("spreadsheet_url")
-        or (st.secrets.get("sheets", {}) or {}).get("sheet_url")
-    )
-    if not url:
-        raise KeyError("No se encontró URL de Sheets.")
-    ws_name = (st.secrets.get("gsheets", {}) or {}).get("worksheet", "TareasRecientes")
-
-    import gspread
-    from google.oauth2.service_account import Credentials
-
-    scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-    creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scopes)
-    gc = gspread.authorize(creds)
-    ss = gc.open_by_url(url)
-    try:
-        ws = ss.worksheet(ws_name)
-    except Exception:
-        ws = None
-    return ss, ws, ws_name
-
-def _col_letter(n: int) -> str:
-    s = ""
-    while n:
-        n, r = divmod(n - 1, 26)
-        s = chr(65 + r) + s
-    return s
+# --- Upsert a Sheets usando helper de shared.py (sin _gsheets_client local) ---
+try:
+    # Helper genérico de upsert parcial por Id centralizado en shared.py
+    from shared import sheet_upsert_by_id_partial as _shared_upsert_by_id_partial  # type: ignore
+except Exception:
+    _shared_upsert_by_id_partial = None  # fallback a no-op si no está disponible
 
 def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
-    if not DO_SHEETS_UPSERT:
+    """
+    Empuja SOLO las columnas de estado/fechas relevantes para los Id cambiados,
+    usando el helper _shared_upsert_by_id_partial de shared.py.
+    No define cliente local de Sheets.
+    """
+    if not DO_SHEETS_UPSERT or _shared_upsert_by_id_partial is None:
         return
+
     try:
-        ss, ws, ws_name = _gsheets_client()
+        if df_base is None or df_base.empty or "Id" not in df_base.columns:
+            return
+        df_base = _dedup_keep_last_with_id(df_base.copy())
+        if df_base.empty:
+            return
+
+        push_cols_base = [
+            "Estado", "Estado actual",
+            "Fecha estado actual", "Hora estado actual",
+            "Fecha inicio", "Hora de inicio",
+            "Fecha de inicio",
+            "Fecha Terminado", "Hora Terminado",
+            "Fecha terminada", "Hora terminada",
+            "Fecha eliminada", "Hora eliminada",
+            "Fecha cancelada", "Hora cancelada",
+            "Fecha pausada", "Hora pausada",
+            "Link de archivo",
+            "Responsable", "OwnerEmail",
+        ]
+
+        ids_set = {str(x).strip() for x in (changed_ids or []) if str(x).strip()}
+        if not ids_set:
+            return
+
+        df_rows = df_base[df_base["Id"].astype(str).isin(ids_set)].copy()
+        keep_cols = ["Id"] + [c for c in push_cols_base if c in df_rows.columns]
+        if not keep_cols:
+            return
+        df_rows = df_rows.reindex(columns=keep_cols)
+
+        # Actualizamos todas las columnas elegibles para cada Id cambiado
+        cell_diff_map = {str(rid): set(keep_cols) - {"Id"} for rid in df_rows["Id"].astype(str).tolist()}
+
+        # Llamada al helper centralizado (maneja cliente y hoja internamente)
+        _shared_upsert_by_id_partial(df_rows, cell_diff_map=cell_diff_map)
     except Exception as e:
-        st.info(f"Sheets no configurado: {e}")
-        return
-
-    if ws is None:
-        rows = str(max(1000, len(df_base) + 10))
-        cols = str(max(26, len(df_base.columns) + 5))
-        ws = ss.add_worksheet(title=ws_name, rows=rows, cols=cols)
-        ws.update("A1", [list(df_base.columns)])
-
-    values = ws.get_all_values() or []
-    if not values:
-        ws.update("A1", [list(df_base.columns)])
-        values = ws.get_all_values()
-
-    headers = values[0]
-    col_map = {h: i + 1 for i, h in enumerate(headers)}
-    if "Id" not in col_map:
-        st.info("La hoja seleccionada no tiene columna 'Id'; no se puede actualizar por Id.")
-        return
-
-    id_idx = col_map["Id"] - 1
-    id_to_row = {}
-    for r_i, row in enumerate(values[1:], start=2):
-        if id_idx < len(row):
-            id_to_row[str(row[id_idx]).strip()] = r_i
-
-    base_push_cols = [
-        "Estado", "Estado actual",
-        "Fecha estado actual", "Hora estado actual",
-        "Fecha inicio", "Hora de inicio",
-        "Fecha de inicio",
-        "Fecha Terminado", "Hora Terminado",
-        "Fecha terminada",
-        "Fecha eliminada", "Hora eliminada",
-        "Fecha cancelada", "Hora cancelada",
-        "Fecha pausada", "Hora pausada",
-        "Link de archivo",
-        # >>> Ajuste: también empujar Responsable y OwnerEmail si existen
-        "Responsable", "OwnerEmail",
-    ]
-    cols_to_push = [c for c in base_push_cols if c in col_map]
-
-    def _fmt_out(col, val):
-        low = str(col).lower()
-        if low.startswith("fecha"):
-            d = _to_naive_local_one(val)
-            return "" if pd.isna(d) else d.strftime("%Y-%m-%d")
-        if low.startswith("hora"):
-            return _fmt_hhmm(val)
-        return "" if (val is None or (isinstance(val, float) and pd.isna(val))) else str(val)
-
-    last_col_letter = _col_letter(len(headers))
-    body, ranges = [], []
-
-    if "Id" in df_base.columns:
-        df_base = _dedup_keep_last_with_id(df_base)
-    df_idx = df_base.set_index("Id")
-
-    def _get_val(_id, h):
-        if h in df_idx.columns:
-            return df_idx.loc[_id, h]
-        if h == "Estado actual" and "Estado" in df_idx.columns:
-            return df_idx.loc[_id, "Estado"]
-        return ""
-
-    for _id in changed_ids:
-        if _id not in df_idx.index:
-            continue
-        row_idx = id_to_row.get(str(_id))
-        if not row_idx:
-            new_row = []
-            for h in headers:
-                v = _get_val(_id, h)
-                new_row.append(_fmt_out(h, v))
-            ws.append_row(new_row, value_input_option="USER_ENTERED")
-            continue
-
-        current_row = values[row_idx - 1].copy()
-        if len(current_row) < len(headers):
-            current_row += [""] * (len(headers) - len(current_row))
-        for h in cols_to_push:
-            v = _get_val(_id, h)
-            current_row[col_map[h] - 1] = _fmt_out(h, v)
-        ranges.append(f"A{row_idx}:{last_col_letter}{row_idx}")
-        body.append(current_row[: len(headers)])
-
-    if body and ranges:
-        data = [{"range": rng, "values": [vals]} for rng, vals in zip(ranges, body)]
-        ws.batch_update({"valueInputOption": "USER_ENTERED", "data": data})
+        st.info(f"No pude ejecutar upsert a Sheets con el helper compartido: {e}")
 
 # ===============================================================================
-
 def render(user: dict | None = None):
     st.session_state.setdefault("est_visible", True)
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
@@ -363,7 +288,7 @@ def render(user: dict | None = None):
         df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
         df_all = _dedup_keep_last_with_id(df_all)
 
-        # Alias de columnas para coincidir con "Tareas recientes" (robusto)
+        # Alias...
         if "Tipo de tarea" not in df_all.columns and "Tipo" in df_all.columns:
             df_all["Tipo de tarea"] = df_all["Tipo"]
         if "Fecha de inicio" not in df_all.columns and "Fecha inicio" in df_all.columns:
@@ -374,7 +299,6 @@ def render(user: dict | None = None):
             df_all["Fecha de registro"] = df_all["Fecha Registro"]
         if "Hora de registro" not in df_all.columns and "Hora Registro" in df_all.columns:
             df_all["Hora de registro"] = df_all["Hora Registro"]
-        # Asegurar columnas de Eliminación / Cancelación / Pausa
         for need in ["Fecha eliminada", "Hora eliminada",
                      "Fecha cancelada", "Hora cancelada",
                      "Fecha pausada", "Hora pausada"]:
@@ -383,7 +307,7 @@ def render(user: dict | None = None):
 
         st.session_state["df_main"] = df_all.copy()
 
-        # 🔐 ACL  **(AJUSTE: toggle 'Ver todas las tareas' para super, y sin apply_scope para super)**
+        # 🔐 ACL
         me = _display_name().strip()
         is_super = _is_super_editor()
         if not is_super:
@@ -403,7 +327,7 @@ def render(user: dict | None = None):
                 except Exception:
                     pass
 
-        # ===== Rango por defecto (solo por Fecha de registro) =====
+        # Rango por defecto
         fr_all = pd.to_datetime(df_all.get("Fecha Registro", pd.Series([], dtype=object)), errors="coerce")
         if fr_all.notna().any():
             min_date = fr_all.min().date()
@@ -412,19 +336,17 @@ def render(user: dict | None = None):
             today = pd.Timestamp.today().normalize().date()
             min_date = max_date = today
 
-        # ===== FILTROS (Ajuste 2) =====
+        # ===== FILTROS =====
         estados_catalogo = ["No iniciado", "En curso", "Terminada", "Pausada", "Cancelada", "Eliminada"]
 
         with st.form("est_filtros_v4", clear_on_submit=False):
             if is_super:
-                # Responsable → Fase → Tipo → Estado → Desde → Hasta → Buscar
                 c_resp, c_fase, c_tipo, c_estado, c_desde, c_hasta, c_buscar = st.columns(
                     [Fw, Fw, T_width, D, D, R, C], gap="medium"
                 )
                 resp_all = sorted([x for x in df_all.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
                 est_resp = c_resp.selectbox("Responsable", ["Todos"] + resp_all, index=0)
             else:
-                # Fase → Tipo → Estado → Desde → Hasta → Buscar
                 c_fase, c_tipo, c_estado, c_desde, c_hasta, c_buscar = st.columns(
                     [Fw, T_width, D, D, R, C], gap="medium"
                 )
@@ -436,7 +358,6 @@ def render(user: dict | None = None):
             tipos_all = sorted([x for x in df_all.get("Tipo de tarea", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
             est_tipo = c_tipo.selectbox("Tipo de tarea", ["Todos"] + tipos_all, index=0)
 
-            # Estado actual (labels con emoji; valor canónico sin emoji)
             estado_labels = {
                 "No iniciado": "⏳ No iniciado",
                 "En curso": "🟢 En curso",
@@ -456,10 +377,9 @@ def render(user: dict | None = None):
                 st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
                 est_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
-        # ===== Filtrado de tareas =====
+        # Filtrado
         df_tasks = df_all.copy()
 
-        # Estado efectivo para filtrar (incluye Eliminada)
         fi_eff = pd.to_datetime(df_tasks.get("Fecha de inicio", pd.Series([], dtype=object)), errors="coerce")
         ft_eff = pd.to_datetime(df_tasks.get("Fecha terminada", pd.Series([], dtype=object)), errors="coerce")
         fe_eff = pd.to_datetime(df_tasks.get("Fecha eliminada", pd.Series([], dtype=object)), errors="coerce")
@@ -467,7 +387,6 @@ def render(user: dict | None = None):
         estado_calc = estado_calc.mask(fi_eff.notna() & ft_eff.isna() & fe_eff.isna(), "En curso")
         estado_calc = estado_calc.mask(ft_eff.notna() & fe_eff.isna(), "Terminada")
         estado_calc = estado_calc.mask(fe_eff.notna(), "Eliminada")
-        # Si hay un Estado guardado, respétalo
         if "Estado" in df_tasks.columns:
             saved = df_tasks["Estado"].astype(str).str.strip()
             estado_calc = saved.where(~saved.isin(["", "nan", "NaN", "None"]), estado_calc)
@@ -489,7 +408,7 @@ def render(user: dict | None = None):
             if est_hasta:
                 df_tasks = df_tasks[fcol <= (pd.to_datetime(est_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
 
-        # 🔹 Solo filas con Id y sin duplicados ANTES de mostrar
+        # Solo con Id
         df_tasks = _dedup_keep_last_with_id(df_tasks)
 
         # ===== Tabla "Resultados" =====
@@ -517,7 +436,6 @@ def render(user: dict | None = None):
                     return "-"
             return s.astype(str).map(_one)
 
-        # Coalesce de alias:
         def _coalesce_dt(base: pd.DataFrame, a: str, b: str) -> pd.Series:
             s1 = pd.to_datetime(base.get(a, pd.Series([], dtype=object)), errors="coerce")
             s2 = pd.to_datetime(base.get(b, pd.Series([], dtype=object)), errors="coerce")
@@ -527,7 +445,6 @@ def render(user: dict | None = None):
                 return s1
             return s1.where(s1.notna(), s2)
 
-        # >>> Orden FINAL solicitado: Link de archivo DESPUÉS de "Hora terminada" y ANTES de "Fecha eliminada"
         cols_out = [
             "Id","Tarea","Estado actual",
             "Fecha de registro","Hora de registro",
@@ -612,7 +529,6 @@ def render(user: dict | None = None):
           return M[v] || v;
         }""")
 
-        # Sin color en "Estado actual" (solo emojis)
         estado_cell_style = JsCode("""
         function(p){
           return {fontWeight:'600', textAlign:'center'};
@@ -688,11 +604,10 @@ def render(user: dict | None = None):
           return (v === '' || v === '-') && hasEnd;
         }}""")
 
-        # ===== Estilos por bloque =====
-        style_reg = {"backgroundColor": "#F5F3FF"}   # lila (Registro)
-        style_ini = {"backgroundColor": "#E0F2FE"}   # celeste (Inicio)
-        style_ter = {"backgroundColor": "#ECFDF5"}   # jade (Término)
-        style_del = {"backgroundColor": "#F9FAFB"}   # Eliminada / Cancelada / Pausada (gris muy claro)
+        style_reg = {"backgroundColor": "#F5F3FF"}
+        style_ini = {"backgroundColor": "#E0F2FE"}
+        style_ter = {"backgroundColor": "#ECFDF5"}
+        style_del = {"backgroundColor": "#F9FAFB"}
 
         gob = GridOptionsBuilder.from_dataframe(df_view)
         gob.configure_grid_options(
@@ -706,7 +621,6 @@ def render(user: dict | None = None):
         gob.configure_default_column(wrapHeaderText=True, autoHeaderHeight=True)
         gob.configure_selection("single", use_checkbox=False)
 
-        # Orden de configuración acorde al orden de columnas
         gob.configure_column("Estado actual", headerName="⚙️ Estado actual", valueFormatter=estado_emoji_fmt, cellStyle=estado_cell_style, minWidth=170, editable=False)
         gob.configure_column("Fecha de registro", headerName="🕒 Fecha de registro", editable=False, minWidth=170, cellStyle=style_reg)
         gob.configure_column("Hora de registro", headerName="🕒 Hora de registro", editable=False, minWidth=150, cellStyle=style_reg)
@@ -800,24 +714,18 @@ def render(user: dict | None = None):
                             "Fecha pausada","Hora pausada",
                             "Link de archivo",
                             "Fecha de registro","Hora de registro",
-                            # --- AJUSTE 2: asegurar columnas de propietario/alias
                             "OwnerEmail","Responsable"
                         ]:
                             if need not in base.columns:
                                 base[need] = ""
 
-                        # --- AJUSTE 1 (complemento): si generamos nuevos Id en la vista y la base tenía filas sin Id,
-                        # ligarlas por 'Tarea' para no perderlas
                         new_ids = []
                         if mask_blank_ids.any():
-                            # mapa tarea->nuevo id desde grid
                             tarea_by_newid = {row["Id"]: row.get("Tarea", "") for _, row in grid_data.iterrows()}
-                            # filas en base con Id vacío
                             base_blank = base["Id"].astype(str).str.strip().isin({"", "-", "nan", "none", "null"})
                             if base_blank.any():
                                 for idx_base in base.index[base_blank]:
                                     t_base = str(base.at[idx_base, "Tarea"] or "").strip()
-                                    # busca si ese 'Tarea' tiene un nuevo Id en grid
                                     for nid, t_grid in tarea_by_newid.items():
                                         if not nid:
                                             continue
@@ -829,7 +737,6 @@ def render(user: dict | None = None):
                         ids_ok = [i for i in ids_view if i in set(base["Id"].astype(str))]
 
                         if not is_super:
-                            # No permitir 'Término' sin 'Inicio'
                             cur_start = base.groupby("Id", as_index=True)["Fecha inicio"].last().map(_canon_str)
                             cur_start_alias = base.groupby("Id", as_index=True)["Fecha de inicio"].last().map(_canon_str)
                             def _has_start(i):
@@ -840,7 +747,6 @@ def render(user: dict | None = None):
                                 for i in bad_term:
                                     ft_new_vis[i] = ""; ht_new[i] = ""
 
-                            # No permitir 'Eliminación' sin 'Término'
                             cur_end = base.groupby("Id", as_index=True)["Fecha terminada"].last().map(_canon_str)
                             cur_end_alias = base.groupby("Id", as_index=True)["Fecha Terminado"].last().map(_canon_str)
                             def _has_end(i):
@@ -859,7 +765,6 @@ def render(user: dict | None = None):
                         base_idx = base.copy().set_index("Id")
                         base_idx = base_idx[~base_idx.index.duplicated(keep="last")]
 
-                        # --- AJUSTE 2: auto-asignar OwnerEmail y Responsable para no-super
                         me_email = _user_email().strip().lower()
                         resp_alias = (st.secrets.get("resp_alias", {}) or {})
                         me_alias = resp_alias.get(me_email) or _display_name().strip() or me_email
@@ -1010,7 +915,6 @@ def render(user: dict | None = None):
                                 "Fecha cancelada","Hora cancelada",
                                 "Fecha pausada","Hora pausada",
                                 "Link de archivo",
-                                # --- AJUSTE 2: persistir en sesión también OwnerEmail y Responsable
                                 "OwnerEmail","Responsable",
                             ]
                             for col in cols_apply:
@@ -1023,10 +927,8 @@ def render(user: dict | None = None):
                                         full_updated.loc[full_updated["Id"].astype(str) == i, col] = val
                             full_updated = _dedup_keep_last_with_id(full_updated)
 
-                        # Persistir en sesión (Tareas recientes lee de aquí)
                         st.session_state["df_main"] = full_updated.copy()
 
-                        # Guardado local
                         maybe_save = st.session_state.get("maybe_save")
                         if callable(maybe_save):
                             try:
@@ -1038,7 +940,6 @@ def render(user: dict | None = None):
                         else:
                             res = _save_local(full_updated.copy())
 
-                        # Upsert a Sheets
                         try:
                             if DO_SHEETS_UPSERT and changed_ids:
                                 _sheet_upsert_estado_by_id(full_updated.copy(), sorted(changed_ids))
