@@ -492,7 +492,7 @@ def render(user: dict | None = None):
                 df_filtrado = df_filtrado[
                     fcol.isna() | (fcol >= pd.to_datetime(pri_desde))
                 ]
-            if pri_hasta is not None:
+            if pri_hasta es not None:
                 limite = (
                     pd.to_datetime(pri_hasta)
                     + pd.Timedelta(days=1)
@@ -546,7 +546,7 @@ def render(user: dict | None = None):
           const v = String(p.value || '');
           const clean = v.replace(/^[^A-Za-zÁÉÍÓÚáéíóúÜüÑñ]+/,'').trim().toLowerCase();
           if(!clean){ return {}; }
-          if(clean === 'sin asignar' || clean === 'sin asignar prioridad'){   // ← actualizado
+          if(clean === 'sin asignar' || clean === 'sin asignar prioridad'){
             return Object.assign({}, base, {backgroundColor:'#E5E7EB', color:'#374151'});
           }
           if(clean === 'urgente'){
