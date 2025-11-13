@@ -214,6 +214,22 @@ if "_sync_time_from_date" not in globals():
             except Exception:
                 st.session_state["fi_t_view"] = str(st.session_state["fi_t"])
 
+# ====== SOLO Google Sheets (sin local) ======
+try:
+    from utils.gsheets import upsert_rows_by_id, open_sheet_by_url  # type: ignore
+except Exception:
+    upsert_rows_by_id = None
+    open_sheet_by_url = None
+
+def _get_sheet_conf():
+    ss_url = (
+        st.secrets.get("gsheets_doc_url")
+        or (st.secrets.get("gsheets", {}) or {}).get("spreadsheet_url")
+        or (st.secrets.get("sheets", {}) or {}).get("sheet_url")
+    )
+    ws_name = (st.secrets.get("gsheets", {}) or {}).get("worksheet", "TareasRecientes")
+    return ss_url, ws_name
+
 # ==========================================================================
 
 def render(user: dict | None = None):
@@ -487,24 +503,35 @@ def render(user: dict | None = None):
                 df = _sanitize(df, COLS if "COLS" in globals() else None)
                 st.session_state["df_main"] = df.copy()
 
-                # Persistencia (controlada por ACL)
-                def _persist(_df: pd.DataFrame):
+                # ======== 🔒 Persistencia SOLO en Google Sheets (sin local) ========
+                def _persist_to_sheets(df_rows: pd.DataFrame):
                     try:
-                        os.makedirs("data", exist_ok=True)
-                        _df.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig", mode="w")
-                        return {"ok": True, "msg": "Cambios guardados."}
+                        ss_url, ws_name = _get_sheet_conf()
+                        if upsert_rows_by_id is None or not ss_url:
+                            return {"ok": False, "msg": "Guardar en Sheets no disponible."}
+                        ids = df_rows["Id"].astype(str).tolist() if "Id" in df_rows.columns else []
+                        res = upsert_rows_by_id(
+                            ss_url=ss_url,
+                            ws_name=ws_name,
+                            df=df_rows,
+                            ids=ids,
+                        )
+                        if res.get("ok"):
+                            return {"ok": True, "msg": res.get("msg", "Guardado en Sheets.")}
+                        else:
+                            return {"ok": False, "msg": res.get("msg", "No se pudo guardar en Sheets.")}
                     except Exception as _e:
-                        return {"ok": False, "msg": f"Error al guardar: {_e}"}
+                        return {"ok": False, "msg": f"Error al guardar en Sheets: {_e}"}
 
+                df_rows = pd.DataFrame([new])
                 maybe_save = st.session_state.get("maybe_save")
-                res = maybe_save(_persist, df.copy()) if callable(maybe_save) else _persist(df.copy())
+                res = maybe_save(_persist_to_sheets, df_rows.copy()) if callable(maybe_save) else _persist_to_sheets(df_rows.copy())
                 if not res.get("ok", False):
-                    st.info(res.get("msg", "Guardado deshabilitado."))
+                    st.info(res.get("msg", "Guardado en Sheets deshabilitado."))
 
-                # ====== Log universal en TareasRecientes (sin ACL) ======
+                # ====== Log universal en TareasRecientes ======
                 sheet = None
                 try:
-                    from utils.gsheets import open_sheet_by_url  # type: ignore
                     url = st.secrets.get("gsheets_doc_url") or (st.secrets.get("gsheets", {}) or {}).get("spreadsheet_url")
                     if url and callable(open_sheet_by_url):
                         try:
@@ -514,7 +541,6 @@ def render(user: dict | None = None):
                 except Exception:
                     sheet = None
 
-                # --- Campos extra a registrar (si la hoja los tiene) ---
                 extra_kwargs = dict(
                     area=new.get("Área",""),
                     fase=new.get("Fase",""),
@@ -528,7 +554,6 @@ def render(user: dict | None = None):
                 )
 
                 try:
-                    # Intento con kwargs completos
                     try:
                         log_reciente(
                             sheet,
@@ -541,7 +566,6 @@ def render(user: dict | None = None):
                             **extra_kwargs
                         )
                     except TypeError:
-                        # Versión importada sin **kwargs extra → registrar básico
                         log_reciente(
                             sheet,
                             tarea_nombre=new.get("Tarea", ""),
@@ -551,7 +575,6 @@ def render(user: dict | None = None):
                             fecha_reg=reg_fecha,
                             hora_reg=reg_hora_txt,
                         )
-                        # Post-update por Id para completar columnas extra si existen
                         try:
                             from utils.gsheets import read_df_from_worksheet, upsert_by_id  # type: ignore
                             if sheet and callable(read_df_from_worksheet) and callable(upsert_by_id):
@@ -560,7 +583,6 @@ def render(user: dict | None = None):
                                     id_col = "Id" if "Id" in df_rec.columns else ("id" if "id" in df_rec.columns else None)
                                     if id_col:
                                         row = {id_col: str(new.get("Id",""))}
-                                        # Solo setear las que existan en la hoja
                                         for k_sheet, v_val in {
                                             "Área": new.get("Área",""),
                                             "Fase": new.get("Fase",""),
@@ -578,7 +600,6 @@ def render(user: dict | None = None):
                         except Exception:
                             pass
                 except Exception:
-                    # No romper el flujo si no hay gsheets
                     pass
 
                 # limpiar campos
