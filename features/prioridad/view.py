@@ -492,7 +492,7 @@ def render(user: dict | None = None):
                 df_filtrado = df_filtrado[
                     fcol.isna() | (fcol >= pd.to_datetime(pri_desde))
                 ]
-            if pri_hasta es not None:
+            if pri_hasta is not None:
                 limite = (
                     pd.to_datetime(pri_hasta)
                     + pd.Timedelta(days=1)
