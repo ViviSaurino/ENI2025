@@ -5,7 +5,7 @@ from datetime import date
 import re
 import pandas as pd
 import streamlit as st
-from st_aggrid import AgGrid, GridUpdateMode, DataReturnMode
+from st_aggrid import AgGrid, GridUpdateMode, DataReturnMode, JsCode  # ⬅️ agregado JsCode
 
 # 👇 Upsert centralizado (utils/gsheets)
 try:
@@ -340,6 +340,34 @@ def render(user: dict | None = None):
         # Snapshot previo (para detectar cambios sobre 'a modificar')
         st.session_state["_pri_prev"] = view[["Id","Prioridad actual","Prioridad a modificar"]].copy()
 
+        # ===== Estilo de colores para prioridades (actual y a modificar) =====
+        priority_cell_style = JsCode(
+            """
+        function(p){
+          const base = {
+            display:'flex', alignItems:'center', justifyContent:'center',
+            height:'100%', padding:'0 10px', borderRadius:'999px',
+            fontWeight:'600', textAlign:'center'
+          };
+          const v = String(p.value || '');
+          const clean = v.replace(/^[^A-Za-zÁÉÍÓÚáéíóúÜüÑñ]+/,'').trim().toLowerCase();
+          if(!clean){ return {}; }
+          if(clean === 'urgente'){
+            return Object.assign({}, base, {backgroundColor:'#FEE2E2', color:'#B91C1C'});
+          }
+          if(clean === 'alto'){
+            return Object.assign({}, base, {backgroundColor:'#FEF3C7', color:'#92400E'});
+          }
+          if(clean === 'medio'){
+            return Object.assign({}, base, {backgroundColor:'#DBEAFE', color:'#1E40AF'});
+          }
+          if(clean === 'bajo'){
+            return Object.assign({}, base, {backgroundColor:'#DCFCE7', color:'#166534'});
+          }
+          return base;
+        }"""
+        )
+
         # ===== GRID =====
         grid_options = {
             "columnDefs": [
@@ -347,13 +375,15 @@ def render(user: dict | None = None):
                 {"field": "Área", "headerName": "Área", "editable": False, "minWidth": 140},
                 {"field": "Fase", "headerName": "Fase", "editable": False, "minWidth": 180},
                 {"field": "Responsable", "headerName": "Responsable", "editable": False, "minWidth": 220},
-                {"field": "Tarea", "headerName": "Tarea", "editable": False, "minWidth": 300},
-                {"field": "Prioridad actual", "headerName": "Prioridad actual", "editable": False, "minWidth": 160},
+                {"field": "Tarea", "headerName": "📝 Tarea", "editable": False, "minWidth": 300},
+                {"field": "Prioridad actual", "headerName": "🏷️ Prioridad actual", "editable": False, "minWidth": 160,
+                 "cellStyle": priority_cell_style},
                 {
-                    "field": "Prioridad a modificar", "headerName": "Prioridad a modificar",
+                    "field": "Prioridad a modificar", "headerName": "🏷️ Prioridad a modificar",
                     "editable": bool(IS_EDITOR), "minWidth": 190,
                     "cellEditor": "agSelectCellEditor",
                     "cellEditorParams": {"values": CHOICES_EDIT_EMO},
+                    "cellStyle": priority_cell_style,
                 },
             ],
             "defaultColDef": {
