@@ -57,7 +57,7 @@ def _display_name() -> str:
 
 
 def _is_super_alert_editor() -> bool:
-    """Vivi, Enrique o quien tenga can_edit_all=True ven filtro Responsable."""
+    """Vivi, Enrique o quien tenga can_edit_all=True ven filtro Responsable y todas las tareas."""
     u = st.session_state.get("acl_user", {}) or {}
     flag = str(u.get("can_edit_all", "")).strip().lower()
     if flag in {"1", "true", "yes", "si", "sí"}:
@@ -129,6 +129,12 @@ def render(user: dict | None = None):
         # Base (filtrada por ACL)
         df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
         df_all = apply_scope(df_all, user=user)
+
+        # 🔒 Refuerzo local: si NO es super, solo ve sus propias tareas (Responsable)
+        if not _is_super_alert_editor() and "Responsable" in df_all.columns:
+            dn = _display_name().strip()
+            if dn:
+                df_all = df_all[df_all["Responsable"].astype(str).str.strip() == dn]
 
         # Alias de columnas para compatibilidad
         if "Tipo de tarea" not in df_all.columns and "Tipo" in df_all.columns:
@@ -515,7 +521,7 @@ def render(user: dict | None = None):
             fit_columns_on_grid_load=False,
             enable_enterprise_modules=False,
             reload_data=False,
-            height=340,  # ⬅️ tabla más alta
+            height=420,  # ⬅️ tabla aún más alta
             allow_unsafe_jscode=True,
             theme="balham",
         )
