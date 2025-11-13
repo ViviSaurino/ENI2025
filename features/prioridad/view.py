@@ -164,8 +164,9 @@ def _first_valid_date_series(df: pd.DataFrame) -> pd.Series:
     return pd.Series([], dtype="datetime64[ns]")
 
 
-# Normalización y emojis (nueva paleta con 'Sin asignar')
+# Normalización y emojis (incluye 'Sin asignar prioridad')
 EMO_MAP = {
+    "sin asignar prioridad": "⚪",   # ← añadido
     "sin asignar": "⚪",
     "urgente": "🔥",
     "media": "🟡",
@@ -186,12 +187,12 @@ def _strip_emoji(txt: str) -> str:
 def _norm_pri(txt: str) -> str:
     """
     Devuelve una etiqueta canónica sin emoji:
-    Sin asignar, Urgente, Media, Baja.
+    Sin asignar prioridad, Urgente, Media, Baja.
     """
     t = (_strip_emoji(txt) or "").strip().lower()
 
-    if t in ("", "sin asignar", "sin prioridad", "ninguna"):
-        return "Sin asignar"
+    if t in ("", "sin asignar", "sin asignar prioridad", "sin prioridad", "ninguna"):
+        return "Sin asignar prioridad"   # ← cambiado
     if t == "urgente":
         return "Urgente"
     if t in ("alta", "alto", "media", "medio"):
@@ -514,8 +515,8 @@ def render(user: dict | None = None):
 
         cur_norm = base["Prioridad"].astype(str).map(_norm_pri)
         cur_disp = cur_norm.map(_display_with_emoji)
-        # Por seguridad, si algo quedara vacío, mostramos "Sin asignar"
-        cur_disp = cur_disp.mask(cur_disp.eq(""), _display_with_emoji("Sin asignar"))
+        # Por seguridad, si algo quedara vacío, mostramos "Sin asignar prioridad"
+        cur_disp = cur_disp.mask(cur_disp.eq(""), _display_with_emoji("Sin asignar prioridad"))  # ← cambiado
 
         view = pd.DataFrame(
             {
@@ -545,7 +546,7 @@ def render(user: dict | None = None):
           const v = String(p.value || '');
           const clean = v.replace(/^[^A-Za-zÁÉÍÓÚáéíóúÜüÑñ]+/,'').trim().toLowerCase();
           if(!clean){ return {}; }
-          if(clean === 'sin asignar'){
+          if(clean === 'sin asignar' || clean === 'sin asignar prioridad'){   // ← actualizado
             return Object.assign({}, base, {backgroundColor:'#E5E7EB', color:'#374151'});
           }
           if(clean === 'urgente'){
