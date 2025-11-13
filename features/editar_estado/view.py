@@ -280,7 +280,7 @@ def render(user: dict | None = None):
         if isinstance(df_local, pd.DataFrame) and not df_local.empty:
             st.session_state["df_main"] = df_local.copy()
 
-    if st.session_state["est_visible"]]:
+    if st.session_state["est_visible"]:
         A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
         st.markdown('<div id="est-section">', unsafe_allow_html=True)
