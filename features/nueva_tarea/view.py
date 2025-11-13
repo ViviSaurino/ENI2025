@@ -27,8 +27,12 @@ except Exception:
         return re.sub(r"\s+", "", s)[:3]
 
     def make_id_prefix(area: str, resp: str) -> str:
+        # Asegurar que area y resp sean strings válidos
+        area = str(area) if area is not None else ""
+        resp = str(resp) if resp is not None else ""
+        
         a3 = _clean3(area)
-        r = (resp or "").strip().upper()
+        r = resp.strip().upper()
         r_first = r.split()[0] if r.split() else r
         r3 = _clean3(r_first)
         if not a3 and not r3: 
@@ -36,6 +40,9 @@ except Exception:
         return (a3 or "GEN") + (r3 or "")
 
     def next_id_by_person(df: pd.DataFrame, area: str, resp: str) -> str:
+        # Validar entradas antes de procesar
+        area = area if area is not None else ""
+        resp = resp if resp is not None else ""
         prefix = make_id_prefix(area, resp)
         return f"{prefix}_{len(df.index)+1}"
 
@@ -65,7 +72,6 @@ except Exception:
         try:
             from uuid import uuid4
             import pandas as _pd
-            import re as _re
 
             ts = now_lima_trimmed()
             # fecha/hora recibidas como kwargs (preferidas)
@@ -89,7 +95,7 @@ except Exception:
                     s = str(v).strip()
                     if not s:
                         return ts.strftime("%H:%M")
-                    m = _re.match(r"^(\d{1,2}):(\d{2})", s)
+                    m = re.match(r"^(\d{1,2}):(\d{2})", s)
                     if m:
                         return f"{int(m.group(1)):02d}:{int(m.group(2)):02d}"
                     d = pd.to_datetime(s, errors="coerce", utc=False)
@@ -269,10 +275,9 @@ def render(user: dict | None = None):
     """, unsafe_allow_html=True)
 
     # ===== Datos =====
-    if "AREAS_OPC" not in globals():
-        globals()["AREAS_OPC"] = [
-            "Jefatura","Gestión","Metodología","Base de datos","Capacitación","Monitoreo","Consistencia"
-        ]
+    AREAS_OPC = [
+        "Jefatura", "Gestión", "Metodología", "Base de datos", "Capacitación", "Monitoreo", "Consistencia"
+    ]
     st.session_state.setdefault("nt_visible", True)
 
     # Asegurar que "Tipo de tarea" no arranque con 'Otros' por cache previo
@@ -378,13 +383,20 @@ def render(user: dict | None = None):
             _t = st.session_state.get("fi_t")
             st.session_state["fi_t_view"] = _t.strftime("%H:%M") if _t else ""
 
-            # ID preview
+            # ID preview - con validación robusta
             _df_tmp = st.session_state.get("df_main", pd.DataFrame()).copy() if "df_main" in st.session_state else pd.DataFrame()
-            prefix = make_id_prefix(st.session_state.get("nt_area", area_fixed), st.session_state.get("nt_resp", ""))
+            
+            # Asegurar que los valores sean strings válidos
+            area_val = st.session_state.get("nt_area", area_fixed)
+            resp_val = st.session_state.get("nt_resp", "")
+            area_val = str(area_val) if area_val is not None else ""
+            resp_val = str(resp_val) if resp_val is not None else ""
+            
+            prefix = make_id_prefix(area_val, resp_val)
             id_preview = (next_id_by_person(
                 _df_tmp,
-                st.session_state.get("nt_area", area_fixed),
-                st.session_state.get("nt_resp", "")
+                area_val,
+                resp_val
             ) if st.session_state.get("fi_d") else f"{prefix}_")
 
             # ---------- FILA 2 ----------
@@ -392,7 +404,7 @@ def render(user: dict | None = None):
                 # Ciclo, Tipo (editable), Estado, Complejidad, Duración, Fecha
                 r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
                 ciclo_mejora = r2c1.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
-                # tipo editable
+                # *** Cambio: tipo editable (en blanco por defecto) ***
                 r2c2.text_input("Tipo de tarea", key="nt_tipo", placeholder="Escribe el tipo de tarea")
                 r2c3.text_input("Estado actual", value="No iniciado", disabled=True, key="nt_estado_view")
                 r2c4.selectbox("Complejidad", options=["🟢 Baja", "🟡 Media", "🔴 Alta"], index=0, key="nt_complejidad")
@@ -403,10 +415,11 @@ def render(user: dict | None = None):
                 r3c1, r3c2, r3c3, r3c4, r3c5, r3c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
                 r3c1.text_input("Hora de registro (auto)", key="fi_t_view", disabled=True, help="Se asigna al elegir la fecha")
                 r3c2.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
-                # r3c3..r3c6 vacíos
+                # r3c3..r3c6 vacíos (alineación)
             else:
                 # Layout original F2/F3 con tipo editable
                 r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
+                # *** Cambio: tipo editable (en blanco por defecto) ***
                 r2c1.text_input("Tipo de tarea", key="nt_tipo", placeholder="Escribe el tipo de tarea")
                 r2c2.text_input("Estado actual", value="No iniciado", disabled=True, key="nt_estado_view")
                 r2c3.selectbox("Complejidad", options=["🟢 Baja", "🟡 Media", "🔴 Alta"], index=0, key="nt_complejidad")
@@ -464,21 +477,19 @@ def render(user: dict | None = None):
                 else:
                     fase_final = fase_sel
 
-                # 🔧 blank_row con fallback seguro (evita NameError internos)
-                try:
-                    base_row = blank_row()
-                    if not isinstance(base_row, dict):
-                        base_row = {}
-                except Exception:
-                    base_row = {}
+                # Validar y asegurar valores antes de crear el ID
+                area_val = st.session_state.get("nt_area", area_fixed)
+                resp_val = st.session_state.get("nt_resp", "")
+                area_val = str(area_val) if area_val is not None else ""
+                resp_val = str(resp_val) if resp_val is not None else ""
 
-                new = base_row.copy()
+                new = blank_row()
                 new.update({
-                    "Área": st.session_state.get("nt_area", area_fixed),
-                    "Id": next_id_by_person(df, st.session_state.get("nt_area", area_fixed), st.session_state.get("nt_resp", "")),
+                    "Área": area_val,
+                    "Id": next_id_by_person(df, area_val, resp_val),
                     "Tarea": st.session_state.get("nt_tarea", ""),
                     "Tipo": st.session_state.get("nt_tipo", ""),
-                    "Responsable": st.session_state.get("nt_resp", ""),  # fijado al usuario logueado
+                    "Responsable": resp_val,  # fijado al usuario logueado
                     "Fase": fase_final,
                     "Estado": "No iniciado",
 
