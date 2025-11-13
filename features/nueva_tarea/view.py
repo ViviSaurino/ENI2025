@@ -65,6 +65,7 @@ except Exception:
         try:
             from uuid import uuid4
             import pandas as _pd
+            import re as _re
 
             ts = now_lima_trimmed()
             # fecha/hora recibidas como kwargs (preferidas)
@@ -88,7 +89,7 @@ except Exception:
                     s = str(v).strip()
                     if not s:
                         return ts.strftime("%H:%M")
-                    m = re.match(r"^(\d{1,2}):(\d{2})", s)
+                    m = _re.match(r"^(\d{1,2}):(\d{2})", s)
                     if m:
                         return f"{int(m.group(1)):02d}:{int(m.group(2)):02d}"
                     d = pd.to_datetime(s, errors="coerce", utc=False)
@@ -268,9 +269,10 @@ def render(user: dict | None = None):
     """, unsafe_allow_html=True)
 
     # ===== Datos =====
-    AREAS_OPC = [
-        "Jefatura", "Gestión", "Metodología", "Base de datos", "Capacitación", "Monitoreo", "Consistencia"
-    ]
+    if "AREAS_OPC" not in globals():
+        globals()["AREAS_OPC"] = [
+            "Jefatura","Gestión","Metodología","Base de datos","Capacitación","Monitoreo","Consistencia"
+        ]
     st.session_state.setdefault("nt_visible", True)
 
     # Asegurar que "Tipo de tarea" no arranque con 'Otros' por cache previo
@@ -390,7 +392,7 @@ def render(user: dict | None = None):
                 # Ciclo, Tipo (editable), Estado, Complejidad, Duración, Fecha
                 r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
                 ciclo_mejora = r2c1.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
-                # *** Cambio: tipo editable (en blanco por defecto) ***
+                # tipo editable
                 r2c2.text_input("Tipo de tarea", key="nt_tipo", placeholder="Escribe el tipo de tarea")
                 r2c3.text_input("Estado actual", value="No iniciado", disabled=True, key="nt_estado_view")
                 r2c4.selectbox("Complejidad", options=["🟢 Baja", "🟡 Media", "🔴 Alta"], index=0, key="nt_complejidad")
@@ -401,11 +403,10 @@ def render(user: dict | None = None):
                 r3c1, r3c2, r3c3, r3c4, r3c5, r3c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
                 r3c1.text_input("Hora de registro (auto)", key="fi_t_view", disabled=True, help="Se asigna al elegir la fecha")
                 r3c2.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
-                # r3c3..r3c6 vacíos (alineación)
+                # r3c3..r3c6 vacíos
             else:
                 # Layout original F2/F3 con tipo editable
                 r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
-                # *** Cambio: tipo editable (en blanco por defecto) ***
                 r2c1.text_input("Tipo de tarea", key="nt_tipo", placeholder="Escribe el tipo de tarea")
                 r2c2.text_input("Estado actual", value="No iniciado", disabled=True, key="nt_estado_view")
                 r2c3.selectbox("Complejidad", options=["🟢 Baja", "🟡 Media", "🔴 Alta"], index=0, key="nt_complejidad")
@@ -463,7 +464,15 @@ def render(user: dict | None = None):
                 else:
                     fase_final = fase_sel
 
-                new = blank_row()
+                # 🔧 blank_row con fallback seguro (evita NameError internos)
+                try:
+                    base_row = blank_row()
+                    if not isinstance(base_row, dict):
+                        base_row = {}
+                except Exception:
+                    base_row = {}
+
+                new = base_row.copy()
                 new.update({
                     "Área": st.session_state.get("nt_area", area_fixed),
                     "Id": next_id_by_person(df, st.session_state.get("nt_area", area_fixed), st.session_state.get("nt_resp", "")),
