@@ -289,6 +289,8 @@ def render(user: dict | None = None):
             '<b>🏷️ Dar prioridad</b> para guardar en <i>TareasRecientes</i>.</div>',
             unsafe_allow_html=True,
         )
+        # 🔹 Un poco de espacio extra entre la píldora/ayuda y los filtros
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
         # ====== BASE + ACL DE VISUALIZACIÓN ======
         df_all = st.session_state["df_main"].copy()
@@ -494,6 +496,11 @@ def render(user: dict | None = None):
                     fcol.isna() | (fcol <= limite)
                 ]
 
+        # 🔹 Espacio + subtítulo "Resultados" antes de la tabla
+        st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+        st.markdown("**Resultados**")
+        st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+
         # ====== Preparar vista: Prioridad ======
         base = df_filtrado.copy()
         for c in ["Id", "Responsable", "Fase", "Tipo de tarea", "Tarea", "Prioridad"]:
@@ -551,36 +558,41 @@ def render(user: dict | None = None):
         # ===== GRID (estilo tipo Evaluación) =====
         if IS_EDITOR:
             col_defs = [
-                {"field": "Id", "headerName": "Id", "editable": False, "minWidth": 80},
+                {"field": "Id", "headerName": "Id", "editable": False, "minWidth": 80, "flex": 0},
                 {
                     "field": "Responsable",
                     "headerName": "Responsable",
                     "editable": False,
-                    "minWidth": 200,
+                    "minWidth": 180,
+                    "flex": 1,
                 },
                 {
                     "field": "Fase",
                     "headerName": "Fase",
                     "editable": False,
-                    "minWidth": 140,
+                    "minWidth": 130,
+                    "flex": 1,
                 },
                 {
                     "field": "Tipo de tarea",
                     "headerName": "Tipo de tarea",
                     "editable": False,
-                    "minWidth": 200,
+                    "minWidth": 180,
+                    "flex": 1,
                 },
                 {
                     "field": "Tarea",
                     "headerName": "📝 Tarea",
                     "editable": False,
                     "minWidth": 260,
+                    "flex": 2,
                 },
                 {
                     "field": "Prioridad",
                     "headerName": "🏷️ Prioridad",
                     "editable": True,
-                    "minWidth": 160,
+                    "minWidth": 150,
+                    "flex": 1,
                     "cellEditor": "agSelectCellEditor",
                     "cellEditorParams": {"values": CHOICES_EDIT_EMO},
                     "cellStyle": priority_cell_style,
@@ -588,30 +600,34 @@ def render(user: dict | None = None):
             ]
         else:
             col_defs = [
-                {"field": "Id", "headerName": "Id", "editable": False, "minWidth": 80},
+                {"field": "Id", "headerName": "Id", "editable": False, "minWidth": 80, "flex": 0},
                 {
                     "field": "Fase",
                     "headerName": "Fase",
                     "editable": False,
-                    "minWidth": 140,
+                    "minWidth": 130,
+                    "flex": 1,
                 },
                 {
                     "field": "Tipo de tarea",
                     "headerName": "Tipo de tarea",
                     "editable": False,
-                    "minWidth": 200,
+                    "minWidth": 180,
+                    "flex": 1,
                 },
                 {
                     "field": "Tarea",
                     "headerName": "📝 Tarea",
                     "editable": False,
                     "minWidth": 260,
+                    "flex": 2,
                 },
                 {
                     "field": "Prioridad",
                     "headerName": "🏷️ Prioridad",
                     "editable": False,
-                    "minWidth": 160,
+                    "minWidth": 150,
+                    "flex": 1,
                     "cellStyle": priority_cell_style,
                 },
             ]
