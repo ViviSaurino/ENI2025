@@ -552,8 +552,8 @@ def _ensure_deadline_and_compliance(df: pd.DataFrame) -> pd.DataFrame:
     mask_empty = hv.map(lambda x: (str(x).strip() if x is not None else "") == "")
     df["Hora Vencimiento"] = hv.mask(mask_empty, "17:00")
     # Cumplimiento
-    fv = to_naive_local_series(df["Fecha Vencimiento"]) if "Fecha Vencimiento" in df.columns else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns"])
-    ft = to_naive_local_series(df["Fecha Terminado"]) if "Fecha Terminado" in df.columns else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns"])
+    fv = to_naive_local_series(df["Fecha Vencimiento"]) if "Fecha Vencimiento" in df.columns else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]")
+    ft = to_naive_local_series(df["Fecha Terminado"]) if "Fecha Terminado" in df.columns else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]")
     today_ts = pd.Timestamp(date.today())
     fv_n = fv.dt.normalize(); ft_n = ft.dt.normalize()
     has_fv = ~fv_n.isna(); has_ft = ~ft_n.isna()
@@ -617,7 +617,7 @@ def _derive_pending_from_baseline(curr: pd.DataFrame, base: pd.DataFrame,
                 cell_diff[str(rid)] = cols_changed
     return pend_ids, cell_diff, new_ids
 
-# --- Bootstrap fuerte de df_main (garantiza que “pegue” en todas las pestañas) ---
+# --- Bootstrap fuerte de df_main (garantiza que "pegue" en todas las pestañas) ---
 def _bootstrap_df_main_hist():
     need = ("df_main" not in st.session_state
             or not isinstance(st.session_state["df_main"], pd.DataFrame)
@@ -1451,7 +1451,7 @@ def render(user: dict | None = None):
                             ids_to_push = set(pend_ids) | set(new_ids)
 
                             if not ids_to_push:
-                                st.info("No hay cambios permitidos para subir (solo ‘Tarea’, ‘Detalle’, ‘Duración’ y derivados de tus tareas).")
+                                st.info("No hay cambios permitidos para subir (solo 'Tarea', 'Detalle', 'Duración' y derivados de tus tareas).")
                                 st.stop()
 
                         # ▶️ Upsert a TareasRecientes
