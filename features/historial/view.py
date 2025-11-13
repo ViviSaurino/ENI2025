@@ -1227,7 +1227,7 @@ def render(user: dict | None = None):
 
     gob.configure_column(
         "Fecha inicio",
-        headerName=_header_map_norm.get(_normkey("Fecha inicio"), header_map.get("Fecha inicio","Fecha inicio")),
+        headerName=_header_map_norm.get(_normkey("Fecha inicio"), header_map.get("Fecha inicio","Fecha inicio"),
         filter=False, floatingFilter=False, sortable=False, suppressMenu=True,
         cellStyle=cell_style_ini
     )
