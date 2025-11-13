@@ -594,6 +594,9 @@ def render(user: dict | None = None):
 
         st.markdown('</div>', unsafe_allow_html=True)  # /hist-filters
 
+        # ⬅️ Nueva línea gris justo debajo de los filtros (y del botón Buscar)
+        st.markdown('<div style="height:0; border-bottom:1px solid var(--row-sep); margin:6px 0 10px 0;"></div>', unsafe_allow_html=True)
+
     st.markdown('</div>', unsafe_allow_html=True)
 
     show_deleted = st.toggle("Mostrar eliminadas (tachadas)", value=True, key="hist_show_deleted")
@@ -738,7 +741,7 @@ def render(user: dict | None = None):
         if bcol in df_grid.columns:
             df_grid[bcol] = df_grid[bcol].map(_yesno)
 
-    # ⛔ Se elimina la coerción a numérico para respetar “Sin calificar”
+    # ⛔ No forzar a numérico “Calificación” (queremos "Sin calificar")
     # if "Calificación" in df_grid.columns:
     #     df_grid["Calificación"] = pd.to_numeric(df_grid["Calificación"], errors="coerce").fillna(0)
 
@@ -969,6 +972,9 @@ def render(user: dict | None = None):
         cellStyle=cell_style_ini
     )
 
+    # ⬅️ Forzar “Calificación” como texto para evitar "Invalid Number"
+    gob.configure_column("Calificación", type=["textColumn"])
+
     gob.configure_grid_options(
         domLayout="normal",
         rowHeight=34,
@@ -1081,7 +1087,8 @@ def render(user: dict | None = None):
         pass
 
     # ===== Botonera =====
-    st.markdown('<div style="padding:0 16px; border-top:2px solid #EF4444">', unsafe_allow_html=True)
+    # ⬅️ Se quita la línea roja superior; solo padding
+    st.markdown('<div style="padding:0 16px;">', unsafe_allow_html=True)
     _sp, b_sync, b_xlsx, b_save_local, b_save_sheets = st.columns([4.9, 1.4, 1.6, 1.4, 2.2], gap="medium")
 
     with b_xlsx:
