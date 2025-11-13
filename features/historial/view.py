@@ -55,7 +55,7 @@ def _is_super_editor() -> bool:
 TAB_NAME = "Tareas"
 DEFAULT_COLS = [
     "Id","Área","Fase","Responsable",
-    "Tarea","Tipo","Detalle","Ciclo de mejora","Complejidad","Prioridad",
+    "Tarea","Tipo de tarea","Detalle","Ciclo de mejora","Complejidad","Prioridad",
     "Estado","Duración",
     "Fecha Registro","Hora Registro",
     "Fecha inicio","Hora de inicio",
@@ -645,10 +645,14 @@ def render(user: dict | None = None):
         if need not in df_view.columns:
             df_view[need] = "" if "Hora" in need else pd.NaT
 
+    # ⬇️ Canonicalizar “Tipo de tarea” (si la base trae “Tipo”)
+    if "Tipo de tarea" not in df_view.columns and "Tipo" in df_view.columns:
+        df_view["Tipo de tarea"] = df_view["Tipo"]
+
     # ===== GRID =====
     target_cols = [
         "Id","Área","Fase","Responsable",
-        "Tarea","Tipo","Detalle","Ciclo de mejora","Complejidad","Prioridad",
+        "Tarea","Tipo de tarea","Detalle","Ciclo de mejora","Complejidad","Prioridad",
         "Estado","Duración",
         "Fecha Registro","Hora Registro",
         "Fecha inicio","Hora de inicio",
@@ -676,6 +680,13 @@ def render(user: dict | None = None):
 
     df_grid = df_view.reindex(columns=list(dict.fromkeys(target_cols))).copy()
     df_grid = df_grid.loc[:, ~df_grid.columns.duplicated()].copy()
+
+    # ⬇️ Prioridad por defecto (solo visual)
+    if "Prioridad" in df_grid.columns:
+        df_grid["Prioridad"] = df_grid["Prioridad"].astype(str).fillna("")
+        df_grid["Prioridad"] = df_grid["Prioridad"].apply(
+            lambda s: "Sin asignar prioridad" if not str(s).strip() else s
+        )
 
     import unicodedata, re as _re
     def _normcol_hist(x: str) -> str:
@@ -773,7 +784,7 @@ def render(user: dict | None = None):
     width_map = {
         "Id": 110, "Área": 140, "Fase": 180, "Responsable": 220,
         "Tarea": 280, "Detalle": 360, "Detalle de tarea": 360,
-        "Tipo": 140, "Ciclo de mejora": 150, "Complejidad": 140, "Prioridad": 130,
+        "Tipo de tarea": 140, "Ciclo de mejora": 150, "Complejidad": 140, "Prioridad": 130,
         "Estado": 150, "Duración": 120,
         "Fecha Registro": 150, "Hora Registro": 130,
         "Fecha inicio": 150, "Hora de inicio": 130,
