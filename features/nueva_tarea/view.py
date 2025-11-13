@@ -1,5 +1,4 @@
 from __future__ import annotations
-import os
 import re
 from datetime import datetime
 
@@ -7,14 +6,10 @@ import pandas as pd
 import streamlit as st
 
 # ============================================================
-# Utilidades compartidas (solo lo necesario) + fallbacks
+# Utilidades mínimas desde shared (COLS, hora Lima)
 # ============================================================
 try:
-    from shared import (  # type: ignore
-        COLS,
-        now_lima_trimmed,
-        log_reciente,
-    )
+    from shared import COLS, now_lima_trimmed  # type: ignore
 except Exception:
     COLS = None
 
@@ -27,166 +22,126 @@ except Exception:
         def now_lima_trimmed():
             return datetime.now(_LIMA).replace(second=0, microsecond=0)
 
-    except Exception:
+    except Exception:  # pragma: no cover
         def now_lima_trimmed():
             return datetime.now().replace(second=0, microsecond=0)
 
-    def log_reciente(
-        sheet,
-        tarea_nombre: str,
-        especialista: str = "",
-        detalle: str = "Asignada",
-        tab_name: str = "TareasRecientes",
-        **kwargs,
-    ):
-        """
-        Fallback robusto de log_reciente:
-        - Prioriza columnas nuevas: 'Fecha de registro' / 'Hora de registro'.
-        - Soporta esquema antiguo: 'Fecha Registro' / 'Hora Registro'.
-        - Soporta esquema legado: 'fecha' (timestamp).
-        - Si existen en la hoja, también llena:
-          'Área','Fase','Tipo','Estado','Ciclo de mejora','Complejidad',
-          'Duración (días)','Duración','Link de archivo'.
-        """
+# ============================================================
+# Log propio y seguro para "TareasRecientes"
+# (NO usamos log_reciente de shared para evitar NameError)
+# ============================================================
+
+def log_reciente_safe(sheet, tarea_nombre: str, especialista: str = "",
+                      detalle: str = "Asignada", tab_name: str = "TareasRecientes",
+                      **kwargs):
+    """
+    Versión segura de log_reciente:
+    - Si algo falla, simplemente hace 'pass' y NO rompe la app.
+    """
+    try:
+        from uuid import uuid4
+        import pandas as _pd
+
+        ts = now_lima_trimmed()
+        fecha_in = kwargs.get("fecha_reg", None)
+        hora_in = kwargs.get("hora_reg", None)
+
+        # Normalizar fecha
         try:
-            from uuid import uuid4
-            import pandas as _pd
-
-            ts = now_lima_trimmed()
-            fecha_in = kwargs.get("fecha_reg", None)
-            hora_in = kwargs.get("hora_reg", None)
-
-            # Normalizar fecha
-            try:
-                if fecha_in is None or str(fecha_in).strip().lower() in {
-                    "",
-                    "nan",
-                    "nat",
-                    "none",
-                    "null",
-                }:
-                    fecha_txt = ts.strftime("%Y-%m-%d")
-                else:
-                    fecha_txt = pd.to_datetime(fecha_in).strftime("%Y-%m-%d")
-            except Exception:
+            if fecha_in is None or str(fecha_in).strip().lower() in {
+                "", "nan", "nat", "none", "null"
+            }:
                 fecha_txt = ts.strftime("%Y-%m-%d")
-
-            # Normalizar hora → HH:MM
-            def _fmt_hhmm(v) -> str:
-                if v is None:
-                    return ts.strftime("%H:%M")
-                try:
-                    s = str(v).strip()
-                    if not s:
-                        return ts.strftime("%H:%M")
-                    m = re.match(r"^(\d{1,2}):(\d{2})", s)
-                    if m:
-                        return f"{int(m.group(1)):02d}:{int(m.group(2)):02d}"
-                    d = pd.to_datetime(s, errors="coerce", utc=False)
-                    if pd.isna(d):
-                        return ts.strftime("%H:%M")
-                    return f"{int(d.hour):02d}:{int(d.minute):02d}"
-                except Exception:
-                    return ts.strftime("%H:%M")
-
-            hora_txt = _fmt_hhmm(hora_in)
-            id_std = str(kwargs.get("id_val", "")) or uuid4().hex[:10].upper()
-
-            extras = {
-                "Área": kwargs.get("area", ""),
-                "Fase": kwargs.get("fase", ""),
-                "Tipo": kwargs.get("tipo", ""),
-                "Estado": kwargs.get("estado", ""),
-                "Ciclo de mejora": kwargs.get("ciclo_mejora", ""),
-                "Complejidad": kwargs.get("complejidad", ""),
-                "Duración (días)": kwargs.get("duracion_dias", kwargs.get("duracion", "")),
-                "Duración": kwargs.get("duracion", kwargs.get("duracion_dias", "")),
-                "Link de archivo": kwargs.get("link_archivo", ""),
-            }
-
-            row_new = {
-                "Id": id_std,
-                "Fecha de registro": fecha_txt,
-                "Hora de registro": hora_txt,
-                "Acción": "Nueva tarea",
-                "Tarea": tarea_nombre or "",
-                "Responsable": (especialista or "").strip(),
-                "Detalle": (detalle or "").strip(),
-                **extras,
-            }
-            row_old = {
-                "Id": id_std,
-                "Fecha Registro": fecha_txt,
-                "Hora Registro": hora_txt,
-                "Acción": "Nueva tarea",
-                "Tarea": tarea_nombre or "",
-                "Responsable": (especialista or "").strip(),
-                "Detalle": (detalle or "").strip(),
-                **extras,
-            }
-            row_legacy = {
-                "id": id_std,
-                "fecha": f"{fecha_txt} {hora_txt}",
-                "accion": "Nueva tarea",
-                "tarea": tarea_nombre or "",
-                "especialista": (especialista or "").strip(),
-                "detalle": (detalle or "").strip(),
-            }
-
-            if sheet is None:
-                return
-
-            try:
-                from utils.gsheets import (  # type: ignore
-                    read_df_from_worksheet,
-                    upsert_by_id,
-                )
-            except Exception:
-                read_df_from_worksheet = None
-                upsert_by_id = None
-
-            df_exist = None
-            if callable(read_df_from_worksheet):
-                try:
-                    df_exist = read_df_from_worksheet(sheet, tab_name)
-                except Exception:
-                    df_exist = None
-
-            if isinstance(df_exist, _pd.DataFrame) and not df_exist.empty:
-                cols = list(df_exist.columns)
-                payload = {}
-                for c in cols:
-                    if c in row_new:
-                        payload[c] = row_new[c]
-                    elif c in row_old:
-                        payload[c] = row_old[c]
-                    elif c in row_legacy:
-                        payload[c] = row_legacy[c]
-                    else:
-                        payload[c] = ""
-                payload_df = _pd.DataFrame([payload], columns=cols)
             else:
-                payload_df = _pd.DataFrame([row_new])
+                fecha_txt = pd.to_datetime(fecha_in).strftime("%Y-%m-%d")
+        except Exception:
+            fecha_txt = ts.strftime("%Y-%m-%d")
 
-            if callable(upsert_by_id) and (
-                "Id" in payload_df.columns or "id" in payload_df.columns
-            ):
-                id_col = "Id" if "Id" in payload_df.columns else "id"
-                upsert_by_id(sheet, tab_name, payload_df, id_col=id_col)
-            else:
-                ws = sheet.worksheet(tab_name)
-                ws.append_rows(payload_df.astype(str).values.tolist())
-
+        # Normalizar hora → HH:MM
+        def _fmt_hhmm(v) -> str:
+            if v is None:
+                return ts.strftime("%H:%M")
             try:
-                st.cache_data.clear()
+                s = str(v).strip()
+                if not s:
+                    return ts.strftime("%H:%M")
+                m = re.match(r"^(\d{1,2}):(\d{2})", s)
+                if m:
+                    return f"{int(m.group(1)):02d}:{int(m.group(2)):02d}"
+                d = pd.to_datetime(s, errors="coerce", utc=False)
+                if pd.isna(d):
+                    return ts.strftime("%H:%M")
+                return f"{int(d.hour):02d}:{int(d.minute):02d}"
+            except Exception:  # pragma: no cover
+                return ts.strftime("%H:%M")
+
+        hora_txt = _fmt_hhmm(hora_in)
+        id_std = str(kwargs.get("id_val", "")) or uuid4().hex[:10].upper()
+
+        extras = {
+            "Área": kwargs.get("area", ""),
+            "Fase": kwargs.get("fase", ""),
+            "Tipo": kwargs.get("tipo", ""),
+            "Estado": kwargs.get("estado", ""),
+            "Ciclo de mejora": kwargs.get("ciclo_mejora", ""),
+            "Complejidad": kwargs.get("complejidad", ""),
+            "Duración (días)": kwargs.get("duracion_dias", kwargs.get("duracion", "")),
+            "Duración": kwargs.get("duracion", kwargs.get("duracion_dias", "")),
+            "Link de archivo": kwargs.get("link_archivo", ""),
+        }
+
+        row_new = {
+            "Id": id_std,
+            "Fecha de registro": fecha_txt,
+            "Hora de registro": hora_txt,
+            "Acción": "Nueva tarea",
+            "Tarea": tarea_nombre or "",
+            "Responsable": (especialista or "").strip(),
+            "Detalle": (detalle or "").strip(),
+            **extras,
+        }
+
+        if sheet is None:
+            return
+
+        try:
+            from utils.gsheets import read_df_from_worksheet, upsert_by_id  # type: ignore
+        except Exception:
+            read_df_from_worksheet = None
+            upsert_by_id = None
+
+        df_exist = None
+        if callable(read_df_from_worksheet):
+            try:
+                df_exist = read_df_from_worksheet(sheet, tab_name)
             except Exception:
-                pass
+                df_exist = None
+
+        if isinstance(df_exist, _pd.DataFrame) and not df_exist.empty:
+            cols = list(df_exist.columns)
+            payload = {}
+            for c in cols:
+                payload[c] = row_new.get(c, "")
+            payload_df = _pd.DataFrame([payload], columns=cols)
+        else:
+            payload_df = _pd.DataFrame([row_new])
+
+        if callable(upsert_by_id) and ("Id" in payload_df.columns):
+            upsert_by_id(sheet, tab_name, payload_df, id_col="Id")
+        else:
+            ws = sheet.worksheet(tab_name)
+            ws.append_rows(payload_df.astype(str).values.tolist())
+
+        try:
+            st.cache_data.clear()
         except Exception:
             pass
+    except Exception:
+        # Pase lo que pase, aquí NO debe caerse la app
+        pass
 
 # ============================================================
-# Funciones propias y seguras para IDs y filas en blanco
-# (NO dependemos de shared para esto, para evitar NameError 'a')
+# Funciones propias para fila en blanco e IDs (sin shared)
 # ============================================================
 
 SECTION_GAP = globals().get("SECTION_GAP", 30)
@@ -247,7 +202,7 @@ def _get_sheet_conf():
     return ss_url, ws_name
 
 
-# --- helpers de hora para esta vista (si no existen aún) ---
+# --- helpers de hora para esta vista ---
 if "_auto_time_on_date" not in globals():
 
     def _auto_time_on_date():
@@ -437,7 +392,7 @@ def render(user: dict | None = None):
                     key="nt_fase_otro",
                     placeholder="Describe la fase",
                 )
-                tarea = r1c4.text_input(
+                r1c4.text_input(
                     "Tarea", placeholder="Describe la tarea", key="nt_tarea"
                 )
                 r1c5.text_input(
@@ -462,7 +417,7 @@ def render(user: dict | None = None):
                     placeholder="Selecciona una fase",
                     key="nt_fase",
                 )
-                tarea = r1c3.text_input(
+                r1c3.text_input(
                     "Tarea", placeholder="Describe la tarea", key="nt_tarea"
                 )
                 r1c4.text_input(
@@ -473,7 +428,7 @@ def render(user: dict | None = None):
                 r1c5.text_input(
                     "Responsable", key="nt_resp", disabled=True
                 )
-                ciclo_mejora = r1c6.selectbox(
+                r1c6.selectbox(
                     "Ciclo de mejora",
                     options=["1", "2", "3", "+4"],
                     index=0,
@@ -521,7 +476,7 @@ def render(user: dict | None = None):
                 r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns(
                     [A, Fw, T, D, R, C], gap="medium"
                 )
-                ciclo_mejora = r2c1.selectbox(
+                r2c1.selectbox(
                     "Ciclo de mejora",
                     options=["1", "2", "3", "+4"],
                     index=0,
@@ -560,7 +515,7 @@ def render(user: dict | None = None):
                 _sync_time_from_date()
 
                 # ---------- FILA 3 ----------
-                r3c1, r3c2, r3c3, r3c4, r3c5, r3c6 = st.columns(
+                r3c1, r3c2, _, _, _, _ = st.columns(
                     [A, Fw, T, D, R, C], gap="medium"
                 )
                 r3c1.text_input(
@@ -618,7 +573,7 @@ def render(user: dict | None = None):
                     help="Se asigna al elegir la fecha",
                 )
 
-                r3c1, r3c2, r3c3, r3c4, r3c5, r3c6 = st.columns(
+                r3c1, _, _, _, _, _ = st.columns(
                     [A, Fw, T, D, R, C], gap="medium"
                 )
                 r3c1.text_input(
@@ -629,7 +584,7 @@ def render(user: dict | None = None):
                 )
 
         # ---------- Botón agregar ----------
-        left_space, right_btn = st.columns(
+        _, right_btn = st.columns(
             [A + Fw + T + D + R, C], gap="medium"
         )
         with right_btn:
@@ -712,7 +667,7 @@ def render(user: dict | None = None):
                         "Tipo": st.session_state.get("nt_tipo", ""),
                         "Responsable": st.session_state.get(
                             "nt_resp", ""
-                        ),  # fijado al usuario logueado
+                        ),
                         "Fase": fase_final,
                         "Estado": "No iniciado",
                         "Fecha de registro": reg_fecha,
@@ -739,7 +694,6 @@ def render(user: dict | None = None):
                         _dur = int(str(lbl).split()[0])
                     except Exception:
                         _dur = ""
-
                     new["Duración (días)"] = _dur
                     new["Duración"] = _dur
 
@@ -786,16 +740,23 @@ def render(user: dict | None = None):
                         }
 
                 df_rows = pd.DataFrame([new])
-                maybe_save = st.session_state.get("maybe_save")
-                res = (
-                    maybe_save(_persist_to_sheets, df_rows.copy())
-                    if callable(maybe_save)
-                    else _persist_to_sheets(df_rows.copy())
-                )
+                # 👉 Cualquier error en maybe_save también se captura
+                try:
+                    maybe_save = st.session_state.get("maybe_save")
+                    if callable(maybe_save):
+                        res = maybe_save(_persist_to_sheets, df_rows.copy())
+                    else:
+                        res = _persist_to_sheets(df_rows.copy())
+                except Exception as _e:
+                    res = {
+                        "ok": False,
+                        "msg": f"Error interno al guardar en Sheets: {_e}",
+                    }
+
                 if not res.get("ok", False):
                     st.info(res.get("msg", "Guardado en Sheets deshabilitado."))
 
-                # ====== Log universal en TareasRecientes ======
+                # ====== Log universal en TareasRecientes (seguro) ======
                 sheet = None
                 try:
                     url = st.secrets.get("gsheets_doc_url") or (
@@ -809,92 +770,27 @@ def render(user: dict | None = None):
                 except Exception:
                     sheet = None
 
-                extra_kwargs = dict(
-                    area=new.get("Área", ""),
-                    fase=new.get("Fase", ""),
-                    tipo=new.get("Tipo", ""),
-                    estado=new.get("Estado", ""),
-                    ciclo_mejora=new.get("Ciclo de mejora", ""),
-                    complejidad=new.get("Complejidad", ""),
-                    duracion_dias=new.get("Duración (días)", ""),
-                    duracion=new.get("Duración", ""),
-                    link_archivo=new.get("Link de archivo", ""),
-                )
-
                 try:
-                    try:
-                        log_reciente(
-                            sheet,
-                            tarea_nombre=new.get("Tarea", ""),
-                            especialista=new.get("Responsable", ""),
-                            detalle="Asignada",
-                            id_val=new.get("Id", ""),
-                            fecha_reg=reg_fecha,
-                            hora_reg=reg_hora_txt,
-                            **extra_kwargs,
-                        )
-                    except TypeError:
-                        log_reciente(
-                            sheet,
-                            tarea_nombre=new.get("Tarea", ""),
-                            especialista=new.get("Responsable", ""),
-                            detalle="Asignada",
-                            id_val=new.get("Id", ""),
-                            fecha_reg=reg_fecha,
-                            hora_reg=reg_hora_txt,
-                        )
-                        try:
-                            from utils.gsheets import (  # type: ignore
-                                read_df_from_worksheet,
-                                upsert_by_id,
-                            )
-
-                            if (
-                                sheet
-                                and callable(read_df_from_worksheet)
-                                and callable(upsert_by_id)
-                            ):
-                                df_rec = read_df_from_worksheet(
-                                    sheet, "TareasRecientes"
-                                )
-                                if isinstance(df_rec, pd.DataFrame) and not df_rec.empty:
-                                    id_col = (
-                                        "Id"
-                                        if "Id" in df_rec.columns
-                                        else (
-                                            "id" if "id" in df_rec.columns else None
-                                        )
-                                    )
-                                    if id_col:
-                                        row = {id_col: str(new.get("Id", ""))}
-                                        for k_sheet, v_val in {
-                                            "Área": new.get("Área", ""),
-                                            "Fase": new.get("Fase", ""),
-                                            "Tipo": new.get("Tipo", ""),
-                                            "Estado": new.get("Estado", ""),
-                                            "Ciclo de mejora": new.get(
-                                                "Ciclo de mejora", ""
-                                            ),
-                                            "Complejidad": new.get(
-                                                "Complejidad", ""
-                                            ),
-                                            "Duración (días)": new.get(
-                                                "Duración (días)", ""
-                                            ),
-                                            "Duración": new.get("Duración", ""),
-                                            "Detalle": new.get("Detalle", ""),
-                                        }.items():
-                                            if k_sheet in df_rec.columns:
-                                                row[k_sheet] = v_val
-                                        upsert_by_id(
-                                            sheet,
-                                            "TareasRecientes",
-                                            pd.DataFrame([row]),
-                                            id_col=id_col,
-                                        )
-                        except Exception:
-                            pass
+                    log_reciente_safe(
+                        sheet,
+                        tarea_nombre=new.get("Tarea", ""),
+                        especialista=new.get("Responsable", ""),
+                        detalle="Asignada",
+                        id_val=new.get("Id", ""),
+                        fecha_reg=reg_fecha,
+                        hora_reg=reg_hora_txt,
+                        area=new.get("Área", ""),
+                        fase=new.get("Fase", ""),
+                        tipo=new.get("Tipo", ""),
+                        estado=new.get("Estado", ""),
+                        ciclo_mejora=new.get("Ciclo de mejora", ""),
+                        complejidad=new.get("Complejidad", ""),
+                        duracion_dias=new.get("Duración (días)", ""),
+                        duracion=new.get("Duración", ""),
+                        link_archivo=new.get("Link de archivo", ""),
+                    )
                 except Exception:
+                    # Nunca debe romper la vista
                     pass
 
                 # limpiar campos
