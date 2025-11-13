@@ -175,7 +175,8 @@ EMO_MAP = {
     "bajo": "🟢",
     "": "",
 }
-CHOICES_EDIT_EMO = ["⚪ Sin asignar", "🔥 Urgente", "🟡 Media", "🟢 Baja"]
+# 👇 Sin emoji para "Sin asignar" (solo texto)
+CHOICES_EDIT_EMO = ["Sin asignar", "🔥 Urgente", "🟡 Media", "🟢 Baja"]
 
 
 def _strip_emoji(txt: str) -> str:
@@ -206,8 +207,10 @@ def _norm_pri(txt: str) -> str:
 
 
 def _display_with_emoji(label: str) -> str:
-    """Agrega emoji a la etiqueta canónica."""
+    """Agrega emoji a la etiqueta canónica (excepto Sin asignar)."""
     key = (label or "").strip().lower()
+    if key == "sin asignar":
+        return "Sin asignar"
     return f"{EMO_MAP.get(key, '')} {label}".strip()
 
 
@@ -539,25 +542,29 @@ def render(user: dict | None = None):
             """
         function(p){
           const base = {
-            display:'flex', alignItems:'center', justifyContent:'center',
-            height:'100%', padding:'0 10px', borderRadius:'12px',
-            fontWeight:'600', textAlign:'center'
+            display:'flex', alignItems:'center', justifyContent:'flex-start',
+            height:'100%', padding:'0 10px', borderRadius:'8px',
+            fontWeight:'600', textAlign:'left', border:'1px solid transparent'
           };
           const v = String(p.value || '');
           const clean = v.replace(/^[^A-Za-zÁÉÍÓÚáéíóúÜüÑñ]+/,'').trim().toLowerCase();
           if(!clean){ return {}; }
           if(clean === 'sin asignar' || clean === 'sin asignar prioridad'){
-            /* Fondo lila pastel para armonizar con el resto; sin gris */
-            return Object.assign({}, base, {backgroundColor:'#EDE9FE', color:'#4C1D95'});
+            // Celeste muy claro, sin emoji y con leve borde (como celdas de fechas)
+            return Object.assign({}, base, {
+              backgroundColor:'#E0F2FE',  // celeste claro
+              color:'#075985',
+              border:'1px solid #BAE6FD'
+            });
           }
           if(clean === 'urgente'){
-            return Object.assign({}, base, {backgroundColor:'#FEE2E2', color:'#B91C1C'});
+            return Object.assign({}, base, {backgroundColor:'#FEE2E2', color:'#B91C1C', border:'1px solid #FCA5A5'});
           }
           if(clean === 'media'){
-            return Object.assign({}, base, {backgroundColor:'#FEF3C7', color:'#92400E'});
+            return Object.assign({}, base, {backgroundColor:'#FEF3C7', color:'#92400E', border:'1px solid #FDE68A'});
           }
           if(clean === 'baja'){
-            return Object.assign({}, base, {backgroundColor:'#DCFCE7', color:'#166534'});
+            return Object.assign({}, base, {backgroundColor:'#DCFCE7', color:'#166534', border:'1px solid #BBF7D0'});
           }
           return base;
         }"""
