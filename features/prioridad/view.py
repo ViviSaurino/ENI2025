@@ -164,18 +164,17 @@ def _first_valid_date_series(df: pd.DataFrame) -> pd.Series:
     return pd.Series([], dtype="datetime64[ns]")
 
 
-# Normalización y emojis (nueva paleta)
+# Normalización y emojis (nueva paleta con 'Sin asignar')
 EMO_MAP = {
+    "sin asignar": "⚪",
     "urgente": "🔥",
-    "alto": "⬆️",
-    "alta": "⬆️",
-    "medio": "⬇️",
-    "media": "⬇️",
-    "bajo": "🟢",
+    "media": "🟡",
+    "medio": "🟡",
     "baja": "🟢",
+    "bajo": "🟢",
     "": "",
 }
-CHOICES_EDIT_EMO = ["🔥 Urgente", "⬆️ Alto", "⬇️ Medio", "🟢 Bajo"]
+CHOICES_EDIT_EMO = ["⚪ Sin asignar", "🔥 Urgente", "🟡 Media", "🟢 Baja"]
 
 
 def _strip_emoji(txt: str) -> str:
@@ -185,18 +184,24 @@ def _strip_emoji(txt: str) -> str:
 
 
 def _norm_pri(txt: str) -> str:
-    """Devuelve una etiqueta canónica sin emoji: Urgente, Alto, Medio, Bajo."""
+    """
+    Devuelve una etiqueta canónica sin emoji:
+    Sin asignar, Urgente, Media, Baja.
+    """
     t = (_strip_emoji(txt) or "").strip().lower()
-    if t in ("alta", "alto"):
-        return "Alto"
-    if t in ("media", "medio"):
-        return "Medio"
-    if t in ("baja", "bajo"):
-        return "Bajo"
+
+    if t in ("", "sin asignar", "sin prioridad", "ninguna"):
+        return "Sin asignar"
     if t == "urgente":
         return "Urgente"
-    # por defecto: Alto si viene vacío/indefinido en 'actual'
-    return "Alto" if not t else t.title()
+    if t in ("alta", "alto", "media", "medio"):
+        # Mapeamos 'alto/alta' al nuevo nivel 'Media' para compatibilidad
+        return "Media"
+    if t in ("baja", "bajo"):
+        return "Baja"
+
+    # fallback: título
+    return t.title()
 
 
 def _display_with_emoji(label: str) -> str:
@@ -284,9 +289,9 @@ def render(user: dict | None = None):
             st.markdown('<div class="pri-pill">🏷️&nbsp;Prioridad</div>', unsafe_allow_html=True)
 
         st.markdown(
-            '<div class="help-strip-pri">Edita la columna <b>Prioridad</b> '
-            "(solo responsables autorizados). Luego presiona "
-            '<b>🏷️ Dar prioridad</b> para guardar en <i>TareasRecientes</i>.</div>',
+            '<div class="help-strip-pri">💡 <b>Indicaciones:</b> Filtra tu tarea y revisa su prioridad. '
+            "Todas las personas pueden ver este campo, pero solo responsables autorizados pueden "
+            "editarlo y guardar cambios.</div>",
             unsafe_allow_html=True,
         )
         # 🔹 Un poco de espacio extra entre la píldora/ayuda y los filtros
@@ -509,7 +514,8 @@ def render(user: dict | None = None):
 
         cur_norm = base["Prioridad"].astype(str).map(_norm_pri)
         cur_disp = cur_norm.map(_display_with_emoji)
-        cur_disp = cur_disp.mask(cur_disp.eq(""), _display_with_emoji("Alto"))
+        # Por seguridad, si algo quedara vacío, mostramos "Sin asignar"
+        cur_disp = cur_disp.mask(cur_disp.eq(""), _display_with_emoji("Sin asignar"))
 
         view = pd.DataFrame(
             {
@@ -539,16 +545,16 @@ def render(user: dict | None = None):
           const v = String(p.value || '');
           const clean = v.replace(/^[^A-Za-zÁÉÍÓÚáéíóúÜüÑñ]+/,'').trim().toLowerCase();
           if(!clean){ return {}; }
+          if(clean === 'sin asignar'){
+            return Object.assign({}, base, {backgroundColor:'#E5E7EB', color:'#374151'});
+          }
           if(clean === 'urgente'){
             return Object.assign({}, base, {backgroundColor:'#FEE2E2', color:'#B91C1C'});
           }
-          if(clean === 'alto'){
+          if(clean === 'media'){
             return Object.assign({}, base, {backgroundColor:'#FEF3C7', color:'#92400E'});
           }
-          if(clean === 'medio'){
-            return Object.assign({}, base, {backgroundColor:'#DBEAFE', color:'#1E40AF'});
-          }
-          if(clean === 'bajo'){
+          if(clean === 'baja'){
             return Object.assign({}, base, {backgroundColor:'#DCFCE7', color:'#166534'});
           }
           return base;
