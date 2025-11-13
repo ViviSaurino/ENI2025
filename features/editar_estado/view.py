@@ -2,6 +2,7 @@
 from __future__ import annotations
 import os
 import re
+import random
 import pandas as pd
 import streamlit as st
 from st_aggrid import (
@@ -111,6 +112,13 @@ def _display_name() -> str:
         or ""
     )
 
+def _user_email() -> str:
+    u = st.session_state.get("acl_user", {}) or {}
+    return (
+        (u.get("email") or "").strip()
+        or ((st.session_state.get("user") or {}).get("email") or "").strip()
+    )
+
 def _is_super_editor() -> bool:
     u = st.session_state.get("acl_user", {}) or {}
     flag = str(u.get("can_edit_all", "")).strip().lower()
@@ -118,6 +126,15 @@ def _is_super_editor() -> bool:
         return True
     dn = _display_name().strip().lower()
     return dn.startswith("vivi") or dn.startswith("enrique")
+
+def _gen_id() -> str:
+    # yyyyMMddHHmmssSSS + 4 chars robustos
+    from datetime import datetime, timedelta
+    now = datetime.now(_TZ) if _TZ else (datetime.utcnow() - timedelta(hours=5))
+    ts = now.strftime("%Y%m%d%H%M%S%f")[:-3]
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    rand4 = "".join(random.choice(alphabet) for _ in range(4))
+    return f"{ts}-{rand4}"
 
 # --- I/O local robusto (para persistencia entre sesiones) ---
 def _load_local_if_exists() -> pd.DataFrame | None:
@@ -217,6 +234,8 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
         "Fecha cancelada", "Hora cancelada",
         "Fecha pausada", "Hora pausada",
         "Link de archivo",
+        # >>> Ajuste: también empujar Responsable y OwnerEmail si existen
+        "Responsable", "OwnerEmail",
     ]
     cols_to_push = [c for c in base_push_cols if c in col_map]
 
@@ -730,6 +749,13 @@ def render(user: dict | None = None):
                     if grid_data.empty or "Id" not in grid_data.columns:
                         st.info("No hay cambios para guardar.")
                     else:
+                        # --- AJUSTE 1: Autogenerar Id si viene vacío en la vista
+                        id_series = grid_data["Id"].astype(str).str.strip()
+                        mask_blank_ids = id_series.str.lower().isin({"", "-", "nan", "none", "null"})
+                        if mask_blank_ids.any():
+                            for ridx in grid_data.index[mask_blank_ids]:
+                                grid_data.at[ridx, "Id"] = _gen_id()
+
                         grid_data["Id"] = grid_data["Id"].astype(str)
                         g_i = grid_data.set_index("Id")
 
@@ -773,10 +799,31 @@ def render(user: dict | None = None):
                             "Fecha cancelada","Hora cancelada",
                             "Fecha pausada","Hora pausada",
                             "Link de archivo",
-                            "Fecha de registro","Hora de registro"
+                            "Fecha de registro","Hora de registro",
+                            # --- AJUSTE 2: asegurar columnas de propietario/alias
+                            "OwnerEmail","Responsable"
                         ]:
                             if need not in base.columns:
                                 base[need] = ""
+
+                        # --- AJUSTE 1 (complemento): si generamos nuevos Id en la vista y la base tenía filas sin Id,
+                        # ligarlas por 'Tarea' para no perderlas
+                        new_ids = []
+                        if mask_blank_ids.any():
+                            # mapa tarea->nuevo id desde grid
+                            tarea_by_newid = {row["Id"]: row.get("Tarea", "") for _, row in grid_data.iterrows()}
+                            # filas en base con Id vacío
+                            base_blank = base["Id"].astype(str).str.strip().isin({"", "-", "nan", "none", "null"})
+                            if base_blank.any():
+                                for idx_base in base.index[base_blank]:
+                                    t_base = str(base.at[idx_base, "Tarea"] or "").strip()
+                                    # busca si ese 'Tarea' tiene un nuevo Id en grid
+                                    for nid, t_grid in tarea_by_newid.items():
+                                        if not nid:
+                                            continue
+                                        if str(t_grid or "").strip() and t_base == str(t_grid).strip():
+                                            base.at[idx_base, "Id"] = nid
+                                            new_ids.append(nid)
 
                         base = _dedup_keep_last_with_id(base)
                         ids_ok = [i for i in ids_view if i in set(base["Id"].astype(str))]
@@ -811,6 +858,25 @@ def render(user: dict | None = None):
 
                         base_idx = base.copy().set_index("Id")
                         base_idx = base_idx[~base_idx.index.duplicated(keep="last")]
+
+                        # --- AJUSTE 2: auto-asignar OwnerEmail y Responsable para no-super
+                        me_email = _user_email().strip().lower()
+                        resp_alias = (st.secrets.get("resp_alias", {}) or {})
+                        me_alias = resp_alias.get(me_email) or _display_name().strip() or me_email
+
+                        if not is_super:
+                            for i in ids_ok:
+                                prev_owner = _canon_str(base_idx.at[i, "OwnerEmail"]) if i in base_idx.index else ""
+                                prev_resp  = _canon_str(base_idx.at[i, "Responsable"]) if i in base_idx.index else ""
+                                changed_local = False
+                                if not prev_owner:
+                                    base_idx.at[i, "OwnerEmail"] = me_email
+                                    changed_local = True
+                                if not prev_resp:
+                                    base_idx.at[i, "Responsable"] = me_alias
+                                    changed_local = True
+                                if changed_local:
+                                    changed_ids.add(i)
 
                         for i in ids_ok:
                             prev_fi  = _canon_str(base_idx.at[i, "Fecha inicio"]) if i in base_idx.index else ""
@@ -944,6 +1010,8 @@ def render(user: dict | None = None):
                                 "Fecha cancelada","Hora cancelada",
                                 "Fecha pausada","Hora pausada",
                                 "Link de archivo",
+                                # --- AJUSTE 2: persistir en sesión también OwnerEmail y Responsable
+                                "OwnerEmail","Responsable",
                             ]
                             for col in cols_apply:
                                 if col not in full_updated.columns:
