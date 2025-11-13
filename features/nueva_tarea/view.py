@@ -22,29 +22,38 @@ except Exception:
         return {}
 
     def _clean3(s: str) -> str:
+        if s is None:
+            return ""
         s = (s or "").strip().upper()
         s = re.sub(r"[^A-Z0-9\s]+", "", s)
         return re.sub(r"\s+", "", s)[:3]
 
     def make_id_prefix(area: str, resp: str) -> str:
-        # Asegurar que area y resp sean strings válidos
-        area = str(area) if area is not None else ""
-        resp = str(resp) if resp is not None else ""
-        
-        a3 = _clean3(area)
-        r = resp.strip().upper()
-        r_first = r.split()[0] if r.split() else r
-        r3 = _clean3(r_first)
-        if not a3 and not r3: 
+        try:
+            # Validación robusta de entradas
+            area_str = str(area) if area is not None else ""
+            resp_str = str(resp) if resp is not None else ""
+            
+            a3 = _clean3(area_str)
+            r = resp_str.strip().upper()
+            r_first = r.split()[0] if r.split() else r
+            r3 = _clean3(r_first)
+            if not a3 and not r3: 
+                return "GEN"
+            return (a3 or "GEN") + (r3 or "")
+        except Exception:
             return "GEN"
-        return (a3 or "GEN") + (r3 or "")
 
     def next_id_by_person(df: pd.DataFrame, area: str, resp: str) -> str:
-        # Validar entradas antes de procesar
-        area = area if area is not None else ""
-        resp = resp if resp is not None else ""
-        prefix = make_id_prefix(area, resp)
-        return f"{prefix}_{len(df.index)+1}"
+        try:
+            # Validar entradas antes de procesar
+            area = str(area) if area is not None else ""
+            resp = str(resp) if resp is not None else ""
+            prefix = make_id_prefix(area, resp)
+            df_len = len(df.index) if df is not None else 0
+            return f"{prefix}_{df_len + 1}"
+        except Exception:
+            return "GEN_1"
 
     COLS = None
     SECTION_GAP = 30
@@ -384,20 +393,24 @@ def render(user: dict | None = None):
             st.session_state["fi_t_view"] = _t.strftime("%H:%M") if _t else ""
 
             # ID preview - con validación robusta
-            _df_tmp = st.session_state.get("df_main", pd.DataFrame()).copy() if "df_main" in st.session_state else pd.DataFrame()
-            
-            # Asegurar que los valores sean strings válidos
-            area_val = st.session_state.get("nt_area", area_fixed)
-            resp_val = st.session_state.get("nt_resp", "")
-            area_val = str(area_val) if area_val is not None else ""
-            resp_val = str(resp_val) if resp_val is not None else ""
-            
-            prefix = make_id_prefix(area_val, resp_val)
-            id_preview = (next_id_by_person(
-                _df_tmp,
-                area_val,
-                resp_val
-            ) if st.session_state.get("fi_d") else f"{prefix}_")
+            try:
+                _df_tmp = st.session_state.get("df_main", pd.DataFrame()).copy() if "df_main" in st.session_state else pd.DataFrame()
+                
+                # Asegurar que los valores sean strings válidos
+                area_val = st.session_state.get("nt_area", area_fixed)
+                resp_val = st.session_state.get("nt_resp", "")
+                area_val = str(area_val) if area_val is not None else ""
+                resp_val = str(resp_val) if resp_val is not None else ""
+                
+                prefix = make_id_prefix(area_val, resp_val)
+                id_preview = (next_id_by_person(
+                    _df_tmp,
+                    area_val,
+                    resp_val
+                ) if st.session_state.get("fi_d") else f"{prefix}_")
+            except Exception as e:
+                # Fallback seguro si hay algún error
+                id_preview = "GEN_1"
 
             # ---------- FILA 2 ----------
             if _is_fase_otros:
