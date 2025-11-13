@@ -164,9 +164,9 @@ def _first_valid_date_series(df: pd.DataFrame) -> pd.Series:
     return pd.Series([], dtype="datetime64[ns]")
 
 
-# Normalización y emojis (incluye 'Sin asignar prioridad')
+# Normalización y emojis (incluye 'Sin asignar')
 EMO_MAP = {
-    "sin asignar prioridad": "⚪",   # ← añadido
+    "sin asignar prioridad": "⚪",
     "sin asignar": "⚪",
     "urgente": "🔥",
     "media": "🟡",
@@ -187,16 +187,16 @@ def _strip_emoji(txt: str) -> str:
 def _norm_pri(txt: str) -> str:
     """
     Devuelve una etiqueta canónica sin emoji:
-    Sin asignar prioridad, Urgente, Media, Baja.
+    Sin asignar, Urgente, Media, Baja.
     """
     t = (_strip_emoji(txt) or "").strip().lower()
 
     if t in ("", "sin asignar", "sin asignar prioridad", "sin prioridad", "ninguna"):
-        return "Sin asignar prioridad"   # ← cambiado
+        return "Sin asignar"
     if t == "urgente":
         return "Urgente"
     if t in ("alta", "alto", "media", "medio"):
-        # Mapeamos 'alto/alta' al nuevo nivel 'Media' para compatibilidad
+        # Mapeamos 'alto/alta' al nivel 'Media' (compatibilidad)
         return "Media"
     if t in ("baja", "bajo"):
         return "Baja"
@@ -515,8 +515,8 @@ def render(user: dict | None = None):
 
         cur_norm = base["Prioridad"].astype(str).map(_norm_pri)
         cur_disp = cur_norm.map(_display_with_emoji)
-        # Por seguridad, si algo quedara vacío, mostramos "Sin asignar prioridad"
-        cur_disp = cur_disp.mask(cur_disp.eq(""), _display_with_emoji("Sin asignar prioridad"))  # ← cambiado
+        # Por seguridad, si algo quedara vacío, mostramos "Sin asignar"
+        cur_disp = cur_disp.mask(cur_disp.eq(""), _display_with_emoji("Sin asignar"))
 
         view = pd.DataFrame(
             {
@@ -540,14 +540,15 @@ def render(user: dict | None = None):
         function(p){
           const base = {
             display:'flex', alignItems:'center', justifyContent:'center',
-            height:'100%', padding:'0 10px', borderRadius:'999px',
+            height:'100%', padding:'0 10px', borderRadius:'12px',
             fontWeight:'600', textAlign:'center'
           };
           const v = String(p.value || '');
           const clean = v.replace(/^[^A-Za-zÁÉÍÓÚáéíóúÜüÑñ]+/,'').trim().toLowerCase();
           if(!clean){ return {}; }
           if(clean === 'sin asignar' || clean === 'sin asignar prioridad'){
-            return Object.assign({}, base, {backgroundColor:'#E5E7EB', color:'#374151'});
+            /* Fondo lila pastel para armonizar con el resto; sin gris */
+            return Object.assign({}, base, {backgroundColor:'#EDE9FE', color:'#4C1D95'});
           }
           if(clean === 'urgente'){
             return Object.assign({}, base, {backgroundColor:'#FEE2E2', color:'#B91C1C'});
