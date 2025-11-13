@@ -364,16 +364,25 @@ def render(user: dict | None = None):
 
         st.session_state["df_main"] = df_all.copy()
 
-        # 🔐 ACL
-        df_all = apply_scope(df_all, user=user)
+        # 🔐 ACL  **(AJUSTE: toggle 'Ver todas las tareas' para super, y sin apply_scope para super)**
         me = _display_name().strip()
         is_super = _is_super_editor()
-        if not is_super and isinstance(df_all, pd.DataFrame) and "Responsable" in df_all.columns and me:
-            try:
-                mask = df_all["Responsable"].astype(str).str.contains(me, case=False, na=False)
-                df_all = df_all[mask]
-            except Exception:
-                pass
+        if not is_super:
+            df_all = apply_scope(df_all, user=st.session_state.get("acl_user"))
+            if isinstance(df_all, pd.DataFrame) and "Responsable" in df_all.columns and me:
+                try:
+                    mask = df_all["Responsable"].astype(str).str.contains(me, case=False, na=False)
+                    df_all = df_all[mask]
+                except Exception:
+                    pass
+        else:
+            ver_todas = st.toggle("👀 Ver todas las tareas", value=True, key="est_ver_todas")
+            if (not ver_todas) and isinstance(df_all, pd.DataFrame) and "Responsable" in df_all.columns and me:
+                try:
+                    mask = df_all["Responsable"].astype(str).str.contains(me, case=False, na=False)
+                    df_all = df_all[mask]
+                except Exception:
+                    pass
 
         # ===== Rango por defecto (solo por Fecha de registro) =====
         fr_all = pd.to_datetime(df_all.get("Fecha Registro", pd.Series([], dtype=object)), errors="coerce")
