@@ -1,4 +1,4 @@
-# features/prioridad/view.py
+# features/prioridad/view.py 
 from __future__ import annotations
 import os
 from datetime import date
@@ -247,16 +247,16 @@ def render(user: dict | None = None):
           }
 
           :root{
-            --pri-pill: #49BEA9;
-            --pri-help-bg: #ECFDF5;      /* más pastel */
+            --pri-pill: #A7F3D0;        /* más pastel */
+            --pri-help-bg: #ECFDF5;
             --pri-help-border: #A7F3D0;
             --pri-help-text: #047857;
           }
           .pri-pill{
             width:100%; height:38px; border-radius:12px;
             display:flex; align-items:center; gap:8px;
-            background: var(--pri-pill); color:#fff; font-weight:600;
-            padding: 8px 12px; box-shadow: inset 0 -2px 0 rgba(0,0,0,0.06);
+            background: var(--pri-pill); color:#065F46; font-weight:600;
+            padding: 8px 12px; box-shadow: inset 0 -2px 0 rgba(0,0,0,0.04);
           }
           .help-strip-pri{
             background: var(--pri-help-bg);
@@ -278,8 +278,8 @@ def render(user: dict | None = None):
                 df_local if isinstance(df_local, pd.DataFrame) else pd.DataFrame()
             )
 
-        # Píldora
-        _pill_area, _, _, _, _, _ = st.columns([A, Fw, T_width, D, R, C], gap="medium")
+        # Píldora (mismo ancho que Fase)
+        _pill_area, _, _, _, _, _ = st.columns([Fw, Fw, T_width, D, R, C], gap="medium")
         with _pill_area:
             st.markdown('<div class="pri-pill">🏷️&nbsp;Prioridad</div>', unsafe_allow_html=True)
 
@@ -300,26 +300,22 @@ def render(user: dict | None = None):
         # 🔒 VISIBILIDAD por usuario: solo Vivi/Enrique ven todo; el resto solo lo suyo.
         me = _get_display_name().strip()
         if not IS_SUPER_VIEWER:
-            # 1) Reglas externas
             df_all = apply_scope(df_all, user=st.session_state.get("acl_user"))
-            # 2) Filtro por Responsable ~ mi nombre
             if "Responsable" in df_all.columns and me:
                 df_all = df_all[
                     df_all["Responsable"].astype(str).str.contains(me, case=False, na=False)
                 ]
         else:
-            # Super viewer: toggle para ver todas o solo propias
             ver_todas = st.toggle("👀 Ver todas las tareas", value=True, key="pri_ver_todas")
             if (not ver_todas) and "Responsable" in df_all.columns and me:
                 df_all = df_all[
                     df_all["Responsable"].astype(str).str.contains(me, case=False, na=False)
                 ]
 
-        # Alias de columnas para compatibilidad
         if "Tipo de tarea" not in df_all.columns and "Tipo" in df_all.columns:
             df_all["Tipo de tarea"] = df_all["Tipo"]
 
-        # ===== Estado actual calculado (igual que en otras vistas) =====
+        # ===== Estado actual calculado =====
         fi = pd.to_datetime(
             df_all.get("Fecha de inicio", df_all.get("Fecha inicio", pd.Series([], dtype=object))),
             errors="coerce",
@@ -365,16 +361,14 @@ def render(user: dict | None = None):
         # ====== FILTROS ======
         with st.form("pri_filtros_v2", clear_on_submit=False):
             if IS_SUPER_VIEWER:
-                # Responsable | Fase | Tipo | Estado | Desde | Hasta | Buscar
                 c_resp, c_fase, c_tipo, c_estado, c_desde, c_hasta, c_buscar = st.columns(
                     [Fw, Fw, T_width, D, D, R, C], gap="medium"
                 )
             else:
-                # Fase | Tipo | Estado | Desde | Hasta | Buscar
                 c_fase, c_tipo, c_estado, c_desde, c_hasta, c_buscar = st.columns(
                     [Fw, T_width, D, D, R, C], gap="medium"
                 )
-                c_resp = None  # sólo para tipado
+                c_resp = None
 
             fases_all = sorted(
                 [
@@ -475,7 +469,6 @@ def render(user: dict | None = None):
                     df_filtrado["_ESTADO_PRI_"].astype(str) == pri_estado
                 ]
 
-            # Filtro por fechas (similar al resto de vistas)
             if "Fecha inicio" in df_filtrado.columns:
                 fcol = pd.to_datetime(df_filtrado["Fecha inicio"], errors="coerce")
             elif "Fecha Vencimiento" in df_filtrado.columns:
@@ -503,7 +496,7 @@ def render(user: dict | None = None):
 
         # ====== Preparar vista: Prioridad ======
         base = df_filtrado.copy()
-        for c in ["Id", "Responsable", "Tarea", "Prioridad"]:
+        for c in ["Id", "Responsable", "Fase", "Tipo de tarea", "Tarea", "Prioridad"]:
             if c not in base.columns:
                 base[c] = ""
 
@@ -515,12 +508,13 @@ def render(user: dict | None = None):
             {
                 "Id": base["Id"].astype(str),
                 "Responsable": base["Responsable"].astype(str),
+                "Fase": base["Fase"].astype(str),
+                "Tipo de tarea": base["Tipo de tarea"].astype(str),
                 "Tarea": base["Tarea"].astype(str),
                 "Prioridad": cur_disp,
             }
         )
 
-        # Mapa base (para detectar cambios)
         st.session_state["_pri_base_norm"] = dict(
             zip(view["Id"].astype(str), cur_norm.astype(str))
         )
@@ -557,24 +551,36 @@ def render(user: dict | None = None):
         # ===== GRID (estilo tipo Evaluación) =====
         if IS_EDITOR:
             col_defs = [
-                {"field": "Id", "headerName": "Id", "editable": False, "minWidth": 90},
+                {"field": "Id", "headerName": "Id", "editable": False, "minWidth": 80},
                 {
                     "field": "Responsable",
                     "headerName": "Responsable",
                     "editable": False,
-                    "minWidth": 220,
+                    "minWidth": 200,
+                },
+                {
+                    "field": "Fase",
+                    "headerName": "Fase",
+                    "editable": False,
+                    "minWidth": 140,
+                },
+                {
+                    "field": "Tipo de tarea",
+                    "headerName": "Tipo de tarea",
+                    "editable": False,
+                    "minWidth": 200,
                 },
                 {
                     "field": "Tarea",
                     "headerName": "📝 Tarea",
                     "editable": False,
-                    "minWidth": 300,
+                    "minWidth": 260,
                 },
                 {
                     "field": "Prioridad",
                     "headerName": "🏷️ Prioridad",
                     "editable": True,
-                    "minWidth": 170,
+                    "minWidth": 160,
                     "cellEditor": "agSelectCellEditor",
                     "cellEditorParams": {"values": CHOICES_EDIT_EMO},
                     "cellStyle": priority_cell_style,
@@ -582,18 +588,30 @@ def render(user: dict | None = None):
             ]
         else:
             col_defs = [
-                {"field": "Id", "headerName": "Id", "editable": False, "minWidth": 90},
+                {"field": "Id", "headerName": "Id", "editable": False, "minWidth": 80},
+                {
+                    "field": "Fase",
+                    "headerName": "Fase",
+                    "editable": False,
+                    "minWidth": 140,
+                },
+                {
+                    "field": "Tipo de tarea",
+                    "headerName": "Tipo de tarea",
+                    "editable": False,
+                    "minWidth": 200,
+                },
                 {
                     "field": "Tarea",
                     "headerName": "📝 Tarea",
                     "editable": False,
-                    "minWidth": 320,
+                    "minWidth": 260,
                 },
                 {
                     "field": "Prioridad",
                     "headerName": "🏷️ Prioridad",
                     "editable": False,
-                    "minWidth": 170,
+                    "minWidth": 160,
                     "cellStyle": priority_cell_style,
                 },
             ]
