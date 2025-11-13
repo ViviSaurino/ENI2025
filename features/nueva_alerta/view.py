@@ -295,12 +295,12 @@ def render(user: dict | None = None):
             "Id",
             "Tarea",
             "¿Generó alerta?",
-            "N° alerta",
             "Fecha de detección",
             "Hora de detección",
             "¿Se corrigió?",
             "Fecha de corrección",
             "Hora de corrección",
+            "N° alerta"
             "Tipo de alerta",
         ]
 
@@ -309,12 +309,12 @@ def render(user: dict | None = None):
             df_tmp = df_tasks.dropna(subset=["Id"]).copy()
             alert_cols = [
                 "¿Generó alerta?",
-                "N° alerta",
                 "Fecha de detección",
                 "Hora de detección",
                 "¿Se corrigió?",
                 "Fecha de corrección",
                 "Hora de corrección",
+                "N° alerta",
                 "Tipo de alerta",
             ]
             for c in ["Tarea"] + alert_cols:
@@ -434,14 +434,6 @@ def render(user: dict | None = None):
                 "minWidth": 140,
             },
             {
-                "field": "N° alerta",
-                "headerName": "N° alerta",
-                "editable": True,
-                "cellEditor": "agSelectCellEditor",
-                "cellEditorParams": {"values": ["1", "2", "3", "+4"]},
-                "minWidth": 110,
-            },
-            {
                 "field": "Fecha de detección",
                 "headerName": "🔎 Fecha de detección",
                 "editable": True,
@@ -478,6 +470,14 @@ def render(user: dict | None = None):
                 "minWidth": 200,
             },
             {
+                "field": "N° alerta",
+                "headerName": "N° alerta",
+                "editable": True,
+                "cellEditor": "agSelectCellEditor",
+                "cellEditorParams": {"values": ["1", "2", "3", "+4"]},
+                "minWidth": 110,
+            {,
+            {   
                 "field": "Tipo de alerta",
                 "headerName": "⚠️ Tipo de alerta",
                 "editable": True,
