@@ -142,11 +142,11 @@ def render(user: dict | None = None):
             border: 1px dashed var(--eva-help-border) !important;
           }
 
-          /* Scrollbars más delgadas y gris suave */
+          /* Scrollbars más delgadas y gris MUY suave */
           #eva-section .ag-body-horizontal-scroll,
           #eva-section .ag-center-cols-viewport{
             scrollbar-width: thin;
-            scrollbar-color: #D4D4D8 transparent;
+            scrollbar-color: #E5E7EB transparent;
           }
           #eva-section .ag-body-horizontal-scroll::-webkit-scrollbar,
           #eva-section .ag-center-cols-viewport::-webkit-scrollbar{
@@ -154,7 +154,7 @@ def render(user: dict | None = None):
           }
           #eva-section .ag-body-horizontal-scroll::-webkit-scrollbar-thumb,
           #eva-section .ag-center-cols-viewport::-webkit-scrollbar-thumb{
-            background-color:#D4D4D8;
+            background-color:#E5E7EB;
             border-radius:9999px;
           }
           #eva-section .ag-body-horizontal-scroll::-webkit-scrollbar-track,
@@ -181,7 +181,7 @@ def render(user: dict | None = None):
           <div class="help-strip help-strip-eval" id="eva-help"
                style="background: var(--eva-help-bg); color: var(--eva-help-text);
                       border:1px dashed var(--eva-help-border);">
-            📝 <strong>Registra/actualiza la evaluación</strong> de tareas filtradas (solo jefatura).
+            📝 <strong>Indicaciones:</strong> Filtra tu tarea y revisa su evaluación, calificación y cumplimiento. Todas las personas pueden ver este campo, pero solo responsables autorizados pueden editarlo y guardar cambios.
           </div>
           <div class="form-card">
         """,
@@ -576,21 +576,21 @@ def render(user: dict | None = None):
             suppressMovableColumns=True,
             domLayout="normal",
             ensureDomOrder=True,
-            rowHeight=46,
+            rowHeight=42,        # ⬅️ un poquito más bajas
             headerHeight=44,
             suppressHorizontalScroll=False,
         )
 
         # Lectura
         gob.configure_column("Id", editable=False, minWidth=80, flex=0.8)
-        gob.configure_column("Fase", editable=False, minWidth=130, flex=1.2)
+        gob.configure_column("Fase", editable=False, minWidth=180, flex=1.6)
         gob.configure_column(
             "Tipo de tarea", editable=False, minWidth=180, flex=1.4
         )
         gob.configure_column(
             "Tarea",
             editable=False,
-            minWidth=320,   # ⬅️ un poco más ancha
+            minWidth=320,   # un poco más ancha
             flex=2.3,
             headerName="📝 Tarea",
         )
