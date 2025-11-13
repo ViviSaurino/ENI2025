@@ -168,8 +168,13 @@ def _load_local_if_exists() -> pd.DataFrame | None:
 # --- Columna canónica de link ---
 _LINK_CANON = "Link de archivo"
 
+# 🔧 FIX: siempre garantizar la columna canónica incluso con DF vacío
 def _canonicalize_link_column(df: pd.DataFrame) -> pd.DataFrame:
-    if df is None or df.empty:
+    if df is None:
+        return df
+    if df.empty:
+        if _LINK_CANON not in df.columns:
+            df[_LINK_CANON] = ""
         return df
     cols = list(df.columns)
     canon = None
@@ -191,10 +196,15 @@ def _canonicalize_link_column(df: pd.DataFrame) -> pd.DataFrame:
 
 _URL_RX = re.compile(r"https?://", re.I)
 
+# 🔧 FIX: robusto si DF está vacío o falta la columna
 def _maybe_copy_archivo_to_link(df: pd.DataFrame) -> pd.DataFrame:
-    if "Archivo" not in df.columns:
+    if df is None:
         return df
     df = _canonicalize_link_column(df)
+    if _LINK_CANON not in df.columns:
+        df[_LINK_CANON] = ""
+    if "Archivo" not in df.columns:
+        return df
     link = df[_LINK_CANON].astype(str)
     arch = df["Archivo"].astype(str)
     arch = arch.map(lambda x: re.sub(r"<[^>]+>", "", x or ""))
@@ -516,7 +526,14 @@ def _add_business_days(start_dates: pd.Series, days: pd.Series) -> pd.Series:
 # *** NUEVO: asegurar cálculo de Fecha límite/Hora límite y Cumplimiento en un df dado
 def _ensure_deadline_and_compliance(df: pd.DataFrame) -> pd.DataFrame:
     if df is None or df.empty:
-        return df
+        # garantizar columnas si están vacías
+        df = df.copy()
+        if "Hora Vencimiento" not in df.columns:
+            df["Hora Vencimiento"] = ""
+        if "Cumplimiento" not in df.columns:
+            df["Cumplimiento"] = ""
+        return _canonicalize_link_column(df)
+
     df = df.copy()
     # Fecha límite (solo con Duración + Fecha inicio)
     if ("Duración" in df.columns) and ("Fecha inicio" in df.columns):
@@ -535,8 +552,8 @@ def _ensure_deadline_and_compliance(df: pd.DataFrame) -> pd.DataFrame:
     mask_empty = hv.map(lambda x: (str(x).strip() if x is not None else "") == "")
     df["Hora Vencimiento"] = hv.mask(mask_empty, "17:00")
     # Cumplimiento
-    fv = to_naive_local_series(df["Fecha Vencimiento"]) if "Fecha Vencimiento" in df.columns else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]")
-    ft = to_naive_local_series(df["Fecha Terminado"]) if "Fecha Terminado" in df.columns else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]")
+    fv = to_naive_local_series(df["Fecha Vencimiento"]) if "Fecha Vencimiento" in df.columns else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns"])
+    ft = to_naive_local_series(df["Fecha Terminado"]) if "Fecha Terminado" in df.columns else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns"])
     today_ts = pd.Timestamp(date.today())
     fv_n = fv.dt.normalize(); ft_n = ft.dt.normalize()
     has_fv = ~fv_n.isna(); has_ft = ~ft_n.isna()
@@ -551,7 +568,7 @@ def _ensure_deadline_and_compliance(df: pd.DataFrame) -> pd.DataFrame:
     out[no_delivered]      = "❌ No entregado"
     out[risk]              = "⚠️ En riesgo de retrasos"
     df["Cumplimiento"] = out
-    return df
+    return _canonicalize_link_column(df)
 
 # *** NUEVO: baseline diff (reconstrucción si no hay snapshot por edición)
 def _derive_pending_from_baseline(curr: pd.DataFrame, base: pd.DataFrame,
@@ -1392,7 +1409,7 @@ def render(user: dict | None = None):
 
                 pend_ids  = set(st.session_state.get("_hist_changed_ids", []) or [])
                 pend_diff = dict(st.session_state.get("_hist_cell_diff", {}) or {})
-                new_ids   = set(st.session_state.get("_hist_new_ids", []) or [])
+                new_ids   = set(st.session_state.get("_hist_new_ids", []) or {})
 
                 # incluir Ids recién generados como "nuevos"
                 new_ids |= set(map(str, gen_ids))
