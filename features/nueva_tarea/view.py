@@ -6,12 +6,48 @@ import pandas as pd
 import streamlit as st
 
 # ============================================================
-# Utilidades mínimas desde shared (COLS, hora Lima)
+# Utilidades mínimas desde shared (blank_row, IDs, COLS, hora Lima, log_reciente)
 # ============================================================
 try:
-    from shared import COLS, now_lima_trimmed  # type: ignore
+    from shared import (  # type: ignore
+        blank_row,
+        next_id_by_person,
+        make_id_prefix,
+        COLS,
+        now_lima_trimmed,
+        log_reciente,
+    )
 except Exception:
+    # Fallbacks mínimos si no existe shared.py
     COLS = None
+    log_reciente = None  # type: ignore
+
+    def blank_row() -> dict:
+        return {}
+
+    def _clean3(s: str) -> str:
+        s = (s or "").strip().upper()
+        s = re.sub(r"[^A-Z0-9\s]+", "", s)
+        return re.sub(r"\s+", "", s)[:3]
+
+    def make_id_prefix(area: str, resp: str) -> str:
+        a3 = _clean3(area)
+        r = (resp or "").strip().upper()
+        r_first = r.split()[0] if r.split() else r
+        r3 = _clean3(r_first)
+        if not a3 and not r3:
+            return "GEN"
+        return (a3 or "GEN") + (r3 or "")
+
+    def next_id_by_person(df: pd.DataFrame, area: str, resp: str) -> str:
+        prefix = make_id_prefix(area, resp)
+        if "Id" in df.columns:
+            ids = df["Id"].astype(str)
+            mask = ids.str.startswith(prefix + "_")
+            n = int(mask.sum()) + 1
+        else:
+            n = len(df.index) + 1
+        return f"{prefix}_{n}"
 
     # --- Hora local America/Lima (fallback) ---
     try:
@@ -26,8 +62,26 @@ except Exception:
         def now_lima_trimmed():
             return datetime.now().replace(second=0, microsecond=0)
 
+
 # ============================================================
-# SOLO Google Sheets (sin local)
+# Wrapper SEGURO para log_reciente de shared
+# ============================================================
+def log_reciente_safe(*args, **kwargs):
+    """
+    Envuelve shared.log_reciente:
+    - Si existe y funciona, lo llama.
+    - Si falla o no existe, no rompe ni muestra mensajes.
+    """
+    try:
+        if callable(log_reciente):
+            return log_reciente(*args, **kwargs)
+    except Exception:
+        # Silenciamos cualquier error interno del log
+        pass
+
+
+# ============================================================
+# SOLO Google Sheets (para guardar df_main en la hoja principal)
 # ============================================================
 try:
     from utils.gsheets import upsert_rows_by_id, open_sheet_by_url  # type: ignore
@@ -45,216 +99,8 @@ def _get_sheet_conf():
     ws_name = (st.secrets.get("gsheets", {}) or {}).get("worksheet", "TareasRecientes")
     return ss_url, ws_name
 
-# ============================================================
-# Log propio y seguro para "Tareas recientes"
-# ============================================================
-
-def log_reciente_safe(
-    sheet,
-    tarea_nombre: str,
-    especialista: str = "",
-    detalle: str = "Asignada",
-    tab_name: str = "TareasRecientes",
-    **kwargs,
-):
-    """
-    Versión segura de log_reciente:
-    - Si algo falla, simplemente hace 'pass' y NO rompe la app.
-    - Intenta abrir el spreadsheet si sheet es None.
-    - Busca hoja 'TareasRecientes' o 'Tareas recientes' (nombre flexible).
-    """
-    try:
-        from uuid import uuid4
-        import pandas as _pd
-
-        # --- Si no nos pasan sheet, lo abrimos nosotros ---
-        if sheet is None:
-            try:
-                if callable(open_sheet_by_url):
-                    ss_url = (
-                        st.secrets.get("gsheets_doc_url")
-                        or (st.secrets.get("gsheets", {}) or {}).get(
-                            "spreadsheet_url"
-                        )
-                        or (st.secrets.get("sheets", {}) or {}).get("sheet_url")
-                    )
-                    if ss_url:
-                        sheet = open_sheet_by_url(ss_url)
-            except Exception:
-                sheet = None
-
-        if sheet is None:
-            # No hay forma de loguear, salimos silenciosamente
-            return
-
-        ts = now_lima_trimmed()
-        fecha_in = kwargs.get("fecha_reg", None)
-        hora_in = kwargs.get("hora_reg", None)
-
-        # Normalizar fecha
-        try:
-            if fecha_in is None or str(fecha_in).strip().lower() in {
-                "", "nan", "nat", "none", "null"
-            }:
-                fecha_txt = ts.strftime("%Y-%m-%d")
-            else:
-                fecha_txt = pd.to_datetime(fecha_in).strftime("%Y-%m-%d")
-        except Exception:
-            fecha_txt = ts.strftime("%Y-%m-%d")
-
-        # Normalizar hora → HH:MM
-        def _fmt_hhmm(v) -> str:
-            if v is None:
-                return ts.strftime("%H:%M")
-            try:
-                s = str(v).strip()
-                if not s:
-                    return ts.strftime("%H:%M")
-                m = re.match(r"^(\d{1,2}):(\d{2})", s)
-                if m:
-                    return f"{int(m.group(1)):02d}:{int(m.group(2)):02d}"
-                d = pd.to_datetime(s, errors="coerce", utc=False)
-                if pd.isna(d):
-                    return ts.strftime("%H:%M")
-                return f"{int(d.hour):02d}:{int(d.minute):02d}"
-            except Exception:  # pragma: no cover
-                return ts.strftime("%H:%M")
-
-        hora_txt = _fmt_hhmm(hora_in)
-        id_std = str(kwargs.get("id_val", "")) or uuid4().hex[:10].upper()
-
-        extras = {
-            "Área": kwargs.get("area", ""),
-            "Fase": kwargs.get("fase", ""),
-            "Tipo": kwargs.get("tipo", ""),
-            "Estado": kwargs.get("estado", ""),
-            "Ciclo de mejora": kwargs.get("ciclo_mejora", ""),
-            "Complejidad": kwargs.get("complejidad", ""),
-            "Duración (días)": kwargs.get("duracion_dias", kwargs.get("duracion", "")),
-            "Duración": kwargs.get("duracion", kwargs.get("duracion_dias", "")),
-            "Link de archivo": kwargs.get("link_archivo", ""),
-        }
-
-        row_new = {
-            "Id": id_std,
-            "Fecha de registro": fecha_txt,
-            "Hora de registro": hora_txt,
-            "Acción": "Nueva tarea",
-            "Tarea": tarea_nombre or "",
-            "Responsable": (especialista or "").strip(),
-            "Detalle": (detalle or "").strip(),
-            **extras,
-        }
-
-        try:
-            from utils.gsheets import read_df_from_worksheet  # type: ignore
-        except Exception:
-            read_df_from_worksheet = None  # type: ignore[assignment]
-
-        df_exist = None
-        if callable(read_df_from_worksheet):
-            try:
-                df_exist = read_df_from_worksheet(sheet, tab_name)
-            except Exception:
-                df_exist = None
-
-        if isinstance(df_exist, _pd.DataFrame) and not df_exist.empty:
-            cols = list(df_exist.columns)
-            payload = {}
-            for c in cols:
-                payload[c] = row_new.get(c, "")
-            payload_df = _pd.DataFrame([payload], columns=cols)
-        else:
-            payload_df = _pd.DataFrame([row_new])
-
-        # --- Obtener worksheet: nombre flexible ('TareasRecientes' o 'Tareas recientes') ---
-        ws = None
-        try:
-            # Intento directo con el nombre recibido
-            ws = sheet.worksheet(tab_name)
-        except Exception:
-            # Fallback: buscar por nombre normalizado (sin espacios, minúsculas)
-            try:
-                target_norm = re.sub(r"\s+", "", tab_name).strip().lower()
-                for w in sheet.worksheets():
-                    title = getattr(w, "title", "")
-                    name_norm = re.sub(r"\s+", "", title).strip().lower()
-                    if name_norm in {target_norm, "tareasrecientes"}:
-                        ws = w
-                        break
-            except Exception:
-                ws = None
-
-        # Si no existe, la creamos con headers
-        if ws is None:
-            try:
-                n_cols = len(payload_df.columns) or 20
-                ws = sheet.add_worksheet(
-                    title=tab_name,
-                    rows=1000,
-                    cols=n_cols,
-                )
-                ws.append_rows([list(payload_df.columns)])
-            except Exception:
-                ws = None
-
-        if ws is not None:
-            try:
-                ws.append_rows(payload_df.astype(str).values.tolist())
-            except Exception:
-                # No debe romper la app aunque falle el append
-                pass
-
-        try:
-            st.cache_data.clear()
-        except Exception:
-            pass
-    except Exception:
-        # Pase lo que pase, aquí NO debe caerse la app
-        pass
-
-# ============================================================
-# Funciones propias para fila en blanco e IDs (sin shared)
-# ============================================================
 
 SECTION_GAP = globals().get("SECTION_GAP", 30)
-
-
-def blank_row() -> dict:
-    """Diccionario base vacío para nuevas tareas."""
-    return {}
-
-
-def _clean3(s: str) -> str:
-    s = (s or "").strip().upper()
-    s = re.sub(r"[^A-Z0-9\s]+", "", s)
-    return re.sub(r"\s+", "", s)[:3]
-
-
-def make_id_prefix(area: str, resp: str) -> str:
-    """Prefijo tipo AAAFFF (área + primer nombre)."""
-    a3 = _clean3(area)
-    r = (resp or "").strip().upper()
-    r_first = r.split()[0] if r.split() else r
-    r3 = _clean3(r_first)
-    if not a3 and not r3:
-        return "GEN"
-    return (a3 or "GEN") + (r3 or "")
-
-
-def next_id_by_person(df: pd.DataFrame, area: str, resp: str) -> str:
-    """
-    Genera un Id único con prefijo por persona:
-    PREFIJO_N, donde N es el siguiente correlativo para ese prefijo.
-    """
-    prefix = make_id_prefix(area, resp)
-    if "Id" in df.columns:
-        ids = df["Id"].astype(str)
-        mask = ids.str.startswith(prefix + "_")
-        n = int(mask.sum()) + 1
-    else:
-        n = len(df.index) + 1
-    return f"{prefix}_{n}"
 
 
 # --- helpers de hora para esta vista ---
@@ -720,7 +566,9 @@ def render(user: dict | None = None):
                         ),
                         "Tarea": st.session_state.get("nt_tarea", ""),
                         "Tipo": st.session_state.get("nt_tipo", ""),
-                        "Responsable": st.session_state.get("nt_resp", ""),
+                        "Responsable": st.session_state.get(
+                            "nt_resp", ""
+                        ),
                         "Fase": fase_final,
                         "Estado": "No iniciado",
                         "Fecha de registro": reg_fecha,
@@ -776,16 +624,29 @@ def render(user: dict | None = None):
                         return {"ok": False}
 
                 df_rows = pd.DataFrame([new])
-                # 👉 Guardado silencioso: cualquier error se ignora y NO se muestra en UI
+                # Guardado silencioso: cualquier error se ignora y NO se muestra en UI
                 try:
                     _ = _persist_to_sheets(df_rows.copy())
                 except Exception:
                     pass
 
-                # ====== Log universal en Tareas recientes (seguro) ======
+                # ====== Log universal en Tareas recientes (usando shared.log_reciente) ======
+                sheet = None
+                try:
+                    url = st.secrets.get("gsheets_doc_url") or (
+                        st.secrets.get("gsheets", {}) or {}
+                    ).get("spreadsheet_url")
+                    if url and callable(open_sheet_by_url):
+                        try:
+                            sheet = open_sheet_by_url(url)
+                        except Exception:
+                            sheet = None
+                except Exception:
+                    sheet = None
+
                 try:
                     log_reciente_safe(
-                        None,  # dejamos que la función abra el sheet
+                        sheet,
                         tarea_nombre=new.get("Tarea", ""),
                         especialista=new.get("Responsable", ""),
                         detalle="Asignada",
@@ -831,7 +692,6 @@ def render(user: dict | None = None):
 
             except Exception as e:
                 # Si llegas aquí es porque algo muy raro pasó;
-                # si aún ves este mensaje, dime el texto exacto.
                 st.error(f"No pude guardar la nueva tarea: {e}")
 
     gap = SECTION_GAP if "SECTION_GAP" in globals() else 30
