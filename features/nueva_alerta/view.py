@@ -476,7 +476,7 @@ def render(user: dict | None = None):
                 "cellEditor": "agSelectCellEditor",
                 "cellEditorParams": {"values": ["1", "2", "3", "+4"]},
                 "minWidth": 110,
-            {,
+            },
             {   
                 "field": "Tipo de alerta",
                 "headerName": "⚠️ Tipo de alerta",
