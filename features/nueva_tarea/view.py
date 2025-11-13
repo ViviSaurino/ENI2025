@@ -268,10 +268,9 @@ def render(user: dict | None = None):
     """, unsafe_allow_html=True)
 
     # ===== Datos =====
-    if "AREAS_OPC" not in globals():
-        globals()["AREAS_OPC"] = [
-            "Jefatura","Gestión","Metodología","Base de datos","Capacitación","Monitoreo","Consistencia"
-        ]
+    AREAS_OPC = [
+        "Jefatura", "Gestión", "Metodología", "Base de datos", "Capacitación", "Monitoreo", "Consistencia"
+    ]
     st.session_state.setdefault("nt_visible", True)
 
     # Asegurar que "Tipo de tarea" no arranque con 'Otros' por cache previo
