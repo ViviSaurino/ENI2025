@@ -865,8 +865,8 @@ def render(user: dict | None = None):
         df_grid["Duración"] = dur_int.astype(str).replace({"<NA>": ""})
 
     if "Hora Vencimiento" in df_grid.columns:
-        hv = df_grid["Hora Vencimiento"].apply(_fmt_hhmm).astype(str)
-        df_grid["Hora Vencimiento"] = hv.mask(hv.strip()=="", "17:00")
+        hv = df_grid["Hora Vencimiento"].map(_fmt_hhmm).astype(str)
+        df_grid["Hora Vencimiento"] = hv.mask(hv.str.strip()=="", "17:00")
 
     # === Cumplimiento (auto) ===
     if "Cumplimiento" in df_grid.columns:
