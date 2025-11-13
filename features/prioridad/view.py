@@ -189,17 +189,19 @@ def _norm_pri(txt: str) -> str:
     """
     Devuelve una etiqueta canónica sin emoji:
     Sin asignar, Urgente, Media, Baja.
+    Maneja None/nan/null/-/— como 'Sin asignar'.
     """
     t = (_strip_emoji(txt) or "").strip().lower()
 
-    if t in ("", "sin asignar", "sin asignar prioridad", "sin prioridad", "ninguna"):
+    if t in {"", "sin asignar", "sin asignar prioridad", "sin prioridad", "ninguna",
+             "none", "nan", "na", "null", "-", "—"}:
         return "Sin asignar"
     if t == "urgente":
         return "Urgente"
-    if t in ("alta", "alto", "media", "medio"):
+    if t in {"alta", "alto", "media", "medio"}:
         # Mapeamos 'alto/alta' al nivel 'Media' (compatibilidad)
         return "Media"
-    if t in ("baja", "bajo"):
+    if t in {"baja", "bajo"}:
         return "Baja"
 
     # fallback: título
@@ -516,17 +518,23 @@ def render(user: dict | None = None):
             if c not in base.columns:
                 base[c] = ""
 
+        # --- normalización de prioridad (vacíos/None/nan => 'Sin asignar')
         cur_norm = base["Prioridad"].astype(str).map(_norm_pri)
         cur_disp = cur_norm.map(_display_with_emoji)
-        # Por seguridad, si algo quedara vacío, mostramos "Sin asignar"
+        # Seguridad extra si quedara vacío
         cur_disp = cur_disp.mask(cur_disp.eq(""), _display_with_emoji("Sin asignar"))
+
+        # --- evitar 'nan'/'None' en Tipo de tarea (mostrar rayita)
+        tipo_disp = base["Tipo de tarea"].apply(
+            lambda v: "—" if (pd.isna(v) or str(v).strip().lower() in {"", "nan", "none", "na", "null"}) else str(v)
+        )
 
         view = pd.DataFrame(
             {
                 "Id": base["Id"].astype(str),
                 "Responsable": base["Responsable"].astype(str),
                 "Fase": base["Fase"].astype(str),
-                "Tipo de tarea": base["Tipo de tarea"].astype(str),
+                "Tipo de tarea": tipo_disp,
                 "Tarea": base["Tarea"].astype(str),
                 "Prioridad": cur_disp,
             }
