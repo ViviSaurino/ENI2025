@@ -119,7 +119,8 @@ def render(user: dict | None = None):
             """
         <div class="section-na">
           <div class="help-strip help-strip-na" id="na-help">
-            ⚠️ <strong>Vincula una alerta</strong> a una tarea ya registrada
+            💡 <strong>Indicaciones:</strong> Cuando una tarea genere una alerta, regístrala en la tabla. 
+            Consigna la fecha y hora de detección y de corrección, y especifica el tipo de alerta.
           </div>
           <div class="form-card">
         """,
@@ -356,6 +357,7 @@ def render(user: dict | None = None):
         }"""
         )
 
+        # 🎨 Colores suaves: sin grises ni rojos
         si_no_style_genero = JsCode(
             """
         function(p){
@@ -365,8 +367,8 @@ def render(user: dict | None = None):
             fontWeight:'600', textAlign:'center'
           };
           const v = String(p.value || '');
-          if (v === 'Sí') return Object.assign({}, base, {backgroundColor:'#FFF3E0', color:'#E65100'});
-          if (v === 'No') return Object.assign({}, base, {backgroundColor:'#ECEFF1', color:'#37474F'});
+          if (v === 'Sí') return Object.assign({}, base, {backgroundColor:'#FEF9C3', color:'#92400E'});  // amarillo suave
+          if (v === 'No') return Object.assign({}, base, {backgroundColor:'#DBEAFE', color:'#1E3A8A'});  // celeste suave
           return {};
         }"""
         )
@@ -380,8 +382,8 @@ def render(user: dict | None = None):
             fontWeight:'600', textAlign:'center'
           };
           const v = String(p.value || '');
-          if (v === 'Sí') return Object.assign({}, base, {backgroundColor:'#E8F5E9', color:'#1B5E20'});
-          if (v === 'No') return Object.assign({}, base, {backgroundColor:'#FFE0E0', color:'#B71C1C'});
+          if (v === 'Sí') return Object.assign({}, base, {backgroundColor:'#DCFCE7', color:'#166534'});  // verde pastel
+          if (v === 'No') return Object.assign({}, base, {backgroundColor:'#EDE9FE', color:'#4C1D95'});  // lila pastel
           return {};
         }"""
         )
@@ -404,16 +406,16 @@ def render(user: dict | None = None):
         }"""
         )
 
-        on_ready_size = JsCode("function(p){ p.api.sizeColumnsToFit(); }")
-        on_first_size = JsCode("function(p){ p.api.sizeColumnsToFit(); }")
+        # Dejamos handlers vacíos (no usamos sizeColumnsToFit)
+        on_ready_size = JsCode("function(p){}")
+        on_first_size = JsCode("function(p){}")
 
         col_defs = [
-            {"field": "Id", "headerName": "Id", "editable": False, "flex": 0.9, "minWidth": 100},
+            {"field": "Id", "headerName": "Id", "editable": False, "minWidth": 100},
             {
                 "field": "Tarea",
                 "headerName": "📝 Tarea",
                 "editable": False,
-                "flex": 2.2,
                 "minWidth": 220,
                 "cellStyle": {
                     "whiteSpace": "nowrap",
@@ -429,8 +431,7 @@ def render(user: dict | None = None):
                 "cellEditorParams": {"values": ["No", "Sí"]},
                 "valueFormatter": si_no_formatter,
                 "cellStyle": si_no_style_genero,
-                "flex": 1.2,
-                "minWidth": 120,
+                "minWidth": 140,
             },
             {
                 "field": "N° alerta",
@@ -438,7 +439,6 @@ def render(user: dict | None = None):
                 "editable": True,
                 "cellEditor": "agSelectCellEditor",
                 "cellEditorParams": {"values": ["1", "2", "3", "+4"]},
-                "flex": 1.0,
                 "minWidth": 110,
             },
             {
@@ -446,15 +446,13 @@ def render(user: dict | None = None):
                 "headerName": "🔎 Fecha de detección",
                 "editable": True,
                 "cellEditor": date_editor,
-                "flex": 1.4,
-                "minWidth": 160,
+                "minWidth": 200,
             },
             {
                 "field": "Hora de detección",
                 "headerName": "🔎 Hora de detección",
                 "editable": False,
-                "flex": 1.2,
-                "minWidth": 150,
+                "minWidth": 200,
             },
             {
                 "field": "¿Se corrigió?",
@@ -464,30 +462,26 @@ def render(user: dict | None = None):
                 "cellEditorParams": {"values": ["No", "Sí"]},
                 "valueFormatter": si_no_formatter,
                 "cellStyle": si_no_style_corrigio,
-                "flex": 1.2,
-                "minWidth": 120,
+                "minWidth": 140,
             },
             {
                 "field": "Fecha de corrección",
                 "headerName": "🛠️ Fecha de corrección",
                 "editable": True,
                 "cellEditor": date_editor,
-                "flex": 1.4,
-                "minWidth": 160,
+                "minWidth": 200,
             },
             {
                 "field": "Hora de corrección",
                 "headerName": "🛠️ Hora de corrección",
                 "editable": False,
-                "flex": 1.2,
-                "minWidth": 150,
+                "minWidth": 200,
             },
             {
                 "field": "Tipo de alerta",
                 "headerName": "⚠️ Tipo de alerta",
                 "editable": True,
-                "flex": 1.4,
-                "minWidth": 160,
+                "minWidth": 180,
             },
         ]
 
@@ -500,7 +494,6 @@ def render(user: dict | None = None):
                 "wrapHeaderText": False,
                 "autoHeaderHeight": False,
                 "minWidth": 100,
-                "flex": 1,
             },
             "suppressMovableColumns": True,
             "domLayout": "normal",
@@ -521,7 +514,7 @@ def render(user: dict | None = None):
             fit_columns_on_grid_load=False,
             enable_enterprise_modules=False,
             reload_data=False,
-            height=420,  # ⬅️ tabla aún más alta
+            height=420,  # tabla alta
             allow_unsafe_jscode=True,
             theme="balham",
         )
