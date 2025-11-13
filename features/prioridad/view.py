@@ -5,7 +5,7 @@ from datetime import date
 import re
 import pandas as pd
 import streamlit as st
-from st_aggrid import AgGrid, GridUpdateMode, DataReturnMode, JsCode  # ⬅️ agregado JsCode
+from st_aggrid import AgGrid, GridUpdateMode, DataReturnMode, JsCode
 
 # 👇 Upsert centralizado (utils/gsheets)
 try:
@@ -15,12 +15,13 @@ except Exception:
     open_sheet_by_url = None
     read_df_from_worksheet = None
 
-# ===== ACL helpers (solo visibilidad/alcance; edición se mantiene con _is_priority_editor) =====
+# ===== ACL helpers (solo visibilidad/alcance) =====
 try:
     from shared import apply_scope  # type: ignore
 except Exception:
     def apply_scope(df, user=None):
         return df  # fallback no-op
+
 
 def _get_display_name() -> str:
     """Nombre visible del usuario (para match con 'Responsable')."""
@@ -33,6 +34,7 @@ def _get_display_name() -> str:
         or ""
     )
 
+
 def _is_super_viewer(user: dict | None = None) -> bool:
     """
     Solo Vivi y Enrique (o flag can_edit_all_tabs) pueden ver TODAS las tareas
@@ -44,8 +46,10 @@ def _is_super_viewer(user: dict | None = None) -> bool:
     dn = (_get_display_name() or "").strip().lower()
     return dn.startswith("vivi") or dn.startswith("enrique")
 
+
 # Fallbacks seguros
 SECTION_GAP_DEF = globals().get("SECTION_GAP", 30)
+
 
 def _save_local(df: pd.DataFrame):
     """Guardar localmente sin romper si la carpeta no existe."""
@@ -54,6 +58,7 @@ def _save_local(df: pd.DataFrame):
         df.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig")
     except Exception:
         pass
+
 
 def _load_local_if_exists() -> pd.DataFrame | None:
     try:
@@ -64,6 +69,7 @@ def _load_local_if_exists() -> pd.DataFrame | None:
     except Exception:
         pass
     return None
+
 
 # ====== ACL por correo (para edición de prioridad) ======
 def _get_current_email_and_name(user: dict | None = None):
@@ -82,6 +88,7 @@ def _get_current_email_and_name(user: dict | None = None):
     name_cand += [acl_user.get("name"), acl_user.get("username")]
     name = next((c for c in name_cand if isinstance(c, str) and c.strip()), "")
     return (email or "").strip(), name.strip()
+
 
 def _allowed_editors_from_secrets() -> set[str]:
     """
@@ -116,14 +123,36 @@ def _allowed_editors_from_secrets() -> set[str]:
         }
     return allow
 
+
 def _is_priority_editor(user: dict | None = None) -> bool:
-    """True solo si el email está en la lista de editores o tiene can_edit_all_tabs."""
+    """True si el email está en la lista de editores o tiene can_edit_all_tabs."""
     email, _ = _get_current_email_and_name(user)
     email = (email or "").strip().lower()
     acl_user = st.session_state.get("acl_user", {}) or {}
     can_all = bool(acl_user.get("can_edit_all_tabs", False))
     allow = _allowed_editors_from_secrets()
     return can_all or (bool(email) and email in allow)
+
+
+def _is_super_priority_editor(user: dict | None = None) -> bool:
+    """
+    Super-editor de prioridad:
+      - Vivi
+      - Enrique
+      - o quien tenga can_edit_all=True / can_edit_all_tabs=True
+      - o quien esté en la lista de correos permitidos.
+    """
+    acl_user = st.session_state.get("acl_user", {}) or {}
+    flag = str(acl_user.get("can_edit_all", "")).strip().lower()
+    if flag in {"1", "true", "yes", "si", "sí"}:
+        return True
+    if bool(acl_user.get("can_edit_all_tabs", False)):
+        return True
+    dn = (_get_display_name() or "").strip().lower()
+    if dn.startswith("vivi") or dn.startswith("enrique"):
+        return True
+    return _is_priority_editor(user=user)
+
 
 # ===== Helpers =====
 def _first_valid_date_series(df: pd.DataFrame) -> pd.Series:
@@ -134,20 +163,26 @@ def _first_valid_date_series(df: pd.DataFrame) -> pd.Series:
                 return s
     return pd.Series([], dtype="datetime64[ns]")
 
-# Normalización y emojis
+
+# Normalización y emojis (nueva paleta)
 EMO_MAP = {
-    "urgente": "🚨",
-    "alto": "🔴", "alta": "🔴",
-    "medio": "🟡", "media": "🟡",
-    "bajo": "🔵", "baja": "🔵",
-    "": ""
+    "urgente": "🔥",
+    "alto": "⬆️",
+    "alta": "⬆️",
+    "medio": "⬇️",
+    "media": "⬇️",
+    "bajo": "🟢",
+    "baja": "🟢",
+    "": "",
 }
-CHOICES_EDIT_EMO = ["", "🚨 Urgente", "🔴 Alto", "🟡 Medio", "🔵 Bajo"]
+CHOICES_EDIT_EMO = ["🔥 Urgente", "⬆️ Alto", "⬇️ Medio", "🟢 Bajo"]
+
 
 def _strip_emoji(txt: str) -> str:
     if not isinstance(txt, str):
         return ""
-    return re.sub(r"^[^\w]*", "", txt).strip()
+    return re.sub(r"^[^\wÁÉÍÓÚáéíóúÜüÑñ]*", "", txt).strip()
+
 
 def _norm_pri(txt: str) -> str:
     """Devuelve una etiqueta canónica sin emoji: Urgente, Alto, Medio, Bajo."""
@@ -163,10 +198,12 @@ def _norm_pri(txt: str) -> str:
     # por defecto: Alto si viene vacío/indefinido en 'actual'
     return "Alto" if not t else t.title()
 
+
 def _display_with_emoji(label: str) -> str:
     """Agrega emoji a la etiqueta canónica."""
     key = (label or "").strip().lower()
     return f"{EMO_MAP.get(key, '')} {label}".strip()
+
 
 def render(user: dict | None = None):
     # =========================== PRIORIDAD ===============================
@@ -178,42 +215,42 @@ def render(user: dict | None = None):
     c_pill_p, _ = st.columns([A, Fw + T_width + D + R + C], gap="medium")
     with c_pill_p:
         st.markdown("", unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
     if st.session_state["pri_visible"]:
 
         # === 🔐 ACL ===
-        IS_EDITOR = _is_priority_editor(user=user)
+        IS_EDITOR = _is_super_priority_editor(user=user)
+        IS_SUPER_VIEWER = _is_super_viewer(user=user)
 
         # --- contenedor + css ---
         st.markdown('<div id="pri-section">', unsafe_allow_html=True)
-        st.markdown("""
+        st.markdown(
+            """
         <style>
           #pri-section .stButton > button { width: 100% !important; }
           #pri-section .ag-body-horizontal-scroll,
           #pri-section .ag-center-cols-viewport { overflow-x: auto !important; }
 
-          #pri-section .ag-theme-alpine .ag-header,
-          #pri-section .ag-theme-streamlit .ag-header{
-            height: 44px !important; min-height: 44px !important;
+          #pri-section .ag-theme-balham .ag-header{
+            height: 56px !important; min-height: 56px !important;
           }
 
-          #pri-section .ag-theme-alpine{ --ag-font-weight: 400; }
-          #pri-section .ag-theme-streamlit{ --ag-font-weight: 400; }
+          #pri-section .ag-theme-balham{
+            --ag-font-size: 12px;
+            --ag-font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+          }
 
-          #pri-section .ag-theme-alpine .ag-header-cell-label,
-          #pri-section .ag-theme-alpine .ag-header-cell-text,
-          #pri-section .ag-theme-streamlit .ag-header-cell-label,
-          #pri-section .ag-theme-streamlit .ag-header-cell-text{
-            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif !important;
-            font-weight: 400 !important; color: #A7F3D0 !important;
+          #pri-section .ag-theme-balham .ag-header-cell-label,
+          #pri-section .ag-theme-balham .ag-header-cell-text{
+            font-weight: 500 !important;
           }
 
           :root{
             --pri-pill: #49BEA9;
-            --pri-help-bg: #C8EBE5;
-            --pri-help-border: #A3DED3;
-            --pri-help-text: #0F766E;
+            --pri-help-bg: #ECFDF5;      /* más pastel */
+            --pri-help-border: #A7F3D0;
+            --pri-help-text: #047857;
           }
           .pri-pill{
             width:100%; height:38px; border-radius:12px;
@@ -223,17 +260,23 @@ def render(user: dict | None = None):
           }
           .help-strip-pri{
             background: var(--pri-help-bg);
-            border: 2px dotted var(--pri-help-border);
+            border: 1px solid var(--pri-help-border);
             color: var(--pri-help-text);
             border-radius: 10px; padding: 8px 12px; margin: 8px 0 12px 0;
           }
         </style>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
 
         # ====== DATA BASE ======
-        if "df_main" not in st.session_state or not isinstance(st.session_state["df_main"], pd.DataFrame):
+        if "df_main" not in st.session_state or not isinstance(
+            st.session_state["df_main"], pd.DataFrame
+        ):
             df_local = _load_local_if_exists()
-            st.session_state["df_main"] = df_local if isinstance(df_local, pd.DataFrame) else pd.DataFrame()
+            st.session_state["df_main"] = (
+                df_local if isinstance(df_local, pd.DataFrame) else pd.DataFrame()
+            )
 
         # Píldora
         _pill_area, _, _, _, _, _ = st.columns([A, Fw, T_width, D, R, C], gap="medium")
@@ -241,106 +284,249 @@ def render(user: dict | None = None):
             st.markdown('<div class="pri-pill">🏷️&nbsp;Prioridad</div>', unsafe_allow_html=True)
 
         st.markdown(
-            '<div class="help-strip-pri">Edita la columna <b>Prioridad a modificar</b> (solo responsables autorizados). '
-            'Luego presiona <b>🏷️ Dar prioridad</b> para guardar en <i>TareasRecientes</i>.</div>',
-            unsafe_allow_html=True
+            '<div class="help-strip-pri">Edita la columna <b>Prioridad</b> '
+            "(solo responsables autorizados). Luego presiona "
+            '<b>🏷️ Dar prioridad</b> para guardar en <i>TareasRecientes</i>.</div>',
+            unsafe_allow_html=True,
         )
 
-        # ====== FILTROS ======
+        # ====== BASE + ACL DE VISUALIZACIÓN ======
         df_all = st.session_state["df_main"].copy()
         if df_all is None or df_all.empty:
-            df_all = pd.DataFrame(columns=["Id","Área","Fase","Responsable","Tarea","Prioridad"])
+            df_all = pd.DataFrame(
+                columns=["Id", "Área", "Fase", "Responsable", "Tarea", "Tipo de tarea", "Prioridad"]
+            )
 
         # 🔒 VISIBILIDAD por usuario: solo Vivi/Enrique ven todo; el resto solo lo suyo.
         me = _get_display_name().strip()
-        if not _is_super_viewer(user=user):
-            # 1) Si tienes reglas externas, aplícalas
+        if not IS_SUPER_VIEWER:
+            # 1) Reglas externas
             df_all = apply_scope(df_all, user=st.session_state.get("acl_user"))
-            # 2) Filtro por Responsable contiene mi nombre (case-insensitive)
+            # 2) Filtro por Responsable ~ mi nombre
             if "Responsable" in df_all.columns and me:
-                df_all = df_all[df_all["Responsable"].astype(str).str.contains(me, case=False, na=False)]
+                df_all = df_all[
+                    df_all["Responsable"].astype(str).str.contains(me, case=False, na=False)
+                ]
         else:
             # Super viewer: toggle para ver todas o solo propias
             ver_todas = st.toggle("👀 Ver todas las tareas", value=True, key="pri_ver_todas")
             if (not ver_todas) and "Responsable" in df_all.columns and me:
-                df_all = df_all[df_all["Responsable"].astype(str).str.contains(me, case=False, na=False)]
+                df_all = df_all[
+                    df_all["Responsable"].astype(str).str.contains(me, case=False, na=False)
+                ]
 
+        # Alias de columnas para compatibilidad
+        if "Tipo de tarea" not in df_all.columns and "Tipo" in df_all.columns:
+            df_all["Tipo de tarea"] = df_all["Tipo"]
+
+        # ===== Estado actual calculado (igual que en otras vistas) =====
+        fi = pd.to_datetime(
+            df_all.get("Fecha de inicio", df_all.get("Fecha inicio", pd.Series([], dtype=object))),
+            errors="coerce",
+        )
+        ft = pd.to_datetime(
+            df_all.get(
+                "Fecha terminada", df_all.get("Fecha Terminado", pd.Series([], dtype=object))
+            ),
+            errors="coerce",
+        )
+        fe = pd.to_datetime(
+            df_all.get("Fecha eliminada", pd.Series([], dtype=object)), errors="coerce"
+        )
+
+        estado_calc = pd.Series("No iniciado", index=df_all.index, dtype="object")
+        estado_calc = estado_calc.mask(fi.notna() & ft.isna() & fe.isna(), "En curso")
+        estado_calc = estado_calc.mask(ft.notna() & fe.isna(), "Terminada")
+        estado_calc = estado_calc.mask(fe.notna(), "Eliminada")
+        if "Estado" in df_all.columns:
+            saved = df_all["Estado"].astype(str).str.strip()
+            estado_calc = saved.where(~saved.isin(["", "nan", "NaN", "None"]), estado_calc)
+        df_all["_ESTADO_PRI_"] = estado_calc
+
+        estados_catalogo = [
+            "No iniciado",
+            "En curso",
+            "Terminada",
+            "Pausada",
+            "Cancelada",
+            "Eliminada",
+        ]
+
+        # ===== Rangos de fecha =====
         dates_all = _first_valid_date_series(df_all)
         if dates_all.empty:
             today = date.today()
-            min_date = today; max_date = today
+            min_date = today
+            max_date = today
         else:
             min_date = dates_all.min().date()
             max_date = dates_all.max().date()
 
-        with st.form("pri_filtros_v1", clear_on_submit=False):
-            c_area, c_fase, c_resp, c_desde, c_hasta, c_buscar = st.columns([A, Fw, T_width, D, R, C], gap="medium")
+        # ====== FILTROS ======
+        with st.form("pri_filtros_v2", clear_on_submit=False):
+            if IS_SUPER_VIEWER:
+                # Responsable | Fase | Tipo | Estado | Desde | Hasta | Buscar
+                c_resp, c_fase, c_tipo, c_estado, c_desde, c_hasta, c_buscar = st.columns(
+                    [Fw, Fw, T_width, D, D, R, C], gap="medium"
+                )
+            else:
+                # Fase | Tipo | Estado | Desde | Hasta | Buscar
+                c_fase, c_tipo, c_estado, c_desde, c_hasta, c_buscar = st.columns(
+                    [Fw, T_width, D, D, R, C], gap="medium"
+                )
+                c_resp = None  # sólo para tipado
 
-            AREAS_OPC = st.session_state.get(
-                "AREAS_OPC",
-                ["Jefatura", "Gestión", "Metodología", "Base de datos", "Monitoreo", "Capacitación", "Consistencia"],
+            fases_all = sorted(
+                [
+                    x
+                    for x in df_all.get("Fase", pd.Series([], dtype=str))
+                    .astype(str)
+                    .unique()
+                    if x and x != "nan"
+                ]
             )
-            pri_area = c_area.selectbox("Área", ["Todas"] + AREAS_OPC, index=0, key="pri_area")
+            pri_fase = c_fase.selectbox("Fase", ["Todas"] + fases_all, index=0)
 
-            fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
-            pri_fase = c_fase.selectbox("Fase", ["Todas"] + fases_all, index=0, key="pri_fase")
+            tipos_all = sorted(
+                [
+                    x
+                    for x in df_all.get("Tipo de tarea", pd.Series([], dtype=str))
+                    .astype(str)
+                    .unique()
+                    if x and x != "nan"
+                ]
+            )
+            pri_tipo = c_tipo.selectbox("Tipo de tarea", ["Todos"] + tipos_all, index=0)
 
-            df_resp_src = df_all.copy()
-            if pri_area != "Todas":
-                df_resp_src = df_resp_src[df_resp_src.get("Área", "").astype(str) == pri_area]
-            if pri_fase != "Todas" and "Fase" in df_resp_src.columns:
-                df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str) == pri_fase]
-            responsables_all = sorted([x for x in df_resp_src.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
+            estado_labels = {
+                "No iniciado": "⏳ No iniciado",
+                "En curso": "▶️ En curso",
+                "Terminada": "✅ Terminada",
+                "Pausada": "⏸️ Pausada",
+                "Cancelada": "✖️ Cancelada",
+                "Eliminada": "🗑️ Eliminada",
+            }
+            estado_opts_labels = ["Todos"] + [estado_labels[e] for e in estados_catalogo]
+            sel_label = c_estado.selectbox("Estado actual", estado_opts_labels, index=0)
+            pri_estado = (
+                "Todos"
+                if sel_label == "Todos"
+                else [k for k, v in estado_labels.items() if v == sel_label][0]
+            )
 
-            pri_resp = c_resp.multiselect("Responsable", options=responsables_all, default=[], placeholder="Selecciona responsable(s)")
-            pri_desde = c_desde.date_input("Desde", value=min_date, min_value=min_date, max_value=max_date, key="pri_desde")
-            pri_hasta = c_hasta.date_input("Hasta",  value=max_date, min_value=min_date, max_value=max_date, key="pri_hasta")
+            if IS_SUPER_VIEWER:
+                df_resp_src = df_all.copy()
+                if pri_fase != "Todas" and "Fase" in df_resp_src.columns:
+                    df_resp_src = df_resp_src[df_resp_src["Fase"].astype(str) == pri_fase]
+                if pri_tipo != "Todos" and "Tipo de tarea" in df_resp_src.columns:
+                    df_resp_src = df_resp_src[
+                        df_resp_src["Tipo de tarea"].astype(str) == pri_tipo
+                    ]
+                responsables_all = sorted(
+                    [
+                        x
+                        for x in df_resp_src.get("Responsable", pd.Series([], dtype=str))
+                        .astype(str)
+                        .unique()
+                        if x and x != "nan"
+                    ]
+                )
+                pri_resp = c_resp.selectbox(
+                    "Responsable", ["Todos"] + responsables_all, index=0
+                )
+            else:
+                pri_resp = "Todos"
+
+            pri_desde = c_desde.date_input(
+                "Desde",
+                value=min_date,
+                min_value=min_date,
+                max_value=max_date,
+                key="pri_desde",
+            )
+            pri_hasta = c_hasta.date_input(
+                "Hasta",
+                value=max_date,
+                min_value=min_date,
+                max_value=max_date,
+                key="pri_hasta",
+            )
 
             with c_buscar:
                 st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
-                pri_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
+                pri_do_buscar = st.form_submit_button(
+                    "🔍 Buscar", use_container_width=True
+                )
 
         df_filtrado = df_all.copy()
-        base_fecha_col = "Fecha inicio" if "Fecha inicio" in df_filtrado.columns else ("Fecha Vencimiento" if "Fecha Vencimiento" in df_filtrado.columns else None)
         if pri_do_buscar:
-            if pri_area != "Todas":
-                df_filtrado = df_filtrado[df_filtrado.get("Área", "").astype(str) == pri_area]
+            if IS_SUPER_VIEWER and pri_resp != "Todos" and "Responsable" in df_filtrado.columns:
+                df_filtrado = df_filtrado[
+                    df_filtrado["Responsable"].astype(str) == pri_resp
+                ]
             if pri_fase != "Todas" and "Fase" in df_filtrado.columns:
                 df_filtrado = df_filtrado[df_filtrado["Fase"].astype(str) == pri_fase]
-            if pri_resp:
-                df_filtrado = df_filtrado[df_filtrado.get("Responsable", "").astype(str).isin(pri_resp)]
-            if base_fecha_col:
-                fcol = pd.to_datetime(df_filtrado[base_fecha_col], errors="coerce")
-                if pri_desde is not None:
-                    df_filtrado = df_filtrado[fcol >= pd.to_datetime(pri_desde)]
-                if pri_hasta is not None:
-                    df_filtrado = df_filtrado[fcol <= (pd.to_datetime(pri_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))]
+            if pri_tipo != "Todos" and "Tipo de tarea" in df_filtrado.columns:
+                df_filtrado = df_filtrado[
+                    df_filtrado["Tipo de tarea"].astype(str) == pri_tipo
+                ]
+            if pri_estado != "Todos" and "_ESTADO_PRI_" in df_filtrado.columns:
+                df_filtrado = df_filtrado[
+                    df_filtrado["_ESTADO_PRI_"].astype(str) == pri_estado
+                ]
 
-        # ====== Preparar vista: Prioridad actual / a modificar ======
+            # Filtro por fechas (similar al resto de vistas)
+            if "Fecha inicio" in df_filtrado.columns:
+                fcol = pd.to_datetime(df_filtrado["Fecha inicio"], errors="coerce")
+            elif "Fecha Vencimiento" in df_filtrado.columns:
+                fcol = pd.to_datetime(df_filtrado["Fecha Vencimiento"], errors="coerce")
+            elif "Fecha Registro" in df_filtrado.columns:
+                fcol = pd.to_datetime(df_filtrado["Fecha Registro"], errors="coerce")
+            else:
+                fcol = pd.to_datetime(
+                    df_filtrado.get("Fecha", pd.Series([], dtype=str)), errors="coerce"
+                )
+
+            if pri_desde is not None:
+                df_filtrado = df_filtrado[
+                    fcol.isna() | (fcol >= pd.to_datetime(pri_desde))
+                ]
+            if pri_hasta is not None:
+                limite = (
+                    pd.to_datetime(pri_hasta)
+                    + pd.Timedelta(days=1)
+                    - pd.Timedelta(seconds=1)
+                )
+                df_filtrado = df_filtrado[
+                    fcol.isna() | (fcol <= limite)
+                ]
+
+        # ====== Preparar vista: Prioridad ======
         base = df_filtrado.copy()
-        for c in ["Id","Área","Fase","Responsable","Tarea","Prioridad"]:
+        for c in ["Id", "Responsable", "Tarea", "Prioridad"]:
             if c not in base.columns:
                 base[c] = ""
 
-        # Generar columnas nuevas
         cur_norm = base["Prioridad"].astype(str).map(_norm_pri)
         cur_disp = cur_norm.map(_display_with_emoji)
-        cur_disp = cur_disp.mask(cur_disp.eq(""), _display_with_emoji("Alto"))  # por defecto 🔴 Alta
+        cur_disp = cur_disp.mask(cur_disp.eq(""), _display_with_emoji("Alto"))
 
-        view = pd.DataFrame({
-            "Id": base["Id"].astype(str),
-            "Área": base["Área"].astype(str),
-            "Fase": base["Fase"].astype(str),
-            "Responsable": base["Responsable"].astype(str),
-            "Tarea": base["Tarea"].astype(str),
-            "Prioridad actual": cur_disp,
-            "Prioridad a modificar": ""  # editable
-        })
+        view = pd.DataFrame(
+            {
+                "Id": base["Id"].astype(str),
+                "Responsable": base["Responsable"].astype(str),
+                "Tarea": base["Tarea"].astype(str),
+                "Prioridad": cur_disp,
+            }
+        )
 
-        # Snapshot previo (para detectar cambios sobre 'a modificar')
-        st.session_state["_pri_prev"] = view[["Id","Prioridad actual","Prioridad a modificar"]].copy()
+        # Mapa base (para detectar cambios)
+        st.session_state["_pri_base_norm"] = dict(
+            zip(view["Id"].astype(str), cur_norm.astype(str))
+        )
+        st.session_state["_pri_prev"] = view[["Id", "Prioridad"]].copy()
 
-        # ===== Estilo de colores para prioridades (actual y a modificar) =====
+        # ===== Estilo colores para Prioridad =====
         priority_cell_style = JsCode(
             """
         function(p){
@@ -368,67 +554,118 @@ def render(user: dict | None = None):
         }"""
         )
 
-        # ===== GRID =====
-        grid_options = {
-            "columnDefs": [
-                {"field": "Id", "headerName": "Id", "editable": False, "minWidth": 100},
-                {"field": "Área", "headerName": "Área", "editable": False, "minWidth": 140},
-                {"field": "Fase", "headerName": "Fase", "editable": False, "minWidth": 180},
-                {"field": "Responsable", "headerName": "Responsable", "editable": False, "minWidth": 220},
-                {"field": "Tarea", "headerName": "📝 Tarea", "editable": False, "minWidth": 300},
-                {"field": "Prioridad actual", "headerName": "🏷️ Prioridad actual", "editable": False, "minWidth": 160,
-                 "cellStyle": priority_cell_style},
+        # ===== GRID (estilo tipo Evaluación) =====
+        if IS_EDITOR:
+            col_defs = [
+                {"field": "Id", "headerName": "Id", "editable": False, "minWidth": 90},
                 {
-                    "field": "Prioridad a modificar", "headerName": "🏷️ Prioridad a modificar",
-                    "editable": bool(IS_EDITOR), "minWidth": 190,
+                    "field": "Responsable",
+                    "headerName": "Responsable",
+                    "editable": False,
+                    "minWidth": 220,
+                },
+                {
+                    "field": "Tarea",
+                    "headerName": "📝 Tarea",
+                    "editable": False,
+                    "minWidth": 300,
+                },
+                {
+                    "field": "Prioridad",
+                    "headerName": "🏷️ Prioridad",
+                    "editable": True,
+                    "minWidth": 170,
                     "cellEditor": "agSelectCellEditor",
                     "cellEditorParams": {"values": CHOICES_EDIT_EMO},
                     "cellStyle": priority_cell_style,
                 },
-            ],
+            ]
+        else:
+            col_defs = [
+                {"field": "Id", "headerName": "Id", "editable": False, "minWidth": 90},
+                {
+                    "field": "Tarea",
+                    "headerName": "📝 Tarea",
+                    "editable": False,
+                    "minWidth": 320,
+                },
+                {
+                    "field": "Prioridad",
+                    "headerName": "🏷️ Prioridad",
+                    "editable": False,
+                    "minWidth": 170,
+                    "cellStyle": priority_cell_style,
+                },
+            ]
+
+        grid_options = {
+            "columnDefs": col_defs,
             "defaultColDef": {
-                "sortable": False, "filter": False, "floatingFilter": False,
-                "wrapText": False, "autoHeight": False, "resizable": True,
+                "sortable": False,
+                "filter": False,
+                "floatingFilter": False,
+                "wrapText": False,
+                "autoHeight": False,
+                "resizable": True,
             },
+            "suppressMovableColumns": True,
+            "domLayout": "normal",
+            "ensureDomOrder": True,
+            "rowHeight": 38,
+            "headerHeight": 56,
+            "suppressHorizontalScroll": False,
         }
 
         grid_resp = AgGrid(
             view,
             key="grid_prioridad",
             gridOptions=grid_options,
-            theme="streamlit",
+            theme="balham",
             height=420,
             data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
-            update_mode=(GridUpdateMode.MODEL_CHANGED
-                         | GridUpdateMode.FILTERING_CHANGED
-                         | GridUpdateMode.SORTING_CHANGED
-                         | GridUpdateMode.VALUE_CHANGED),
+            update_mode=(
+                GridUpdateMode.MODEL_CHANGED
+                | GridUpdateMode.FILTERING_CHANGED
+                | GridUpdateMode.SORTING_CHANGED
+                | GridUpdateMode.VALUE_CHANGED
+            ),
             allow_unsafe_jscode=True,
         )
 
         # ===== Detectar cambios y preparar dif =====
-        changed_ids = []
+        changed_ids: list[str] = []
         edits = grid_resp.get("data", [])
-        new_df = pd.DataFrame(edits) if isinstance(edits, list) else pd.DataFrame(grid_resp.data)
+        new_df = (
+            pd.DataFrame(edits)
+            if isinstance(edits, list)
+            else pd.DataFrame(grid_resp.data)
+        )
 
-        if not new_df.empty:
-            # normalizar ambos lados (actual vs a modificar)
-            new_df["__actual_norm"] = new_df["Prioridad actual"].astype(str).map(_norm_pri)
-            new_df["__nuevo_norm"] = new_df["Prioridad a modificar"].astype(str).map(_norm_pri)
+        if IS_EDITOR and not new_df.empty:
+            base_map = st.session_state.get("_pri_base_norm", {}) or {}
+            new_df["Id"] = new_df["Id"].astype(str)
 
-            mask_changed = (new_df["__nuevo_norm"].astype(str).str.len() > 0) & (
-                new_df["__nuevo_norm"].ne(new_df["__actual_norm"])
+            new_df["__actual_norm"] = new_df["Id"].map(
+                lambda x: _norm_pri(base_map.get(x, ""))
             )
+            new_df["__nuevo_norm"] = new_df["Prioridad"].astype(str).map(_norm_pri)
+
+            mask_changed = new_df["__nuevo_norm"].ne(new_df["__actual_norm"])
             changed_ids = new_df.loc[mask_changed, "Id"].astype(str).tolist()
 
-            # aplicar al df_main (solo en memoria, columna 'Prioridad')
             if changed_ids:
                 base_full = st.session_state.get("df_main", pd.DataFrame()).copy()
                 if "Id" in base_full.columns:
                     base_full["Id"] = base_full["Id"].astype(str)
-                    upd_map = new_df.loc[mask_changed, ["Id","__nuevo_norm"]].set_index("Id")["__nuevo_norm"]
-                    # Guardar sin emoji (etiqueta canónica)
-                    base_full.loc[base_full["Id"].isin(upd_map.index), "Prioridad"] = base_full["Id"].map(upd_map).fillna(base_full.get("Prioridad"))
+                    upd_map = (
+                        new_df.loc[mask_changed, ["Id", "__nuevo_norm"]]
+                        .set_index("Id")["__nuevo_norm"]
+                    )
+                    base_full.loc[
+                        base_full["Id"].isin(upd_map.index), "Prioridad"
+                    ] = base_full["Id"].map(upd_map).fillna(
+                        base_full.get("Prioridad")
+                    )
                     st.session_state["df_main"] = base_full
                     try:
                         _save_local(base_full.copy())
@@ -437,31 +674,55 @@ def render(user: dict | None = None):
 
         st.session_state["_pri_changed_ids"] = changed_ids
 
-        # ===== ÚNICO BOTÓN =====
-        st.markdown('<div style="padding:0 16px; border-top:2px solid #10B981; margin-top:8px;">', unsafe_allow_html=True)
+        # ===== BOTÓN GUARDAR (solo super-editores) =====
+        st.markdown(
+            '<div style="padding:0 16px; border-top:2px solid #10B981; margin-top:8px;">',
+            unsafe_allow_html=True,
+        )
         _spacer, b_action = st.columns([6.6, 1.8], gap="medium")
         with b_action:
-            click = st.button("🏷️ Dar prioridad", use_container_width=True, disabled=not IS_EDITOR, key="btn_dar_prioridad")
+            click = st.button(
+                "🏷️ Dar prioridad",
+                use_container_width=True,
+                disabled=not IS_EDITOR,
+                key="btn_dar_prioridad",
+            )
 
-        if click:
+        if click and IS_EDITOR:
             try:
                 ids = st.session_state.get("_pri_changed_ids", [])
                 if not ids:
                     st.info("No hay cambios de prioridad para guardar.")
                 else:
                     base_full = st.session_state.get("df_main", pd.DataFrame()).copy()
-                    base_full["Id"] = base_full.get("Id","").astype(str)
+                    base_full["Id"] = base_full.get("Id", "").astype(str)
                     df_rows = base_full[base_full["Id"].isin(ids)].copy()
 
                     if upsert_rows_by_id is None:
                         _save_local(base_full.copy())
-                        st.warning("No se encontró utils.gsheets.upsert_rows_by_id. Se guardó localmente.")
+                        st.warning(
+                            "No se encontró utils.gsheets.upsert_rows_by_id. "
+                            "Se guardó localmente."
+                        )
                     else:
-                        ss_url = (st.secrets.get("gsheets_doc_url")
-                                  or (st.secrets.get("gsheets",{}) or {}).get("spreadsheet_url")
-                                  or (st.secrets.get("sheets",{}) or {}).get("sheet_url"))
-                        ws_name = (st.secrets.get("gsheets",{}) or {}).get("worksheet","TareasRecientes")
-                        res = upsert_rows_by_id(ss_url=ss_url, ws_name=ws_name, df=df_rows, ids=[str(x) for x in ids])
+                        ss_url = (
+                            st.secrets.get("gsheets_doc_url")
+                            or (st.secrets.get("gsheets", {}) or {}).get(
+                                "spreadsheet_url"
+                            )
+                            or (st.secrets.get("sheets", {}) or {}).get("sheet_url")
+                        )
+                        ws_name = (
+                            (st.secrets.get("gsheets", {}) or {}).get(
+                                "worksheet", "TareasRecientes"
+                            )
+                        )
+                        res = upsert_rows_by_id(
+                            ss_url=ss_url,
+                            ws_name=ws_name,
+                            df=df_rows,
+                            ids=[str(x) for x in ids],
+                        )
                         if res.get("ok"):
                             st.success(res.get("msg", "Actualizado."))
                         else:
@@ -469,5 +730,7 @@ def render(user: dict | None = None):
             except Exception as e:
                 st.warning(f"No se pudo guardar prioridad: {e}")
 
-        st.markdown('</div>', unsafe_allow_html=True)
-        st.markdown(f"<div style='height:{SECTION_GAP_DEF}px'></div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown(
+            f"<div style='height:{SECTION_GAP_DEF}px'></div>", unsafe_allow_html=True
+        )
