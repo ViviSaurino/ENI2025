@@ -714,63 +714,69 @@ def render(user: dict | None = None):
 
         st.session_state["_pri_changed_ids"] = changed_ids
 
-        # ===== BOTÓN GUARDAR (solo super-editores) =====
-        st.markdown(
-            '<div style="padding:0 16px; border-top:2px solid #10B981; margin-top:8px;">',
-            unsafe_allow_html=True,
-        )
-        _spacer, b_action = st.columns([6.6, 1.8], gap="medium")
-        with b_action:
-            click = st.button(
-                "🏷️ Dar prioridad",
-                use_container_width=True,
-                disabled=not IS_EDITOR,
-                key="btn_dar_prioridad",
+        # ===== BOTÓN GUARDAR (solo Vivi / Enrique, sin raya verde) =====
+        display_name_lc = (_get_display_name() or "").strip().lower()
+        SHOW_BUTTON = display_name_lc.startswith("vivi") or display_name_lc.startswith("enrique")
+
+        if SHOW_BUTTON:
+            st.markdown(
+                '<div style="padding:0 16px; margin-top:8px;">',
+                unsafe_allow_html=True,
             )
+            _spacer, b_action = st.columns([6.6, 1.8], gap="medium")
+            with b_action:
+                click = st.button(
+                    "🏷️ Dar prioridad",
+                    use_container_width=True,
+                    disabled=not IS_EDITOR,
+                    key="btn_dar_prioridad",
+                )
 
-        if click and IS_EDITOR:
-            try:
-                ids = st.session_state.get("_pri_changed_ids", [])
-                if not ids:
-                    st.info("No hay cambios de prioridad para guardar.")
-                else:
-                    base_full = st.session_state.get("df_main", pd.DataFrame()).copy()
-                    base_full["Id"] = base_full.get("Id", "").astype(str)
-                    df_rows = base_full[base_full["Id"].isin(ids)].copy()
-
-                    if upsert_rows_by_id is None:
-                        _save_local(base_full.copy())
-                        st.warning(
-                            "No se encontró utils.gsheets.upsert_rows_by_id. "
-                            "Se guardó localmente."
-                        )
+            if click and IS_EDITOR:
+                try:
+                    ids = st.session_state.get("_pri_changed_ids", [])
+                    if not ids:
+                        st.info("No hay cambios de prioridad para guardar.")
                     else:
-                        ss_url = (
-                            st.secrets.get("gsheets_doc_url")
-                            or (st.secrets.get("gsheets", {}) or {}).get(
-                                "spreadsheet_url"
-                            )
-                            or (st.secrets.get("sheets", {}) or {}).get("sheet_url")
-                        )
-                        ws_name = (
-                            (st.secrets.get("gsheets", {}) or {}).get(
-                                "worksheet", "TareasRecientes"
-                            )
-                        )
-                        res = upsert_rows_by_id(
-                            ss_url=ss_url,
-                            ws_name=ws_name,
-                            df=df_rows,
-                            ids=[str(x) for x in ids],
-                        )
-                        if res.get("ok"):
-                            st.success(res.get("msg", "Actualizado."))
-                        else:
-                            st.warning(res.get("msg", "No se pudo actualizar."))
-            except Exception as e:
-                st.warning(f"No se pudo guardar prioridad: {e}")
+                        base_full = st.session_state.get("df_main", pd.DataFrame()).copy()
+                        base_full["Id"] = base_full.get("Id", "").astype(str)
+                        df_rows = base_full[base_full["Id"].isin(ids)].copy()
 
-        st.markdown("</div>", unsafe_allow_html=True)
+                        if upsert_rows_by_id is None:
+                            _save_local(base_full.copy())
+                            st.warning(
+                                "No se encontró utils.gsheets.upsert_rows_by_id. "
+                                "Se guardó localmente."
+                            )
+                        else:
+                            ss_url = (
+                                st.secrets.get("gsheets_doc_url")
+                                or (st.secrets.get("gsheets", {}) or {}).get(
+                                    "spreadsheet_url"
+                                )
+                                or (st.secrets.get("sheets", {}) or {}).get("sheet_url")
+                            )
+                            ws_name = (
+                                (st.secrets.get("gsheets", {}) or {}).get(
+                                    "worksheet", "TareasRecientes"
+                                )
+                            )
+                            res = upsert_rows_by_id(
+                                ss_url=ss_url,
+                                ws_name=ws_name,
+                                df=df_rows,
+                                ids=[str(x) for x in ids],
+                            )
+                            if res.get("ok"):
+                                st.success(res.get("msg", "Actualizado."))
+                            else:
+                                st.warning(res.get("msg", "No se pudo actualizar."))
+                except Exception as e:
+                    st.warning(f"No se pudo guardar prioridad: {e}")
+
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # Espacio final de sección
         st.markdown(
             f"<div style='height:{SECTION_GAP_DEF}px'></div>", unsafe_allow_html=True
         )
