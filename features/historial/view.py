@@ -82,14 +82,38 @@ except Exception:
     _TZ = None
 
 def to_naive_local_series(s: pd.Series) -> pd.Series:
+    # *** FIX: parser más tolerante (epoch ms/seg, serial Excel, dayfirst)
     ser = pd.to_datetime(s, errors="coerce", utc=False)
     try:
         raw = pd.Series(s, copy=False)
+
+        # Epoch en milisegundos (12–13 dígitos)
         mask_ms = raw.astype(str).str.fullmatch(r"\d{12,13}")
         if mask_ms.any():
             ser.loc[mask_ms] = pd.to_datetime(raw.loc[mask_ms].astype("int64"), unit="ms", utc=True)
+
+        # Epoch en segundos (10 dígitos)
+        mask_s = raw.astype(str).str.fullmatch(r"\d{10}")
+        if mask_s.any():
+            ser.loc[mask_s] = pd.to_datetime(raw.loc[mask_s].astype("int64"), unit="s", utc=True)
+
+        # Serial Excel (días desde 1899-12-30) — rango razonable 1982–2064 aprox.
+        ser_isna = ser.isna()
+        raw_num = pd.to_numeric(raw, errors="coerce")
+        mask_excel = ser_isna & raw_num.notna() & raw_num.between(30000, 60000)
+        if mask_excel.any():
+            origin = pd.Timestamp("1899-12-30")
+            ser.loc[mask_excel] = origin + pd.to_timedelta(raw_num.loc[mask_excel].astype(float), unit="D")
+
+        # Reintento con dayfirst si aún queda NaT y hay separadores
+        ser_isna2 = ser.isna()
+        raw_str = raw.astype(str)
+        mask_slash = ser_isna2 & raw_str.str.contains(r"[/-]", regex=True)
+        if mask_slash.any():
+            ser.loc[mask_slash] = pd.to_datetime(raw_str.loc[mask_slash], errors="coerce", dayfirst=True, utc=False)
     except Exception:
         pass
+
     try:
         if getattr(ser.dt, "tz", None) is not None:
             ser = (ser.dt.tz_convert(_TZ) if _TZ else ser).dt.tz_localize(None)
@@ -469,7 +493,7 @@ def _ensure_deadline_and_compliance(df: pd.DataFrame) -> pd.DataFrame:
     if df is None or df.empty:
         return df
     df = df.copy()
-    # Fecha límite
+    # Fecha límite (solo con Duración + Fecha inicio)
     if ("Duración" in df.columns) and ("Fecha inicio" in df.columns):
         dur_num = pd.to_numeric(df["Duración"], errors="coerce")
         ok = dur_num.where(dur_num >= 1)
@@ -485,7 +509,7 @@ def _ensure_deadline_and_compliance(df: pd.DataFrame) -> pd.DataFrame:
     hv = df["Hora Vencimiento"].map(_fmt_hhmm)
     mask_empty = hv.map(lambda x: (str(x).strip() if x is not None else "") == "")
     df["Hora Vencimiento"] = hv.mask(mask_empty, "17:00")
-    # Cumplimiento (crear siempre, evitando índices no alineados)
+    # Cumplimiento
     fv = to_naive_local_series(df["Fecha Vencimiento"]) if "Fecha Vencimiento" in df.columns else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]")
     ft = to_naive_local_series(df["Fecha Terminado"]) if "Fecha Terminado" in df.columns else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]")
     today_ts = pd.Timestamp(date.today())
@@ -1247,7 +1271,7 @@ def render(user: dict | None = None):
                 for rid in ids_changed:
                     diff_mask = neq.loc[rid].to_numpy()
                     diff_cols = set(neq.columns[diff_mask].tolist())
-                    # *** NUEVO: si cambian campos base, forzar derivados si variaron
+                    # *** FIX: si cambian base, forzar derivados para subir
                     if {"Duración","Fecha inicio"} & diff_cols:
                         diff_cols |= {"Fecha Vencimiento","Hora Vencimiento"}
                     if {"Fecha Vencimiento","Fecha Terminado"} & diff_cols:
@@ -1340,9 +1364,8 @@ def render(user: dict | None = None):
 
                 # Fallback si no detectó cambios (reconstruir contra baseline)
                 if (not pend_ids) and (not new_ids):
-                    allowed = None
-                    if not _is_super_editor():
-                        allowed = {"Tarea","Detalle","Detalle de tarea"}
+                    # *** FIX: permitir Duración + derivados en usuarios no-super
+                    allowed = None if _is_super_editor() else {"Tarea","Detalle","Detalle de tarea","Duración","Fecha inicio","Fecha Vencimiento","Hora Vencimiento","Cumplimiento"}
                     base_line = st.session_state.get("_hist_baseline")
                     p_ids, p_diff, p_new = _derive_pending_from_baseline(base_full, base_line, allowed_cols=allowed)
                     pend_ids, pend_diff, new_ids = p_ids, {k: set(v) for k,v in p_diff.items()}, p_new
@@ -1363,7 +1386,8 @@ def render(user: dict | None = None):
                                 mask_mias = base_full["Responsable"].astype(str).str.contains(me, case=False, na=False)
                                 base_full = base_full[mask_mias]
 
-                            ALLOWED_USER_COLS = {"Tarea", "Detalle", "Detalle de tarea"}
+                            # *** FIX: incluir Duración y derivados en permitidas
+                            ALLOWED_USER_COLS = {"Tarea","Detalle","Detalle de tarea","Duración","Fecha inicio","Fecha Vencimiento","Hora Vencimiento","Cumplimiento"}
                             filtered_cell_diff = {}
                             for rid, cols in pend_diff.items():
                                 keep = {c for c in set(cols) if c in ALLOWED_USER_COLS}
@@ -1377,7 +1401,7 @@ def render(user: dict | None = None):
                             ids_to_push = set(pend_ids) | set(new_ids)
 
                             if not ids_to_push:
-                                st.info("No hay cambios permitidos para subir (solo ‘Tarea’ y ‘Detalle’ de tus tareas).")
+                                st.info("No hay cambios permitidos para subir (solo ‘Tarea’, ‘Detalle’, ‘Duración’ y derivados de tus tareas).")
                                 st.stop()
 
                         # ▶️ Upsert a TareasRecientes
