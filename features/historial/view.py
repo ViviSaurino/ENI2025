@@ -288,7 +288,7 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
         keep = alerta_cols[0]
         if keep != "N° alerta":
             df.rename(columns={keep: "N° alerta"}, inplace=True)
-        for c in alerta_cols[1:]        :
+        for c in alerta_cols[1:]:
             df.drop(columns=c, inplace=True, errors="ignore")
 
     if "Id" in df.columns and isinstance(st.session_state.get("df_main"), pd.DataFrame) and "Id" in st.session_state["df_main"].columns:
