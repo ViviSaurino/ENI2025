@@ -114,9 +114,9 @@ def render(user: dict | None = None):
           #eva-section .eva-bad { color:#dc2626 !important; }
           #eva-section .eva-obs { color:#d97706 !important; }
 
-          /* ===== Paleta (más pastel) ===== */
+          /* ===== Paleta (más pastel, un poco más naranja) ===== */
           :root{
-            --eva-pill: #FFE4C7;        /* Naranja aún más pastel */
+            --eva-pill: #FED7AA;        /* Naranja pastel un poquito más intenso */
             --eva-help-bg: #FFF7ED;     /* Naranja MUY claro */
             --eva-help-border: #FED7AA; /* Naranja claro para borde */
             --eva-help-text: #92400E;   /* Texto legible */
@@ -128,19 +128,38 @@ def render(user: dict | None = None):
             display:flex; align-items:center; justify-content:center;
             background: var(--eva-pill);
             color:#ffffff; font-weight:700;
-            box-shadow:0 6px 14px rgba(255,228,199,.35);
+            box-shadow:0 6px 14px rgba(254,215,170,.35);
             user-select:none; margin:4px 0 16px;
           }
           .eva-pill span{ display:inline-flex; gap:8px; align-items:center; }
 
-          /* Franja de indicaciones: forzar naranja (derrota estilos globales) */
+          /* Franja de indicaciones: solo línea punteada, sin doble borde */
           #eva-section .help-strip,
           #eva-section .help-strip-eval{
             background: var(--eva-help-bg) !important;
             background-image: none !important;
             color: var(--eva-help-text) !important;
             border: 1px dashed var(--eva-help-border) !important;
-            box-shadow: 0 0 0 1px var(--eva-help-border) inset !important;
+          }
+
+          /* Scrollbars más delgadas y gris suave */
+          #eva-section .ag-body-horizontal-scroll,
+          #eva-section .ag-center-cols-viewport{
+            scrollbar-width: thin;
+            scrollbar-color: #D4D4D8 transparent;
+          }
+          #eva-section .ag-body-horizontal-scroll::-webkit-scrollbar,
+          #eva-section .ag-center-cols-viewport::-webkit-scrollbar{
+            height: 6px;
+          }
+          #eva-section .ag-body-horizontal-scroll::-webkit-scrollbar-thumb,
+          #eva-section .ag-center-cols-viewport::-webkit-scrollbar-thumb{
+            background-color:#D4D4D8;
+            border-radius:9999px;
+          }
+          #eva-section .ag-body-horizontal-scroll::-webkit-scrollbar-track,
+          #eva-section .ag-center-cols-viewport::-webkit-scrollbar-track{
+            background-color:transparent;
           }
         </style>
         """,
@@ -161,7 +180,7 @@ def render(user: dict | None = None):
         <div class="section-eva">
           <div class="help-strip help-strip-eval" id="eva-help"
                style="background: var(--eva-help-bg); color: var(--eva-help-text);
-                      border:1px dashed var(--eva-help-border); box-shadow:0 0 0 1px var(--eva-help-border) inset;">
+                      border:1px dashed var(--eva-help-border);">
             📝 <strong>Registra/actualiza la evaluación</strong> de tareas filtradas (solo jefatura).
           </div>
           <div class="form-card">
@@ -548,8 +567,8 @@ def render(user: dict | None = None):
         gob = GridOptionsBuilder.from_dataframe(df_view)
         gob.configure_default_column(
             resizable=True,
-            wrapText=False,      # ⬅️ una sola línea
-            autoHeight=False,    # ⬅️ sin crecer en altura por texto
+            wrapText=False,      # una sola línea
+            autoHeight=False,    # sin crecer en altura por texto
             minWidth=120,
             flex=1,
         )
@@ -571,8 +590,8 @@ def render(user: dict | None = None):
         gob.configure_column(
             "Tarea",
             editable=False,
-            minWidth=260,
-            flex=2.0,
+            minWidth=320,   # ⬅️ un poco más ancha
+            flex=2.3,
             headerName="📝 Tarea",
         )
         gob.configure_column(
@@ -605,7 +624,7 @@ def render(user: dict | None = None):
             flex=1.1,
             minWidth=160,
             headerName="⭐ Calificación",
-            filter=False,        # ⬅️ sin filtro en esta columna
+            filter=False,        # sin filtro en esta columna
         )
 
         # 🔐 Editable (solo jefatura): Comentarios (texto libre)
@@ -626,7 +645,7 @@ def render(user: dict | None = None):
             ".eva-ok": {"color": "#16a34a !important"},
             ".eva-bad": {"color": "#dc2626 !important"},
             ".eva-obs": {"color": "#d97706 !important"},
-            ".ag-cell": {"white-space": "nowrap !important"},  # ⬅️ evita multi-línea
+            ".ag-cell": {"white-space": "nowrap !important"},  # evita multi-línea
         }
 
         grid_eval = AgGrid(
@@ -639,7 +658,7 @@ def render(user: dict | None = None):
             allow_unsafe_jscode=True,
             reload_data=False,
             theme="alpine",
-            height=380,          # ⬅️ tabla un poco más alta
+            height=380,
             custom_css=custom_css_eval,
             key="grid_evaluacion",  # KEY ÚNICO
         )
