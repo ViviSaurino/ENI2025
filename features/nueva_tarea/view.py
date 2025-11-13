@@ -396,7 +396,7 @@ def render(user: dict | None = None):
                 r2c3.selectbox("Complejidad", options=["🟢 Baja", "🟡 Media", "🔴 Alta"], index=0, key="nt_complejidad")
                 r2c4.selectbox("Duración", options=[f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)], index=0, key="nt_duracion_label")
                 r2c5.date_input("Fecha de registro", key="fi_d", on_change=_auto_time_on_date); _sync_time_from_date()
-                r2c6.text_input("Hora de registro (auto)", key="fi_t_view", disabled=True, help="Se asigna al elegir la fecha")
+                r2c6.text_input("Hora de registro", key="fi_t_view", disabled=True, help="Se asigna al elegir la fecha")
 
                 r3c1, r3c2, r3c3, r3c4, r3c5, r3c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
                 r3c1.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
