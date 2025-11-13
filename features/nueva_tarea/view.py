@@ -59,7 +59,7 @@ except Exception:
         - Soporta esquema antiguo: 'Fecha Registro' / 'Hora Registro'.
         - Soporta esquema legado: 'fecha' (timestamp).
         - Si existen en la hoja, también llena:
-          'Área','Fase','Tipo','Estado actual','Ciclo de mejora','Complejidad',
+          'Área','Fase','Tipo','Estado','Ciclo de mejora','Complejidad',
           'Duración (días)','Duración','Link de archivo'.
         """
         try:
@@ -106,7 +106,7 @@ except Exception:
                 "Área": kwargs.get("area", ""),
                 "Fase": kwargs.get("fase", ""),
                 "Tipo": kwargs.get("tipo", ""),
-                "Estado actual": kwargs.get("estado", ""),
+                "Estado": kwargs.get("estado", ""),
                 "Ciclo de mejora": kwargs.get("ciclo_mejora", ""),
                 "Complejidad": kwargs.get("complejidad", ""),
                 "Duración (días)": kwargs.get("duracion_dias", kwargs.get("duracion", "")),
@@ -328,7 +328,7 @@ def render(user: dict | None = None):
             # ---------- FILA 1 ----------
             if _is_fase_otros:
                 # Orden y anchos para que "Otros, Tarea, Detalle, Responsable"
-                # coincidan con los anchos de "Estado actual, Complejidad, Duración, Fecha"
+                # coincidan con los anchos de "Estado, Complejidad, Duración, Fecha"
                 r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
                 r1c1.text_input("Área", value=area_fixed, key="nt_area_view", disabled=True)
                 r1c2.selectbox("Fase", options=FASES, key="nt_fase", index=FASES.index("Otros"))
@@ -372,7 +372,7 @@ def render(user: dict | None = None):
 
             # ---------- FILA 2 ----------
             if _is_fase_otros:
-                # Ciclo, Tipo (editable), Estado actual, Complejidad, Duración, Fecha
+                # Ciclo, Tipo (editable), Estado, Complejidad, Duración, Fecha
                 r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns([A, Fw, T, D, R, C], gap="medium")
                 ciclo_mejora = r2c1.selectbox("Ciclo de mejora", options=["1","2","3","+4"], index=0, key="nt_ciclo_mejora")
                 # *** Cambio: tipo editable (en blanco por defecto) ***
@@ -456,7 +456,7 @@ def render(user: dict | None = None):
                     "Tipo": st.session_state.get("nt_tipo", ""),
                     "Responsable": st.session_state.get("nt_resp", ""),  # fijado al usuario logueado
                     "Fase": fase_final,
-                    "Estado actual": "No iniciado",
+                    "Estado": "No iniciado",
 
                     # ===== Ajuste solicitado: usar solo nombres parejos =====
                     "Fecha de registro": reg_fecha,
@@ -519,7 +519,7 @@ def render(user: dict | None = None):
                     area=new.get("Área",""),
                     fase=new.get("Fase",""),
                     tipo=new.get("Tipo",""),
-                    estado=new.get("Estado actual",""),
+                    estado=new.get("Estado",""),
                     ciclo_mejora=new.get("Ciclo de mejora",""),
                     complejidad=new.get("Complejidad",""),
                     duracion_dias=new.get("Duración (días)",""),
@@ -565,7 +565,7 @@ def render(user: dict | None = None):
                                             "Área": new.get("Área",""),
                                             "Fase": new.get("Fase",""),
                                             "Tipo": new.get("Tipo",""),
-                                            "Estado actual": new.get("Estado actual",""),
+                                            "Estado": new.get("Estado",""),
                                             "Ciclo de mejora": new.get("Ciclo de mejora",""),
                                             "Complejidad": new.get("Complejidad",""),
                                             "Duración (días)": new.get("Duración (días)",""),
