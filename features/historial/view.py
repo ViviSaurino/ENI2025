@@ -239,22 +239,11 @@ def _ensure_row_ids(df: pd.DataFrame) -> tuple[pd.DataFrame, set[str]]:
 # ⬆️⬆️⬆️ FIN helpers nuevos
 
 # --- Google Sheets (opcional) ---
-def _gsheets_client():
-    if "gcp_service_account" not in st.secrets:
-        raise KeyError("Falta 'gcp_service_account' en secrets.")
-    url = (st.secrets.get("gsheets_doc_url")
-           or (st.secrets.get("gsheets",{}) or {}).get("spreadsheet_url")
-           or (st.secrets.get("sheets",{}) or {}).get("sheet_url"))
-    if not url:
-        raise KeyError("No se encontró URL de Sheets.")
-    ws_name = (st.secrets.get("gsheets",{}) or {}).get("worksheet","TareasRecientes")
-    import gspread
-    from google.oauth2.service_account import Credentials
-    scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-    creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scopes)
-    gc = gspread.authorize(creds)
-    ss = gc.open_by_url(url)
-    return ss, ws_name
+# ✅ Ajuste solicitado: usar SOLO el helper de shared.py (sin definir _gsheets_client local)
+try:
+    from shared import gsheets_client as _gsheets_client  # type: ignore
+except Exception:
+    _gsheets_client = None  # depender del helper central; no definir cliente local
 
 def _gsheets_eval_name(default: str = "Evaluación") -> str:
     return ((st.secrets.get("gsheets",{}) or {}).get("worksheet_eval")
