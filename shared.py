@@ -105,6 +105,39 @@ ALERT_COLS = [
     "Fecha de corrección", "Hora de corrección"
 ]
 
+# --------- Pestaña unificada de Sheets ----------
+SHEET_TAB_HIST = "TareasRecientes"
+
+def _gsheets_client():
+    """
+    Devuelve (sheet, SHEET_TAB_HIST, reader, upserter)
+    sheet: objeto Spreadsheet abierto
+    SHEET_TAB_HIST: 'TareasRecientes' (pestaña unificada)
+    reader: utils.gsheets.read_df_from_worksheet (o None)
+    upserter: utils.gsheets.upsert_by_id / upsert_rows_by_id (o None)
+    """
+    try:
+        from utils.gsheets import (
+            open_sheet_by_url,
+            read_df_from_worksheet,
+            upsert_by_id,
+            upsert_rows_by_id,
+        )  # type: ignore
+    except Exception:
+        open_sheet_by_url = None
+        read_df_from_worksheet = None
+        upsert_by_id = None
+        upsert_rows_by_id = None
+
+    url = (
+        st.secrets.get("gsheets_doc_url")
+        or (st.secrets.get("gsheets", {}) or {}).get("spreadsheet_url")
+    )
+    sh = open_sheet_by_url(url) if (url and callable(open_sheet_by_url)) else None
+    upserter = upsert_by_id if callable(upsert_by_id) else (upsert_rows_by_id if callable(upsert_rows_by_id) else None)
+    reader = read_df_from_worksheet if callable(read_df_from_worksheet) else None
+    return sh, SHEET_TAB_HIST, reader, upserter
+
 def _csv_path() -> str:
     """Ruta única de persistencia: data/tareas.csv"""
     return os.path.join(DATA_DIR, "tareas.csv")
@@ -230,15 +263,23 @@ def ensure_df_main():
 
             if url and callable(open_sheet_by_url) and callable(read_df_from_worksheet):
                 sh = open_sheet_by_url(url)
-                ws_name = (st.secrets.get("gsheets", {}) or {}).get("worksheet", "TareasRecientes")
+                # ===== unificado: pestaña única =====
+                ws_name = SHEET_TAB_HIST
                 df_sheet = read_df_from_worksheet(sh, ws_name)
 
                 if isinstance(df_sheet, pd.DataFrame) and not df_sheet.empty:
                     if is_super_viewer(user_obj):
                         base = df_sheet.copy()
                     else:
-                        if "UserEmail" in df_sheet.columns and email:
-                            base = df_sheet[df_sheet["UserEmail"] == email].copy()
+                        # ===== prioridad OwnerEmail -> UserEmail -> Responsable =====
+                        if "OwnerEmail" in df_sheet.columns and email:
+                            base = df_sheet[
+                                df_sheet["OwnerEmail"].astype(str).str.lower() == str(email).lower()
+                            ].copy()
+                        elif "UserEmail" in df_sheet.columns and email:
+                            base = df_sheet[
+                                df_sheet["UserEmail"].astype(str).str.lower() == str(email).lower()
+                            ].copy()
                         elif "Responsable" in df_sheet.columns and display_name:
                             base = df_sheet[df_sheet["Responsable"] == display_name].copy()
                         else:
@@ -771,6 +812,7 @@ def log_reciente(
         "especialista": resp_txt,   # legacy
         "Responsable": resp_txt,    # preferida
         "UserEmail": (_email or "").strip(),
+        "OwnerEmail": (_email or "").strip(),  # <-- completar OwnerEmail si no existía
         "detalle": (detalle or "").strip(),
     }
 
