@@ -203,12 +203,11 @@ def render(user: dict | None = None):
         )
 
         # ====== DATA BASE (solo Sheets). Si no hay df_main, cargo de Sheets. ======
-        if "df_main" not in st.session_state or not isinstance(
-            st.session_state["df_main"], pd.DataFrame
-        ):
+        df_main = st.session_state.get("df_main")
+        if df_main is None or not isinstance(df_main, pd.DataFrame) or df_main.empty:
             st.session_state["df_main"] = _load_from_sheets()
 
-        df_all = (st.session_state.get("df_main") or pd.DataFrame()).copy()
+        df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
         if df_all.empty:
             df_all = pd.DataFrame(
                 columns=[
@@ -691,7 +690,7 @@ def render(user: dict | None = None):
                 if edited.empty or "Id" not in edited.columns:
                     st.info("No hay filas para actualizar.")
                 else:
-                    df_base = (st.session_state.get("df_main") or pd.DataFrame()).copy()
+                    df_base = st.session_state.get("df_main", pd.DataFrame()).copy()
                     if df_base.empty:
                         st.warning("No hay base para actualizar.")
                     else:
