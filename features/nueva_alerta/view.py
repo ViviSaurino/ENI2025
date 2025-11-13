@@ -1,4 +1,4 @@
-# features/nueva_alerta/view.py
+# features/nueva_alerta/view.py 
 from __future__ import annotations
 import os
 import pandas as pd
@@ -82,14 +82,14 @@ def render(user: dict | None = None):
           .section-na .help-strip-na + .form-card{ margin-top: 6px !important; }
 
           #na-section .ag-header-cell-label{
-            white-space: normal !important;
+            white-space: nowrap !important;
             line-height: 1.15 !important;
             font-weight: 400 !important;
           }
           #na-section .ag-header-cell-text{
-            white-space: normal !important;
-            overflow: visible !important;
-            text-overflow: unset !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
           }
           #na-section .ag-body-horizontal-scroll,
           #na-section .ag-center-cols-viewport{
@@ -275,12 +275,12 @@ def render(user: dict | None = None):
                 )
 
             if na_desde:
-                df_tasks = df_tasks[fcol >= pd.to_datetime(na_desde)]
+                mask_desde = fcol.isna() | (fcol >= pd.to_datetime(na_desde))
+                df_tasks = df_tasks[mask_desde]
             if na_hasta:
-                df_tasks = df_tasks[
-                    fcol
-                    <= (pd.to_datetime(na_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))
-                ]
+                limite = pd.to_datetime(na_hasta) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
+                mask_hasta = fcol.isna() | (fcol <= limite)
+                df_tasks = df_tasks[mask_hasta]
 
         st.markdown("**Resultados**")
 
@@ -441,14 +441,14 @@ def render(user: dict | None = None):
                 "editable": True,
                 "cellEditor": date_editor,
                 "flex": 1.4,
-                "minWidth": 140,
+                "minWidth": 160,
             },
             {
                 "field": "Hora de detección",
                 "headerName": "🔎 Hora de detección",
                 "editable": False,
                 "flex": 1.2,
-                "minWidth": 130,
+                "minWidth": 150,
             },
             {
                 "field": "¿Se corrigió?",
@@ -467,21 +467,21 @@ def render(user: dict | None = None):
                 "editable": True,
                 "cellEditor": date_editor,
                 "flex": 1.4,
-                "minWidth": 140,
+                "minWidth": 160,
             },
             {
                 "field": "Hora de corrección",
                 "headerName": "🛠️ Hora de corrección",
                 "editable": False,
                 "flex": 1.2,
-                "minWidth": 130,
+                "minWidth": 150,
             },
             {
                 "field": "Tipo de alerta",
                 "headerName": "⚠️ Tipo de alerta",
                 "editable": True,
                 "flex": 1.4,
-                "minWidth": 150,
+                "minWidth": 160,
             },
         ]
 
@@ -491,8 +491,8 @@ def render(user: dict | None = None):
                 "resizable": True,
                 "wrapText": False,
                 "autoHeight": False,
-                "wrapHeaderText": True,
-                "autoHeaderHeight": True,
+                "wrapHeaderText": False,
+                "autoHeaderHeight": False,
                 "minWidth": 100,
                 "flex": 1,
             },
@@ -515,7 +515,7 @@ def render(user: dict | None = None):
             fit_columns_on_grid_load=False,
             enable_enterprise_modules=False,
             reload_data=False,
-            height=260,
+            height=340,  # ⬅️ tabla más alta
             allow_unsafe_jscode=True,
             theme="balham",
         )
@@ -562,7 +562,10 @@ def render(user: dict | None = None):
                                 continue
 
                             def _set(col_base, val):
-                                v = "" if val is None else str(val).trim() if hasattr(val, "strip") else str(val).strip()
+                                if val is None:
+                                    v = ""
+                                else:
+                                    v = str(val).strip()
                                 if v != "":
                                     df_base.loc[m, col_base] = v
                                     return 1
