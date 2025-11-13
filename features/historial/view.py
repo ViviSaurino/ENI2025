@@ -8,6 +8,7 @@ import pandas as pd
 import streamlit as st
 from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode, DataReturnMode, JsCode
 import time  # ⬅️ Auto-sync debounce
+import uuid  # ⬅️ NUEVO
 
 # 👇 ACL: para filtrar vista (Vivi/Enrique ven todo, resto solo lo suyo)
 try:
@@ -201,6 +202,41 @@ def _maybe_copy_archivo_to_link(df: pd.DataFrame) -> pd.DataFrame:
     if mask.any():
         df.loc[mask, _LINK_CANON] = arch.loc[mask].astype(str)
     return df
+
+# ⬇️⬇️⬇️ NUEVO: helpers para asegurar Id en filas sin Id (p. ej., importadas de correo)
+def _gen_ids(k: int, existing: set[str] | None = None) -> list[str]:
+    pool = set(existing or set())
+    out: list[str] = []
+    while len(out) < k:
+        cand = "T-" + uuid.uuid4().hex[:10].upper()
+        if cand not in pool:
+            pool.add(cand); out.append(cand)
+    return out
+
+def _ensure_row_ids(df: pd.DataFrame) -> tuple[pd.DataFrame, set[str]]:
+    """
+    Garantiza que todas las filas tengan 'Id'. 
+    Devuelve (df_con_id, set_de_ids_generados).
+    """
+    if df is None or df.empty:
+        return df, set()
+    df2 = df.copy()
+    if "Id" not in df2.columns:
+        df2["Id"] = ""
+    df2["Id"] = df2["Id"].astype(str)
+    def _is_empty_id(s: str) -> bool:
+        s = (s or "").strip().lower()
+        return s in {"", "nan", "none", "null"}
+    mask = df2["Id"].map(lambda x: _is_empty_id(str(x)))
+    n = int(mask.sum())
+    new_ids: set[str] = set()
+    if n > 0:
+        existing = set(df2["Id"].astype(str).tolist())
+        gen = _gen_ids(n, existing)
+        df2.loc[mask, "Id"] = gen
+        new_ids = set(gen)
+    return df2, new_ids
+# ⬆️⬆️⬆️ FIN helpers nuevos
 
 # --- Google Sheets (opcional) ---
 def _gsheets_client():
@@ -510,8 +546,8 @@ def _ensure_deadline_and_compliance(df: pd.DataFrame) -> pd.DataFrame:
     mask_empty = hv.map(lambda x: (str(x).strip() if x is not None else "") == "")
     df["Hora Vencimiento"] = hv.mask(mask_empty, "17:00")
     # Cumplimiento
-    fv = to_naive_local_series(df["Fecha Vencimiento"]) if "Fecha Vencimiento" in df.columns else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]")
-    ft = to_naive_local_series(df["Fecha Terminado"]) if "Fecha Terminado" in df.columns else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]")
+    fv = to_naive_local_series(df["Fecha Vencimiento"]) if "Fecha Vencimiento" in df.columns else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]"])
+    ft = to_naive_local_series(df["Fecha Terminado"]) if "Fecha Terminado" in df.columns else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]"])
     today_ts = pd.Timestamp(date.today())
     fv_n = fv.dt.normalize(); ft_n = ft.dt.normalize()
     has_fv = ~fv_n.isna(); has_ft = ~ft_n.isna()
@@ -982,8 +1018,8 @@ def render(user: dict | None = None):
     # === Cumplimiento (auto; crear si falta) ===
     if "Cumplimiento" not in df_grid.columns:
         df_grid["Cumplimiento"] = ""
-    fv = to_naive_local_series(df_grid["Fecha Vencimiento"]) if "Fecha Vencimiento" in df_grid.columns else pd.Series(pd.NaT, index=df_grid.index, dtype="datetime64[ns]")
-    ft = to_naive_local_series(df_grid["Fecha Terminado"]) if "Fecha Terminado" in df_grid.columns else pd.Series(pd.NaT, index=df_grid.index, dtype="datetime64[ns]")
+    fv = to_naive_local_series(df_grid["Fecha Vencimiento"]) if "Fecha Vencimiento" in df_grid.columns else pd.Series(pd.NaT, index=df_grid.index, dtype="datetime64[ns]"])
+    ft = to_naive_local_series(df_grid["Fecha Terminado"]) if "Fecha Terminado" in df_grid.columns else pd.Series(pd.NaT, index=df_grid.index, dtype="datetime64[ns]"])
     today_ts = pd.Timestamp(date.today())
     fv_n = fv.dt.normalize(); ft_n = ft.dt.normalize()
     has_fv = ~fv_n.isna(); has_ft = ~ft_n.isna()
@@ -1354,21 +1390,30 @@ def render(user: dict | None = None):
     with b_save_sheets:
         if st.button("📤 Subir a Sheets", use_container_width=True):
             try:
-                # *** NUEVO: asegurar derivados en la base antes de subir
+                # *** NUEVO: asegurar derivados y IDs ANTES de subir
                 st.session_state["df_main"] = _ensure_deadline_and_compliance(st.session_state.get("df_main", pd.DataFrame()))
                 base_full = st.session_state.get("df_main", pd.DataFrame()).copy()
+
+                # ⬇️ generar Id para filas sin Id (p. ej. tareas creadas desde correo)
+                base_full, gen_ids = _ensure_row_ids(base_full)
+                if gen_ids:
+                    # persistir los nuevos Ids en sesión + disco
+                    st.session_state["df_main"] = base_full.copy()
+                    _save_local(base_full.copy())
 
                 pend_ids  = set(st.session_state.get("_hist_changed_ids", []) or [])
                 pend_diff = dict(st.session_state.get("_hist_cell_diff", {}) or {})
                 new_ids   = set(st.session_state.get("_hist_new_ids", []) or [])
 
+                # incluir Ids recién generados como "nuevos"
+                new_ids |= set(map(str, gen_ids))
+
                 # Fallback si no detectó cambios (reconstruir contra baseline)
                 if (not pend_ids) and (not new_ids):
-                    # *** FIX: permitir Duración + derivados en usuarios no-super
                     allowed = None if _is_super_editor() else {"Tarea","Detalle","Detalle de tarea","Duración","Fecha inicio","Fecha Vencimiento","Hora Vencimiento","Cumplimiento"}
                     base_line = st.session_state.get("_hist_baseline")
                     p_ids, p_diff, p_new = _derive_pending_from_baseline(base_full, base_line, allowed_cols=allowed)
-                    pend_ids, pend_diff, new_ids = p_ids, {k: set(v) for k,v in p_diff.items()}, p_new
+                    pend_ids, pend_diff, new_ids = p_ids, {k: set(v) for k,v in p_diff.items()}, p_new | new_ids
 
                 ids_to_push = set(pend_ids) | set(new_ids)
                 if not ids_to_push:
@@ -1386,7 +1431,6 @@ def render(user: dict | None = None):
                                 mask_mias = base_full["Responsable"].astype(str).str.contains(me, case=False, na=False)
                                 base_full = base_full[mask_mias]
 
-                            # *** FIX: incluir Duración y derivados en permitidas
                             ALLOWED_USER_COLS = {"Tarea","Detalle","Detalle de tarea","Duración","Fecha inicio","Fecha Vencimiento","Hora Vencimiento","Cumplimiento"}
                             filtered_cell_diff = {}
                             for rid, cols in pend_diff.items():
@@ -1396,7 +1440,7 @@ def render(user: dict | None = None):
                             pend_diff = filtered_cell_diff
 
                             ids_in_base = set(base_full["Id"].astype(str))
-                            pend_ids = {rid for rid in pend_ids if (rid in ids_in_base and rid in pend_diff)}
+                            pend_ids = {rid for rid in pend_ids if (rid in ids_in_base and ((rid in pend_diff) or (rid in new_ids)))}
                             new_ids  = {rid for rid in new_ids  if rid in ids_in_base}
                             ids_to_push = set(pend_ids) | set(new_ids)
 
@@ -1412,11 +1456,10 @@ def render(user: dict | None = None):
                             new_ids=new_ids
                         )
 
-                        # ▶️ Además, copiar Cumplimiento a la hoja de Evaluación para Ids que cambiaron ese campo
+                        # ▶️ Además, copiar Cumplimiento a Evaluación si cambió
                         ids_cumpl = {rid for rid, cols in (st.session_state.get("_hist_cell_diff", {}) or {}).items()
                                      if "Cumplimiento" in set(cols)}
                         if not ids_cumpl:
-                            # *** NUEVO: si reconstruimos por baseline, revisar si cambió Cumplimiento
                             base_line = st.session_state.get("_hist_baseline")
                             if isinstance(base_line, pd.DataFrame):
                                 cur = base_full.set_index("Id")
