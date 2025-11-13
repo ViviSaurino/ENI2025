@@ -116,7 +116,7 @@ def render(user: dict | None = None):
 
           /* ===== Paleta (más pastel) ===== */
           :root{
-            --eva-pill: #FDBA74;        /* Naranja pastel */
+            --eva-pill: #FFE4C7;        /* Naranja aún más pastel */
             --eva-help-bg: #FFF7ED;     /* Naranja MUY claro */
             --eva-help-border: #FED7AA; /* Naranja claro para borde */
             --eva-help-text: #92400E;   /* Texto legible */
@@ -128,7 +128,7 @@ def render(user: dict | None = None):
             display:flex; align-items:center; justify-content:center;
             background: var(--eva-pill);
             color:#ffffff; font-weight:700;
-            box-shadow:0 6px 14px rgba(253,186,116,.35);
+            box-shadow:0 6px 14px rgba(255,228,199,.35);
             user-select:none; margin:4px 0 16px;
           }
           .eva-pill span{ display:inline-flex; gap:8px; align-items:center; }
@@ -548,8 +548,8 @@ def render(user: dict | None = None):
         gob = GridOptionsBuilder.from_dataframe(df_view)
         gob.configure_default_column(
             resizable=True,
-            wrapText=True,
-            autoHeight=True,
+            wrapText=False,      # ⬅️ una sola línea
+            autoHeight=False,    # ⬅️ sin crecer en altura por texto
             minWidth=120,
             flex=1,
         )
@@ -605,6 +605,7 @@ def render(user: dict | None = None):
             flex=1.1,
             minWidth=160,
             headerName="⭐ Calificación",
+            filter=False,        # ⬅️ sin filtro en esta columna
         )
 
         # 🔐 Editable (solo jefatura): Comentarios (texto libre)
@@ -625,6 +626,7 @@ def render(user: dict | None = None):
             ".eva-ok": {"color": "#16a34a !important"},
             ".eva-bad": {"color": "#dc2626 !important"},
             ".eva-obs": {"color": "#d97706 !important"},
+            ".ag-cell": {"white-space": "nowrap !important"},  # ⬅️ evita multi-línea
         }
 
         grid_eval = AgGrid(
@@ -637,7 +639,7 @@ def render(user: dict | None = None):
             allow_unsafe_jscode=True,
             reload_data=False,
             theme="alpine",
-            height=320,
+            height=380,          # ⬅️ tabla un poco más alta
             custom_css=custom_css_eval,
             key="grid_evaluacion",  # KEY ÚNICO
         )
