@@ -651,6 +651,25 @@ def render(user: dict | None = None):
     if "Tipo de tarea" not in df_view.columns and "Tipo" in df_view.columns:
         df_view["Tipo de tarea"] = df_view["Tipo"]
 
+    # ✅ NUEVO: Copiar "Duración" desde variantes (p.ej., "Duracion", "Duración (Nueva tarea)")
+    try:
+        dur_like = [c for c in df_view.columns if re.match(r'^\s*duraci[oó]n', str(c), flags=re.I)]
+        if dur_like:
+            # Preferir una fuente distinta a "Duración" si existe
+            if "Duración" in dur_like:
+                otros = [c for c in dur_like if c != "Duración"]
+                src = otros[0] if otros else "Duración"
+            else:
+                src = dur_like[0]
+
+            if "Duración" not in df_view.columns:
+                df_view["Duración"] = df_view[src]
+            else:
+                vacias = df_view["Duración"].astype(str).str.strip().isin(["", "nan", "none", "null"])
+                df_view.loc[vacias, "Duración"] = df_view.loc[vacias, src]
+    except Exception:
+        pass
+
     # ===== GRID =====
     target_cols = [
         "Id","Área","Fase","Responsable",
