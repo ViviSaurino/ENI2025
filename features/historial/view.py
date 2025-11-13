@@ -546,8 +546,8 @@ def _ensure_deadline_and_compliance(df: pd.DataFrame) -> pd.DataFrame:
     mask_empty = hv.map(lambda x: (str(x).strip() if x is not None else "") == "")
     df["Hora Vencimiento"] = hv.mask(mask_empty, "17:00")
     # Cumplimiento
-    fv = to_naive_local_series(df["Fecha Vencimiento"]) if "Fecha Vencimiento" in df.columns else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]"])
-    ft = to_naive_local_series(df["Fecha Terminado"]) if "Fecha Terminado" in df.columns else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]"])
+    fv = to_naive_local_series(df["Fecha Vencimiento"]) if "Fecha Vencimiento" in df.columns else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]")
+    ft = to_naive_local_series(df["Fecha Terminado"]) if "Fecha Terminado" in df.columns else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]")
     today_ts = pd.Timestamp(date.today())
     fv_n = fv.dt.normalize(); ft_n = ft.dt.normalize()
     has_fv = ~fv_n.isna(); has_ft = ~ft_n.isna()
@@ -1018,8 +1018,8 @@ def render(user: dict | None = None):
     # === Cumplimiento (auto; crear si falta) ===
     if "Cumplimiento" not in df_grid.columns:
         df_grid["Cumplimiento"] = ""
-    fv = to_naive_local_series(df_grid["Fecha Vencimiento"]) if "Fecha Vencimiento" in df_grid.columns else pd.Series(pd.NaT, index=df_grid.index, dtype="datetime64[ns]"])
-    ft = to_naive_local_series(df_grid["Fecha Terminado"]) if "Fecha Terminado" in df_grid.columns else pd.Series(pd.NaT, index=df_grid.index, dtype="datetime64[ns]"])
+    fv = to_naive_local_series(df_grid["Fecha Vencimiento"]) if "Fecha Vencimiento" in df_grid.columns else pd.Series(pd.NaT, index=df_grid.index, dtype="datetime64[ns]")
+    ft = to_naive_local_series(df_grid["Fecha Terminado"]) if "Fecha Terminado" in df_grid.columns else pd.Series(pd.NaT, index=df_grid.index, dtype="datetime64[ns]")
     today_ts = pd.Timestamp(date.today())
     fv_n = fv.dt.normalize(); ft_n = ft.dt.normalize()
     has_fv = ~fv_n.isna(); has_ft = ~ft_n.isna()
