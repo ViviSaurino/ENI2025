@@ -102,11 +102,11 @@ st.markdown("""
 
   /* 🎨 Botón ENTRAR jade claro solo en el login */
   .eni-login-btn button{
-    background:#A5F3DC !important;   /* jade clarito */
-    color:#064E3B !important;        /* verde oscuro para contraste */
+    background:#A7F3D0 !important;   /* jade clarito tipo menta */
+    color:#FFFFFF !important;        /* texto blanco */
     border-radius:12px !important;
     border:1px solid #6EE7B7 !important;
-    font-weight:700 !important;
+    font-weight:700 !important;      /* negrita */
   }
   .eni-login-btn button:hover{
     filter:brightness(0.97);
