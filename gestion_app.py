@@ -112,7 +112,7 @@ def check_app_password() -> bool:
       }
       .eni-hero-pill{
         display:inline-block;
-        padding:10px 22px;
+        padding:10px 40px;
         border-radius:999px;
         background-color:#E0ECFF;
         color:#2B3A67;
