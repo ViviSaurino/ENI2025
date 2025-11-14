@@ -320,7 +320,7 @@ if not _ok:
     st.stop()
 
 st.session_state["acl_user"] = user_acl
-st.session_state["user_display_name"] = user_acl.get("display_name", email or "Usuario")
+st.session_state["user_display_name"] = st.session_state.get("user_display_name") or user_acl.get("display_name", email or "Usuario")
 st.session_state["user_dry_run"] = bool(user_acl.get("dry_run", False))
 st.session_state["save_scope"] = user_acl.get("save_scope", "all")
 
@@ -394,10 +394,11 @@ with st.sidebar:
     nav_choice = st.radio("Navegación", nav_labels, index=default_idx, label_visibility="collapsed", key="nav_section", horizontal=False)
 
     st.divider()
-    dn = st.session_state.get("user_display_name", email or "Usuario")
+    # 👉 Usar el nombre elegido en el login (sin mostrar el correo)
+    display_name = st.session_state.get("user_display_name") or user_acl.get("display_name", "Usuario")
     show_user_avatar_from_session(size=150)
-    st.markdown(f"👋 **Hola, {dn}**")
-    st.caption(f"**Usuario:** {email or '—'}")
+    st.markdown(f"👋 **Hola, {display_name}**")
+    # (se elimina la línea que mostraba el correo)
     if st.button("🔒 Cerrar sesión", use_container_width=True):
         logout()
 
