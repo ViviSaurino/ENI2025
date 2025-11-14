@@ -9,7 +9,7 @@ import importlib
 import types
 import base64  # para incrustar el video como base64
 
-# from auth_google import google_login, logout   # <- YA NO SE USA
+from auth_google import google_login, logout
 
 # ===== Import robusto de shared con fallbacks =====
 def _fallback_ensure_df_main():
@@ -148,10 +148,10 @@ def check_app_password() -> bool:
     """, unsafe_allow_html=True)
 
     # Margen superior sólo en la pantalla de login
-    st.markdown("<div style='margin-top:20vh;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top:12vh;'></div>", unsafe_allow_html=True)
 
     # Columnas generales con espaciador a la izquierda
-    space_col, col1, col2 = st.columns([0.25, 0.55, 0.35])
+    space_col, col1, col2 = st.columns([0.10, 0.55, 0.35])
 
     with space_col:
         st.write("")
@@ -161,10 +161,19 @@ def check_app_password() -> bool:
     with col1:
         st.markdown("<div class='eni-hero-title'>BIEN<br>VENIDOS</div>", unsafe_allow_html=True)
 
-        form_col, _ = st.columns([0.60, 0.60])  # <-- controla el ancho de la píldora e inputs
+        form_col, _ = st.columns([0.75, 0.60])  # <-- controla el ancho de la píldora e inputs
         with form_col:
             st.markdown("<div class='eni-hero-pill'>GESTIÓN DE TAREAS ENI 2025</div>", unsafe_allow_html=True)
             st.write("")
+
+            # 👉 Nuevo: preguntar quién está editando ANTES de entrar a la app
+            editor_name = st.text_input(
+                "¿Quién está editando?",
+                value=st.session_state.get("user_display_name", ""),
+                key="editor_name_login",
+            )
+            if editor_name.strip():
+                st.session_state["user_display_name"] = editor_name.strip()
 
             pwd = st.text_input("Ingresa la contraseña", type="password", key="eni_pwd")
             if st.button("Entrar", use_container_width=True):
@@ -173,11 +182,7 @@ def check_app_password() -> bool:
                     # usuario genérico para que el resto del código siga igual
                     st.session_state["user_email"] = "eni2025@app"
                     st.session_state["user"] = {"email": "eni2025@app"}
-                    # 🔁 Rerun compatible con nuevas versiones
-                    if hasattr(st, "rerun"):
-                        st.rerun()
-                    else:
-                        st.experimental_rerun()
+                    st.experimental_rerun()
                 else:
                     st.error("Contraseña incorrecta. Vuelve a intentarlo 🙂")
 
@@ -192,7 +197,7 @@ def check_app_password() -> bool:
             b64 = base64.b64encode(data).decode("utf-8")
             # Pegadito al bloque de texto
             video_html = f"""
-            <div style="margin-left:-350px; margin-top:-200px;">
+            <div style="margin-left:-140px; margin-top:-200px;">
               <video autoplay loop muted playsinline
                      style="width:100%;max-width:520px;
                             display:block;margin:0;">
@@ -341,14 +346,12 @@ with st.sidebar:
     st.markdown(f"👋 **Hola, {dn}**")
     st.caption(f"**Usuario:** {email or '—'}")
     if st.button("🔒 Cerrar sesión", use_container_width=True):
-        # limpiamos la contraseña y usuario genérico
+        # limpiamos la contraseña y usuario genérico; se puede mantener logout() por compatibilidad
         st.session_state["password_ok"] = False
         st.session_state.pop("user", None)
         st.session_state.pop("user_email", None)
-        if hasattr(st, "rerun"):
-            st.rerun()
-        else:
-            st.experimental_rerun()
+        logout()
+        st.experimental_rerun()
 
 # ============ Datos ============
 ensure_df_main()
