@@ -7,6 +7,7 @@ import pandas as pd
 from pathlib import Path
 import importlib
 import types
+import base64  # <- para incrustar el video como base64
 
 from auth_google import google_login, logout
 
@@ -145,13 +146,24 @@ def check_app_password() -> bool:
             else:
                 st.error("Contraseña incorrecta. Vuelve a intentarlo 🙂")
 
-    # Columna derecha: video hero (muñequitos) o logo como respaldo
+    # Columna derecha: héroe animado (video autoplay sin controles) o logo como respaldo
     with col2:
         hero_video = Path("assets/hero.mp4")
         logo_img   = Path("assets/branding/eni2025_logo.png")
 
         if hero_video.exists():
-            st.video(str(hero_video))
+            with open(hero_video, "rb") as f:
+                data = f.read()
+            b64 = base64.b64encode(data).decode("utf-8")
+            video_html = f"""
+            <video autoplay loop muted playsinline
+                   style="width:80%;max-width:420px;border-radius:24px;
+                          box-shadow:0 16px 40px rgba(15,23,42,.25);
+                          display:block;margin:0 auto;">
+              <source src="data:video/mp4;base64,{b64}" type="video/mp4">
+            </video>
+            """
+            st.markdown(video_html, unsafe_allow_html=True)
         elif logo_img.exists():
             st.image(str(logo_img), use_column_width=True)
         else:
