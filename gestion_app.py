@@ -7,7 +7,7 @@ import pandas as pd
 from pathlib import Path
 import importlib
 import types
-import base64  # <- para incrustar el video como base64
+import base64  # para incrustar el video como base64
 
 from auth_google import google_login, logout
 
@@ -104,10 +104,10 @@ def check_app_password() -> bool:
     st.markdown("""
     <style>
       .eni-hero-title{
-        font-size:64px;
+        font-size:80px;          /* más grande */
         font-weight:800;
         color:#B38CFB;
-        line-height:0.85;
+        line-height:0.83;
         margin-bottom:12px;
       }
       .eni-hero-pill{
@@ -125,7 +125,7 @@ def check_app_password() -> bool:
     """, unsafe_allow_html=True)
 
     # Un pequeño margen superior solo en la pantalla de login
-    st.markdown("<div style='margin-top:12vh;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top:10vh;'></div>", unsafe_allow_html=True)
 
     col1, col2 = st.columns([1.1, 1])
 
@@ -155,13 +155,15 @@ def check_app_password() -> bool:
             with open(hero_video, "rb") as f:
                 data = f.read()
             b64 = base64.b64encode(data).decode("utf-8")
+            # sin borde, sin sombra, ancho aprox. como los inputs y un poco más cerca al texto
             video_html = f"""
-            <video autoplay loop muted playsinline
-                   style="width:80%;max-width:420px;border-radius:24px;
-                          box-shadow:0 16px 40px rgba(15,23,42,.25);
-                          display:block;margin:0 auto;">
-              <source src="data:video/mp4;base64,{b64}" type="video/mp4">
-            </video>
+            <div style="margin-left:-30px;">
+              <video autoplay loop muted playsinline
+                     style="width:100%;max-width:520px;
+                            display:block;margin:0;">
+                <source src="data:video/mp4;base64,{b64}" type="video/mp4">
+              </video>
+            </div>
             """
             st.markdown(video_html, unsafe_allow_html=True)
         elif logo_img.exists():
