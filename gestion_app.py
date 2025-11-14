@@ -246,7 +246,7 @@ def check_app_password() -> bool:
             video_html = f"""
             <div style="margin-left:-280px; margin-top:-165px;">
               <video autoplay loop muted playsinline
-                     style="width:100%;max-width:520px;
+                     style="width:100%;max-width:480px;
                             display:block;margin:0;">
                 <source src="data:video/mp4;base64,{b64}" type="video/mp4">
               </video>
