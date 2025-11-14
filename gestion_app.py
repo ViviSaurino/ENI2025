@@ -210,7 +210,10 @@ def check_app_password() -> bool:
                 key="editor_name_login",
             )
             st.session_state["user_display_name"] = editor_name
-
+           
+            # 🔽 Reduce el espacio entre "¿Quién está editando?" y "Ingresa la contraseña"
+            st.markdown("<div style='margin-top:-10px;'></div>", unsafe_allow_html=True)
+            
             pwd = st.text_input("Ingresa la contraseña", type="password", key="eni_pwd")
 
             # Contenedor “dummy”
