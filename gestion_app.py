@@ -177,7 +177,7 @@ def check_app_password() -> bool:
     st.markdown("<div style='margin-top:7vh;'></div>", unsafe_allow_html=True)
 
     # Columnas generales con espaciador a la izquierda
-    space_col, col1, col2 = st.columns([0.15, 0.55, 0.35])
+    space_col, col1, col2 = st.columns([0.20, 0.55, 0.35])
         
     # Columna izquierda: título + subcolumna
     with col1:
