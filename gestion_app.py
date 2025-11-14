@@ -137,7 +137,7 @@ def check_app_password() -> bool:
       }
 
       /* 🎨 Botón ENTRAR jade claro (login) */
-      .eni-login-btn button{
+      [data-testid="stAppViewContainer"] .main .stButton > button{
         background:#A7F3D0 !important;   /* jade clarito */
         color:#047857 !important;        /* jade oscuro */
         border-radius:12px !important;
@@ -146,7 +146,7 @@ def check_app_password() -> bool:
         letter-spacing:0.04em !important;/* similar a la píldora */
         text-transform:uppercase !important;
       }
-      .eni-login-btn button:hover{
+      [data-testid="stAppViewContainer"] .main .stButton > button:hover{
         filter:brightness(0.97);
       }
     </style>
@@ -209,7 +209,7 @@ def check_app_password() -> bool:
 
             pwd = st.text_input("Ingresa la contraseña", type="password", key="eni_pwd")
 
-            # Contenedor “dummy” para aplicar el CSS del botón
+            # Contenedor “dummy” (sigue ahí pero solo por orden visual)
             st.markdown("<div class='eni-login-btn'>", unsafe_allow_html=True)
             if st.button("ENTRAR", use_container_width=True):
                 if pwd == APP_PASSWORD:
@@ -352,8 +352,8 @@ st.session_state["maybe_save"] = _maybe_save_chain
 
 # ====== Logout local (reemplaza al de auth_google) ======
 def logout():
-    for k in ("user", "user_email", "password_ok", "acl_user",
-              "auth_ok", "nav_section", "roles_df"):
+    for k in ("user", "user_email", "password_ok",
+              "acl_user", "auth_ok", "nav_section", "roles_df"):
         st.session_state.pop(k, None)
     st.experimental_rerun()
 
@@ -381,7 +381,13 @@ with st.sidebar:
     st.header("Secciones")
     nav_labels = ["📘 Gestión de tareas","🗂️ Kanban","📅 Gantt","📊 Dashboard"]
     default_idx = nav_labels.index(st.session_state.get("nav_section", "📘 Gestión de tareas"))
-    nav_choice = st.radio("Navegación", nav_labels, index=default_idx, label_visibility="collapsed", key="nav_section", horizontal=False)
+    nav_choice = st.radio(
+        "Navegación", nav_labels,
+        index=default_idx,
+        label_visibility="collapsed",
+        key="nav_section",
+        horizontal=False
+    )
 
     st.divider()
     dn = st.session_state.get("user_display_name", email or "Usuario")
