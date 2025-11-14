@@ -180,6 +180,8 @@ def check_app_password() -> bool:
     space_col, col1, col2 = st.columns([0.20, 0.55, 0.35])
         
     # Columna izquierda: título + subcolumna
+    with space_col:
+        st.write("")
     with col1:
         st.markdown("<div class='eni-hero-title'>BIEN<br>VENIDOS</div>", unsafe_allow_html=True)
 
@@ -226,7 +228,7 @@ def check_app_password() -> bool:
                     # usuario genérico para que el resto del código siga igual
                     st.session_state["user_email"] = "eni2025@app"
                     st.session_state["user"] = {"email": "eni2025@app"}
-                    st.experimental_rerun()
+                    st.rerun()   # ← antes st.experimental_rerun()
                 else:
                     st.error("Contraseña incorrecta. Vuelve a intentarlo 🙂")
 
