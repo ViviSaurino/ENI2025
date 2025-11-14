@@ -183,7 +183,7 @@ def check_app_password() -> bool:
     with col1:
         st.markdown("<div class='eni-hero-title'>BIEN<br>VENIDOS</div>", unsafe_allow_html=True)
 
-        form_col, _ = st.columns([0.70, 0.60])  # <-- ancho de píldora e inputs
+        form_col, _ = st.columns([0.65, 0.60])  # <-- ancho de píldora e inputs
         with form_col:
             st.markdown("<div class='eni-login-form'>", unsafe_allow_html=True)
 
