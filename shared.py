@@ -788,9 +788,26 @@ def log_reciente(
     - Acepta `id_val` para persistir el Id de la tarea (además de un `id` interno de fila).
     - Se alinea a las columnas existentes si la hoja ya tiene un esquema propio.
     - Limpia el cache de Streamlit para que el Historial refleje el cambio al instante.
+
+    Si no se puede escribir (sin sheet, error de conexión, etc.), simplemente
+    devuelve sin mostrar mensajes en pantalla.
     """
     from uuid import uuid4
     import pandas as _pd_local
+
+    # 👉 Si no nos pasaron sheet, intentamos abrirlo con el helper global
+    if sheet is None:
+        try:
+            sh, hist_tab, reader, upserter = _gsheets_client()
+            sheet = sh
+            if not tab_name:
+                tab_name = hist_tab
+        except Exception:
+            sheet = None
+
+    # Si seguimos sin sheet, salimos en silencio
+    if sheet is None:
+        return
 
     _email = get_user_email()
     _ts = now_lima_trimmed().strftime("%Y-%m-%d %H:%M")
@@ -812,7 +829,7 @@ def log_reciente(
         "especialista": resp_txt,   # legacy
         "Responsable": resp_txt,    # preferida
         "UserEmail": (_email or "").strip(),
-        "OwnerEmail": (_email or "").strip(),  # <-- completar OwnerEmail si no existía
+        "OwnerEmail": (_email or "").strip(),  # completa OwnerEmail si no existía
         "detalle": (detalle or "").strip(),
     }
 
@@ -824,10 +841,6 @@ def log_reciente(
             read_df_from_worksheet = None
             upsert_by_id = None
 
-        # Si no hay sheet, no hay a dónde escribir
-        if sheet is None:
-            raise RuntimeError("No se ha abierto el spreadsheet (sheet=None).")
-
         df_exist = None
         if callable(read_df_from_worksheet):
             try:
@@ -837,22 +850,25 @@ def log_reciente(
 
         if isinstance(df_exist, _pd_local.DataFrame) and not df_exist.empty:
             cols = list(df_exist.columns)
-            payload = _pd_local.DataFrame([{c: row.get(c, "") for c in cols}], columns=cols)
+            payload = _pd_local.DataFrame(
+                [{c: row.get(c, "") for c in cols}],
+                columns=cols,
+            )
         else:
             payload = _pd_local.DataFrame([row])
 
         if callable(upsert_by_id) and "id" in payload.columns:
             upsert_by_id(sheet, tab_name, payload, id_col="id")
         else:
-            # Append simple
             ws = sheet.worksheet(tab_name)
             ws.append_rows(payload.astype(str).values.tolist())
 
+        # Limpiar cache para que Tareas recientes / Nueva alerta vean el cambio
         try:
             st.cache_data.clear()
         except Exception:
             pass
 
-    except Exception as e:
-        # No interrumpir el flujo del formulario: mostrar toast y continuar
-        st.toast(f"No se pudo registrar en {tab_name}: {e}", icon="⚠️")
+    except Exception:
+        # Fallos silenciosos
+        return
