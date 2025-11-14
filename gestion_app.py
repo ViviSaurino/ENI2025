@@ -99,32 +99,32 @@ def check_app_password() -> bool:
     if st.session_state.get("password_ok", False):
         return True
 
-    # Estilos para título y píldora (similar a tu portada)
-    st.markdown(
-        """
-        <style>
-        .eni-hero-title{
-          font-size:64px;
-          font-weight:800;
-          color:#B38CFB;
-          line-height:0.85;
-          margin-bottom:12px;
-        }
-        .eni-hero-pill{
-          display:inline-block;
-          padding:10px 22px;
-          border-radius:999px;
-          background-color:#E0ECFF;
-          color:#2B3A67;
-          font-weight:600;
-          font-size:14px;
-          letter-spacing:0.04em;
-          margin-bottom:24px;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+    # Un poco más centrado verticalmente solo en la pantalla de login
+    st.markdown("""
+    <style>
+      .block-container{
+        padding-top: 18vh !important;
+      }
+      .eni-hero-title{
+        font-size:64px;
+        font-weight:800;
+        color:#B38CFB;
+        line-height:0.85;
+        margin-bottom:12px;
+      }
+      .eni-hero-pill{
+        display:inline-block;
+        padding:10px 22px;
+        border-radius:999px;
+        background-color:#E0ECFF;
+        color:#2B3A67;
+        font-weight:600;
+        font-size:14px;
+        letter-spacing:0.04em;
+        margin-bottom:24px;
+      }
+    </style>
+    """, unsafe_allow_html=True)
 
     col1, col2 = st.columns([1.1, 1])
 
@@ -145,16 +145,20 @@ def check_app_password() -> bool:
             else:
                 st.error("Contraseña incorrecta. Vuelve a intentarlo 🙂")
 
-    # Columna derecha: imagen / video de portada (ajusta el path a tu muñequitos)
+    # Columna derecha: muñequitos (hero.png)
     with col2:
-        hero_img = Path("assets/branding/eni2025_hero.png")  # cámbialo si tu imagen tiene otro nombre
-        hero_video = Path("assets/branding/eni2025_hero.mp4")
+        # Intentamos primero en assets/branding/hero.png, luego assets/hero.png
+        hero_img = Path("assets/branding/hero.png")
+        if not hero_img.exists():
+            hero_img = Path("assets/hero.png")
+        hero_video = Path("assets/branding/hero.mp4")
+
         if hero_video.exists():
             st.video(str(hero_video))
         elif hero_img.exists():
             st.image(str(hero_img), use_container_width=True)
         else:
-            # Si todavía no apuntas a la imagen/ video correcto, no rompe.
+            # Si aún no está la imagen en esa ruta, no rompe.
             pass
 
     return False
