@@ -241,7 +241,7 @@ def check_app_password() -> bool:
                 data = f.read()
             b64 = base64.b64encode(data).decode("utf-8")
             # Pegadito al bloque de texto
-            # 👉 AQUÍ BAJAS / SUBES EL MUÑECO: cambia margin-top:-165px;
+            # 👉 AQUÍ BAJAS / SUBES EL MUÑECO: cambia margin-top:-145px;
             #    -200px = más arriba, -120px = más abajo
             video_html = f"""
             <div style="margin-left:-280px; margin-top:-165px;">
