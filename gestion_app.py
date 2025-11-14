@@ -99,12 +99,9 @@ def check_app_password() -> bool:
     if st.session_state.get("password_ok", False):
         return True
 
-    # Estilos y un poco de centrado vertical
+    # Estilos para el título y la píldora
     st.markdown("""
     <style>
-      .block-container{
-        padding-top: 18vh !important;
-      }
       .eni-hero-title{
         font-size:64px;
         font-weight:800;
@@ -125,6 +122,9 @@ def check_app_password() -> bool:
       }
     </style>
     """, unsafe_allow_html=True)
+
+    # Un pequeño margen superior solo en la pantalla de login
+    st.markdown("<div style='margin-top:12vh;'></div>", unsafe_allow_html=True)
 
     col1, col2 = st.columns([1.1, 1])
 
@@ -149,7 +149,8 @@ def check_app_password() -> bool:
     with col2:
         hero_img = Path("assets/branding/eni2025_logo.png")
         if hero_img.exists():
-            st.image(str(hero_img), use_container_width=True)
+            # OJO: aquí usamos use_column_width (compatible con tu versión)
+            st.image(str(hero_img), use_column_width=True)
         else:
             st.write("")
 
