@@ -88,12 +88,85 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ============ AUTENTICACIÓN ============
-if "user" not in st.session_state:
-    google_login()
+# ============ AUTENTICACIÓN POR CONTRASEÑA ============
+
+APP_PASSWORD = "Inei2025$"
+
+def check_app_password() -> bool:
+    """
+    Portada simple con BIENVENIDOS + píldora y campo de contraseña.
+    Si la contraseña es correcta, marca password_ok y crea un usuario genérico.
+    """
+
+    if st.session_state.get("password_ok", False):
+        return True
+
+    st.markdown(
+        """
+        <style>
+        .eni-login-wrap{
+          min-height: 100vh;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+        }
+        .eni-login-card{
+          background:#FFFFFF;
+          padding:32px 40px;
+          border-radius:24px;
+          box-shadow:0 18px 45px rgba(15,23,42,0.12);
+          max-width:460px;
+          width:100%;
+          text-align:center;
+        }
+        .eni-login-title{
+          font-size:40px;
+          font-weight:800;
+          color:#B38CFB;
+          line-height:0.9;
+          margin-bottom:8px;
+        }
+        .eni-login-pill{
+          display:inline-block;
+          padding:8px 18px;
+          border-radius:999px;
+          background-color:#E0ECFF;
+          color:#2B3A67;
+          font-weight:600;
+          font-size:13px;
+          letter-spacing:0.04em;
+          margin-bottom:24px;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("<div class='eni-login-wrap'><div class='eni-login-card'>", unsafe_allow_html=True)
+    st.markdown("<div class='eni-login-title'>BIEN<br>VENIDOS</div>", unsafe_allow_html=True)
+    st.markdown("<div class='eni-login-pill'>GESTIÓN DE TAREAS ENI 2025</div>", unsafe_allow_html=True)
+
+    pwd = st.text_input("Ingresa la contraseña", type="password")
+    if st.button("Ingresar", use_container_width=True):
+        if pwd == APP_PASSWORD:
+            st.session_state["password_ok"] = True
+            # usuario genérico para mantener compatibilidad con el resto del código
+            st.session_state["user_email"] = "eni2025@app"
+            st.session_state["user"] = {"email": "eni2025@app"}
+            st.experimental_rerun()
+        else:
+            st.error("Contraseña incorrecta. Vuelve a intentarlo 🙂")
+
+    st.markdown("</div></div>", unsafe_allow_html=True)
+    return False
+
+# Si no pasó la contraseña, no seguimos con la app
+if not check_app_password():
     st.stop()
 
-email = st.session_state.get("user_email") or (st.session_state.get("user") or {}).get("email", "")
+# ============ AUTENTICACIÓN (usuario genérico) ============
+# Ya no usamos google_login; tomamos el email desde session_state o ponemos uno por defecto
+email = st.session_state.get("user_email") or (st.session_state.get("user") or {}).get("email", "eni2025@app")
 
 # ============ Carga de ROLES / ACL ============
 try:
@@ -220,7 +293,12 @@ with st.sidebar:
     st.markdown(f"👋 **Hola, {dn}**")
     st.caption(f"**Usuario:** {email or '—'}")
     if st.button("🔒 Cerrar sesión", use_container_width=True):
+        # limpiamos la contraseña y usuario genérico; se puede mantener logout() por compatibilidad
+        st.session_state["password_ok"] = False
+        st.session_state.pop("user", None)
+        st.session_state.pop("user_email", None)
         logout()
+        st.experimental_rerun()
 
 # ============ Datos ============
 ensure_df_main()
