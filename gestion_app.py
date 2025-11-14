@@ -99,7 +99,7 @@ def check_app_password() -> bool:
     if st.session_state.get("password_ok", False):
         return True
 
-    # Un poco más centrado verticalmente solo en la pantalla de login
+    # Estilos y un poco de centrado vertical
     st.markdown("""
     <style>
       .block-container{
@@ -145,21 +145,13 @@ def check_app_password() -> bool:
             else:
                 st.error("Contraseña incorrecta. Vuelve a intentarlo 🙂")
 
-    # Columna derecha: muñequitos (hero.png)
+    # Columna derecha: logo / muñequitos
     with col2:
-        # Intentamos primero en assets/branding/hero.png, luego assets/hero.png
-        hero_img = Path("assets/branding/hero.png")
-        if not hero_img.exists():
-            hero_img = Path("assets/hero.png")
-        hero_video = Path("assets/branding/hero.mp4")
-
-        if hero_video.exists():
-            st.video(str(hero_video))
-        elif hero_img.exists():
+        hero_img = Path("assets/branding/eni2025_logo.png")
+        if hero_img.exists():
             st.image(str(hero_img), use_container_width=True)
         else:
-            # Si aún no está la imagen en esa ruta, no rompe.
-            pass
+            st.write("")
 
     return False
 
