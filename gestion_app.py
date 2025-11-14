@@ -126,8 +126,9 @@ def check_app_password() -> bool:
         display:inline-block;
         padding:10px 53px;
         border-radius:12px;
-        background-color:#E0ECFF;
-        color:#2B3A67;
+        background-color:#D2D3FF;   /* fondo lila (imagen 1) */
+        border:1px solid #D2D3FF;   /* borde mismo lila */
+        color:#FFFFFF;              /* letras blancas */
         font-weight:700;
         font-size:14px;
         letter-spacing:0.04em;
@@ -135,12 +136,12 @@ def check_app_password() -> bool:
         white-space: nowrap;  /* evita el salto de línea */
       }
 
-      /* 🎨 Botón ENTRAR jade claro (solo login: stButton en main) */
+      /* 🎨 Botón ENTRAR jade (imagen 2) con letras blancas */
       [data-testid="stAppViewContainer"] .main .stButton > button{
-        background:#A7F3D0 !important;   /* jade clarito */
-        color:#047857 !important;        /* jade oscuro */
+        background:#9FE6C8 !important;   /* jade/menta */
+        color:#FFFFFF !important;        /* texto blanco */
         border-radius:12px !important;
-        border:1px solid #A7F3D0 !important;
+        border:1px solid #9FE6C8 !important;
         font-weight:900 !important;      /* negrita */
         letter-spacing:0.04em !important;/* similar a la píldora */
         text-transform:uppercase !important;
