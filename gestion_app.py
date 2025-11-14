@@ -178,9 +178,7 @@ def check_app_password() -> bool:
 
     # Columnas generales con espaciador a la izquierda
     space_col, col1, col2 = st.columns([0.15, 0.55, 0.35])
-
-    with space_col:
-
+        
     # Columna izquierda: título + subcolumna
     with col1:
         st.markdown("<div class='eni-hero-title'>BIEN<br>VENIDOS</div>", unsafe_allow_html=True)
