@@ -105,7 +105,7 @@ def check_app_password() -> bool:
     <style>
       .eni-hero-title{
         font-size:96px;          /* BIEN / VENIDOS grande */
-        font-weight:800;
+        font-weight:900;
         color:#B38CFB;
         line-height:0.80;
         margin-bottom:10px;
