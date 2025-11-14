@@ -87,10 +87,11 @@ st.markdown("""
   section[data-testid="stSidebar"] .avatar-wrap img{ border-radius:9999px !important; }
   section[data-testid="stSidebar"]{ overflow-y:hidden !important; }
 
-  /* 🔼 Subir un poquito el contenido principal (BIEN VENIDOS + píldora + inputs) */
+  /* 🔼 Subir un poquito el contenido principal (BIEN VENIDOS + píldora + inputs)
+     👉 MUEVES EL BLOQUE LETRAS + INPUTS: cambia -1rem */
   html body [data-testid="stAppViewContainer"] .main .block-container{
     padding-top: 0rem !important;
-    margin-top: -1rem !Important;  /* antes -2rem */
+    margin-top: -1rem !important;  /* antes -2rem */
   }
 
   /* 🔼 Comprimir header para que no deje espacio arriba */
@@ -110,10 +111,8 @@ def check_app_password() -> bool:
     Portada tipo hero: BIENVENIDOS + píldora celeste + campo de contraseña.
     Si la contraseña es correcta, marca password_ok y crea un usuario genérico.
     """
-    if st.session_state.get("password_ok", False):
-        return True
 
-    # Estilos para el título, la píldora y el botón ENTRAR jade
+    # 🎨 Estilos para título, píldora, botón ENTRAR jade y espaciado de inputs
     st.markdown("""
     <style>
       .eni-hero-title{
@@ -136,25 +135,33 @@ def check_app_password() -> bool:
         white-space: nowrap;  /* evita el salto de línea */
       }
 
-      /* 🎨 Botón ENTRAR jade claro (login) */
+      /* 🎨 Botón ENTRAR jade claro (solo login: stButton en main) */
       [data-testid="stAppViewContainer"] .main .stButton > button{
         background:#A7F3D0 !important;   /* jade clarito */
         color:#047857 !important;        /* jade oscuro */
         border-radius:12px !important;
         border:1px solid #A7F3D0 !important;
+        font-weight:900 !important;      /* negrita */
         letter-spacing:0.04em !important;/* similar a la píldora */
         text-transform:uppercase !important;
       }
-      /* Forzar NEGRITA en el texto interno del botón */
-      [data-testid="stAppViewContainer"] .main .stButton > button *{
-        font-weight:900 !important;
-      }
-
       [data-testid="stAppViewContainer"] .main .stButton > button:hover{
         filter:brightness(0.97);
       }
+
+      /* 🔽 Reducir espacio entre select "¿Quién está editando?" y contraseña */
+      .eni-login-form [data-testid="stSelectbox"]{
+        margin-bottom:0.25rem !important;
+      }
+      .eni-login-form [data-testid="stTextInput"]{
+        margin-top:0rem !important;
+      }
     </style>
     """, unsafe_allow_html=True)
+
+    # ✅ Si ya pasó la contraseña, no mostramos login otra vez
+    if st.session_state.get("password_ok", False):
+        return True
 
     # 🔒 Ocultar scroll solo en la pantalla de login
     st.markdown("""
@@ -166,7 +173,8 @@ def check_app_password() -> bool:
     """, unsafe_allow_html=True)
 
     # Margen superior sólo en la pantalla de login
-    st.markdown("<div style='margin-top:7vh;'></div>", unsafe_allow_html=True)
+    # 👉 SUBES / BAJAS TODO EL BLOQUE LETRAS + INPUTS (cambia 15vh)
+    st.markdown("<div style='margin-top:15vh;'></div>", unsafe_allow_html=True)
 
     # Columnas generales con espaciador a la izquierda
     space_col, col1, col2 = st.columns([0.15, 0.55, 0.35])
@@ -174,13 +182,14 @@ def check_app_password() -> bool:
     with space_col:
         st.write("")
 
-    # Columna izquierda: título + subcolumna para que
-    # la píldora y los inputs tengan un ancho parecido a "VENIDOS"
+    # Columna izquierda: título + subcolumna
     with col1:
         st.markdown("<div class='eni-hero-title'>BIEN<br>VENIDOS</div>", unsafe_allow_html=True)
 
-        form_col, _ = st.columns([0.60, 0.60])  # <-- controla el ancho de la píldora e inputs
+        form_col, _ = st.columns([0.60, 0.60])  # <-- ancho de píldora e inputs
         with form_col:
+            st.markdown("<div class='eni-login-form'>", unsafe_allow_html=True)
+
             st.markdown("<div class='eni-hero-pill'>GESTIÓN DE TAREAS ENI 2025</div>", unsafe_allow_html=True)
             st.write("")
 
@@ -210,23 +219,19 @@ def check_app_password() -> bool:
                 key="editor_name_login",
             )
             st.session_state["user_display_name"] = editor_name
-           
-            # 🔽 Reduce el espacio entre "¿Quién está editando?" y "Ingresa la contraseña"
-            st.markdown("<div style='margin-top:-36px;'></div>", unsafe_allow_html=True)
-            
+
             pwd = st.text_input("Ingresa la contraseña", type="password", key="eni_pwd")
 
-            # Contenedor “dummy”
-            st.markdown("<div class='eni-login-btn'>", unsafe_allow_html=True)
+            # Botón ENTRAR (jade claro)
             if st.button("ENTRAR", use_container_width=True):
                 if pwd == APP_PASSWORD:
                     st.session_state["password_ok"] = True
-                    # usuario genérico para que el resto del código siga igual
                     st.session_state["user_email"] = "eni2025@app"
                     st.session_state["user"] = {"email": "eni2025@app"}
                     st.experimental_rerun()
                 else:
                     st.error("Contraseña incorrecta. Vuelve a intentarlo 🙂")
+
             st.markdown("</div>", unsafe_allow_html=True)
 
     # Columna derecha: héroe animado (video autoplay sin controles) o logo como respaldo
@@ -239,10 +244,12 @@ def check_app_password() -> bool:
                 data = f.read()
             b64 = base64.b64encode(data).decode("utf-8")
             # Pegadito al bloque de texto
+            # 👉 AQUÍ BAJAS / SUBES EL MUÑECO: cambia margin-top:-165px;
+            #    -200px = más arriba, -120px = más abajo
             video_html = f"""
-            <div style="margin-left:-240px; margin-top:-120px;">
+            <div style="margin-left:-280px; margin-top:-165px;">
               <video autoplay loop muted playsinline
-                     style="width:100%;max-width:460px;
+                     style="width:100%;max-width:520px;
                             display:block;margin:0;">
                 <source src="data:video/mp4;base64,{b64}" type="video/mp4">
               </video>
@@ -261,7 +268,6 @@ if not check_app_password():
     st.stop()
 
 # ============ AUTENTICACIÓN (usuario genérico) ============
-# Ya no usamos google_login; tomamos el email desde session_state o ponemos uno por defecto
 email = st.session_state.get("user_email") or (st.session_state.get("user") or {}).get("email", "eni2025@app")
 
 # ============ Carga de ROLES / ACL ============
@@ -359,8 +365,8 @@ st.session_state["maybe_save"] = _maybe_save_chain
 
 # ====== Logout local (reemplaza al de auth_google) ======
 def logout():
-    for k in ("user", "user_email", "password_ok",
-              "acl_user", "auth_ok", "nav_section", "roles_df"):
+    for k in ("user", "user_email", "password_ok", "acl_user",
+              "auth_ok", "nav_section", "roles_df"):
         st.session_state.pop(k, None)
     st.experimental_rerun()
 
@@ -388,13 +394,7 @@ with st.sidebar:
     st.header("Secciones")
     nav_labels = ["📘 Gestión de tareas","🗂️ Kanban","📅 Gantt","📊 Dashboard"]
     default_idx = nav_labels.index(st.session_state.get("nav_section", "📘 Gestión de tareas"))
-    nav_choice = st.radio(
-        "Navegación", nav_labels,
-        index=default_idx,
-        label_visibility="collapsed",
-        key="nav_section",
-        horizontal=False
-    )
+    nav_choice = st.radio("Navegación", nav_labels, index=default_idx, label_visibility="collapsed", key="nav_section", horizontal=False)
 
     st.divider()
     dn = st.session_state.get("user_display_name", email or "Usuario")
