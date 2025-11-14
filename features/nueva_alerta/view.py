@@ -1,4 +1,3 @@
-# features/nueva_alerta/view.py 
 from __future__ import annotations
 import os
 import pandas as pd
@@ -71,8 +70,9 @@ def _save_local(df: pd.DataFrame):
         os.makedirs("data", exist_ok=True)
         df.to_csv(os.path.join("data", "tareas.csv"), index=False, encoding="utf-8-sig")
         return {"ok": True, "msg": "Cambios guardados."}
-    except Exception as e:
-        return {"ok": False, "msg": f"Error al guardar: {e}"}
+    except Exception:
+        # No mostramos error técnico, solo un mensaje genérico
+        return {"ok": False, "msg": "No se pudo guardar localmente (fallback activo)."}
 
 
 def _display_name() -> str:
@@ -129,13 +129,14 @@ def _bootstrap_df_main():
         st.session_state["df_main"] = df_local.copy()
         return
 
-    # 2) Sheets
+    # 2) Sheets (ahora usando open_sheet_by_url correctamente)
     try:
-        if callable(read_df_from_worksheet):
+        if callable(read_df_from_worksheet) and callable(open_sheet_by_url):
             ss_url = _secrets_sheet_url()
             if ss_url:
                 ws_name = _secrets_ws_name("TareasRecientes")
-                df_sh = read_df_from_worksheet(ss_url, ws_name)
+                sh = open_sheet_by_url(ss_url)
+                df_sh = read_df_from_worksheet(sh, ws_name)
                 if isinstance(df_sh, pd.DataFrame) and not df_sh.empty:
                     st.session_state["df_main"] = df_sh.fillna("").astype(str)
                     return
@@ -386,7 +387,7 @@ def render(user: dict | None = None):
             "Hora de corrección",
             "N° alerta",
             "Tipo de alerta",
-        ]  # ← coma corregida entre "N° alerta" y "Tipo de alerta"
+        ]
 
         df_view = pd.DataFrame(columns=cols_out)
         if not df_tasks.empty and "Id" in df_tasks.columns:
@@ -441,7 +442,7 @@ def render(user: dict | None = None):
         }"""
         )
 
-        # 🎨 Colores suaves: sin grises ni rojos
+        // 🎨 Colores suaves: sin grises ni rojos
         si_no_style_genero = JsCode(
             """
         function(p){
@@ -699,7 +700,7 @@ def render(user: dict | None = None):
                                 else _persist(df_base.copy())
                             )
 
-                            # Upsert a Sheets (por Id)
+                            # Upsert a Sheets (por Id) — silencioso si falla
                             try:
                                 if DO_SHEETS_UPSERT and changed_ids and callable(upsert_rows_by_id):
                                     ss_url = _secrets_sheet_url()
@@ -715,9 +716,11 @@ def render(user: dict | None = None):
                                         if up_res.get("ok"):
                                             st.success(up_res.get("msg", "Actualizado en Sheets."))
                                         else:
-                                            st.info(up_res.get("msg", "No se pudo actualizar en Sheets."))
-                            except Exception as ee:
-                                st.info(f"Guardado local OK. No pude actualizar Sheets: {ee}")
+                                            # Mensaje suave, sin detalles técnicos
+                                            st.info("Guardado local OK. No se pudo actualizar en Sheets.")
+                            except Exception:
+                                # No mostramos ningún error interno extra
+                                pass
 
                             if res_local.get("ok", False):
                                 st.success(f"✔ Cambios guardados: {cambios} actualización(es).")
