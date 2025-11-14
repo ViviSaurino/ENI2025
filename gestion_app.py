@@ -116,7 +116,7 @@ def check_app_password() -> bool:
         border-radius:12px;
         background-color:#E0ECFF;
         color:#2B3A67;
-        font-weight:600;
+        font-weight:700;
         font-size:14px;
         letter-spacing:0.04em;
         margin-bottom:18px;
