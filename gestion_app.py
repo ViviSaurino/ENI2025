@@ -130,8 +130,8 @@ def check_app_password() -> bool:
     </style>
     """, unsafe_allow_html=True)
 
-    # Margen superior sólo en la pantalla de login
-    st.markdown("<div style='margin-top:0vh;'></div>", unsafe_allow_html=True)
+    # Margen superior + wrapper con margen negativo para subir todo el bloque
+    st.markdown("<div style='margin-top:-4vh;'>", unsafe_allow_html=True)
 
     # Columnas generales con espaciador a la izquierda
     space_col, col1, col2 = st.columns([0.10, 0.55, 0.35])
@@ -184,6 +184,9 @@ def check_app_password() -> bool:
             st.image(str(logo_img), use_column_width=True)
         else:
             st.write("")
+
+    # Cierre del wrapper con margen negativo
+    st.markdown("</div>", unsafe_allow_html=True)
 
     return False
 
