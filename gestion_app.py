@@ -142,7 +142,7 @@ def check_app_password() -> bool:
         color:#047857 !important;        /* jade oscuro */
         border-radius:12px !important;
         border:1px solid #6EE7B7 !important;
-        font-weight:700 !important;      /* negrita */
+        font-weight:730 !important;      /* negrita */
       }
       [data-testid="stAppViewContainer"] .main .stButton > button:hover{
         filter:brightness(0.97);
@@ -209,7 +209,7 @@ def check_app_password() -> bool:
 
             # Contenedor “dummy” (ya no hace falta para el CSS pero lo dejamos)
             st.markdown("<div class='eni-login-btn'>", unsafe_allow_html=True)
-            if st.button("Entrar", use_container_width=True):
+            if st.button("ENTRAR", use_container_width=True):
                 if pwd == APP_PASSWORD:
                     st.session_state["password_ok"] = True
                     # usuario genérico para que el resto del código siga igual
