@@ -139,7 +139,7 @@ def check_app_password() -> bool:
     with col1:
         st.markdown("<div class='eni-hero-title'>BIEN<br>VENIDOS</div>", unsafe_allow_html=True)
 
-        form_col, _ = st.columns([0.90, 0.53])  # <-- controla el ancho de la píldora e inputs
+        form_col, _ = st.columns([0.90, 0.54])  # <-- controla el ancho de la píldora e inputs
         with form_col:
             st.markdown("<div class='eni-hero-pill'>GESTIÓN DE TAREAS ENI 2025</div>", unsafe_allow_html=True)
             st.write("")
