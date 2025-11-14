@@ -135,7 +135,7 @@ def check_app_password() -> bool:
     # la píldora y los inputs tengan un ancho parecido a "VENIDOS"
     with col1:
         # wrapper para mover todo a la derecha
-        st.markdown("<div style='margin-left:60px;'>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-left:100px;'>", unsafe_allow_html=True)
 
         st.markdown("<div class='eni-hero-title'>BIEN<br>VENIDOS</div>", unsafe_allow_html=True)
 
