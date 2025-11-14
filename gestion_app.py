@@ -9,7 +9,7 @@ import importlib
 import types
 import base64  # para incrustar el video como base64
 
-from auth_google import google_login, logout
+# from auth_google import google_login, logout  # <-- ELIMINADO
 
 # ===== Import robusto de shared con fallbacks =====
 def _fallback_ensure_df_main():
@@ -166,7 +166,7 @@ def check_app_password() -> bool:
             st.markdown("<div class='eni-hero-pill'>GESTIÓN DE TAREAS ENI 2025</div>", unsafe_allow_html=True)
             st.write("")
 
-            # 👉 Nuevo: preguntar quién está editando ANTES de entrar a la app
+            # 👉 Preguntar quién está editando
             editor_name = st.text_input(
                 "¿Quién está editando?",
                 value=st.session_state.get("user_display_name", ""),
@@ -314,6 +314,13 @@ def _maybe_save_chain(persist_local_fn, df: pd.DataFrame):
 
 st.session_state["maybe_save"] = _maybe_save_chain
 
+# ====== Logout local (reemplaza al de auth_google) ======
+def logout():
+    for k in ("user", "user_email", "password_ok", "acl_user",
+              "auth_ok", "nav_section", "roles_df"):
+        st.session_state.pop(k, None)
+    st.experimental_rerun()
+
 # Mapeo de claves de pestaña para permisos
 TAB_KEY_BY_SECTION = {
     "🧰 Gestión de tareas": "tareas_recientes",
@@ -346,12 +353,7 @@ with st.sidebar:
     st.markdown(f"👋 **Hola, {dn}**")
     st.caption(f"**Usuario:** {email or '—'}")
     if st.button("🔒 Cerrar sesión", use_container_width=True):
-        # limpiamos la contraseña y usuario genérico; se puede mantener logout() por compatibilidad
-        st.session_state["password_ok"] = False
-        st.session_state.pop("user", None)
-        st.session_state.pop("user_email", None)
         logout()
-        st.experimental_rerun()
 
 # ============ Datos ============
 ensure_df_main()
