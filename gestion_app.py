@@ -87,9 +87,17 @@ st.markdown("""
   section[data-testid="stSidebar"] .avatar-wrap img{ border-radius:9999px !important; }
   section[data-testid="stSidebar"]{ overflow-y:hidden !important; }
 
-  /* 🔼 Esto sube todo el contenido principal (BIEN VENIDOS + píldora + inputs) */
-  main .block-container{
+  /* 🔼 Subir contenido principal (BIEN VENIDOS + píldora + inputs) */
+  html body [data-testid="stAppViewContainer"] .main .block-container{
     padding-top: 0rem !important;
+    margin-top: -2rem !important;  /* ajusta -1rem, -3rem según quieras */
+  }
+
+  /* 🔼 Opcional: comprimir header para que no deje espacio arriba */
+  header[data-testid="stHeader"]{
+    height: 0px;
+    padding: 0px;
+    visibility: hidden;
   }
 </style>
 """, unsafe_allow_html=True)
@@ -130,8 +138,8 @@ def check_app_password() -> bool:
     </style>
     """, unsafe_allow_html=True)
 
-    # Margen superior + wrapper con margen negativo para subir todo el bloque
-    st.markdown("<div style='margin-top:-20vh;'>", unsafe_allow_html=True)
+    # Margen superior sólo en la pantalla de login
+    st.markdown("<div style='margin-top:0vh;'></div>", unsafe_allow_html=True)
 
     # Columnas generales con espaciador a la izquierda
     space_col, col1, col2 = st.columns([0.10, 0.55, 0.35])
@@ -184,9 +192,6 @@ def check_app_password() -> bool:
             st.image(str(logo_img), use_column_width=True)
         else:
             st.write("")
-
-    # Cierre del wrapper con margen negativo
-    st.markdown("</div>", unsafe_allow_html=True)
 
     return False
 
