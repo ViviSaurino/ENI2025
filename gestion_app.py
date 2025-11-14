@@ -9,7 +9,7 @@ import importlib
 import types
 import base64  # para incrustar el video como base64
 
-from auth_google import google_login, logout
+# from auth_google import google_login, logout   # <- YA NO SE USA
 
 # ===== Import robusto de shared con fallbacks =====
 def _fallback_ensure_df_main():
@@ -341,7 +341,6 @@ with st.sidebar:
         st.session_state["password_ok"] = False
         st.session_state.pop("user", None)
         st.session_state.pop("user_email", None)
-        logout()
         st.experimental_rerun()
 
 # ============ Datos ============
@@ -401,4 +400,3 @@ else:
         st.caption("Próximamente: visualizaciones y KPIs del dashboard.")
         st.write("")
     render_if_allowed(tab_key, _render_dashboard)
-
