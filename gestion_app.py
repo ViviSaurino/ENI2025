@@ -223,6 +223,7 @@ def check_app_password() -> bool:
             if st.button("ENTRAR", use_container_width=True):
                 if pwd == APP_PASSWORD:
                     st.session_state["password_ok"] = True
+                    # usuario genérico para que el resto del código siga igual
                     st.session_state["user_email"] = "eni2025@app"
                     st.session_state["user"] = {"email": "eni2025@app"}
                     st.experimental_rerun()
@@ -365,7 +366,7 @@ def logout():
     for k in ("user", "user_email", "password_ok", "acl_user",
               "auth_ok", "nav_section", "roles_df"):
         st.session_state.pop(k, None)
-    st.experimental_rerun()
+    st.rerun()   # ✅ nuevo
 
 # Mapeo de claves de pestaña para permisos
 TAB_KEY_BY_SECTION = {
