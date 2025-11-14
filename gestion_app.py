@@ -151,7 +151,7 @@ def check_app_password() -> bool:
 
       /* 🔽 Reducir espacio entre select "¿Quién está editando?" y contraseña */
       .eni-login-form [data-testid="stSelectbox"]{
-        margin-bottom:0.25rem !important;
+        margin-bottom:0.15rem !important;
       }
       .eni-login-form [data-testid="stTextInput"]{
         margin-top:0rem !important;
