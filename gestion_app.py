@@ -126,8 +126,8 @@ def check_app_password() -> bool:
         display:inline-block;
         padding:10px 53px;
         border-radius:12px;
-        background-color:#D2D3FF;   /* fondo lila (imagen 1) */
-        border:1px solid #D2D3FF;   /* borde mismo lila */
+        background-color:#C0C2FF;   /* lila un poquito más oscuro */
+        border:1px solid #C0C2FF;
         color:#FFFFFF;              /* letras blancas */
         font-weight:700;
         font-size:14px;
@@ -136,13 +136,13 @@ def check_app_password() -> bool:
         white-space: nowrap;  /* evita el salto de línea */
       }
 
-      /* 🎨 Botón ENTRAR jade (imagen 2) con letras blancas */
+      /* 🎨 Botón ENTRAR jade un poquito más oscuro, letras blancas */
       [data-testid="stAppViewContainer"] .main .stButton > button{
-        background:#9FE6C8 !important;   /* jade/menta */
+        background:#8FD9C1 !important;   /* jade algo más oscuro */
         color:#FFFFFF !important;        /* texto blanco */
         border-radius:12px !important;
-        border:1px solid #9FE6C8 !important;
-        font-weight:900 !important;      /* negrita */
+        border:1px solid #8FD9C1 !important;
+        font-weight:900 !important;      /* negrita fuerte */
         letter-spacing:0.04em !important;/* similar a la píldora */
         text-transform:uppercase !important;
       }
@@ -174,7 +174,6 @@ def check_app_password() -> bool:
     """, unsafe_allow_html=True)
 
     # Margen superior sólo en la pantalla de login
-    # 👉 SUBES / BAJAS TODO EL BLOQUE LETRAS + INPUTS (cambia 15vh)
     st.markdown("<div style='margin-top:7vh;'></div>", unsafe_allow_html=True)
 
     # Columnas generales con espaciador a la izquierda
@@ -222,14 +221,14 @@ def check_app_password() -> bool:
 
             pwd = st.text_input("Ingresa la contraseña", type="password", key="eni_pwd")
 
-            # Botón ENTRAR (jade claro)
+            # Botón ENTRAR
             if st.button("ENTRAR", use_container_width=True):
                 if pwd == APP_PASSWORD:
                     st.session_state["password_ok"] = True
                     # usuario genérico para que el resto del código siga igual
                     st.session_state["user_email"] = "eni2025@app"
                     st.session_state["user"] = {"email": "eni2025@app"}
-                    st.rerun()   # ← antes st.experimental_rerun()
+                    st.rerun()
                 else:
                     st.error("Contraseña incorrecta. Vuelve a intentarlo 🙂")
 
@@ -244,9 +243,6 @@ def check_app_password() -> bool:
             with open(hero_video, "rb") as f:
                 data = f.read()
             b64 = base64.b64encode(data).decode("utf-8")
-            # Pegadito al bloque de texto
-            # 👉 AQUÍ BAJAS / SUBES EL MUÑECO: cambia margin-top:-145px;
-            #    -200px = más arriba, -120px = más abajo
             video_html = f"""
             <div style="margin-left:-280px; margin-top:-120px;">
               <video autoplay loop muted playsinline
@@ -369,7 +365,7 @@ def logout():
     for k in ("user", "user_email", "password_ok", "acl_user",
               "auth_ok", "nav_section", "roles_df"):
         st.session_state.pop(k, None)
-    st.rerun()   # ✅ nuevo
+    st.rerun()
 
 # Mapeo de claves de pestaña para permisos
 TAB_KEY_BY_SECTION = {
