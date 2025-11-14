@@ -15,7 +15,7 @@ from auth_google import google_login, logout
 def _fallback_ensure_df_main():
     import os
     path = os.path.join("data", "tareas.csv")
-    os.makedirs("data", exist_ok=True)   # <- corregido
+    os.makedirs("data", exist_ok=True)
 
     if "df_main" in st.session_state:
         return
@@ -104,11 +104,11 @@ def check_app_password() -> bool:
     st.markdown("""
     <style>
       .eni-hero-title{
-        font-size:80px;          /* más grande */
+        font-size:96px;          /* más grande */
         font-weight:800;
         color:#B38CFB;
-        line-height:0.83;
-        margin-bottom:12px;
+        line-height:0.80;
+        margin-bottom:10px;
       }
       .eni-hero-pill{
         display:inline-block;
@@ -119,22 +119,24 @@ def check_app_password() -> bool:
         font-weight:600;
         font-size:14px;
         letter-spacing:0.04em;
-        margin-bottom:24px;
+        margin-bottom:18px;
       }
     </style>
     """, unsafe_allow_html=True)
 
     # Un pequeño margen superior solo en la pantalla de login
-    st.markdown("<div style='margin-top:10vh;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top:8vh;'></div>", unsafe_allow_html=True)
 
-    col1, col2 = st.columns([1.1, 1])
+    # Cols generales (acercamos un poquito el hero)
+    col1, col2 = st.columns([1.05, 0.95])
 
     # Columna izquierda: título a todo el ancho
     with col1:
         st.markdown("<div class='eni-hero-title'>BIEN<br>VENIDOS</div>", unsafe_allow_html=True)
 
         # Subcolumnas para que PÍLDORA + FORMULARIO tengan el mismo ancho
-        inner_col, _ = st.columns([0.55, 0.45])
+        # (más angosto que antes)
+        inner_col, _ = st.columns([0.36, 0.64])
         with inner_col:
             st.markdown("<div class='eni-hero-pill'>GESTIÓN DE TAREAS ENI 2025</div>", unsafe_allow_html=True)
             st.write("")
@@ -159,9 +161,9 @@ def check_app_password() -> bool:
             with open(hero_video, "rb") as f:
                 data = f.read()
             b64 = base64.b64encode(data).decode("utf-8")
-            # sin borde, sin sombra; ancho razonable
+            # acercamos más a la izquierda (margen negativo mayor)
             video_html = f"""
-            <div style="margin-left:-30px;">
+            <div style="margin-left:-110px; margin-top:-10px;">
               <video autoplay loop muted playsinline
                      style="width:100%;max-width:520px;
                             display:block;margin:0;">
@@ -374,4 +376,3 @@ else:
         st.caption("Próximamente: visualizaciones y KPIs del dashboard.")
         st.write("")
     render_if_allowed(tab_key, _render_dashboard)
-
