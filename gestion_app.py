@@ -166,7 +166,7 @@ def check_app_password() -> bool:
     """, unsafe_allow_html=True)
 
     # Margen superior sólo en la pantalla de login
-    st.markdown("<div style='margin-top:15vh;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top:10vh;'></div>", unsafe_allow_html=True)
 
     # Columnas generales con espaciador a la izquierda
     space_col, col1, col2 = st.columns([0.15, 0.55, 0.35])
