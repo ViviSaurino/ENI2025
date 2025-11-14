@@ -89,51 +89,35 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============ AUTENTICACIÓN POR CONTRASEÑA ============
-
 APP_PASSWORD = "Inei2025$"
 
 def check_app_password() -> bool:
     """
-    Portada simple con BIENVENIDOS + píldora y campo de contraseña.
+    Portada tipo hero: BIENVENIDOS + píldora celeste + campo de contraseña.
     Si la contraseña es correcta, marca password_ok y crea un usuario genérico.
     """
-
     if st.session_state.get("password_ok", False):
         return True
 
+    # Estilos para título y píldora (similar a tu portada)
     st.markdown(
         """
         <style>
-        .eni-login-wrap{
-          min-height: 100vh;
-          display:flex;
-          align-items:center;
-          justify-content:center;
-        }
-        .eni-login-card{
-          background:#FFFFFF;
-          padding:32px 40px;
-          border-radius:24px;
-          box-shadow:0 18px 45px rgba(15,23,42,0.12);
-          max-width:460px;
-          width:100%;
-          text-align:center;
-        }
-        .eni-login-title{
-          font-size:40px;
+        .eni-hero-title{
+          font-size:64px;
           font-weight:800;
           color:#B38CFB;
-          line-height:0.9;
-          margin-bottom:8px;
+          line-height:0.85;
+          margin-bottom:12px;
         }
-        .eni-login-pill{
+        .eni-hero-pill{
           display:inline-block;
-          padding:8px 18px;
+          padding:10px 22px;
           border-radius:999px;
           background-color:#E0ECFF;
           color:#2B3A67;
           font-weight:600;
-          font-size:13px;
+          font-size:14px;
           letter-spacing:0.04em;
           margin-bottom:24px;
         }
@@ -142,22 +126,37 @@ def check_app_password() -> bool:
         unsafe_allow_html=True,
     )
 
-    st.markdown("<div class='eni-login-wrap'><div class='eni-login-card'>", unsafe_allow_html=True)
-    st.markdown("<div class='eni-login-title'>BIEN<br>VENIDOS</div>", unsafe_allow_html=True)
-    st.markdown("<div class='eni-login-pill'>GESTIÓN DE TAREAS ENI 2025</div>", unsafe_allow_html=True)
+    col1, col2 = st.columns([1.1, 1])
 
-    pwd = st.text_input("Ingresa la contraseña", type="password")
-    if st.button("Ingresar", use_container_width=True):
-        if pwd == APP_PASSWORD:
-            st.session_state["password_ok"] = True
-            # usuario genérico para mantener compatibilidad con el resto del código
-            st.session_state["user_email"] = "eni2025@app"
-            st.session_state["user"] = {"email": "eni2025@app"}
-            st.experimental_rerun()
+    # Columna izquierda: BIENVENIDOS + píldora + contraseña
+    with col1:
+        st.markdown("<div class='eni-hero-title'>BIEN<br>VENIDOS</div>", unsafe_allow_html=True)
+        st.markdown("<div class='eni-hero-pill'>GESTIÓN DE TAREAS ENI 2025</div>", unsafe_allow_html=True)
+        st.write("")
+
+        pwd = st.text_input("Ingresa la contraseña", type="password", key="eni_pwd")
+        if st.button("Ingresar", use_container_width=True):
+            if pwd == APP_PASSWORD:
+                st.session_state["password_ok"] = True
+                # usuario genérico para que el resto del código siga igual
+                st.session_state["user_email"] = "eni2025@app"
+                st.session_state["user"] = {"email": "eni2025@app"}
+                st.experimental_rerun()
+            else:
+                st.error("Contraseña incorrecta. Vuelve a intentarlo 🙂")
+
+    # Columna derecha: imagen / video de portada (ajusta el path a tu muñequitos)
+    with col2:
+        hero_img = Path("assets/branding/eni2025_hero.png")  # cámbialo si tu imagen tiene otro nombre
+        hero_video = Path("assets/branding/eni2025_hero.mp4")
+        if hero_video.exists():
+            st.video(str(hero_video))
+        elif hero_img.exists():
+            st.image(str(hero_img), use_container_width=True)
         else:
-            st.error("Contraseña incorrecta. Vuelve a intentarlo 🙂")
+            # Si todavía no apuntas a la imagen/ video correcto, no rompe.
+            pass
 
-    st.markdown("</div></div>", unsafe_allow_html=True)
     return False
 
 # Si no pasó la contraseña, no seguimos con la app
