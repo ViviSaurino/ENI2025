@@ -173,7 +173,11 @@ def check_app_password() -> bool:
                     # usuario genérico para que el resto del código siga igual
                     st.session_state["user_email"] = "eni2025@app"
                     st.session_state["user"] = {"email": "eni2025@app"}
-                    st.experimental_rerun()
+                    # 🔁 Rerun compatible con nuevas versiones
+                    if hasattr(st, "rerun"):
+                        st.rerun()
+                    else:
+                        st.experimental_rerun()
                 else:
                     st.error("Contraseña incorrecta. Vuelve a intentarlo 🙂")
 
@@ -337,11 +341,14 @@ with st.sidebar:
     st.markdown(f"👋 **Hola, {dn}**")
     st.caption(f"**Usuario:** {email or '—'}")
     if st.button("🔒 Cerrar sesión", use_container_width=True):
-        # limpiamos la contraseña y usuario genérico; se puede mantener logout() por compatibilidad
+        # limpiamos la contraseña y usuario genérico
         st.session_state["password_ok"] = False
         st.session_state.pop("user", None)
         st.session_state.pop("user_email", None)
-        st.experimental_rerun()
+        if hasattr(st, "rerun"):
+            st.rerun()
+        else:
+            st.experimental_rerun()
 
 # ============ Datos ============
 ensure_df_main()
