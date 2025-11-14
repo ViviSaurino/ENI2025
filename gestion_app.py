@@ -87,13 +87,13 @@ st.markdown("""
   section[data-testid="stSidebar"] .avatar-wrap img{ border-radius:9999px !important; }
   section[data-testid="stSidebar"]{ overflow-y:hidden !important; }
 
-  /* 🔼 Subir contenido principal (BIEN VENIDOS + píldora + inputs) */
+  /* 🔼 Subir un poquito el contenido principal (BIEN VENIDOS + píldora + inputs) */
   html body [data-testid="stAppViewContainer"] .main .block-container{
     padding-top: 0rem !important;
-    margin-top: -2rem !important;  /* ajusta -1rem, -3rem según quieras */
+    margin-top: -1rem !important;  /* antes -2rem */
   }
 
-  /* 🔼 Opcional: comprimir header para que no deje espacio arriba */
+  /* 🔼 Comprimir header para que no deje espacio arriba */
   header[data-testid="stHeader"]{
     height: 0px;
     padding: 0px;
@@ -134,6 +134,15 @@ def check_app_password() -> bool:
         letter-spacing:0.04em;
         margin-bottom:18px;
         white-space: nowrap;  /* evita el salto de línea */
+      }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # 🔒 Ocultar scroll solo en la pantalla de login
+    st.markdown("""
+    <style>
+      html, body, [data-testid="stAppViewContainer"], .main{
+        overflow: hidden !important;
       }
     </style>
     """, unsafe_allow_html=True)
@@ -392,3 +401,4 @@ else:
         st.caption("Próximamente: visualizaciones y KPIs del dashboard.")
         st.write("")
     render_if_allowed(tab_key, _render_dashboard)
+
