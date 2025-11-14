@@ -142,8 +142,8 @@ def check_app_password() -> bool:
         color:#047857 !important;        /* jade oscuro */
         border-radius:12px !important;
         border:1px solid #A7F3D0 !important;
-        font-weight:1200 !important;      /* negrita */
-        letter-spacing:0.08em !important;/* similar a la píldora */
+        font-weight:900 !important;      /* negrita */
+        letter-spacing:0.04em !important;/* similar a la píldora */
         text-transform:uppercase !important;
       }
       [data-testid="stAppViewContainer"] .main .stButton > button:hover{
