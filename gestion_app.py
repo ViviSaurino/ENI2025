@@ -142,10 +142,14 @@ def check_app_password() -> bool:
         color:#047857 !important;        /* jade oscuro */
         border-radius:12px !important;
         border:1px solid #A7F3D0 !important;
-        font-weight:900 !important;      /* negrita */
         letter-spacing:0.04em !important;/* similar a la píldora */
         text-transform:uppercase !important;
       }
+      /* Forzar NEGRITA en el texto interno del botón */
+      [data-testid="stAppViewContainer"] .main .stButton > button *{
+        font-weight:900 !important;
+      }
+
       [data-testid="stAppViewContainer"] .main .stButton > button:hover{
         filter:brightness(0.97);
       }
@@ -209,7 +213,7 @@ def check_app_password() -> bool:
 
             pwd = st.text_input("Ingresa la contraseña", type="password", key="eni_pwd")
 
-            # Contenedor “dummy” (sigue ahí pero solo por orden visual)
+            # Contenedor “dummy”
             st.markdown("<div class='eni-login-btn'>", unsafe_allow_html=True)
             if st.button("ENTRAR", use_container_width=True):
                 if pwd == APP_PASSWORD:
