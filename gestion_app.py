@@ -104,7 +104,7 @@ def check_app_password() -> bool:
     st.markdown("""
     <style>
       .eni-hero-title{
-        font-size:105px;          /* BIEN / VENIDOS grande */
+        font-size:102px;          /* BIEN / VENIDOS grande */
         font-weight:900;
         color:#B38CFB;
         line-height:0.80;
