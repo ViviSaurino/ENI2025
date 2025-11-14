@@ -244,7 +244,7 @@ def check_app_password() -> bool:
             # 👉 AQUÍ BAJAS / SUBES EL MUÑECO: cambia margin-top:-145px;
             #    -200px = más arriba, -120px = más abajo
             video_html = f"""
-            <div style="margin-left:-280px; margin-top:-165px;">
+            <div style="margin-left:-280px; margin-top:-120px;">
               <video autoplay loop muted playsinline
                      style="width:100%;max-width:460px;
                             display:block;margin:0;">
