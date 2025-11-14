@@ -180,16 +180,16 @@ def check_app_password() -> bool:
 
             # 👉 Lista desplegable: ¿Quién está editando?
             editor_options = [
-                "😊 Brayan Pisfil",
-                "😊 Elizabet Cama",
-                "😊 Enrique Oyola",
-                "😊 Jaime Agreda",
-                "😊 John Talla",
-                "😊 Lucy Advíncula",
-                "😊 Stephane Grande",
-                "😊 Tiffany Bautista",
-                "😊 Vivian Saurino",
-                "😊 Yoel Camizán",
+                "Brayan Pisfil 😎",
+                "Elizabet Cama 🌸",
+                "Enrique Oyola 🧠",
+                "Jaime Agreda 📘",
+                "John Talla 🛠️",
+                "Lucy Advíncula 🌈",
+                "Stephane Grande 📊",
+                "Tiffany Bautista ✨",
+                "Vivian Saurino 💜",
+                "Yoel Camizán 🚀",
             ]
             default_name = st.session_state.get("user_display_name", "")
             try:
