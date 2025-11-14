@@ -134,6 +134,9 @@ def check_app_password() -> bool:
     # Columna izquierda: título + subcolumna más angosta para que
     # la píldora y los inputs tengan un ancho parecido a "VENIDOS"
     with col1:
+        # wrapper para mover todo a la derecha
+        st.markdown("<div style='margin-left:60px;'>", unsafe_allow_html=True)
+
         st.markdown("<div class='eni-hero-title'>BIEN<br>VENIDOS</div>", unsafe_allow_html=True)
 
         form_col, _ = st.columns([0.100, 0.100])  # <-- controla el ancho de la píldora e inputs
@@ -151,6 +154,9 @@ def check_app_password() -> bool:
                     st.experimental_rerun()
                 else:
                     st.error("Contraseña incorrecta. Vuelve a intentarlo 🙂")
+
+        # cierre del wrapper
+        st.markdown("</div>", unsafe_allow_html=True)
 
     # Columna derecha: héroe animado (video autoplay sin controles) o logo como respaldo
     with col2:
