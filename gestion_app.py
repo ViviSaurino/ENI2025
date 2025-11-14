@@ -180,7 +180,6 @@ def check_app_password() -> bool:
     space_col, col1, col2 = st.columns([0.15, 0.55, 0.35])
 
     with space_col:
-        st.write("")
 
     # Columna izquierda: título + subcolumna
     with col1:
