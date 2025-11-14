@@ -142,7 +142,7 @@ def check_app_password() -> bool:
         color:#047857 !important;        /* jade oscuro */
         border-radius:12px !important;
         border:1px solid #6EE7B7 !important;
-        font-weight:800 !important;      /* negrita */
+        font-weight:900 !important;      /* negrita */
       }
       [data-testid="stAppViewContainer"] .main .stButton > button:hover{
         filter:brightness(0.97);
