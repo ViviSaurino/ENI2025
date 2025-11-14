@@ -145,12 +145,15 @@ def check_app_password() -> bool:
             else:
                 st.error("Contraseña incorrecta. Vuelve a intentarlo 🙂")
 
-    # Columna derecha: logo / muñequitos
+    # Columna derecha: video hero (muñequitos) o logo como respaldo
     with col2:
-        hero_img = Path("assets/branding/eni2025_logo.png")
-        if hero_img.exists():
-            # OJO: aquí usamos use_column_width (compatible con tu versión)
-            st.image(str(hero_img), use_column_width=True)
+        hero_video = Path("assets/hero.mp4")
+        logo_img   = Path("assets/branding/eni2025_logo.png")
+
+        if hero_video.exists():
+            st.video(str(hero_video))
+        elif logo_img.exists():
+            st.image(str(logo_img), use_column_width=True)
         else:
             st.write("")
 
