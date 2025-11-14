@@ -128,32 +128,32 @@ def check_app_password() -> bool:
     # Margen superior sólo en la pantalla de login
     st.markdown("<div style='margin-top:8vh;'></div>", unsafe_allow_html=True)
 
-    # Columnas generales
-    col1, col2 = st.columns([1.0, 1.0])
+    # Columnas generales con espaciador a la izquierda
+    space_col, col1, col2 = st.columns([0.10, 0.55, 0.35])
 
-    # Columna izquierda: título + subcolumna más angosta para que
+    with space_col:
+        st.write("")
+
+    # Columna izquierda: título + subcolumna para que
     # la píldora y los inputs tengan un ancho parecido a "VENIDOS"
     with col1:
-        # usamos una columna de espaciador para mover todo a la derecha
-        spacer, hero_col = st.columns([0.25, 0.75])
-        with hero_col:
-            st.markdown("<div class='eni-hero-title'>BIEN<br>VENIDOS</div>", unsafe_allow_html=True)
+        st.markdown("<div class='eni-hero-title'>BIEN<br>VENIDOS</div>", unsafe_allow_html=True)
 
-            form_col, _ = st.columns([0.100, 0.100])  # <-- controla el ancho de la píldora e inputs
-            with form_col:
-                st.markdown("<div class='eni-hero-pill'>GESTIÓN DE TAREAS ENI 2025</div>", unsafe_allow_html=True)
-                st.write("")
+        form_col, _ = st.columns([0.100, 0.100])  # <-- controla el ancho de la píldora e inputs
+        with form_col:
+            st.markdown("<div class='eni-hero-pill'>GESTIÓN DE TAREAS ENI 2025</div>", unsafe_allow_html=True)
+            st.write("")
 
-                pwd = st.text_input("Ingresa la contraseña", type="password", key="eni_pwd")
-                if st.button("Entrar", use_container_width=True):
-                    if pwd == APP_PASSWORD:
-                        st.session_state["password_ok"] = True
-                        # usuario genérico para que el resto del código siga igual
-                        st.session_state["user_email"] = "eni2025@app"
-                        st.session_state["user"] = {"email": "eni2025@app"}
-                        st.experimental_rerun()
-                    else:
-                        st.error("Contraseña incorrecta. Vuelve a intentarlo 🙂")
+            pwd = st.text_input("Ingresa la contraseña", type="password", key="eni_pwd")
+            if st.button("Entrar", use_container_width=True):
+                if pwd == APP_PASSWORD:
+                    st.session_state["password_ok"] = True
+                    # usuario genérico para que el resto del código siga igual
+                    st.session_state["user_email"] = "eni2025@app"
+                    st.session_state["user"] = {"email": "eni2025@app"}
+                    st.experimental_rerun()
+                else:
+                    st.error("Contraseña incorrecta. Vuelve a intentarlo 🙂")
 
     # Columna derecha: héroe animado (video autoplay sin controles) o logo como respaldo
     with col2:
