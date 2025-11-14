@@ -99,6 +99,18 @@ st.markdown("""
     padding: 0px;
     visibility: hidden;
   }
+
+  /* 🎨 Botón ENTRAR jade claro solo en el login */
+  .eni-login-btn button{
+    background:#A5F3DC !important;   /* jade clarito */
+    color:#064E3B !important;        /* verde oscuro para contraste */
+    border-radius:12px !important;
+    border:1px solid #6EE7B7 !important;
+    font-weight:700 !important;
+  }
+  .eni-login-btn button:hover{
+    filter:brightness(0.97);
+  }
 </style>
 """, unsafe_allow_html=True)
 
@@ -166,16 +178,37 @@ def check_app_password() -> bool:
             st.markdown("<div class='eni-hero-pill'>GESTIÓN DE TAREAS ENI 2025</div>", unsafe_allow_html=True)
             st.write("")
 
-            # 👉 Preguntar quién está editando
-            editor_name = st.text_input(
+            # 👉 Lista desplegable: ¿Quién está editando?
+            editor_options = [
+                "😊 Brayan Pisfil",
+                "😊 Elizabet Cama",
+                "😊 Enrique Oyola",
+                "😊 Jaime Agreda",
+                "😊 John Talla",
+                "😊 Lucy Advíncula",
+                "😊 Stephane Grande",
+                "😊 Tiffany Bautista",
+                "😊 Vivian Saurino",
+                "😊 Yoel Camizán",
+            ]
+            default_name = st.session_state.get("user_display_name", "")
+            try:
+                default_index = editor_options.index(default_name)
+            except ValueError:
+                default_index = 0
+
+            editor_name = st.selectbox(
                 "¿Quién está editando?",
-                value=st.session_state.get("user_display_name", ""),
+                editor_options,
+                index=default_index,
                 key="editor_name_login",
             )
-            if editor_name.strip():
-                st.session_state["user_display_name"] = editor_name.strip()
+            st.session_state["user_display_name"] = editor_name
 
             pwd = st.text_input("Ingresa la contraseña", type="password", key="eni_pwd")
+
+            # 🔳 Contenedor para estilizar el botón ENTRAR (jade claro)
+            st.markdown("<div class='eni-login-btn'>", unsafe_allow_html=True)
             if st.button("Entrar", use_container_width=True):
                 if pwd == APP_PASSWORD:
                     st.session_state["password_ok"] = True
@@ -185,6 +218,7 @@ def check_app_password() -> bool:
                     st.experimental_rerun()
                 else:
                     st.error("Contraseña incorrecta. Vuelve a intentarlo 🙂")
+            st.markdown("</div>", unsafe_allow_html=True)
 
     # Columna derecha: héroe animado (video autoplay sin controles) o logo como respaldo
     with col2:
