@@ -100,7 +100,7 @@ def check_app_password() -> bool:
     if st.session_state.get("password_ok", False):
         return True
 
-    # Estilos para el título, la píldora y el ancho del formulario
+    # Estilos para el título y la píldora
     st.markdown("""
     <style>
       .eni-hero-title{
@@ -121,45 +121,35 @@ def check_app_password() -> bool:
         letter-spacing:0.04em;
         margin-bottom:18px;
       }
-      /* Contenedor para que píldora + inputs tengan mismo ancho */
-      .eni-form-wrap{
-        max-width: 420px;              /* ancho aprox. de "VENIDOS" */
-      }
-      .eni-form-wrap .stTextInput > div > div input{
-        width:100% !important;
-      }
-      .eni-form-wrap .stButton > button{
-        width:100% !important;
-      }
     </style>
     """, unsafe_allow_html=True)
 
     # Margen superior sólo en la pantalla de login
     st.markdown("<div style='margin-top:8vh;'></div>", unsafe_allow_html=True)
 
-    # Columnas generales (más cerca a los muñequitos)
+    # Columnas generales
     col1, col2 = st.columns([1.0, 1.0])
 
-    # Columna izquierda: título + bloque con ancho fijo
+    # Columna izquierda: título + subcolumna más angosta para que
+    # la píldora y los inputs tengan un ancho parecido a "VENIDOS"
     with col1:
         st.markdown("<div class='eni-hero-title'>BIEN<br>VENIDOS</div>", unsafe_allow_html=True)
 
-        st.markdown("<div class='eni-form-wrap'>", unsafe_allow_html=True)
-        st.markdown("<div class='eni-hero-pill'>GESTIÓN DE TAREAS ENI 2025</div>", unsafe_allow_html=True)
-        st.write("")
+        form_col, _ = st.columns([0.42, 0.58])  # <-- controla el ancho de la píldora e inputs
+        with form_col:
+            st.markdown("<div class='eni-hero-pill'>GESTIÓN DE TAREAS ENI 2025</div>", unsafe_allow_html=True)
+            st.write("")
 
-        pwd = st.text_input("Ingresa la contraseña", type="password", key="eni_pwd")
-        if st.button("Ingresar", use_container_width=True):
-            if pwd == APP_PASSWORD:
-                st.session_state["password_ok"] = True
-                # usuario genérico para que el resto del código siga igual
-                st.session_state["user_email"] = "eni2025@app"
-                st.session_state["user"] = {"email": "eni2025@app"}
-                st.experimental_rerun()
-            else:
-                st.error("Contraseña incorrecta. Vuelve a intentarlo 🙂")
-
-        st.markdown("</div>", unsafe_allow_html=True)
+            pwd = st.text_input("Ingresa la contraseña", type="password", key="eni_pwd")
+            if st.button("Ingresar", use_container_width=True):
+                if pwd == APP_PASSWORD:
+                    st.session_state["password_ok"] = True
+                    # usuario genérico para que el resto del código siga igual
+                    st.session_state["user_email"] = "eni2025@app"
+                    st.session_state["user"] = {"email": "eni2025@app"}
+                    st.experimental_rerun()
+                else:
+                    st.error("Contraseña incorrecta. Vuelve a intentarlo 🙂")
 
     # Columna derecha: héroe animado (video autoplay sin controles) o logo como respaldo
     with col2:
@@ -170,7 +160,7 @@ def check_app_password() -> bool:
             with open(hero_video, "rb") as f:
                 data = f.read()
             b64 = base64.b64encode(data).decode("utf-8")
-            # Más pegadito a la izquierda para juntarlo con el texto
+            # Pegadito al bloque de texto
             video_html = f"""
             <div style="margin-left:-140px; margin-top:-5px;">
               <video autoplay loop muted playsinline
