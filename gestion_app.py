@@ -86,6 +86,11 @@ st.markdown("""
   section[data-testid="stSidebar"] .avatar-wrap{ margin:6px 0 6px !important; }
   section[data-testid="stSidebar"] .avatar-wrap img{ border-radius:9999px !important; }
   section[data-testid="stSidebar"]{ overflow-y:hidden !important; }
+
+  /* 🔼 Esto sube todo el contenido principal (BIEN VENIDOS + píldora + inputs) */
+  main .block-container{
+    padding-top: 1rem !important;
+  }
 </style>
 """, unsafe_allow_html=True)
 
