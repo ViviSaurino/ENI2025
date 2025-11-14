@@ -142,7 +142,7 @@ def check_app_password() -> bool:
             st.write("")
 
             pwd = st.text_input("Ingresa la contraseña", type="password", key="eni_pwd")
-            if st.button("Ingresar", use_container_width=True):
+            if st.button("Entrar", use_container_width=True):
                 if pwd == APP_PASSWORD:
                     st.session_state["password_ok"] = True
                     # usuario genérico para que el resto del código siga igual
