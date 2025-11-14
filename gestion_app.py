@@ -166,7 +166,7 @@ def check_app_password() -> bool:
             b64 = base64.b64encode(data).decode("utf-8")
             # Pegadito al bloque de texto
             video_html = f"""
-            <div style="margin-left:-140px; margin-top:-180px;">
+            <div style="margin-left:-140px; margin-top:-200px;">
               <video autoplay loop muted playsinline
                      style="width:100%;max-width:520px;
                             display:block;margin:0;">
