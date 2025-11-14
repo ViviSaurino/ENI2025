@@ -81,7 +81,7 @@ st.markdown("""
   }
   section[data-testid="stSidebar"] .stButton > button:hover{ filter:brightness(0.95); }
   section[data-testid="stSidebar"] .eni-logo-wrap{ margin-left:-28px; margin-top:-6px !important; }
-  section[data-testid="stSidebar"] .block-container{ padding-top:6px !important; padding-bottom:10px !Important; }
+  section[data-testid="stSidebar"] .block-container{ padding-top:6px !important; padding-bottom:10px !important; }
   section[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{ gap:8px !important; }
   section[data-testid="stSidebar"] .avatar-wrap{ margin:6px 0 6px !important; }
   section[data-testid="stSidebar"] .avatar-wrap img{ border-radius:9999px !important; }
@@ -100,22 +100,18 @@ def check_app_password() -> bool:
     if st.session_state.get("password_ok", False):
         return True
 
-    # Estilos
+    # Estilos para el título y la píldora
     st.markdown("""
     <style>
-      .eni-hero-wrapper{
-        max-width: 1200px;
-        margin: 0 auto;          /* centra bloque izquierda + muñecos */
-      }
       .eni-hero-title{
-        font-size:96px;
+        font-size:96px;          /* BIEN / VENIDOS grande */
         font-weight:800;
         color:#B38CFB;
         line-height:0.80;
         margin-bottom:10px;
       }
       .eni-hero-pill{
-        display:block;
+        display:inline-block;
         padding:10px 22px;
         border-radius:999px;
         background-color:#E0ECFF;
@@ -124,7 +120,6 @@ def check_app_password() -> bool:
         font-size:14px;
         letter-spacing:0.04em;
         margin-bottom:18px;
-        text-align:center;
       }
     </style>
     """, unsafe_allow_html=True)
@@ -132,32 +127,31 @@ def check_app_password() -> bool:
     # Margen superior sólo en la pantalla de login
     st.markdown("<div style='margin-top:8vh;'></div>", unsafe_allow_html=True)
 
-    # Wrapper centrado
-    st.markdown("<div class='eni-hero-wrapper'>", unsafe_allow_html=True)
-
-    # Columnas generales (texto + muñecos)
+    # Columnas generales
     col1, col2 = st.columns([1.0, 1.0])
 
-    # --------- Columna izquierda (título + formulario angosto) ----------
+    # Columna izquierda: título + subcolumna más angosta para que
+    # la píldora y los inputs tengan un ancho parecido a "VENIDOS"
     with col1:
         st.markdown("<div class='eni-hero-title'>BIEN<br>VENIDOS</div>", unsafe_allow_html=True)
 
-        # sub-columna angosta: aquí van píldora + input + botón
-        form_col, _ = st.columns([0.45, 0.55])   # 0.45 ≈ ancho visual de "VENIDOS"
+        form_col, _ = st.columns([0.42, 0.58])  # <-- controla el ancho de la píldora e inputs
         with form_col:
             st.markdown("<div class='eni-hero-pill'>GESTIÓN DE TAREAS ENI 2025</div>", unsafe_allow_html=True)
             st.write("")
+
             pwd = st.text_input("Ingresa la contraseña", type="password", key="eni_pwd")
             if st.button("Ingresar", use_container_width=True):
                 if pwd == APP_PASSWORD:
                     st.session_state["password_ok"] = True
+                    # usuario genérico para que el resto del código siga igual
                     st.session_state["user_email"] = "eni2025@app"
                     st.session_state["user"] = {"email": "eni2025@app"}
                     st.experimental_rerun()
                 else:
                     st.error("Contraseña incorrecta. Vuelve a intentarlo 🙂")
 
-    # --------- Columna derecha (muñequitos) ----------
+    # Columna derecha: héroe animado (video autoplay sin controles) o logo como respaldo
     with col2:
         hero_video = Path("assets/hero.mp4")
         logo_img   = Path("assets/branding/eni2025_logo.png")
@@ -166,8 +160,9 @@ def check_app_password() -> bool:
             with open(hero_video, "rb") as f:
                 data = f.read()
             b64 = base64.b64encode(data).decode("utf-8")
+            # Pegadito al bloque de texto
             video_html = f"""
-            <div style="margin-left:-80px; margin-top:-5px;">
+            <div style="margin-left:-140px; margin-top:-5px;">
               <video autoplay loop muted playsinline
                      style="width:100%;max-width:520px;
                             display:block;margin:0;">
@@ -181,9 +176,11 @@ def check_app_password() -> bool:
         else:
             st.write("")
 
-    st.markdown("</div>", unsafe_allow_html=True)  # cierre .eni-hero-wrapper
-
     return False
+
+# Si no pasó la contraseña, no seguimos con la app
+if not check_app_password():
+    st.stop()
 
 # ============ AUTENTICACIÓN (usuario genérico) ============
 # Ya no usamos google_login; tomamos el email desde session_state o ponemos uno por defecto
