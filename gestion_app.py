@@ -120,6 +120,7 @@ def check_app_password() -> bool:
         font-size:14px;
         letter-spacing:0.04em;
         margin-bottom:18px;
+        white-space: nowrap;  /* evita el salto de línea */
       }
     </style>
     """, unsafe_allow_html=True)
