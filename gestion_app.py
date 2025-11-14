@@ -131,7 +131,7 @@ def check_app_password() -> bool:
     """, unsafe_allow_html=True)
 
     # Margen superior + wrapper con margen negativo para subir todo el bloque
-    st.markdown("<div style='margin-top:-4vh;'>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top:-6vh;'>", unsafe_allow_html=True)
 
     # Columnas generales con espaciador a la izquierda
     space_col, col1, col2 = st.columns([0.10, 0.55, 0.35])
