@@ -90,7 +90,7 @@ st.markdown("""
   /* 🔼 Subir un poquito el contenido principal (BIEN VENIDOS + píldora + inputs) */
   html body [data-testid="stAppViewContainer"] .main .block-container{
     padding-top: 0rem !important;
-    margin-top: -1rem !important;  /* antes -2rem */
+    margin-top: -1rem !Important;  /* antes -2rem */
   }
 
   /* 🔼 Comprimir header para que no deje espacio arriba */
@@ -98,18 +98,6 @@ st.markdown("""
     height: 0px;
     padding: 0px;
     visibility: hidden;
-  }
-
-  /* 🎨 Botón ENTRAR jade claro solo en el login */
-  .eni-login-btn button{
-    background:#A7F3D0 !important;   /* jade clarito tipo menta */
-    color:#FFFFFF !important;        /* texto blanco */
-    border-radius:12px !important;
-    border:1px solid #6EE7B7 !important;
-    font-weight:700 !important;      /* negrita */
-  }
-  .eni-login-btn button:hover{
-    filter:brightness(0.97);
   }
 </style>
 """, unsafe_allow_html=True)
@@ -125,7 +113,7 @@ def check_app_password() -> bool:
     if st.session_state.get("password_ok", False):
         return True
 
-    # Estilos para el título y la píldora
+    # Estilos para el título, la píldora y el botón ENTRAR jade
     st.markdown("""
     <style>
       .eni-hero-title{
@@ -146,6 +134,18 @@ def check_app_password() -> bool:
         letter-spacing:0.04em;
         margin-bottom:18px;
         white-space: nowrap;  /* evita el salto de línea */
+      }
+
+      /* 🎨 Botón ENTRAR jade claro (solo login: único stButton en main) */
+      [data-testid="stAppViewContainer"] .main .stButton > button{
+        background:#A7F3D0 !important;   /* jade clarito */
+        color:#047857 !important;        /* jade oscuro */
+        border-radius:12px !important;
+        border:1px solid #6EE7B7 !important;
+        font-weight:700 !important;      /* negrita */
+      }
+      [data-testid="stAppViewContainer"] .main .stButton > button:hover{
+        filter:brightness(0.97);
       }
     </style>
     """, unsafe_allow_html=True)
@@ -207,7 +207,7 @@ def check_app_password() -> bool:
 
             pwd = st.text_input("Ingresa la contraseña", type="password", key="eni_pwd")
 
-            # 🔳 Contenedor para estilizar el botón ENTRAR (jade claro)
+            # Contenedor “dummy” (ya no hace falta para el CSS pero lo dejamos)
             st.markdown("<div class='eni-login-btn'>", unsafe_allow_html=True)
             if st.button("Entrar", use_container_width=True):
                 if pwd == APP_PASSWORD:
