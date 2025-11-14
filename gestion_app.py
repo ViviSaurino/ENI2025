@@ -89,7 +89,7 @@ st.markdown("""
 
   /* 🔼 Esto sube todo el contenido principal (BIEN VENIDOS + píldora + inputs) */
   main .block-container{
-    padding-top: -4rem !important;
+    padding-top: 0rem !important;
   }
 </style>
 """, unsafe_allow_html=True)
