@@ -82,12 +82,12 @@ st.markdown("""
   section[data-testid="stSidebar"] .block-container{ padding-top:6px !important; padding-bottom:10px !important; }
   section[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{ gap:8px !important; }
 
-  /* Sidebar gris claro, más estrecho */
+  /* Sidebar gris claro, ancho moderado */
   [data-testid="stSidebar"]{
     overflow-y:hidden !important;
     background-color:#F5F6FB !important;
-    min-width:230px !important;
-    max-width:230px !important;
+    min-width:240px !important;
+    max-width:240px !important;
   }
 
   /* Subir un poquito el contenido principal */
@@ -132,12 +132,12 @@ st.markdown("""
     color:#4B5563 !important;
   }
 
-  /* Iconitos grises para cada opción del menú lateral */
+  /* Iconitos grises en el menú lateral (un poco más grandes) */
   section[data-testid="stSidebar"] [data-baseweb="radio"]::before{
     content:"▣";
     color:#9CA3AF;
-    font-size:12px;
-    margin-right:8px;
+    font-size:16px;
+    margin-right:10px;
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(2)::before{
     content:"▤";
@@ -157,11 +157,11 @@ st.markdown("""
 
   /* ===== Hero principal ===== */
   .eni-main-hero-label{
-    font-size:14px;
-    font-weight:600;
+    font-size:16px;
+    font-weight:700;
     color:#4B5563;
     margin-top:8px;
-    margin-bottom:14px;  /* más separación con el rectángulo lila */
+    margin-bottom:16px;  /* más separación con el rectángulo lila */
   }
   .eni-main-hero{
     background:#E5D4FF;
@@ -184,53 +184,63 @@ st.markdown("""
     margin:0;
   }
 
-  /* ===== Tarjetas rápidas ===== */
-  .eni-quick-card-link{
-    text-decoration:none;
-    color:inherit;
-    display:block;
-  }
-
-  .eni-quick-card{
+  /* ===== Tarjetas rápidas con botones ===== */
+  .eni-dashboard-tiles [data-testid="baseButton-secondary"]{
+    position:relative;
+    width:100%;
     background:#FFFFFF;
     border-radius:18px;
+    border:1px solid #E5E7EB;
     padding:20px 22px;
     box-shadow:none;
-    border:1px solid #E5E7EB;
-    height:100%;
-    min-height:150px;       /* un poquito más altas */
-    margin-bottom:40px;     /* más separación vertical */
-    transition:all .15s ease-in-out;
-  }
-
-  .eni-quick-card-main{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    height:100%;
-  }
-  .eni-quick-card-text{
-    max-width:72%;
-  }
-  .eni-quick-card-title{
-    font-size:14px;
-    font-weight:700;
+    min-height:160px;
+    margin-bottom:40px;
+    text-align:left;
     color:#111827;
-    margin-bottom:4px;
+    font-weight:600;
+    white-space:pre-line;       /* respeta salto de línea en el label */
+    font-size:13px;
+    display:block;
+    cursor:pointer;
   }
-  .eni-quick-card-icon{
-    font-size:36px;        /* icono más grande */
-    margin-left:18px;
-  }
-  .eni-quick-card-sub{
-    font-size:12px;
-    color:#6B7280;
-    margin:6px 0 0 0;
-  }
-
-  .eni-quick-card-link:hover .eni-quick-card{
+  .eni-dashboard-tiles [data-testid="baseButton-secondary"]:hover{
     box-shadow:0 14px 28px rgba(148,163,184,.35);
     transform:translateY(-2px);
+  }
+
+  /* centrado vertical aproximado del texto dentro del botón */
+  .eni-dashboard-tiles [data-testid="baseButton-secondary"] > div{
+    display:flex;
+    align-items:center;
+    height:100%;
+  }
+
+  /* Icono a la derecha, más grande */
+  .eni-dashboard-tiles [data-testid="baseButton-secondary"]::after{
+    position:absolute;
+    right:22px;
+    top:50%;
+    transform:translateY(-50%);
+    font-size:32px;
+  }
+
+  .eni-dashboard-tiles [data-testid="baseButton-secondary"][aria-label^="Nueva tarea"]::after{
+    content:"📝";
+  }
+  .eni-dashboard-tiles [data-testid="baseButton-secondary"][aria-label^="Editar estado"]::after{
+    content:"✏️";
+  }
+  .eni-dashboard-tiles [data-testid="baseButton-secondary"][aria-label^="Nueva alerta"]::after{
+    content:"⚠️";
+  }
+  .eni-dashboard-tiles [data-testid="baseButton-secondary"][aria-label^="Prioridad"]::after{
+    content:"⭐";
+  }
+  .eni-dashboard-tiles [data-testid="baseButton-secondary"][aria-label^="Evaluación y cumplimiento"]::after{
+    content:"📊";
+  }
+  .eni-dashboard-tiles [data-testid="baseButton-secondary"][aria-label^="Tareas recientes"]::after{
+    content:"⏱️";
   }
 </style>
 """, unsafe_allow_html=True)
@@ -494,7 +504,7 @@ st.session_state["maybe_save"] = _maybe_save_chain
 # ====== Logout local ======
 def logout():
     for k in ("user", "user_email", "password_ok", "acl_user",
-              "auth_ok", "nav_section", "roles_df"):
+              "auth_ok", "nav_section", "roles_df", "home_tile"):
         st.session_state.pop(k, None)
     st.rerun()
 
@@ -543,44 +553,6 @@ with st.sidebar:
 # ============ Datos ============
 ensure_df_main()
 
-# Helper para tarjetas rápidas con icono y link clicable
-def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str:
-    return f"""
-    <a href="?tile={tile_key}" class="eni-quick-card-link">
-      <div class="eni-quick-card">
-        <div class="eni-quick-card-main">
-          <div class="eni-quick-card-text">
-            <div class="eni-quick-card-title">{title}</div>
-            <p class="eni-quick-card-sub">{subtitle}</p>
-          </div>
-          <div class="eni-quick-card-icon">{icon}</div>
-        </div>
-      </div>
-    </a>
-    """
-
-# Leer query param "tile" (para saber qué tarjeta se pulsó)
-tile = ""
-try:
-    params = st.query_params
-    raw = params.get("tile", "")
-    if isinstance(raw, list):
-        tile = raw[0] if raw else ""
-    else:
-        tile = raw
-except Exception:
-    try:
-        params = st.experimental_get_query_params()
-        raw = params.get("tile", [""])
-        tile = raw[0] if raw else ""
-    except Exception:
-        tile = ""
-
-if tile:
-    st.session_state["home_tile"] = tile
-else:
-    tile = st.session_state.get("home_tile", "")
-
 # ============ UI principal ============
 section = st.session_state.get("nav_section", DEFAULT_SECTION)
 tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
@@ -604,61 +576,59 @@ if section == "Gestión de tareas":
         unsafe_allow_html=True,
     )
 
-    # Fila 1: 3 tarjetas
+    # Contenedor para que el CSS de tarjetas se aplique solo aquí
+    st.markdown('<div class="eni-dashboard-tiles">', unsafe_allow_html=True)
+
+    # Fila 1: 3 tarjetas (botones estilizados)
     col_a1, col_a2, col_a3 = st.columns(3)
     with col_a1:
-        st.markdown(
-            _quick_card_link("Nueva tarea",
-                             "Registrar una nueva tarea asignada.",
-                             "📝",
-                             "nueva_tarea"),
-            unsafe_allow_html=True,
-        )
+        if st.button(
+            "Nueva tarea\nRegistrar una nueva tarea asignada.",
+            key="tile_nueva_tarea"
+        ):
+            st.session_state["home_tile"] = "nueva_tarea"
+
     with col_a2:
-        st.markdown(
-            _quick_card_link("Editar estado",
-                             "Actualizar fases y fechas de las tareas.",
-                             "✏️",
-                             "editar_estado"),
-            unsafe_allow_html=True,
-        )
+        if st.button(
+            "Editar estado\nActualizar fases y fechas de las tareas.",
+            key="tile_editar_estado"
+        ):
+            st.session_state["home_tile"] = "editar_estado"
+
     with col_a3:
-        st.markdown(
-            _quick_card_link("Nueva alerta",
-                             "Registrar alertas y riesgos prioritarios.",
-                             "⚠️",
-                             "nueva_alerta"),
-            unsafe_allow_html=True,
-        )
+        if st.button(
+            "Nueva alerta\nRegistrar alertas y riesgos prioritarios.",
+            key="tile_nueva_alerta"
+        ):
+            st.session_state["home_tile"] = "nueva_alerta"
 
     # Fila 2: 3 tarjetas
     col_b1, col_b2, col_b3 = st.columns(3)
     with col_b1:
-        st.markdown(
-            _quick_card_link("Prioridad",
-                             "Revisar y ajustar la prioridad de tareas.",
-                             "⭐",
-                             "prioridad"),
-            unsafe_allow_html=True,
-        )
-    with col_b2:
-        st.markdown(
-            _quick_card_link("Evaluación y cumplimiento",
-                             "Calificar avances y visualizar el nivel de cumplimiento.",
-                             "📊",
-                             "evaluacion_cumplimiento"),
-            unsafe_allow_html=True,
-        )
-    with col_b3:
-        st.markdown(
-            _quick_card_link("Tareas recientes",
-                             "Resumen de las últimas tareas actualizadas.",
-                             "⏱️",
-                             "tareas_recientes"),
-            unsafe_allow_html=True,
-        )
+        if st.button(
+            "Prioridad\nRevisar y ajustar la prioridad de tareas.",
+            key="tile_prioridad"
+        ):
+            st.session_state["home_tile"] = "prioridad"
 
-    # Mensajito pequeño abajo indicando qué tarjeta se eligió (por ahora solo informativo)
+    with col_b2:
+        if st.button(
+            "Evaluación y cumplimiento\nCalificar avances y visualizar el nivel de cumplimiento.",
+            key="tile_evaluacion_cumplimiento"
+        ):
+            st.session_state["home_tile"] = "evaluacion_cumplimiento"
+
+    with col_b3:
+        if st.button(
+            "Tareas recientes\nResumen de las últimas tareas actualizadas.",
+            key="tile_tareas_recientes"
+        ):
+            st.session_state["home_tile"] = "tareas_recientes"
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # Mensaje pequeño de vista seleccionada (ya no cambia URL ni te manda al login)
+    tile = st.session_state.get("home_tile", "")
     if tile:
         pretty = tile.replace("_", " ").capitalize()
         st.markdown(
