@@ -384,7 +384,7 @@ def check_app_password() -> bool:
                     st.session_state["user_email"] = "eni2025@app"
                     st.session_state["user"] = {"email": "eni2025@app"}
 
-                    # 💾 Marcamos si este usuario es 24/7 (Vivian o Enrique) según el nombre elegido
+                    # guardamos por si luego queremos diferenciar users 24/7
                     name_lower = editor_name.lower()
                     is_vivi_login = any(t in name_lower for t in ("vivian", "vivi", "saurino"))
                     is_enrique_login = any(t in name_lower for t in ("enrique", "kike", "oyola"))
@@ -477,42 +477,11 @@ except Exception:
     pass
 # --- FIN AJUSTE ---
 
-# 🔓 Control de acceso base
+# 🔓 Control de acceso base (sin restricciones de fin de semana)
 if not user_acl or not user_acl.get("is_active", False):
     st.error("No tienes acceso (usuario no registrado o inactivo).")
     st.stop()
 
-# 👑 Detección robusta de usuaria 24/7 (Vivian) o Enrique
-name_parts = [
-    st.session_state.get("editor_name_login", ""),
-    st.session_state.get("user_display_name", ""),
-    str(user_acl.get("display_name", "")),
-    str(user_acl.get("name", "")),
-]
-name_blob = " ".join(str(x).lower() for x in name_parts if x)
-is_vivi_name = any(t in name_blob for t in ("vivian", "vivi", "saurino"))
-is_enrique_name = any(t in name_blob for t in ("enrique", "kike", "oyola"))
-
-# Combinamos flag de sesión + nombre detectado
-is_247_flag = bool(st.session_state.get("is_247_user", False) or is_vivi_name or is_enrique_name)
-
-# 📅 Bloqueo solo sábados (5) y domingos (6) para quienes NO son 24/7
-from datetime import datetime
-try:
-    import pytz
-    lima_tz = pytz.timezone("America/Lima")
-    weekday_today = datetime.now(lima_tz).weekday()
-except Exception:
-    weekday_today = datetime.now().weekday()
-
-if weekday_today in (5, 6) and not is_247_flag:
-    st.info(
-        "Acceso restringido los sábados y domingos. "
-        "Solo tienen acceso 24/7 Vivian Saurino y Enrique Oyola."
-    )
-    st.stop()
-
-# Si pasó el filtro, guardamos en session_state
 st.session_state["acl_user"] = user_acl
 st.session_state["user_display_name"] = (
     st.session_state.get("user_display_name")
