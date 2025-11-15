@@ -381,6 +381,23 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# 👉 Script para ocultar cualquier bloque que solo muestre "</div>"
+st.markdown(
+    """
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const els = document.querySelectorAll("code, pre, p, span, div");
+      els.forEach(function(el) {
+        if (el.innerText && el.innerText.trim() === "</div>") {
+          el.style.display = "none";
+        }
+      });
+    });
+    </script>
+    """,
+    unsafe_allow_html=True,
+)
+
 # ============ AUTENTICACIÓN POR CONTRASEÑA ============
 APP_PASSWORD = "Inei2025$"
 
@@ -425,14 +442,6 @@ def check_app_password() -> bool:
         return True
 
     # --- PANTALLA DE LOGIN ---
-    st.markdown("""
-    <style>
-      html, body, [data-testid="stAppViewContainer"], .main{
-        overflow: hidden !important;
-      }
-    </style>
-    """, unsafe_allow_html=True)
-
     st.markdown("<div style='margin-top:7vh;'></div>", unsafe_allow_html=True)
 
     space_col, col1, col2 = st.columns([0.20, 0.55, 0.35])
@@ -806,7 +815,7 @@ if section == "Gestión de tareas":
 
     # -------- Columna derecha: panel blanco alto + vista seleccionada ----------
     with col_right:
-        # Panel blanco “en blanco” arriba
+        # Panel blanco vacío arriba
         st.markdown(
             "<div class='eni-right-work-card'></div>",
             unsafe_allow_html=True,
