@@ -51,7 +51,7 @@ except Exception:
 
 # 🔐 ACL / Roles
 from features.security import acl
-from utils.avatar import show_user_avatar_from_session  # ya no se usa en sidebar, pero lo dejamos disponible
+from utils.avatar import show_user_avatar_from_session  # disponible si lo quieres usar luego
 
 LOGO_PATH = Path("assets/branding/eni2025_logo.png")
 ROLES_XLSX = "data/security/roles.xlsx"
@@ -73,7 +73,7 @@ st.markdown("""
 <style>
   .eni-banner{ margin:6px 0 14px; font-weight:400; font-size:16px; color:#4B5563; }
 
-  /* Quitamos estilo tipo pastilla para botones del sidebar (ej. Cerrar sesión) */
+  /* Botón del sidebar (Cerrar sesión) simple */
   section[data-testid="stSidebar"] .stButton > button{
     border-radius:8px !important;
     font-weight:600 !important;
@@ -164,15 +164,30 @@ st.markdown("""
     margin:0;
   }
 
-  /* ===== Tarjetas rápidas (7 rectángulos, sin sombra y más separadas) ===== */
+  /* ===== Tarjetas rápidas (7 rectángulos, más altos, con icono) ===== */
   .eni-quick-card{
     background:#FFFFFF;
     border-radius:18px;
-    padding:16px 18px;
+    padding:20px 22px;
     box-shadow:none;                 /* sin sombras */
     border:1px solid #E5E7EB;
     height:100%;
-    margin-bottom:26px;              /* más separación entre filas */
+    min-height:130px;                /* MÁS ALTAS */
+    margin-bottom:26px;              /* separación entre filas */
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-start;
+  }
+  .eni-quick-card-icon{
+    width:34px;
+    height:34px;
+    border-radius:999px;
+    background:#F3F4FF;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:18px;
+    margin-bottom:10px;
   }
   .eni-quick-card-title{
     font-size:14px;
@@ -472,7 +487,7 @@ with st.sidebar:
         st.image(str(LOGO_PATH), width=120)
         st.markdown("</div>", unsafe_allow_html=True)
 
-    st.header("Secciones")
+    # SIN título "Secciones"
     nav_labels = ["📘 Gestión de tareas","🗂️ Kanban","📅 Gantt","📊 Dashboard"]
     default_idx = nav_labels.index(st.session_state.get("nav_section", "📘 Gestión de tareas"))
     nav_choice = st.radio(
@@ -484,7 +499,6 @@ with st.sidebar:
         horizontal=False,
     )
 
-    # pequeño espacio y botón Cerrar sesión (sin avatar U)
     st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
     if st.button("🔒 Cerrar sesión", use_container_width=True):
         logout()
@@ -492,10 +506,11 @@ with st.sidebar:
 # ============ Datos ============
 ensure_df_main()
 
-# Helper para tarjetas rápidas
-def _quick_card(title: str, subtitle: str) -> str:
+# Helper para tarjetas rápidas con icono
+def _quick_card(title: str, subtitle: str, icon: str) -> str:
     return f"""
     <div class="eni-quick-card">
+      <div class="eni-quick-card-icon">{icon}</div>
       <div class="eni-quick-card-title">{title}</div>
       <p class="eni-quick-card-sub">{subtitle}</p>
     </div>
@@ -516,7 +531,7 @@ if section == "📘 Gestión de tareas":
             <div class="eni-main-hero-left-title">Bienvenid@</div>
             <div class="eni-main-hero-left-name">{dn}</div>
             <p class="eni-main-hero-left-sub">
-              A la plataforma unificada para gestión - ENI2025
+              A la plataforma unificada Gestión - ENI2025
             </p>
           </div>
         </div>
@@ -528,17 +543,17 @@ if section == "📘 Gestión de tareas":
     col_a1, col_a2, col_a3 = st.columns(3)
     with col_a1:
         st.markdown(
-            _quick_card("Nueva tarea", "Registrar una nueva tarea asignada."),
+            _quick_card("Nueva tarea", "Registrar una nueva tarea asignada.", "📝"),
             unsafe_allow_html=True,
         )
     with col_a2:
         st.markdown(
-            _quick_card("Editar estado", "Actualizar fases y fechas de las tareas."),
+            _quick_card("Editar estado", "Actualizar fases y fechas de las tareas.", "✏️"),
             unsafe_allow_html=True,
         )
     with col_a3:
         st.markdown(
-            _quick_card("Nueva alerta", "Registrar alertas y riesgos prioritarios."),
+            _quick_card("Nueva alerta", "Registrar alertas y riesgos prioritarios.", "⚠️"),
             unsafe_allow_html=True,
         )
 
@@ -546,23 +561,23 @@ if section == "📘 Gestión de tareas":
     col_b1, col_b2, col_b3 = st.columns(3)
     with col_b1:
         st.markdown(
-            _quick_card("Prioridad", "Revisar y ajustar la prioridad de tareas."),
+            _quick_card("Prioridad", "Revisar y ajustar la prioridad de tareas.", "⭐"),
             unsafe_allow_html=True,
         )
     with col_b2:
         st.markdown(
-            _quick_card("Evaluación", "Calificar la evaluación de avances."),
+            _quick_card("Evaluación", "Calificar la evaluación de avances.", "📊"),
             unsafe_allow_html=True,
         )
     with col_b3:
         st.markdown(
-            _quick_card("Cumplimiento", "Visualizar el nivel de cumplimiento."),
+            _quick_card("Cumplimiento", "Visualizar el nivel de cumplimiento.", "✅"),
             unsafe_allow_html=True,
         )
 
     # Fila 3: 1 rectángulo
     st.markdown(
-        _quick_card("Tareas recientes", "Resumen de las últimas tareas actualizadas."),
+        _quick_card("Tareas recientes", "Resumen de las últimas tareas actualizadas.", "⏱️"),
         unsafe_allow_html=True,
     )
 
