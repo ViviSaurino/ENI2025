@@ -72,9 +72,13 @@ inject_global_css()
 # 👉 Estilos específicos (sidebar + layout + topbar + tarjetas)
 st.markdown("""
 <style>
-  /* ===== Fondo general gris-lila clarito ===== */
+  /* ===== Reset básico + fondo general ===== */
+  html, body{
+    margin:0;
+    padding:0;
+  }
   html, body, [data-testid="stAppViewContainer"]{
-    background-color:#ECEAF7;
+    background-color:#ECEAF7;  /* lila muy clarito */
   }
 
   /* Quitar espacio extra arriba para que la cabecera blanca quede pegada */
@@ -107,8 +111,7 @@ st.markdown("""
     display:flex;
     align-items:center;
     justify-content:space-between;
-    /* deja espacio lila a la izquierda y derecha */
-    margin:0 24px 12px 24px;
+    margin:0 24px 12px 24px;  /* marco lila a izquierda y derecha */
     box-shadow:0 12px 26px rgba(15,23,42,0.10);
   }
   .eni-main-topbar-title{
@@ -136,14 +139,21 @@ st.markdown("""
     font-size:14px;
   }
 
-  /* ===== Área principal ===== */
+  /* ===== Área principal (marco interior) ===== */
   .eni-main-card{
     background:transparent;
     border-radius:24px;
-    /* mismo margen lateral que la topbar para que el marco lila sea parejo */
-    padding:0 24px 18px 24px;
+    padding:0 24px 18px 24px;  /* mismo margen lateral que la topbar */
     box-shadow:none;
     margin-top:0;
+  }
+
+  /* ===== Panel blanco de la columna izquierda ===== */
+  .eni-left-panel{
+    background:#FFFFFF;
+    border-radius:24px;
+    padding:18px 18px 20px 18px;
+    box-shadow:0 14px 30px rgba(148,163,184,0.22);
   }
 
   /* ===== Sidebar blanca ===== */
@@ -243,7 +253,7 @@ st.markdown("""
     background:#C4A5FF;
     border-radius:22px;
     padding:18px 24px;
-    margin:16px 0 20px 0;  /* espacio respecto a cabecera y tarjetas */
+    margin:4px 0 20px 0;
     box-shadow:0 12px 28px rgba(129,140,248,0.40);
   }
   .eni-hero-title{
@@ -350,9 +360,9 @@ st.markdown("""
     border-radius:24px;
     padding:16px 18px 18px 18px;
     margin-top:16px;
-    margin-right:12px;    /* separación del borde derecho */
+    margin-right:12px;
     margin-left:12px;
-    margin-bottom:24px;   /* espacio con el final de la página */
+    margin-bottom:24px;
     box-shadow:0 14px 30px rgba(148,163,184,0.32);
     min-height:280px;
   }
@@ -774,6 +784,9 @@ if section == "Gestión de tareas":
     col_left, col_right = st.columns([2.4, 1.6])
 
     with col_left:
+        # Panel blanco izquierdo que agrupa hero + tarjetas + bloques
+        st.markdown('<div class="eni-left-panel">', unsafe_allow_html=True)
+
         # Tarjeta morada Bienvenid@
         st.markdown(
             """
@@ -832,6 +845,9 @@ if section == "Gestión de tareas":
             unsafe_allow_html=True,
         )
 
+        # cerrar panel izquierdo
+        st.markdown("</div>", unsafe_allow_html=True)
+
     with col_right:
         # Panel de trabajo donde se cargan las vistas de cada tarjeta
         st.markdown('<div class="eni-right-work-card">', unsafe_allow_html=True)
@@ -865,6 +881,11 @@ if section == "Gestión de tareas":
         else:
             # sin texto "Selecciona una tarjeta..."
             st.write("")
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # cerrar wrapper principal
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # ============ Otras secciones ============
 elif section == "Kanban":
