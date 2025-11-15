@@ -164,30 +164,23 @@ st.markdown("""
     margin:0;
   }
 
-  /* ===== Tarjetas rápidas (7 rectángulos, más altos, con icono) ===== */
+  /* ===== Tarjetas rápidas (6 rectángulos, más altos, con icono a la derecha) ===== */
   .eni-quick-card{
     background:#FFFFFF;
     border-radius:18px;
     padding:20px 22px;
-    box-shadow:none;                 /* sin sombras */
+    box-shadow:none;
     border:1px solid #E5E7EB;
     height:100%;
-    min-height:130px;                /* MÁS ALTAS */
-    margin-bottom:26px;              /* separación entre filas */
+    min-height:130px;
+    margin-bottom:26px;
     display:flex;
     flex-direction:column;
     justify-content:flex-start;
   }
-  .eni-quick-card-icon{
-    width:34px;
-    height:34px;
-    border-radius:999px;
-    background:#F3F4FF;
+  .eni-quick-card-header{
     display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:18px;
-    margin-bottom:10px;
+    align-items:flex-start;
   }
   .eni-quick-card-title{
     font-size:14px;
@@ -195,10 +188,14 @@ st.markdown("""
     color:#111827;
     margin-bottom:4px;
   }
+  .eni-quick-card-icon{
+    font-size:22px;
+    margin-left:auto;    /* se va a la derecha */
+  }
   .eni-quick-card-sub{
     font-size:12px;
     color:#6B7280;
-    margin:0;
+    margin:6px 0 0 0;
   }
 </style>
 """, unsafe_allow_html=True)
@@ -510,8 +507,10 @@ ensure_df_main()
 def _quick_card(title: str, subtitle: str, icon: str) -> str:
     return f"""
     <div class="eni-quick-card">
-      <div class="eni-quick-card-icon">{icon}</div>
-      <div class="eni-quick-card-title">{title}</div>
+      <div class="eni-quick-card-header">
+        <div class="eni-quick-card-title">{title}</div>
+        <div class="eni-quick-card-icon">{icon}</div>
+      </div>
       <p class="eni-quick-card-sub">{subtitle}</p>
     </div>
     """
@@ -521,7 +520,7 @@ section = st.session_state.get("nav_section", "📘 Gestión de tareas")
 tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
 
 if section == "📘 Gestión de tareas":
-    # Cabecera lila (sin círculo con inicial)
+    # Cabecera lila
     dn = st.session_state.get("user_display_name", "Usuario")
 
     st.markdown(
@@ -557,7 +556,7 @@ if section == "📘 Gestión de tareas":
             unsafe_allow_html=True,
         )
 
-    # Fila 2: 3 rectángulos
+    # Fila 2: 3 rectángulos (Prioridad, Evaluación y cumplimiento, Tareas recientes)
     col_b1, col_b2, col_b3 = st.columns(3)
     with col_b1:
         st.markdown(
@@ -566,20 +565,18 @@ if section == "📘 Gestión de tareas":
         )
     with col_b2:
         st.markdown(
-            _quick_card("Evaluación", "Calificar la evaluación de avances.", "📊"),
+            _quick_card(
+                "Evaluación y cumplimiento",
+                "Calificar avances y visualizar el nivel de cumplimiento.",
+                "📊",
+            ),
             unsafe_allow_html=True,
         )
     with col_b3:
         st.markdown(
-            _quick_card("Cumplimiento", "Visualizar el nivel de cumplimiento.", "✅"),
+            _quick_card("Tareas recientes", "Resumen de las últimas tareas actualizadas.", "⏱️"),
             unsafe_allow_html=True,
         )
-
-    # Fila 3: 1 rectángulo
-    st.markdown(
-        _quick_card("Tareas recientes", "Resumen de las últimas tareas actualizadas.", "⏱️"),
-        unsafe_allow_html=True,
-    )
 
 elif section == "🗂️ Kanban":
     st.title("🗂️ Kanban")
