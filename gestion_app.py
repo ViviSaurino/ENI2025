@@ -315,7 +315,7 @@ header[data-testid="stHeader"]{
   background:#FFFFFF;
   border-radius:24px;
   padding:16px 18px 18px 18px;
-  margin-top:16px;
+  margin-top:32px;          /* <-- SUBIDO UN POCO MÁS */
   margin-right:24px;
   margin-left:12px;
   margin-bottom:24px;
@@ -764,10 +764,10 @@ if section == "Gestión de tareas":
 
     col_left, col_right = st.columns([2.4, 1.6])
 
-    # -------- Columna izquierda: TODO en un solo HTML sin sangría ----------
+    # -------- Columna izquierda ----------
     with col_left:
         left_html = f"""
-<div style="margin-left:24px; margin-right:12px; margin-bottom:24px;">
+<div style="margin-left:24px; margin-right:12px; margin-top:24px; margin-bottom:24px;">
   <div class="eni-hero-card">
     <div class="eni-hero-title">Bienvenid@</div>
     <p class="eni-hero-sub">A la plataforma de gestión ENI — 2025</p>
