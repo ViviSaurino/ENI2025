@@ -300,7 +300,7 @@ def check_app_password() -> bool:
       [data-testid="stAppViewContainer"] .main .stButton > button{
         background:#8FD9C1 !important;
         color:#FFFFFF !important;
-        border-radius:12px !重要!;
+        border-radius:12px !important;
         border:1px solid #8FD9C1 !important;
         font-weight:900 !important;
         letter-spacing:0.04em !important;
@@ -594,9 +594,9 @@ ensure_df_main()
 
 # Helper para tarjetas rápidas con icono y link clicable
 def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str:
-    # 👇 Incluimos auth=1 para que no regrese al login al hacer clic
+    # 👇 Aquí el cambio clave: target="_self" para evitar nueva pestaña
     return f"""
-    <a href="?auth=1&tile={tile_key}" class="eni-quick-card-link">
+    <a href="?auth=1&tile={tile_key}" target="_self" class="eni-quick-card-link">
       <div class="eni-quick-card">
         <div class="eni-quick-card-main">
           <div class="eni-quick-card-text">
