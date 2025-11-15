@@ -8,6 +8,7 @@ from pathlib import Path
 import importlib
 import types
 import base64  # para incrustar el video como base64
+from urllib.parse import quote  # para codificar el nombre en la URL
 
 # ===== Import robusto de shared con fallbacks =====
 def _fallback_ensure_df_main():
@@ -189,12 +190,6 @@ st.markdown("""
     text-decoration:none;
     color:inherit;
     display:block;
-    padding:0;
-    border:none;
-    background:none;
-    width:100%;
-    text-align:left;
-    cursor:pointer;
   }
 
   .eni-quick-card{
@@ -616,11 +611,9 @@ ensure_df_main()
 # Helper para tarjetas rápidas con icono y link clicable
 def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str:
     display_name = st.session_state.get("user_display_name", "Usuario")
-    # escapamos comillas simples y backslashes para el JS
-    display_name_js = display_name.replace("\\", "\\\\").replace("'", "\\'")
+    u_param = quote(display_name, safe="")
     return f"""
-    <button class="eni-quick-card-link"
-            onclick="window.location.search='?auth=1&u=' + encodeURIComponent('{display_name_js}') + '&tile={tile_key}';">
+    <a href="?auth=1&u={u_param}&tile={tile_key}" target="_self" class="eni-quick-card-link">
       <div class="eni-quick-card">
         <div class="eni-quick-card-main">
           <div class="eni-quick-card-text">
@@ -630,7 +623,7 @@ def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str
           <div class="eni-quick-card-icon">{icon}</div>
         </div>
       </div>
-    </button>
+    </a>
     """
 
 # Leer query param "tile" (para saber qué tarjeta se pulsó)
