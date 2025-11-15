@@ -529,8 +529,13 @@ st.session_state["maybe_save"] = _maybe_save_chain
 # ====== Logout local ======
 def logout():
     for k in ("user", "user_email", "password_ok", "acl_user",
-              "auth_ok", "nav_section", "roles_df"):
+              "auth_ok", "nav_section", "roles_df", "home_tile"):
         st.session_state.pop(k, None)
+    # limpiamos query params para volver a login limpio
+    try:
+        st.experimental_set_query_params()
+    except Exception:
+        pass
     st.rerun()
 
 # ====== Navegación / permisos ======
@@ -627,93 +632,108 @@ if tile:
 else:
     tile = st.session_state.get("home_tile", "")
 
+# Helper para limpiar selección de tarjeta (volver al menú de Gestión)
+def _go_home():
+    st.session_state["home_tile"] = ""
+    # mantenemos auth=1 pero sin tile en la URL
+    try:
+        st.experimental_set_query_params(auth="1")
+    except Exception:
+        pass
+    st.rerun()
+
 # ============ UI principal ============
 section = st.session_state.get("nav_section", DEFAULT_SECTION)
 tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
 
 if section == "Gestión de tareas":
-    # Cabecera: etiqueta "Bienvenid@" + rectángulo lila
+    # nombre a mostrar
     dn = st.session_state.get("user_display_name", "Usuario")
 
-    st.markdown(
-        f"""
-        <div class="eni-main-hero-label">Bienvenid@</div>
-        <div class="eni-main-hero">
-          <div class="eni-main-hero-left">
-            <div class="eni-main-hero-left-name">{dn}</div>
-            <p class="eni-main-hero-left-sub">
-              A la plataforma unificada Gestión - ENI2025
-            </p>
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # Fila 1: 3 tarjetas
-    col_a1, col_a2, col_a3 = st.columns(3)
-    with col_a1:
+    if not tile:
+        # ===== Vista principal (hero + tarjetas) =====
         st.markdown(
-            _quick_card_link("Nueva tarea",
-                             "Registrar una nueva tarea asignada.",
-                             "📝",
-                             "nueva_tarea"),
-            unsafe_allow_html=True,
-        )
-    with col_a2:
-        st.markdown(
-            _quick_card_link("Editar estado",
-                             "Actualizar fases y fechas de las tareas.",
-                             "✏️",
-                             "editar_estado"),
-            unsafe_allow_html=True,
-        )
-    with col_a3:
-        st.markdown(
-            _quick_card_link("Nueva alerta",
-                             "Registrar alertas y riesgos prioritarios.",
-                             "⚠️",
-                             "nueva_alerta"),
+            f"""
+            <div class="eni-main-hero-label">Bienvenid@</div>
+            <div class="eni-main-hero">
+              <div class="eni-main-hero-left">
+                <div class="eni-main-hero-left-name">{dn}</div>
+                <p class="eni-main-hero-left-sub">
+                  A la plataforma unificada Gestión - ENI2025
+                </p>
+              </div>
+            </div>
+            """,
             unsafe_allow_html=True,
         )
 
-    # Fila 2: 3 tarjetas
-    col_b1, col_b2, col_b3 = st.columns(3)
-    with col_b1:
-        st.markdown(
-            _quick_card_link("Prioridad",
-                             "Revisar y ajustar la prioridad de tareas.",
-                             "⭐",
-                             "prioridad"),
-            unsafe_allow_html=True,
-        )
-    with col_b2:
-        st.markdown(
-            _quick_card_link("Evaluación y cumplimiento",
-                             "Calificar avances y visualizar el nivel de cumplimiento.",
-                             "📊",
-                             "evaluacion_cumplimiento"),
-            unsafe_allow_html=True,
-        )
-    with col_b3:
-        st.markdown(
-            _quick_card_link("Tareas recientes",
-                             "Resumen de las últimas tareas actualizadas.",
-                             "⏱️",
-                             "tareas_recientes"),
-            unsafe_allow_html=True,
-        )
+        # Fila 1: 3 tarjetas
+        col_a1, col_a2, col_a3 = st.columns(3)
+        with col_a1:
+            st.markdown(
+                _quick_card_link("Nueva tarea",
+                                 "Registrar una nueva tarea asignada.",
+                                 "📝",
+                                 "nueva_tarea"),
+                unsafe_allow_html=True,
+            )
+        with col_a2:
+            st.markdown(
+                _quick_card_link("Editar estado",
+                                 "Actualizar fases y fechas de las tareas.",
+                                 "✏️",
+                                 "editar_estado"),
+                unsafe_allow_html=True,
+            )
+        with col_a3:
+            st.markdown(
+                _quick_card_link("Nueva alerta",
+                                 "Registrar alertas y riesgos prioritarios.",
+                                 "⚠️",
+                                 "nueva_alerta"),
+                unsafe_allow_html=True,
+            )
 
-    # Mensajito pequeño abajo indicando qué tarjeta se eligió
-    if tile:
+        # Fila 2: 3 tarjetas
+        col_b1, col_b2, col_b3 = st.columns(3)
+        with col_b1:
+            st.markdown(
+                _quick_card_link("Prioridad",
+                                 "Revisar y ajustar la prioridad de tareas.",
+                                 "⭐",
+                                 "prioridad"),
+                unsafe_allow_html=True,
+            )
+        with col_b2:
+            st.markdown(
+                _quick_card_link("Evaluación y cumplimiento",
+                                 "Calificar avances y visualizar el nivel de cumplimiento.",
+                                 "📊",
+                                 "evaluacion_cumplimiento"),
+                unsafe_allow_html=True,
+            )
+        with col_b3:
+            st.markdown(
+                _quick_card_link("Tareas recientes",
+                                 "Resumen de las últimas tareas actualizadas.",
+                                 "⏱️",
+                                 "tareas_recientes"),
+                unsafe_allow_html=True,
+            )
+
+    else:
+        # ===== Vista de una sección específica (sin tarjetas) =====
         pretty = tile.replace("_", " ").capitalize()
         st.markdown(
-            f"<p style='font-size:12px;color:#6B7280;'>Vista seleccionada: "
-            f"<strong>{pretty}</strong>.</p>",
+            f"""
+            <div class="eni-main-hero-label">Gestión de tareas · {pretty}</div>
+            """,
             unsafe_allow_html=True,
         )
 
-        # 🔁 Renderizar la sección correspondiente a la tarjeta
+        if st.button("← Volver al inicio de Gestión", key="btn_back_home"):
+            _go_home()
+
         module_path = TILE_TO_VIEW_MODULE.get(tile)
         if module_path:
             try:
@@ -730,6 +750,8 @@ if section == "Gestión de tareas":
             except Exception as e:
                 st.info("No se pudo cargar la vista para esta tarjeta.")
                 st.exception(e)
+        else:
+            st.info("Vista no configurada para esta tarjeta.")
 
 elif section == "Kanban":
     st.title("🗂️ Kanban")
