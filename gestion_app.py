@@ -255,8 +255,8 @@ header[data-testid="stHeader"]{
   padding:10px 12px;
   box-shadow:0 10px 22px rgba(148,163,184,0.40);
   border:none;
-  min-height:110px;
-  max-height:120px;
+  min-height:130px;   /* más alto para que no se corten los iconos */
+  max-height:130px;
   display:flex;
   flex-direction:column;
   justify-content:space-between;
@@ -277,14 +277,14 @@ header[data-testid="stHeader"]{
 }
 .eni-quick-card-sub{
   font-size:11px;
-  color:#E5E7EB;
+  color:#FFFFFF;      /* texto blanco */
   margin-top:4px;
 }
 .eni-quick-card-icon{
-  font-size:18px;
+  font-size:24px;     /* icono más grande */
   align-self:flex-end;
   margin-top:auto;
-  padding-bottom:2px;
+  padding-bottom:6px; /* evita que se corte */
 }
 .eni-quick-card-link:hover .eni-quick-card{
   box-shadow:0 14px 30px rgba(148,163,184,0.55);
@@ -315,7 +315,7 @@ header[data-testid="stHeader"]{
   background:#FFFFFF;
   border-radius:24px;
   padding:16px 18px 18px 18px;
-  margin-top:32px;          /* <-- SUBIDO UN POCO MÁS */
+  margin-top:32px;
   margin-right:24px;
   margin-left:12px;
   margin-bottom:24px;
