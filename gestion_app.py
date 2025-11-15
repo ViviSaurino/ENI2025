@@ -475,15 +475,18 @@ if not user_acl or not user_acl.get("is_active", False):
     st.error("No tienes acceso (usuario no registrado o inactivo).")
     st.stop()
 
-# Tomamos lo que el usuario eligió en el login (con o sin emoji)
-editor_label = str(st.session_state.get("editor_name_login", "")).lower()
-user_display_name_session = str(st.session_state.get("user_display_name", "")).lower()
+# Construimos un blob con todas las variantes de nombre conocidas
+name_parts = [
+    st.session_state.get("editor_name_login", ""),
+    st.session_state.get("user_display_name", ""),
+    str(user_acl.get("display_name", "")),
+    str(user_acl.get("name", "")),
+]
+name_blob = " ".join(str(x).lower() for x in name_parts if x)
 
-# Solo trabajamos con el nombre mostrado, nada de correos
-name_blob = f"{editor_label} {user_display_name_session}"
-
-is_vivi = ("vivian" in name_blob)
-is_enrique = ("enrique" in name_blob)
+# 👑 Excepciones 24/7 (acepta variaciones y emojis)
+is_vivi = any(token in name_blob for token in ("vivian", "vivi", "saurino"))
+is_enrique = any(token in name_blob for token in ("enrique", "kike", "oyola"))
 is_247 = is_vivi or is_enrique
 
 # 📅 Bloqueo solo sábados (5) y domingos (6) para quienes NO son 24/7
@@ -496,7 +499,10 @@ except Exception:
     weekday_today = datetime.now().weekday()
 
 if weekday_today in (5, 6) and not is_247:
-    st.info("Acceso restringido los sábados y domingos. Solo tienen acceso 24/7 Vivian Saurino y Enrique Oyola.")
+    st.info(
+        "Acceso restringido los sábados y domingos. "
+        "Solo tienen acceso 24/7 Vivian Saurino y Enrique Oyola."
+    )
     st.stop()
 
 # Si pasó el filtro, guardamos en session_state
@@ -608,7 +614,7 @@ ensure_df_main()
 
 # Helper para tarjetas rápidas con icono y link clicable
 def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str:
-    # 👇 Ajuste: incluimos auth=1 para que no regrese al login al hacer clic
+    # 👇 Incluimos auth=1 para que no regrese al login al hacer clic
     return f"""
     <a href="?auth=1&tile={tile_key}" class="eni-quick-card-link">
       <div class="eni-quick-card">
