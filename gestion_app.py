@@ -99,7 +99,7 @@ st.markdown("""
     color:#4B5563;
   }
 
-  /* ===== TOP BAR BLANCA (rectángulo ancho completo) ===== */
+  /* ===== TOP BAR BLANCA (con márgenes laterales lila) ===== */
   .eni-main-topbar{
     background:#FFFFFF;
     padding:10px 24px;
@@ -107,7 +107,8 @@ st.markdown("""
     display:flex;
     align-items:center;
     justify-content:space-between;
-    margin:0 0 12px 0;  /* sin márgenes laterales, ocupa todo el ancho del contenido */
+    /* deja espacio lila a la izquierda y derecha */
+    margin:0 24px 12px 24px;
     box-shadow:0 12px 26px rgba(15,23,42,0.10);
   }
   .eni-main-topbar-title{
@@ -139,7 +140,8 @@ st.markdown("""
   .eni-main-card{
     background:transparent;
     border-radius:24px;
-    padding:0 18px 18px 18px;
+    /* mismo margen lateral que la topbar para que el marco lila sea parejo */
+    padding:0 24px 18px 24px;
     box-shadow:none;
     margin-top:0;
   }
@@ -241,7 +243,7 @@ st.markdown("""
     background:#C4A5FF;
     border-radius:22px;
     padding:18px 24px;
-    margin:16px 6px 20px 6px;  /* más espacio abajo respecto a las tarjetas */
+    margin:16px 0 20px 0;  /* espacio respecto a cabecera y tarjetas */
     box-shadow:0 12px 28px rgba(129,140,248,0.40);
   }
   .eni-hero-title{
@@ -261,7 +263,7 @@ st.markdown("""
     display:grid;
     grid-template-columns:repeat(4,minmax(0,1fr));
     gap:12px;
-    margin:0 6px 18px 6px;  /* ya no sumamos margen extra arriba */
+    margin:0 0 18px 0;
   }
 
   .eni-quick-card-link{
@@ -316,16 +318,16 @@ st.markdown("""
 
   /* Colores de las tarjetas rápidas */
   .eni-quick-card--nueva_tarea{
-    background:#818CF8;  /* azul medio */
+    background:#818CF8;
   }
   .eni-quick-card--nueva_alerta{
-    background:#93C5FD;  /* azul clarito */
+    background:#93C5FD;
   }
   .eni-quick-card--editar_estado{
-    background:#C7D2FE;  /* lila muy claro */
+    background:#C7D2FE;
   }
   .eni-quick-card--prioridad{
-    background:#6EE7B7;  /* verde pastel */
+    background:#6EE7B7;
   }
 
   /* ===== Tarjetas blancas inferiores (dos grandes) ===== */
@@ -333,7 +335,7 @@ st.markdown("""
     display:grid;
     grid-template-columns:repeat(2,minmax(0,1fr));
     gap:12px;
-    margin:18px 6px 4px 6px;  /* más espacio respecto a las tarjetas de colores */
+    margin:18px 0 4px 0;
   }
   .eni-bottom-card{
     background:#FFFFFF;
@@ -348,8 +350,9 @@ st.markdown("""
     border-radius:24px;
     padding:16px 18px 18px 18px;
     margin-top:16px;
-    margin-right:18px;    /* más separación del borde derecho */
-    margin-bottom:24px;   /* más espacio con el final de la página */
+    margin-right:12px;    /* separación del borde derecho */
+    margin-left:12px;
+    margin-bottom:24px;   /* espacio con el final de la página */
     box-shadow:0 14px 30px rgba(148,163,184,0.32);
     min-height:280px;
   }
