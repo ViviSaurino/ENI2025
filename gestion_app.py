@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*- 
-# ============================  
+# -*- coding: utf-8 -*-
+# ============================
 # Gestión — ENI2025 (App única)
 # ============================
 import streamlit as st
@@ -74,294 +74,294 @@ inject_global_css()
 st.markdown(
     """
 <style>
-  html, body{
-    margin:0;
-    padding:0;
-  }
-  html, body, [data-testid="stAppViewContainer"]{
-    background-color:#ECEAF7;
-  }
+html, body{
+  margin:0;
+  padding:0;
+}
+html, body, [data-testid="stAppViewContainer"]{
+  background-color:#ECEAF7;
+}
 
-  [data-testid="stAppViewContainer"] > .main{
-    padding-top:0 !important;
-    margin-top:0 !important;
-  }
+/* quitar espacio arriba */
+[data-testid="stAppViewContainer"] > .main{
+  padding-top:0 !important;
+  margin-top:0 !important;
+}
 
-  html body [data-testid="stAppViewContainer"] .main .block-container{
-    padding-top:0rem !important;
-    padding-left:0rem !important;
-    padding-right:0rem !important;
-    margin-top:0rem !important;
-    background:transparent;
-  }
+/* contenedor central */
+html body [data-testid="stAppViewContainer"] .main .block-container{
+  padding-top:0rem !important;
+  padding-left:0rem !important;
+  padding-right:0rem !important;
+  margin-top:0rem !important;
+  background:transparent;
+}
 
-  /* TOPBAR blanca */
-  .eni-main-topbar{
-    background:#FFFFFF;
-    padding:10px 24px;
-    border-radius:0;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    margin:0 24px 12px 24px;
-    box-shadow:0 12px 26px rgba(15,23,42,0.10);
-  }
-  .eni-main-topbar-title{
-    font-size:14px;
-    font-weight:600;
-    color:#111827;
-  }
-  .eni-main-topbar-user{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    font-size:13px;
-    color:#4B5563;
-  }
-  .eni-main-topbar-avatar{
-    width:32px;
-    height:32px;
-    border-radius:999px;
-    background:linear-gradient(135deg,#A855F7,#EC4899);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    color:#FFFFFF;
-    font-weight:700;
-    font-size:14px;
-  }
+/* TOPBAR blanca */
+.eni-main-topbar{
+  background:#FFFFFF;
+  padding:10px 24px;
+  border-radius:0;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin:0 24px 12px 24px;
+  box-shadow:0 12px 26px rgba(15,23,42,0.10);
+}
+.eni-main-topbar-title{
+  font-size:14px;
+  font-weight:600;
+  color:#111827;
+}
+.eni-main-topbar-user{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:13px;
+  color:#4B5563;
+}
+.eni-main-topbar-avatar{
+  width:32px;
+  height:32px;
+  border-radius:999px;
+  background:linear-gradient(135deg,#A855F7,#EC4899);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#FFFFFF;
+  font-weight:700;
+  font-size:14px;
+}
 
-  /* Sidebar */
-  section[data-testid="stSidebar"] .stButton > button{
-    border-radius:8px !important;
-    font-weight:600 !important;
-  }
+/* Sidebar */
+section[data-testid="stSidebar"] .stButton > button{
+  border-radius:8px !important;
+  font-weight:600 !important;
+}
+section[data-testid="stSidebar"] .eni-logo-wrap{
+  margin-left:-10px;
+  margin-top:-6px !important;
+}
+section[data-testid="stSidebar"] .block-container{
+  padding-top:6px !important;
+  padding-bottom:10px !important;
+}
+section[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{
+  gap:8px !important;
+}
+[data-testid="stSidebar"]{
+  overflow-y:hidden !important;
+  background:#FFFFFF !important;
+  min-width:230px !important;
+  max-width:230px !important;
+  color:#111827 !important;
+  border-right:1px solid #E5E7EB;
+}
+section[data-testid="stSidebar"] .stRadio > div{
+  gap:4px !important;
+}
+section[data-testid="stSidebar"] [data-baseweb="radio"]{
+  margin-bottom:8px;
+  padding:8px 10px;
+  border-radius:12px;
+  background:transparent;
+  transition:all .15s ease-in-out;
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+}
+section[data-testid="stSidebar"] [data-baseweb="radio"] > div:first-child{
+  display:none;
+}
+section[data-testid="stSidebar"] [data-baseweb="radio"] > div:last-child{
+  padding-left:6px !important;
+  font-size:13px;
+  font-weight:500;
+}
+section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="true"]{
+  background:#EEF2FF !important;
+  color:#4F46E5 !important;
+  box-shadow:none;
+}
+section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="false"]{
+  color:#4B5563 !important;
+}
 
-  section[data-testid="stSidebar"] .eni-logo-wrap{
-    margin-left:-10px;
-    margin-top:-6px !important;
-  }
-  section[data-testid="stSidebar"] .block-container{
-    padding-top:6px !important;
-    padding-bottom:10px !important;
-  }
-  section[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{
-    gap:8px !important;
-  }
+/* iconitos menú */
+section[data-testid="stSidebar"] [data-baseweb="radio"]::before{
+  font-size:18px;
+  margin-right:8px;
+}
+section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(1)::before{
+  content:"📋";
+}
+section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(2)::before{
+  content:"🗂️";
+}
+section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(3)::before{
+  content:"📅";
+}
+section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(4)::before{
+  content:"📊";
+}
 
-  [data-testid="stSidebar"]{
-    overflow-y:hidden !important;
-    background:#FFFFFF !important;
-    min-width:230px !important;
-    max-width:230px !important;
-    color:#111827 !important;
-    border-right:1px solid #E5E7EB;
-  }
+*::-webkit-scrollbar{
+  width:0px;
+  height:0px;
+}
 
-  section[data-testid="stSidebar"] .stRadio > div{
-    gap:4px !important;
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"]{
-    margin-bottom:8px;
-    padding:8px 10px;
-    border-radius:12px;
-    background:transparent;
-    transition:all .15s ease-in-out;
-    display:flex;
-    flex-direction:row;
-    align-items:center;
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"] > div:first-child{
-    display:none;
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"] > div:last-child{
-    padding-left:6px !important;
-    font-size:13px;
-    font-weight:500;
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="true"]{
-    background:#EEF2FF !important;
-    color:#4F46E5 !important;
-    box-shadow:none;
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="false"]{
-    color:#4B5563 !important;
-  }
+header[data-testid="stHeader"]{
+  height:0px;
+  padding:0px;
+  margin:0px;
+  visibility:hidden;
+}
 
-  section[data-testid="stSidebar"] [data-baseweb="radio"]::before{
-    font-size:18px;
-    margin-right:8px;
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(1)::before{
-    content:"📋";
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(2)::before{
-    content:"🗂️";
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(3)::before{
-    content:"📅";
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(4)::before{
-    content:"📊";
-  }
+/* HERO Bienvenid@ */
+.eni-hero-card{
+  background:#C4A5FF;
+  border-radius:22px;
+  padding:18px 24px;
+  margin:8px 0 20px 0;
+  box-shadow:0 12px 28px rgba(129,140,248,0.40);
+}
+.eni-hero-title{
+  font-size:20px;
+  font-weight:800;
+  color:#FFFFFF;
+  margin-bottom:4px;
+}
+.eni-hero-sub{
+  font-size:12px;
+  color:#F9FAFB;
+  margin:0;
+}
 
-  *::-webkit-scrollbar{
-    width:0px;
-    height:0px;
-  }
+/* Tarjetas rápidas */
+.eni-quick-row{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+  margin:0 0 18px 0;
+}
+.eni-quick-card-link{
+  text-decoration:none;
+  color:inherit;
+  display:block;
+  width:100%;
+}
+.eni-quick-card{
+  border-radius:18px;
+  padding:10px 12px;
+  box-shadow:0 10px 22px rgba(148,163,184,0.40);
+  border:none;
+  min-height:110px;
+  max-height:120px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  transition:all .15s ease-in-out;
+  overflow:hidden;
+}
+.eni-quick-card-main{
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  height:100%;
+}
+.eni-quick-card-title{
+  font-size:13px;
+  font-weight:700;
+  color:#FFFFFF;
+  margin:0;
+}
+.eni-quick-card-sub{
+  font-size:11px;
+  color:#E5E7EB;
+  margin-top:4px;
+}
+.eni-quick-card-icon{
+  font-size:18px;
+  align-self:flex-end;
+  margin-top:auto;
+  padding-bottom:2px;
+}
+.eni-quick-card-link:hover .eni-quick-card{
+  box-shadow:0 14px 30px rgba(148,163,184,0.55);
+  transform:translateY(-2px);
+}
 
-  header[data-testid="stHeader"]{
-    height:0px;
-    padding:0px;
-    margin:0px;
-    visibility:hidden;
-  }
+.eni-quick-card--nueva_tarea{ background:#818CF8; }
+.eni-quick-card--nueva_alerta{ background:#93C5FD; }
+.eni-quick-card--editar_estado{ background:#C7D2FE; }
+.eni-quick-card--prioridad{ background:#6EE7B7; }
 
-  /* HERO Bienvenid@ */
-  .eni-hero-card{
-    background:#C4A5FF;
-    border-radius:22px;
-    padding:18px 24px;
-    margin:8px 0 20px 0;
-    box-shadow:0 12px 28px rgba(129,140,248,0.40);
-  }
-  .eni-hero-title{
-    font-size:20px;
-    font-weight:800;
-    color:#FFFFFF;
-    margin-bottom:4px;
-  }
-  .eni-hero-sub{
-    font-size:12px;
-    color:#F9FAFB;
-    margin:0;
-  }
+/* Tarjetas blancas inferiores */
+.eni-bottom-row{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+  margin:18px 0 4px 0;
+}
+.eni-bottom-card{
+  background:#FFFFFF;
+  border-radius:20px;
+  min-height:140px;
+  box-shadow:0 10px 26px rgba(148,163,184,0.18);
+}
 
-  /* Tarjetas rápidas */
-  .eni-quick-row{
-    display:grid;
-    grid-template-columns:repeat(4,minmax(0,1fr));
-    gap:12px;
-    margin:0 0 18px 0;
-  }
-  .eni-quick-card-link{
-    text-decoration:none;
-    color:inherit;
-    display:block;
-    width:100%;
-  }
-  .eni-quick-card{
-    border-radius:18px;
-    padding:10px 12px;
-    box-shadow:0 10px 22px rgba(148,163,184,0.40);
-    border:none;
-    min-height:110px;
-    max-height:120px;
-    display:flex;
-    flex-direction:column;
-    justify-content:space-between;
-    transition:all .15s ease-in-out;
-    overflow:hidden;
-  }
-  .eni-quick-card-main{
-    display:flex;
-    flex-direction:column;
-    justify-content:space-between;
-    height:100%;
-  }
-  .eni-quick-card-title{
-    font-size:13px;
-    font-weight:700;
-    color:#FFFFFF;
-    margin:0;
-  }
-  .eni-quick-card-sub{
-    font-size:11px;
-    color:#E5E7EB;
-    margin-top:4px;
-  }
-  .eni-quick-card-icon{
-    font-size:18px;
-    align-self:flex-end;
-    margin-top:auto;
-    padding-bottom:2px;
-  }
-  .eni-quick-card-link:hover .eni-quick-card{
-    box-shadow:0 14px 30px rgba(148,163,184,0.55);
-    transform:translateY(-2px);
-  }
+/* Panel derecho blanco grande */
+.eni-right-work-card{
+  background:#FFFFFF;
+  border-radius:24px;
+  padding:16px 18px 18px 18px;
+  margin-top:16px;
+  margin-right:24px;
+  margin-left:12px;
+  margin-bottom:24px;
+  box-shadow:0 14px 30px rgba(148,163,184,0.32);
+  min-height:280px;
+}
 
-  .eni-quick-card--nueva_tarea{ background:#818CF8; }
-  .eni-quick-card--nueva_alerta{ background:#93C5FD; }
-  .eni-quick-card--editar_estado{ background:#C7D2FE; }
-  .eni-quick-card--prioridad{ background:#6EE7B7; }
-
-  /* Tarjetas blancas inferiores */
-  .eni-bottom-row{
-    display:grid;
-    grid-template-columns:repeat(2,minmax(0,1fr));
-    gap:12px;
-    margin:18px 0 4px 0;
-  }
-  .eni-bottom-card{
-    background:#FFFFFF;
-    border-radius:20px;
-    min-height:140px;
-    box-shadow:0 10px 26px rgba(148,163,184,0.18);
-  }
-
-  /* Panel derecho blanco grande */
-  .eni-right-work-card{
-    background:#FFFFFF;
-    border-radius:24px;
-    padding:16px 18px 18px 18px;
-    margin-top:16px;
-    margin-right:24px;
-    margin-left:12px;
-    margin-bottom:24px;
-    box-shadow:0 14px 30px rgba(148,163,184,0.32);
-    min-height:280px;
-  }
-
-  /* Login */
-  .eni-login-hero-title{
-    font-size:77px;
-    font-weight:900;
-    color:#B38CFB;
-    line-height:0.80;
-    margin-bottom:10px;
-  }
-  .eni-login-pill{
-    display:inline-block;
-    padding:10px 53px;
-    border-radius:12px;
-    background-color:#C0C2FF;
-    border:1px solid #C0C2FF;
-    color:#FFFFFF;
-    font-weight:700;
-    font-size:14px;
-    letter-spacing:0.04em;
-    margin-bottom:10px;
-    white-space: nowrap;
-  }
-  [data-testid="stAppViewContainer"] .main .stButton > button{
-    background:#8FD9C1 !important;
-    color:#FFFFFF !important;
-    border-radius:12px !important;
-    border:1px solid #8FD9C1 !important;
-    font-weight:900 !important;
-    letter-spacing:0.04em !important;
-    text-transform:uppercase !important;
-  }
-  [data-testid="stAppViewContainer"] .main .stButton > button:hover{
-    filter:brightness(0.97);
-  }
-  .eni-login-form [data-testid="stSelectbox"]{
-    margin-bottom:0.0rem !important;
-  }
-  .eni-login-form [data-testid="stTextInput"]{
-    margin-top:-0.45rem !important;
-  }
+/* Login */
+.eni-login-hero-title{
+  font-size:77px;
+  font-weight:900;
+  color:#B38CFB;
+  line-height:0.80;
+  margin-bottom:10px;
+}
+.eni-login-pill{
+  display:inline-block;
+  padding:10px 53px;
+  border-radius:12px;
+  background-color:#C0C2FF;
+  border:1px solid #C0C2FF;
+  color:#FFFFFF;
+  font-weight:700;
+  font-size:14px;
+  letter-spacing:0.04em;
+  margin-bottom:10px;
+  white-space: nowrap;
+}
+[data-testid="stAppViewContainer"] .main .stButton > button{
+  background:#8FD9C1 !important;
+  color:#FFFFFF !important;
+  border-radius:12px !important;
+  border:1px solid #8FD9C1 !important;
+  font-weight:900 !important;
+  letter-spacing:0.04em !important;
+  text-transform:uppercase !important;
+}
+[data-testid="stAppViewContainer"] .main .stButton > button:hover{
+  filter:brightness(0.97);
+}
+.eni-login-form [data-testid="stSelectbox"]{
+  margin-bottom:0.0rem !important;
+}
+.eni-login-form [data-testid="stTextInput"]{
+  margin-top:-0.45rem !important;
+}
 </style>
 """,
     unsafe_allow_html=True,
@@ -405,7 +405,7 @@ def check_app_password() -> bool:
             st.session_state["user"] = {"email": "eni2025@app"}
         return True
 
-    # --- Pantalla de login ----
+    # --- pantalla de login ---
     st.markdown("<div style='margin-top:7vh;'></div>", unsafe_allow_html=True)
 
     space_col, col1, col2 = st.columns([0.20, 0.55, 0.35])
@@ -419,9 +419,7 @@ def check_app_password() -> bool:
 
         form_col, _ = st.columns([0.66, 0.60])
         with form_col:
-            st.markdown(
-                "<div class='eni-login-form'>", unsafe_allow_html=True
-            )
+            st.markdown("<div class='eni-login-form'>", unsafe_allow_html=True)
             st.markdown(
                 "<div class='eni-login-pill'>GESTIÓN DE TAREAS ENI 2025</div>",
                 unsafe_allow_html=True,
@@ -497,14 +495,13 @@ def check_app_password() -> bool:
                 data = f.read()
             b64 = base64.b64encode(data).decode("utf-8")
             video_html = f"""
-            <div style="margin-left:-280px; margin-top:-120px;">
-              <video autoplay loop muted playsinline
-                     style="width:100%;max-width:460px;
-                            display:block;margin:0;">
-                <source src="data:video/mp4;base64,{b64}" type="video/mp4">
-              </video>
-            </div>
-            """
+<div style="margin-left:-280px; margin-top:-120px;">
+  <video autoplay loop muted playsinline
+         style="width:100%;max-width:460px;display:block;margin:0;">
+    <source src="data:video/mp4;base64,{b64}" type="video/mp4">
+  </video>
+</div>
+"""
             st.markdown(video_html, unsafe_allow_html=True)
         elif logo_img.exists():
             st.image(str(logo_img), use_column_width=True)
@@ -709,19 +706,20 @@ def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str
     display_name = st.session_state.get("user_display_name", "Usuario")
     u_param = quote(display_name, safe="")
     card_class = f"eni-quick-card eni-quick-card--{tile_key}"
+    # IMPORTANTE: sin espacios antes de <a> ni </a>
     return f"""
-    <a href="?auth=1&u={u_param}&tile={tile_key}" target="_self" class="eni-quick-card-link">
-      <div class="{card_class}">
-        <div class="eni-quick-card-main">
-          <div class="eni-quick-card-text">
-            <div class="eni-quick-card-title">{title}</div>
-            <p class="eni-quick-card-sub">{subtitle}</p>
-          </div>
-          <div class="eni-quick-card-icon">{icon}</div>
-        </div>
+<a href="?auth=1&u={u_param}&tile={tile_key}" target="_self" class="eni-quick-card-link">
+  <div class="{card_class}">
+    <div class="eni-quick-card-main">
+      <div class="eni-quick-card-text">
+        <div class="eni-quick-card-title">{title}</div>
+        <p class="eni-quick-card-sub">{subtitle}</p>
       </div>
-    </a>
-    """
+      <div class="eni-quick-card-icon">{icon}</div>
+    </div>
+  </div>
+</a>
+"""
 
 
 tile = ""
@@ -753,61 +751,61 @@ if section == "Gestión de tareas":
     # Topbar
     st.markdown(
         f"""
-        <div class="eni-main-topbar">
-          <div class="eni-main-topbar-title">Dashboard</div>
-          <div class="eni-main-topbar-user">
-            <span>{dn}</span>
-            <div class="eni-main-topbar-avatar">{initials}</div>
-          </div>
-        </div>
-        """,
+<div class="eni-main-topbar">
+  <div class="eni-main-topbar-title">Dashboard</div>
+  <div class="eni-main-topbar-user">
+    <span>{dn}</span>
+    <div class="eni-main-topbar-avatar">{initials}</div>
+  </div>
+</div>
+""",
         unsafe_allow_html=True,
     )
 
     col_left, col_right = st.columns([2.4, 1.6])
 
-    # -------- Columna izquierda completa en UN SOLO HTML ----------
+    # -------- Columna izquierda: TODO en un solo HTML sin sangría ----------
     with col_left:
         left_html = f"""
-        <div style="margin-left:24px; margin-right:12px; margin-bottom:24px;">
-          <div class="eni-hero-card">
-            <div class="eni-hero-title">Bienvenid@</div>
-            <p class="eni-hero-sub">A la plataforma de gestión ENI — 2025</p>
-          </div>
+<div style="margin-left:24px; margin-right:12px; margin-bottom:24px;">
+  <div class="eni-hero-card">
+    <div class="eni-hero-title">Bienvenid@</div>
+    <p class="eni-hero-sub">A la plataforma de gestión ENI — 2025</p>
+  </div>
 
-          <div class="eni-quick-row">
-            {_quick_card_link(
-                "Nueva tarea",
-                "Registrar una nueva tarea asignada.",
-                "📝",
-                "nueva_tarea",
-            )}
-            {_quick_card_link(
-                "Nueva alerta",
-                "Registrar alertas y riesgos prioritarios.",
-                "⚠️",
-                "nueva_alerta",
-            )}
-            {_quick_card_link(
-                "Editar estado",
-                "Actualizar fases y fechas de las tareas.",
-                "✏️",
-                "editar_estado",
-            )}
-            {_quick_card_link(
-                "Prioridad y evaluación",
-                "Revisar prioridad y nivel de avance.",
-                "⭐",
-                "prioridad",
-            )}
-          </div>
+  <div class="eni-quick-row">
+    {_quick_card_link(
+        "Nueva tarea",
+        "Registrar una nueva tarea asignada.",
+        "📝",
+        "nueva_tarea",
+    )}
+    {_quick_card_link(
+        "Nueva alerta",
+        "Registrar alertas y riesgos prioritarios.",
+        "⚠️",
+        "nueva_alerta",
+    )}
+    {_quick_card_link(
+        "Editar estado",
+        "Actualizar fases y fechas de las tareas.",
+        "✏️",
+        "editar_estado",
+    )}
+    {_quick_card_link(
+        "Prioridad y evaluación",
+        "Revisar prioridad y nivel de avance.",
+        "⭐",
+        "prioridad",
+    )}
+  </div>
 
-          <div class="eni-bottom-row">
-            <div class="eni-bottom-card"></div>
-            <div class="eni-bottom-card"></div>
-          </div>
-        </div>
-        """
+  <div class="eni-bottom-row">
+    <div class="eni-bottom-card"></div>
+    <div class="eni-bottom-card"></div>
+  </div>
+</div>
+"""
         st.markdown(left_html, unsafe_allow_html=True)
 
     # -------- Columna derecha ----------
