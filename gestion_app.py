@@ -244,6 +244,34 @@ def check_app_password() -> bool:
     Si la contraseña es correcta, marca password_ok y crea un usuario genérico.
     """
 
+    # ✅ Si ya pasó la contraseña en esta sesión, no mostramos login otra vez
+    if st.session_state.get("password_ok", False):
+        return True
+
+    # ✅ Auto-autenticación si viene con ?auth=1 en la URL (para cuando se hace clic en tarjetas)
+    auth_flag = ""
+    try:
+        params = st.query_params
+        raw = params.get("auth", "")
+        if isinstance(raw, list):
+            auth_flag = raw[0] if raw else ""
+        else:
+            auth_flag = raw
+    except Exception:
+        try:
+            params = st.experimental_get_query_params()
+            raw = params.get("auth", [""])
+            auth_flag = raw[0] if raw else ""
+        except Exception:
+            auth_flag = ""
+
+    if auth_flag == "1":
+        if not st.session_state.get("password_ok", False):
+            st.session_state["password_ok"] = True
+            st.session_state["user_email"] = "eni2025@app"
+            st.session_state["user"] = {"email": "eni2025@app"}
+        return True
+
     # 🎨 Estilos para título, píldora, botón ENTRAR jade y espaciado de inputs
     st.markdown("""
     <style>
@@ -291,10 +319,6 @@ def check_app_password() -> bool:
       }
     </style>
     """, unsafe_allow_html=True)
-
-    # ✅ Si ya pasó la contraseña, no mostramos login otra vez
-    if st.session_state.get("password_ok", False):
-        return True
 
     # 🔒 Ocultar scroll solo en la pantalla de login
     st.markdown("""
@@ -359,6 +383,11 @@ def check_app_password() -> bool:
                     st.session_state["password_ok"] = True
                     st.session_state["user_email"] = "eni2025@app"
                     st.session_state["user"] = {"email": "eni2025@app"}
+                    # 💡 Añadimos auth=1 para que al hacer clic en tarjetas no vuelva a pedir contraseña
+                    try:
+                        st.query_params["auth"] = "1"
+                    except Exception:
+                        st.experimental_set_query_params(auth="1")
                     st.rerun()
                 else:
                     st.error("Contraseña incorrecta. Vuelve a intentarlo 🙂")
@@ -455,7 +484,7 @@ st.session_state["user_display_name"] = st.session_state.get("user_display_name"
 st.session_state["user_dry_run"] = bool(user_acl.get("dry_run", False))
 st.session_state["save_scope"] = user_acl.get("save_scope", "all")
 
-# ========= Hook "maybe_save" + Google Sheets =========
+# ========= Hook "maybe_save" + Google Sheets ==========
 def _push_gsheets(df: pd.DataFrame):
     if "gsheets" not in st.secrets or "gcp_service_account" not in st.secrets:
         raise KeyError("Faltan 'gsheets' o 'gcp_service_account' en secrets.")
@@ -555,8 +584,9 @@ ensure_df_main()
 
 # Helper para tarjetas rápidas con icono y link clicable
 def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str:
+    # 👇 Ajuste: incluimos auth=1 para que no regrese al login al hacer clic
     return f"""
-    <a href="?tile={tile_key}" class="eni-quick-card-link">
+    <a href="?auth=1&tile={tile_key}" class="eni-quick-card-link">
       <div class="eni-quick-card">
         <div class="eni-quick-card-main">
           <div class="eni-quick-card-text">
