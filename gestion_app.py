@@ -482,8 +482,19 @@ if not user_acl or not user_acl.get("is_active", False):
     st.error("No tienes acceso (usuario no registrado o inactivo).")
     st.stop()
 
-# ⚙️ Recuperamos flag 24/7 desde la sesión (seteado en el login)
-is_247_flag = bool(st.session_state.get("is_247_user", False))
+# 👑 Detección robusta de usuaria 24/7 (Vivian) o Enrique
+name_parts = [
+    st.session_state.get("editor_name_login", ""),
+    st.session_state.get("user_display_name", ""),
+    str(user_acl.get("display_name", "")),
+    str(user_acl.get("name", "")),
+]
+name_blob = " ".join(str(x).lower() for x in name_parts if x)
+is_vivi_name = any(t in name_blob for t in ("vivian", "vivi", "saurino"))
+is_enrique_name = any(t in name_blob for t in ("enrique", "kike", "oyola"))
+
+# Combinamos flag de sesión + nombre detectado
+is_247_flag = bool(st.session_state.get("is_247_user", False) or is_vivi_name or is_enrique_name)
 
 # 📅 Bloqueo solo sábados (5) y domingos (6) para quienes NO son 24/7
 from datetime import datetime
