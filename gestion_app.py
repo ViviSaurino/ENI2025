@@ -508,6 +508,16 @@ TAB_KEY_BY_SECTION = {
     "Dashboard": "dashboard",
 }
 
+# 🔗 Mapa tarjeta -> módulo de vista
+TILE_TO_VIEW_MODULE = {
+    "nueva_tarea": "features.nueva_tarea.view",
+    "editar_estado": "features.editar_estado.view",
+    "nueva_alerta": "features.nueva_alerta.view",
+    "prioridad": "features.prioridad.view",
+    "evaluacion_cumplimiento": "features.evaluacion_cumplimiento.view",
+    "tareas_recientes": "features.tareas_recientes.view",
+}
+
 def render_if_allowed(tab_key: str, render_fn):
     if acl.can_see_tab(user_acl, tab_key):
         render_fn()
@@ -658,14 +668,32 @@ if section == "Gestión de tareas":
             unsafe_allow_html=True,
         )
 
-    # Mensajito pequeño abajo indicando qué tarjeta se eligió (por ahora solo informativo)
+    # Mensajito pequeño abajo indicando qué tarjeta se eligió
     if tile:
         pretty = tile.replace("_", " ").capitalize()
         st.markdown(
             f"<p style='font-size:12px;color:#6B7280;'>Vista seleccionada: "
-            f"<strong>{pretty}</strong> (contenido específico se implementará dentro de la app).</p>",
+            f"<strong>{pretty}</strong>.</p>",
             unsafe_allow_html=True,
         )
+
+        # 🔁 Renderizar la sección correspondiente a la tarjeta
+        module_path = TILE_TO_VIEW_MODULE.get(tile)
+        if module_path:
+            try:
+                view_module = importlib.import_module(module_path)
+                # Intentar usar `render`; si no existe, probar `render_all`
+                render_fn = getattr(view_module, "render", None)
+                if render_fn is None:
+                    render_fn = getattr(view_module, "render_all", None)
+
+                if callable(render_fn):
+                    render_fn(st.session_state.get("user"))
+                else:
+                    st.info("Vista pendiente para esta tarjeta (no se encontró función 'render' ni 'render_all').")
+            except Exception as e:
+                st.info("No se pudo cargar la vista para esta tarjeta.")
+                st.exception(e)
 
 elif section == "Kanban":
     st.title("🗂️ Kanban")
