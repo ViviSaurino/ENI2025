@@ -377,40 +377,20 @@ def check_app_password() -> bool:
 
             pwd = st.text_input("Ingresa la contraseña", type="password", key="eni_pwd")
 
-            # Botón ENTRAR (con validación de fin de semana por nombre)
+            # Botón ENTRAR
             if st.button("ENTRAR", use_container_width=True):
-                if pwd != APP_PASSWORD:
-                    st.error("Contraseña incorrecta. Vuelve a intentarlo 🙂")
-                else:
-                    name_low = (editor_name or "").lower()
-
-                    from datetime import datetime
+                if pwd == APP_PASSWORD:
+                    st.session_state["password_ok"] = True
+                    st.session_state["user_email"] = "eni2025@app"
+                    st.session_state["user"] = {"email": "eni2025@app"}
+                    # 💡 Añadimos auth=1 para que al hacer clic en tarjetas no vuelva a pedir contraseña
                     try:
-                        import pytz
-                        lima_tz = pytz.timezone("America/Lima")
-                        weekday_today = datetime.now(lima_tz).weekday()
+                        st.query_params["auth"] = "1"
                     except Exception:
-                        weekday_today = datetime.now().weekday()
-
-                    is_vivi = ("vivian" in name_low and "saurino" in name_low)
-                    is_enrique = ("enrique" in name_low and "oyola" in name_low)
-                    is_247 = is_vivi or is_enrique
-
-                    if weekday_today in (5, 6) and not is_247:
-                        st.info(
-                            "Acceso restringido los sábados y domingos. "
-                            "Solo tienen acceso 24/7 Vivian Saurino y Enrique Oyola."
-                        )
-                    else:
-                        st.session_state["password_ok"] = True
-                        st.session_state["user_email"] = "eni2025@app"
-                        st.session_state["user"] = {"email": "eni2025@app"}
-                        # 💡 auth=1 para que al hacer clic en tarjetas no vuelva a pedir contraseña
-                        try:
-                            st.query_params["auth"] = "1"
-                        except Exception:
-                            st.experimental_set_query_params(auth="1")
-                        st.rerun()
+                        st.experimental_set_query_params(auth="1")
+                    st.rerun()
+                else:
+                    st.error("Contraseña incorrecta. Vuelve a intentarlo 🙂")
 
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -490,15 +470,40 @@ except Exception:
     pass
 # --- FIN AJUSTE ---
 
+# 🔓 Control de acceso 24/7 basado solo en el nombre elegido (sin correos)
 if not user_acl or not user_acl.get("is_active", False):
     st.error("No tienes acceso (usuario no registrado o inactivo).")
     st.stop()
 
-# Guardamos datos de usuario en session_state
+# Tomamos lo que el usuario eligió en el login (con o sin emoji)
+editor_label = str(st.session_state.get("editor_name_login", "")).lower()
+user_display_name_session = str(st.session_state.get("user_display_name", "")).lower()
+
+# Solo trabajamos con el nombre mostrado, nada de correos
+name_blob = f"{editor_label} {user_display_name_session}"
+
+is_vivi = ("vivian" in name_blob)
+is_enrique = ("enrique" in name_blob)
+is_247 = is_vivi or is_enrique
+
+# 📅 Bloqueo solo sábados (5) y domingos (6) para quienes NO son 24/7
+from datetime import datetime
+try:
+    import pytz
+    lima_tz = pytz.timezone("America/Lima")
+    weekday_today = datetime.now(lima_tz).weekday()
+except Exception:
+    weekday_today = datetime.now().weekday()
+
+if weekday_today in (5, 6) and not is_247:
+    st.info("Acceso restringido los sábados y domingos. Solo tienen acceso 24/7 Vivian Saurino y Enrique Oyola.")
+    st.stop()
+
+# Si pasó el filtro, guardamos en session_state
 st.session_state["acl_user"] = user_acl
 st.session_state["user_display_name"] = (
     st.session_state.get("user_display_name")
-    or user_acl.get("display_name", email or "Usuario")
+    or user_acl.get("display_name", "Usuario")
 )
 st.session_state["user_dry_run"] = bool(user_acl.get("dry_run", False))
 st.session_state["save_scope"] = user_acl.get("save_scope", "all")
@@ -603,7 +608,7 @@ ensure_df_main()
 
 # Helper para tarjetas rápidas con icono y link clicable
 def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str:
-    # 👇 auth=1 para no regresar al login al hacer clic
+    # 👇 Ajuste: incluimos auth=1 para que no regrese al login al hacer clic
     return f"""
     <a href="?auth=1&tile={tile_key}" class="eni-quick-card-link">
       <div class="eni-quick-card">
@@ -736,4 +741,39 @@ if section == "Gestión de tareas":
                 if render_fn is None:
                     render_fn = getattr(view_module, "render_all", None)
 
-                if
+                if callable(render_fn):
+                    render_fn(st.session_state.get("user"))
+                else:
+                    st.info("Vista pendiente para esta tarjeta (no se encontró función 'render' ni 'render_all').")
+            except Exception as e:
+                st.info("No se pudo cargar la vista para esta tarjeta.")
+                st.exception(e)
+
+elif section == "Kanban":
+    st.title("🗂️ Kanban")
+    def _render_kanban():
+        try:
+            from features.kanban.view import render as render_kanban
+            render_kanban(st.session_state.get("user"))
+        except Exception as e:
+            st.info("Vista Kanban pendiente (features/kanban/view.py).")
+            st.exception(e)
+    render_if_allowed(tab_key, _render_kanban)
+
+elif section == "Gantt":
+    st.title("📅 Gantt")
+    def _render_gantt():
+        try:
+            from features.gantt.view import render as render_gantt
+            render_gantt(st.session_state.get("user"))
+        except Exception as e:
+            st.info("Vista Gantt pendiente (features/gantt/view.py).")
+            st.exception(e)
+    render_if_allowed(tab_key, _render_gantt)
+
+else:
+    st.title("📊 Dashboard")
+    def _render_dashboard():
+        st.caption("Próximamente: visualizaciones y KPIs del dashboard.")
+        st.write("")
+    render_if_allowed(tab_key, _render_dashboard)
