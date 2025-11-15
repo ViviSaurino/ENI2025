@@ -86,12 +86,10 @@ st.markdown("""
   section[data-testid="stSidebar"] .avatar-wrap{ margin:6px 0 6px !important; }
   section[data-testid="stSidebar"] .avatar-wrap img{ border-radius:9999px !important; }
 
-  /* Sidebar más delgado y con fondo plomo suave */
-  section[data-testid="stSidebar"]{
+  /* Sidebar más delgado, fondo plomo suave */
+  [data-testid="stSidebar"]{
     overflow-y:hidden !important;
     background-color:#F5F6FB !important;
-  }
-  div[data-testid="stSidebar"]{
     min-width:180px !important;
     max-width:180px !important;
   }
@@ -149,7 +147,7 @@ st.markdown("""
     background:#E5D4FF;
     border-radius:24px;
     padding:18px 24px;
-    margin-bottom:18px;
+    margin-bottom:22px;
     display:flex;
     align-items:center;
     justify-content:space-between;
@@ -170,24 +168,6 @@ st.markdown("""
     color:#4B5563;
     margin:0;
   }
-  .eni-main-hero-avatar{
-    display:flex;
-    align-items:center;
-    justify-content:center;
-  }
-  .eni-main-hero-circle{
-    width:64px;
-    height:64px;
-    border-radius:999px;
-    background:#F5F3FF;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:28px;
-    font-weight:800;
-    color:#4C1D95;
-    box-shadow:0 8px 20px rgba(76,29,149,0.18);
-  }
 
   /* ===== Tarjetas rápidas (7 rectángulos) ===== */
   .eni-quick-card{
@@ -197,6 +177,7 @@ st.markdown("""
     box-shadow:0 8px 20px rgba(148,163,184,.18);
     border:1px solid #E5E7EB;
     height:100%;
+    margin-bottom:18px;  /* separa más las filas de tarjetas */
   }
   .eni-quick-card-title{
     font-size:14px;
@@ -484,10 +465,8 @@ TAB_KEY_BY_SECTION = {
     "📊 Dashboard": "dashboard",
 }
 def render_if_allowed(tab_key: str, render_fn):
-    if acl.can_see_tab(user_acl, tab_key):
-        render_fn()
-    else:
-        st.warning("No tienes permiso para esta sección.")
+    # 👉 ACL desactivado: todas las personas pueden ver todas las secciones
+    render_fn()
 
 # ============ Sidebar ============
 with st.sidebar:
@@ -508,7 +487,6 @@ with st.sidebar:
     )
 
     st.divider()
-    # solo botón de cerrar sesión (sin saludo con nombre)
     if st.button("🔒 Cerrar sesión", use_container_width=True):
         logout()
 
@@ -529,11 +507,10 @@ section = st.session_state.get("nav_section", "📘 Gestión de tareas")
 tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
 
 if section == "📘 Gestión de tareas":
-    # (se quita el st.title grande para dejar solo la cabecera lila)
+    # (sin st.title grande para dejar solo la cabecera lila)
 
-    # ---- Cabecera central lila (Bienvenid@ + nombre) ----
+    # ---- Cabecera central lila (Bienvenid@ + nombre, sin círculo con inicial) ----
     dn = st.session_state.get("user_display_name", "Usuario")
-    inicial = (dn.strip()[:1] or "U").upper()
 
     st.markdown(f"""
     <div class="eni-main-hero">
@@ -543,9 +520,6 @@ if section == "📘 Gestión de tareas":
         <p class="eni-main-hero-left-sub">
           A la plataforma unificada para gestión - ENI2025
         </p>
-      </div>
-      <div class="eni-main-hero-avatar">
-        <div class="eni-main-hero-circle">{inicial}</div>
       </div>
     </div>
     """, unsafe_allow_html=True)
