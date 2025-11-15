@@ -247,7 +247,7 @@ st.markdown("""
     margin:0;
   }
 
-  /* ===== Tarjetas rápidas (fila de 4, como el mockup) ===== */
+  /* ===== Tarjetas rápidas (fila de 4, tipo cuadradas) ===== */
   .eni-quick-row{
     display:grid;
     grid-template-columns:repeat(4,minmax(0,1fr));
@@ -259,15 +259,17 @@ st.markdown("""
     text-decoration:none;
     color:inherit;
     display:block;
+    width:100%;
   }
   .eni-quick-card{
     border-radius:18px;
-    padding:12px 14px;
+    padding:10px 12px;
     box-shadow:0 10px 22px rgba(148,163,184,0.40);
     border:none;
-    height:110px;
+    min-height:110px;
+    max-height:120px;
     display:flex;
-    align-items:flex-end;
+    flex-direction:column;
     justify-content:space-between;
     transition:all .15s ease-in-out;
   }
@@ -275,7 +277,6 @@ st.markdown("""
     display:flex;
     flex-direction:column;
     justify-content:space-between;
-    width:100%;
     height:100%;
   }
   .eni-quick-card-text{
@@ -293,8 +294,9 @@ st.markdown("""
     margin-top:4px;
   }
   .eni-quick-card-icon{
-    font-size:22px;
+    font-size:20px;
     align-self:flex-end;
+    margin-top:6px;
   }
   .eni-quick-card-link:hover .eni-quick-card{
     box-shadow:0 14px 30px rgba(148,163,184,0.55);
@@ -782,47 +784,41 @@ if section == "Gestión de tareas":
             unsafe_allow_html=True,
         )
 
-        # Fila de 4 tarjetas de colores (accesos rápidos)
-        st.markdown('<div class="eni-quick-row">', unsafe_allow_html=True)
-
-        st.markdown(
-            _quick_card_link(
+        # Fila de 4 tarjetas de colores (accesos rápidos) en UN SOLO markdown
+        cards_html = """
+        <div class="eni-quick-row">
+          {card1}
+          {card2}
+          {card3}
+          {card4}
+        </div>
+        """.format(
+            card1=_quick_card_link(
                 "Nueva tarea",
                 "Registrar una nueva tarea asignada.",
                 "📝",
                 "nueva_tarea",
             ),
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-            _quick_card_link(
+            card2=_quick_card_link(
                 "Nueva alerta",
                 "Registrar alertas y riesgos prioritarios.",
                 "⚠️",
                 "nueva_alerta",
             ),
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-            _quick_card_link(
+            card3=_quick_card_link(
                 "Editar estado",
                 "Actualizar fases y fechas de las tareas.",
                 "✏️",
                 "editar_estado",
             ),
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-            _quick_card_link(
+            card4=_quick_card_link(
                 "Prioridad y evaluación",
                 "Revisar prioridad y nivel de avance.",
                 "⭐",
                 "prioridad",
             ),
-            unsafe_allow_html=True,
         )
-
-        st.markdown("</div>", unsafe_allow_html=True)  # cierre fila tarjetas
+        st.markdown(cards_html, unsafe_allow_html=True)
 
         # Dos tarjetas blancas inferiores solo decorativas (como en el mockup)
         st.markdown(
