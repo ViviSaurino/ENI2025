@@ -74,13 +74,6 @@ inject_global_css()
 st.markdown("""
 <style>
   .eni-banner{ margin:6px 0 14px; font-weight:400; font-size:16px; color:#4B5563; }
-
-  /* Sidebar tipo panel plomo + botón cerrar sesión */
-  section[data-testid="stSidebar"]{
-    overflow-y:hidden !important;
-    background:#F4F4FB !important;
-    border-right:1px solid #E5E7EB;
-  }
   section[data-testid="stSidebar"] .stButton > button{
     background:#C7A0FF !important; color:#FFFFFF !important; border:none !important;
     border-radius:12px !important; font-weight:700 !important;
@@ -93,32 +86,21 @@ st.markdown("""
   section[data-testid="stSidebar"] .avatar-wrap{ margin:6px 0 6px !important; }
   section[data-testid="stSidebar"] .avatar-wrap img{ border-radius:9999px !important; }
 
-  /* Menú lateral tipo “pastillas” */
-  section[data-testid="stSidebar"] .eni-nav [role="radiogroup"]{
-    display:flex;
-    flex-direction:column;
-    gap:6px;
+  /* Sidebar más delgado y con fondo plomo suave */
+  section[data-testid="stSidebar"]{
+    overflow-y:hidden !important;
+    background-color:#F5F6FB !important;
   }
-  section[data-testid="stSidebar"] .eni-nav div[role="radio"]{
-    border-radius:999px;
-    padding:6px 12px;
-    font-size:14px;
-    border:1px solid transparent;
-    cursor:pointer;
-  }
-  section[data-testid="stSidebar"] .eni-nav div[role="radio"][aria-checked="true"]{
-    background:#C7A0FF;
-    color:#FFFFFF;
-    box-shadow:0 4px 10px rgba(199,160,255,.45);
-  }
-  section[data-testid="stSidebar"] .eni-nav div[role="radio"][aria-checked="false"]{
-    color:#4B5563;
+  div[data-testid="stSidebar"]{
+    min-width:220px !important;
+    max-width:220px !important;
   }
 
-  /* 🔼 Subir un poquito el contenido principal (BIEN VENIDOS + píldora + inputs) */
+  /* 🔼 Subir un poquito el contenido principal (BIEN VENIDOS + píldora + inputs)
+     👉 MUEVES EL BLOQUE LETRAS + INPUTS: cambia -1rem */
   html body [data-testid="stAppViewContainer"] .main .block-container{
     padding-top: 0rem !important;
-    margin-top: -1rem !important;
+    margin-top: -1rem !important;  /* antes -2rem */
   }
 
   /* 🔼 Comprimir header para que no deje espacio arriba */
@@ -128,68 +110,33 @@ st.markdown("""
     visibility: hidden;
   }
 
-  /* Cabecera central lila estilo hero */
-  .eni-main-hero{
-    background:#EDE9FE;
-    border-radius:24px;
-    padding:18px 24px;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:24px;
-    margin-bottom:24px;
+  /* ===== Menú de secciones estilo pastilla en el sidebar ===== */
+  section[data-testid="stSidebar"] .stRadio > div{
+    gap:4px !important;
   }
-  .eni-main-hero-left-tag{
-    font-size:12px;
-    text-transform:uppercase;
-    letter-spacing:0.10em;
-    color:#7C3AED;
+  section[data-testid="stSidebar"] [data-baseweb="radio"]{
     margin-bottom:4px;
-  }
-  .eni-main-hero-title{
-    font-size:24px;
-    font-weight:800;
-    color:#4B0082;
-    margin-bottom:4px;
-  }
-  .eni-main-hero-text{
-    font-size:14px;
-    color:#4B5563;
-  }
-  .eni-main-hero-avatar{
-    width:72px;
-    height:72px;
+    padding:6px 10px;
     border-radius:999px;
-    background:#C7A0FF;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:32px;
-    font-weight:800;
-    color:#FFFFFF;
-    box-shadow:0 8px 20px rgba(148, 86, 255, 0.35);
+    background:transparent;
+    transition:all .15s ease-in-out;
   }
-
-  /* Grid de accesos rápidos */
-  .eni-quick-grid{
-    display:grid;
-    grid-template-columns:repeat(3, minmax(0,1fr));
-    gap:16px;
-    margin-top:4px;
-    margin-bottom:24px;
+  /* ocultar el circulito del radio */
+  section[data-testid="stSidebar"] [data-baseweb="radio"] > div:first-child{
+    display:none;
   }
-  .eni-quick-card{
-    background:#FFFFFF;
-    border-radius:18px;
-    padding:14px 16px;
-    box-shadow:0 4px 12px rgba(15,23,42,.04);
-    border:1px solid #E5E7EB;
-    font-size:14px;
-    font-weight:600;
-    color:#4B5563;
+  section[data-testid="stSidebar"] [data-baseweb="radio"] > div:last-child{
+    padding-left:0 !important;
   }
-  .eni-quick-card-full{
-    grid-column:1 / -1;
+  /* opción seleccionada */
+  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="true"]{
+    background:#C7A0FF !important;
+    color:#FFFFFF !important;
+    box-shadow:0 6px 14px rgba(199,160,255,.35);
+  }
+  /* opciones no seleccionadas */
+  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="false"]{
+    color:#4B5563 !important;
   }
 </style>
 """, unsafe_allow_html=True)
@@ -477,15 +424,19 @@ with st.sidebar:
         st.markdown("<div class='eni-logo-wrap'>", unsafe_allow_html=True)
         st.image(str(LOGO_PATH), width=120)
         st.markdown("</div>", unsafe_allow_html=True)
-    st.markdown("<div class='eni-banner'>Esta es la plataforma unificada para gestión - ENI2025</div>", unsafe_allow_html=True)
 
-    st.subheader("Secciones")
-    st.markdown("<div class='eni-nav'>", unsafe_allow_html=True)
+    # (se quita el texto de plataforma y el encabezado "Secciones")
+
     nav_labels = ["📘 Gestión de tareas","🗂️ Kanban","📅 Gantt","📊 Dashboard"]
     default_idx = nav_labels.index(st.session_state.get("nav_section", "📘 Gestión de tareas"))
-    nav_choice = st.radio("Navegación", nav_labels, index=default_idx,
-                          label_visibility="collapsed", key="nav_section", horizontal=False)
-    st.markdown("</div>", unsafe_allow_html=True)
+    nav_choice = st.radio(
+        "Navegación",
+        nav_labels,
+        index=default_idx,
+        label_visibility="collapsed",
+        key="nav_section",
+        horizontal=False
+    )
 
     st.divider()
     # 👉 Usar el nombre elegido en el login (sin mostrar el correo)
@@ -503,42 +454,7 @@ section = st.session_state.get("nav_section", "📘 Gestión de tareas")
 tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
 
 if section == "📘 Gestión de tareas":
-    # Cabecera tipo hero + accesos rápidos
-    dn = st.session_state.get("user_display_name", "Usuario")
-    # sacar inicial simple para el avatar
-    inicial = (dn.strip() or "U")[0].upper()
-
-    st.markdown(
-        f"""
-        <div class="eni-main-hero">
-          <div class="eni-main-hero-left">
-            <div class="eni-main-hero-left-tag">📘 Gestión de tareas</div>
-            <div class="eni-main-hero-title">Bienvenid@, {dn}</div>
-            <div class="eni-main-hero-text">
-              A la plataforma unificada para gestión — ENI2025.
-            </div>
-          </div>
-          <div class="eni-main-hero-avatar">{inicial}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
-        """
-        <div class="eni-quick-grid">
-          <div class="eni-quick-card">Nueva tarea</div>
-          <div class="eni-quick-card">Editar estado</div>
-          <div class="eni-quick-card">Nueva alerta</div>
-          <div class="eni-quick-card">Prioridad</div>
-          <div class="eni-quick-card">Evaluación</div>
-          <div class="eni-quick-card">Cumplimiento</div>
-          <div class="eni-quick-card eni-quick-card-full">Tareas recientes</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
+    st.title("📘 Gestión de tareas")
     st.markdown('<div class="eni-gestion-wrap">', unsafe_allow_html=True)
 
     def _render_gestion():
