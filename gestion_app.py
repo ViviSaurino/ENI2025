@@ -51,9 +51,9 @@ except Exception:
 
 # 🔐 ACL / Roles
 from features.security import acl
-from utils.avatar import show_user_avatar_from_session
+from utils.avatar import show_user_avatar_from_session  # por si luego lo usamos dentro
 
-LOGO_PATH  = Path("assets/branding/eni2025_logo.png")
+LOGO_PATH = Path("assets/branding/eni2025_logo.png")
 ROLES_XLSX = "data/security/roles.xlsx"
 
 # ============ Config de página ============
@@ -68,134 +68,169 @@ st.set_page_config(
 patch_streamlit_aggrid()
 inject_global_css()
 
+# 👉 Estilos específicos (sidebar + layout + hero + tarjetas)
 st.markdown("""
 <style>
-  .eni-banner{
-    margin:6px 0 14px;
-    font-weight:400;
-    font-size:16px;
-    color:#4B5563;
-  }
+  .eni-banner{ margin:6px 0 14px; font-weight:400; font-size:16px; color:#4B5563; }
 
-  /* Botón Cerrar sesión en sidebar */
   section[data-testid="stSidebar"] .stButton > button{
-    background:#C7A0FF !important;
-    color:#FFFFFF !important;
-    border:none !important;
-    border-radius:12px !important;
-    font-weight:700 !important;
-    box-shadow:0 6px 14px rgba(199,160,255,.35) !important;
-  }
-  section[data-testid="stSidebar"] .stButton > button:hover{
-    filter:brightness(0.95);
+    border-radius:8px !important;
+    font-weight:600 !important;
   }
 
-  section[data-testid="stSidebar"] .eni-logo-wrap{
-    margin-left:-8px;
-    margin-top:8px !important;
-    margin-bottom:12px !important;
-  }
-  section[data-testid="stSidebar"] .block-container{
-    padding-top:6px !important;
-    padding-bottom:10px !important;
-  }
-  section[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{
-    gap:8px !important;
-  }
-  section[data-testid="stSidebar"] .avatar-wrap{
-    margin:6px 0 6px !important;
-  }
-  section[data-testid="stSidebar"] .avatar-wrap img{
-    border-radius:9999px !important;
-  }
-  section[data-testid="stSidebar"]{
+  section[data-testid="stSidebar"] .eni-logo-wrap{ margin-left:-10px; margin-top:-6px !important; }
+  section[data-testid="stSidebar"] .block-container{ padding-top:6px !important; padding-bottom:10px !important; }
+  section[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{ gap:8px !important; }
+
+  /* Sidebar gris claro, más estrecho */
+  [data-testid="stSidebar"]{
     overflow-y:hidden !important;
+    background-color:#F5F6FB !important;
+    min-width:230px !important;
+    max-width:230px !important;
   }
 
-  /* Layout principal */
+  /* Subir un poquito el contenido principal */
   html body [data-testid="stAppViewContainer"] .main .block-container{
-    padding-top:0.5rem !important;
-    margin-top:0rem !important;
+    padding-top: 0rem !important;
+    margin-top: -1rem !important;
   }
 
-  /* Ocultar header nativo de Streamlit */
+  /* Comprimir header para que no deje espacio arriba */
   header[data-testid="stHeader"]{
     height: 0px;
     padding: 0px;
     visibility: hidden;
   }
 
-  /* Sidebar más angosto + iconos grises un poco más grandes */
-  section[data-testid="stSidebar"]{
-    min-width: 230px !important;
-    max-width: 230px !important;
+  /* ===== Menú de secciones estilo pastilla en el sidebar ===== */
+  section[data-testid="stSidebar"] .stRadio > div{
+    gap:6px !important;
   }
-  section[data-testid="stSidebar"] [data-testid="stRadio"] label{
-    gap:0.35rem !important;
+  section[data-testid="stSidebar"] [data-baseweb="radio"]{
+    margin-bottom:6px;
+    padding:6px 12px;
+    border-radius:999px;
+    background:transparent;
+    transition:all .15s ease-in-out;
+    display:flex;
+    align-items:center;
   }
-  section[data-testid="stSidebar"] [data-testid="stRadio"] label span:first-child{
-    font-size:1.15rem !important;
-    color:#6B7280 !important;  /* gris icono */
+  /* ocultar el circulito del radio */
+  section[data-testid="stSidebar"] [data-baseweb="radio"] > div:first-child{
+    display:none;
   }
-  section[data-testid="stSidebar"] [data-testid="stRadio"] label p{
-    margin-bottom:0px !important;
-    font-size:0.95rem !important;
+  section[data-testid="stSidebar"] [data-baseweb="radio"] > div:last-child{
+    padding-left:0 !important;
+  }
+  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="true"]{
+    background:#C7A0FF !important;
+    color:#FFFFFF !important;
+    box-shadow:0 6px 14px rgba(199,160,255,.35);
+  }
+  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="false"]{
+    color:#4B5563 !important;
   }
 
-  /* Hero principal dentro de la app (tarjeta lila) */
-  .eni-main-hero{
-    margin-top: 0.5rem;
-    margin-bottom: 1.0rem;
+  /* Iconitos grises para cada opción del menú lateral */
+  section[data-testid="stSidebar"] [data-baseweb="radio"]::before{
+    content:"▣";
+    color:#9CA3AF;
+    font-size:12px;
+    margin-right:8px;
   }
+  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(2)::before{
+    content:"▤";
+  }
+  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(3)::before{
+    content:"▦";
+  }
+  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(4)::before{
+    content:"▧";
+  }
+
+  /* Ocultar barras de scroll visualmente pero permitir scroll */
+  *::-webkit-scrollbar{
+    width:0px;
+    height:0px;
+  }
+
+  /* ===== Hero principal ===== */
   .eni-main-hero-label{
-    font-size:1.05rem;
-    font-weight:800;
+    font-size:14px;
+    font-weight:600;
     color:#4B5563;
-    margin-bottom:0.25rem;
+    margin-top:8px;
+    margin-bottom:14px;  /* más separación con el rectángulo lila */
   }
-  .eni-main-hero-card{
-    background:#E5D8FF;
-    border-radius:18px;
-    padding:18px 32px;
+  .eni-main-hero{
+    background:#E5D4FF;
+    border-radius:24px;
+    padding:18px 24px;
+    margin-bottom:26px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
   }
-  .eni-main-hero-name{
-    font-size:1.35rem;
+  .eni-main-hero-left-name{
+    font-size:24px;
     font-weight:800;
     color:#4C1D95;
+    margin:2px 0 6px 0;
   }
-  .eni-main-hero-sub{
-    font-size:0.9rem;
+  .eni-main-hero-left-sub{
+    font-size:13px;
     color:#4B5563;
-    margin-top:4px;
+    margin:0;
   }
 
-  /* Contenedor de tarjetas de inicio */
-  .eni-home-cards{
-    margin-top: 1.4rem;
+  /* ===== Tarjetas rápidas ===== */
+  .eni-quick-card-link{
+    text-decoration:none;
+    color:inherit;
+    display:block;
   }
-  .eni-home-cards [data-testid="stHorizontalBlock"]{
-    gap:16px !important;
-  }
-  .eni-home-cards [data-testid="stButton"] > button{
-    width:100%;
+
+  .eni-quick-card{
     background:#FFFFFF;
-    color:#111827;
     border-radius:18px;
+    padding:20px 22px;
+    box-shadow:none;
     border:1px solid #E5E7EB;
-    padding:18px 22px;
-    box-shadow:0 10px 25px rgba(15,23,42,0.06);
-    display:flex;
-    flex-direction:row;
-    justify-content:space-between;
-    align-items:flex-start;
-    text-align:left;
-    white-space:normal;
+    height:100%;
+    min-height:150px;       /* un poquito más altas */
+    margin-bottom:40px;     /* más separación vertical */
+    transition:all .15s ease-in-out;
   }
-  /* Texto dentro de la tarjeta */
-  .eni-home-cards [data-testid="stButton"] > button div p{
-    font-size:0.95rem;
-    line-height:1.4;
-    white-space:pre-line;  /* respeta salto de línea \\n */
+
+  .eni-quick-card-main{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    height:100%;
+  }
+  .eni-quick-card-text{
+    max-width:72%;
+  }
+  .eni-quick-card-title{
+    font-size:14px;
+    font-weight:700;
+    color:#111827;
+    margin-bottom:4px;
+  }
+  .eni-quick-card-icon{
+    font-size:36px;        /* icono más grande */
+    margin-left:18px;
+  }
+  .eni-quick-card-sub{
+    font-size:12px;
+    color:#6B7280;
+    margin:6px 0 0 0;
+  }
+
+  .eni-quick-card-link:hover .eni-quick-card{
+    box-shadow:0 14px 28px rgba(148,163,184,.35);
+    transform:translateY(-2px);
   }
 </style>
 """, unsafe_allow_html=True)
@@ -205,13 +240,15 @@ APP_PASSWORD = "Inei2025$"
 
 def check_app_password() -> bool:
     """
-    Portada tipo hero: BIENVENIDOS + píldora + contraseña.
+    Portada tipo hero: BIENVENIDOS + píldora celeste + campo de contraseña.
+    Si la contraseña es correcta, marca password_ok y crea un usuario genérico.
     """
 
+    # 🎨 Estilos para título, píldora, botón ENTRAR jade y espaciado de inputs
     st.markdown("""
     <style>
       .eni-hero-title{
-        font-size:77px;
+        font-size:77px;          /* BIEN / VENIDOS grande */
         font-weight:900;
         color:#B38CFB;
         line-height:0.80;
@@ -221,15 +258,17 @@ def check_app_password() -> bool:
         display:inline-block;
         padding:10px 53px;
         border-radius:12px;
-        background-color:#C0C2FF;
+        background-color:#C0C2FF;   /* lila un poquito más oscuro */
         border:1px solid #C0C2FF;
-        color:#FFFFFF;
+        color:#FFFFFF;              /* letras blancas */
         font-weight:700;
         font-size:14px;
         letter-spacing:0.04em;
         margin-bottom:10px;
-        white-space:nowrap;
+        white-space: nowrap;
       }
+
+      /* 🎨 Botón ENTRAR jade un poquito más oscuro, letras blancas */
       [data-testid="stAppViewContainer"] .main .stButton > button{
         background:#8FD9C1 !important;
         color:#FFFFFF !important;
@@ -242,6 +281,8 @@ def check_app_password() -> bool:
       [data-testid="stAppViewContainer"] .main .stButton > button:hover{
         filter:brightness(0.97);
       }
+
+      /* 🔽 Reducir espacio entre select "¿Quién está editando?" y contraseña */
       .eni-login-form [data-testid="stSelectbox"]{
         margin-bottom:0.0rem !important;
       }
@@ -251,9 +292,11 @@ def check_app_password() -> bool:
     </style>
     """, unsafe_allow_html=True)
 
+    # ✅ Si ya pasó la contraseña, no mostramos login otra vez
     if st.session_state.get("password_ok", False):
         return True
 
+    # 🔒 Ocultar scroll solo en la pantalla de login
     st.markdown("""
     <style>
       html, body, [data-testid="stAppViewContainer"], .main{
@@ -262,13 +305,15 @@ def check_app_password() -> bool:
     </style>
     """, unsafe_allow_html=True)
 
+    # Margen superior sólo en la pantalla de login
     st.markdown("<div style='margin-top:7vh;'></div>", unsafe_allow_html=True)
 
+    # Columnas generales con espaciador a la izquierda
     space_col, col1, col2 = st.columns([0.20, 0.55, 0.35])
-
+        
+    # Columna izquierda: título + subcolumna
     with space_col:
         st.write("")
-
     with col1:
         st.markdown("<div class='eni-hero-title'>BIEN<br>VENIDOS</div>", unsafe_allow_html=True)
 
@@ -279,6 +324,7 @@ def check_app_password() -> bool:
             st.markdown("<div class='eni-hero-pill'>GESTIÓN DE TAREAS ENI 2025</div>", unsafe_allow_html=True)
             st.write("")
 
+            # 👉 Lista desplegable: ¿Quién está editando?
             editor_options = [
                 "Brayan Pisfil 😎",
                 "Elizabet Cama 🌸",
@@ -307,6 +353,7 @@ def check_app_password() -> bool:
 
             pwd = st.text_input("Ingresa la contraseña", type="password", key="eni_pwd")
 
+            # Botón ENTRAR
             if st.button("ENTRAR", use_container_width=True):
                 if pwd == APP_PASSWORD:
                     st.session_state["password_ok"] = True
@@ -318,6 +365,7 @@ def check_app_password() -> bool:
 
             st.markdown("</div>", unsafe_allow_html=True)
 
+    # Columna derecha: héroe animado (video autoplay sin controles) o logo como respaldo
     with col2:
         hero_video = Path("assets/hero.mp4")
         logo_img   = Path("assets/branding/eni2025_logo.png")
@@ -343,6 +391,7 @@ def check_app_password() -> bool:
 
     return False
 
+# Si no pasó la contraseña, no seguimos con la app
 if not check_app_password():
     st.stop()
 
@@ -358,6 +407,7 @@ except Exception as _e:
     st.error("No pude cargar el archivo de roles. Verifica data/security/roles.xlsx.")
     st.stop()
 
+# --- AJUSTE: forzar is_active y can_edit_all_tabs para esta sesión ---
 def _to_bool(v):
     if isinstance(v, bool):
         return v
@@ -369,13 +419,16 @@ def _to_bool(v):
 if user_acl is None:
     user_acl = {}
 
+# Normaliza (por si vienen como VERDADERO/FALSO o Sí/No desde Excel)
 for _k in ("is_active", "can_edit_all_tabs"):
     if _k in user_acl:
         user_acl[_k] = _to_bool(user_acl[_k])
 
+# Fuerza flags para esta sesión
 user_acl["is_active"] = True
 user_acl["can_edit_all_tabs"] = True
 
+# Refleja también en roles_df en memoria (útil para otras vistas)
 try:
     _roles_df = st.session_state.get("roles_df")
     if isinstance(_roles_df, pd.DataFrame):
@@ -386,6 +439,7 @@ try:
             st.session_state["roles_df"] = _roles_df
 except Exception:
     pass
+# --- FIN AJUSTE ---
 
 if not user_acl or not user_acl.get("is_active", False):
     st.error("No tienes acceso (usuario no registrado o inactivo).")
@@ -400,8 +454,6 @@ st.session_state["acl_user"] = user_acl
 st.session_state["user_display_name"] = st.session_state.get("user_display_name") or user_acl.get("display_name", email or "Usuario")
 st.session_state["user_dry_run"] = bool(user_acl.get("dry_run", False))
 st.session_state["save_scope"] = user_acl.get("save_scope", "all")
-
-display_name = st.session_state["user_display_name"]
 
 # ========= Hook "maybe_save" + Google Sheets =========
 def _push_gsheets(df: pd.DataFrame):
@@ -442,17 +494,20 @@ st.session_state["maybe_save"] = _maybe_save_chain
 # ====== Logout local ======
 def logout():
     for k in ("user", "user_email", "password_ok", "acl_user",
-              "auth_ok", "nav_section", "roles_df", "selected_home_view"):
+              "auth_ok", "nav_section", "roles_df"):
         st.session_state.pop(k, None)
     st.rerun()
 
-# Mapeo de claves de pestaña para permisos
+# ====== Navegación / permisos ======
+DEFAULT_SECTION = "Gestión de tareas"
+
 TAB_KEY_BY_SECTION = {
-    "📘 Gestión de tareas": "tareas_recientes",
-    "🗂️ Kanban": "kanban",
-    "📅 Gantt": "gantt",
-    "📊 Dashboard": "dashboard",
+    "Gestión de tareas": "tareas_recientes",
+    "Kanban": "kanban",
+    "Gantt": "gantt",
+    "Dashboard": "dashboard",
 }
+
 def render_if_allowed(tab_key: str, render_fn):
     if acl.can_see_tab(user_acl, tab_key):
         render_fn()
@@ -466,99 +521,153 @@ with st.sidebar:
         st.image(str(LOGO_PATH), width=120)
         st.markdown("</div>", unsafe_allow_html=True)
 
-    st.markdown("<div class='eni-banner'>Esta es la plataforma unificada para gestión - ENI2025</div>", unsafe_allow_html=True)
-
-    nav_labels = ["📘 Gestión de tareas","🗂️ Kanban","📅 Gantt","📊 Dashboard"]
-    current_section = st.session_state.get("nav_section", "📘 Gestión de tareas")
-    # 🔧 Fix ValueError: si quedó algo viejo en sesión, volvemos a 'Gestión de tareas'
+    nav_labels = ["Gestión de tareas", "Kanban", "Gantt", "Dashboard"]
+    current_section = st.session_state.get("nav_section", DEFAULT_SECTION)
     if current_section not in nav_labels:
-        current_section = "📘 Gestión de tareas"
+        current_section = DEFAULT_SECTION
     default_idx = nav_labels.index(current_section)
 
-    st.radio(
+    nav_choice = st.radio(
         "Navegación",
         nav_labels,
         index=default_idx,
         label_visibility="collapsed",
         key="nav_section",
-        horizontal=False
+        horizontal=False,
     )
 
-    st.divider()
-    show_user_avatar_from_session(size=150)
-    st.markdown(f"👋 **Hola, {display_name}**")
+    st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
     if st.button("🔒 Cerrar sesión", use_container_width=True):
         logout()
 
 # ============ Datos ============
 ensure_df_main()
 
+# Helper para tarjetas rápidas con icono y link clicable
+def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str:
+    return f"""
+    <a href="?tile={tile_key}" class="eni-quick-card-link">
+      <div class="eni-quick-card">
+        <div class="eni-quick-card-main">
+          <div class="eni-quick-card-text">
+            <div class="eni-quick-card-title">{title}</div>
+            <p class="eni-quick-card-sub">{subtitle}</p>
+          </div>
+          <div class="eni-quick-card-icon">{icon}</div>
+        </div>
+      </div>
+    </a>
+    """
+
+# Leer query param "tile" (para saber qué tarjeta se pulsó)
+tile = ""
+try:
+    params = st.query_params
+    raw = params.get("tile", "")
+    if isinstance(raw, list):
+        tile = raw[0] if raw else ""
+    else:
+        tile = raw
+except Exception:
+    try:
+        params = st.experimental_get_query_params()
+        raw = params.get("tile", [""])
+        tile = raw[0] if raw else ""
+    except Exception:
+        tile = ""
+
+if tile:
+    st.session_state["home_tile"] = tile
+else:
+    tile = st.session_state.get("home_tile", "")
+
 # ============ UI principal ============
-section = st.session_state.get("nav_section", "📘 Gestión de tareas")
+section = st.session_state.get("nav_section", DEFAULT_SECTION)
 tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
 
-if section == "📘 Gestión de tareas":
-    # ---- Hero principal ----
-    st.markdown(f"""
-    <div class="eni-main-hero">
-      <div class="eni-main-hero-label"><strong>Bienvenid@</strong></div>
-      <div class="eni-main-hero-card">
-        <div class="eni-main-hero-name">{display_name}</div>
-        <div class="eni-main-hero-sub">A la plataforma unificada Gestión - ENI2025</div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
+if section == "Gestión de tareas":
+    # Cabecera: etiqueta "Bienvenid@" + rectángulo lila
+    dn = st.session_state.get("user_display_name", "Usuario")
 
-    # ---- Tarjetas de inicio (6 tarjetas, 3 x fila) ----
-    selected_view = st.session_state.get("selected_home_view", "Nueva tarea")
-
-    st.markdown('<div class="eni-home-cards">', unsafe_allow_html=True)
-
-    # Fila 1
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        label = "Nueva tarea 📝\nRegistrar una nueva tarea asignada."
-        if st.button(label, key="card_nueva_tarea"):
-            st.session_state["selected_home_view"] = "Nueva tarea"
-            selected_view = "Nueva tarea"
-    with col2:
-        label = "Editar estado ✏️\nActualizar fases y fechas de las tareas."
-        if st.button(label, key="card_editar_estado"):
-            st.session_state["selected_home_view"] = "Editar estado"
-            selected_view = "Editar estado"
-    with col3:
-        label = "Nueva alerta ⚠️\nRegistrar alertas y riesgos prioritarios."
-        if st.button(label, key="card_nueva_alerta"):
-            st.session_state["selected_home_view"] = "Nueva alerta"
-            selected_view = "Nueva alerta"
-
-    # Fila 2
-    col4, col5, col6 = st.columns(3)
-    with col4:
-        label = "Prioridad ⭐\nRevisar y ajustar la prioridad de tareas."
-        if st.button(label, key="card_prioridad"):
-            st.session_state["selected_home_view"] = "Prioridad"
-            selected_view = "Prioridad"
-    with col5:
-        label = "Evaluación y cumplimiento 📊\nCalificar avances y visualizar el nivel de cumplimiento."
-        if st.button(label, key="card_eval_cump"):
-            st.session_state["selected_home_view"] = "Evaluación y cumplimiento"
-            selected_view = "Evaluación y cumplimiento"
-    with col6:
-        label = "Tareas recientes ⏱️\nResumen de las últimas tareas actualizadas."
-        if st.button(label, key="card_tareas_recientes"):
-            st.session_state["selected_home_view"] = "Tareas recientes"
-            selected_view = "Tareas recientes"
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    st.write("")
-    st.caption(
-        f"Vista seleccionada: **{selected_view}** "
-        "(contenido específico se implementará dentro de la app)."
+    st.markdown(
+        f"""
+        <div class="eni-main-hero-label">Bienvenid@</div>
+        <div class="eni-main-hero">
+          <div class="eni-main-hero-left">
+            <div class="eni-main-hero-left-name">{dn}</div>
+            <p class="eni-main-hero-left-sub">
+              A la plataforma unificada Gestión - ENI2025
+            </p>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
-elif section == "🗂️ Kanban":
+    # Fila 1: 3 tarjetas
+    col_a1, col_a2, col_a3 = st.columns(3)
+    with col_a1:
+        st.markdown(
+            _quick_card_link("Nueva tarea",
+                             "Registrar una nueva tarea asignada.",
+                             "📝",
+                             "nueva_tarea"),
+            unsafe_allow_html=True,
+        )
+    with col_a2:
+        st.markdown(
+            _quick_card_link("Editar estado",
+                             "Actualizar fases y fechas de las tareas.",
+                             "✏️",
+                             "editar_estado"),
+            unsafe_allow_html=True,
+        )
+    with col_a3:
+        st.markdown(
+            _quick_card_link("Nueva alerta",
+                             "Registrar alertas y riesgos prioritarios.",
+                             "⚠️",
+                             "nueva_alerta"),
+            unsafe_allow_html=True,
+        )
+
+    # Fila 2: 3 tarjetas
+    col_b1, col_b2, col_b3 = st.columns(3)
+    with col_b1:
+        st.markdown(
+            _quick_card_link("Prioridad",
+                             "Revisar y ajustar la prioridad de tareas.",
+                             "⭐",
+                             "prioridad"),
+            unsafe_allow_html=True,
+        )
+    with col_b2:
+        st.markdown(
+            _quick_card_link("Evaluación y cumplimiento",
+                             "Calificar avances y visualizar el nivel de cumplimiento.",
+                             "📊",
+                             "evaluacion_cumplimiento"),
+            unsafe_allow_html=True,
+        )
+    with col_b3:
+        st.markdown(
+            _quick_card_link("Tareas recientes",
+                             "Resumen de las últimas tareas actualizadas.",
+                             "⏱️",
+                             "tareas_recientes"),
+            unsafe_allow_html=True,
+        )
+
+    # Mensajito pequeño abajo indicando qué tarjeta se eligió (por ahora solo informativo)
+    if tile:
+        pretty = tile.replace("_", " ").capitalize()
+        st.markdown(
+            f"<p style='font-size:12px;color:#6B7280;'>Vista seleccionada: "
+            f"<strong>{pretty}</strong> (contenido específico se implementará dentro de la app).</p>",
+            unsafe_allow_html=True,
+        )
+
+elif section == "Kanban":
     st.title("🗂️ Kanban")
     def _render_kanban():
         try:
@@ -569,7 +678,7 @@ elif section == "🗂️ Kanban":
             st.exception(e)
     render_if_allowed(tab_key, _render_kanban)
 
-elif section == "📅 Gantt":
+elif section == "Gantt":
     st.title("📅 Gantt")
     def _render_gantt():
         try:
