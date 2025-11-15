@@ -73,7 +73,6 @@ st.markdown("""
 <style>
   .eni-banner{ margin:6px 0 14px; font-weight:400; font-size:16px; color:#4B5563; }
 
-  /* Botón del sidebar (Cerrar sesión) simple */
   section[data-testid="stSidebar"] .stButton > button{
     border-radius:8px !important;
     font-weight:600 !important;
@@ -83,7 +82,7 @@ st.markdown("""
   section[data-testid="stSidebar"] .block-container{ padding-top:6px !important; padding-bottom:10px !important; }
   section[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{ gap:8px !important; }
 
-  /* Sidebar más estilizado y gris claro */
+  /* Sidebar gris claro, más estrecho */
   [data-testid="stSidebar"]{
     overflow-y:hidden !important;
     background-color:#F5F6FB !important;
@@ -114,6 +113,8 @@ st.markdown("""
     border-radius:999px;
     background:transparent;
     transition:all .15s ease-in-out;
+    display:flex;
+    align-items:center;
   }
   /* ocultar el circulito del radio */
   section[data-testid="stSidebar"] [data-baseweb="radio"] > div:first-child{
@@ -131,6 +132,23 @@ st.markdown("""
     color:#4B5563 !important;
   }
 
+  /* Iconitos grises para cada opción del menú lateral */
+  section[data-testid="stSidebar"] [data-baseweb="radio"]::before{
+    content:"▣";
+    color:#9CA3AF;
+    font-size:12px;
+    margin-right:8px;
+  }
+  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(2)::before{
+    content:"▤";
+  }
+  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(3)::before{
+    content:"▦";
+  }
+  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(4)::before{
+    content:"▧";
+  }
+
   /* Ocultar barras de scroll visualmente pero permitir scroll */
   *::-webkit-scrollbar{
     width:0px;
@@ -142,13 +160,14 @@ st.markdown("""
     font-size:14px;
     font-weight:600;
     color:#4B5563;
-    margin-bottom:6px;
+    margin-top:8px;
+    margin-bottom:14px;  /* más separación con el rectángulo lila */
   }
   .eni-main-hero{
     background:#E5D4FF;
     border-radius:24px;
     padding:18px 24px;
-    margin-bottom:22px;
+    margin-bottom:26px;
     display:flex;
     align-items:center;
     justify-content:space-between;
@@ -166,6 +185,12 @@ st.markdown("""
   }
 
   /* ===== Tarjetas rápidas ===== */
+  .eni-quick-card-link{
+    text-decoration:none;
+    color:inherit;
+    display:block;
+  }
+
   .eni-quick-card{
     background:#FFFFFF;
     border-radius:18px;
@@ -173,9 +198,11 @@ st.markdown("""
     box-shadow:none;
     border:1px solid #E5E7EB;
     height:100%;
-    min-height:130px;
-    margin-bottom:32px;
+    min-height:150px;       /* un poquito más altas */
+    margin-bottom:40px;     /* más separación vertical */
+    transition:all .15s ease-in-out;
   }
+
   .eni-quick-card-main{
     display:flex;
     align-items:center;
@@ -183,7 +210,7 @@ st.markdown("""
     height:100%;
   }
   .eni-quick-card-text{
-    max-width:75%;
+    max-width:72%;
   }
   .eni-quick-card-title{
     font-size:14px;
@@ -192,13 +219,18 @@ st.markdown("""
     margin-bottom:4px;
   }
   .eni-quick-card-icon{
-    font-size:30px;
-    margin-left:16px;
+    font-size:36px;        /* icono más grande */
+    margin-left:18px;
   }
   .eni-quick-card-sub{
     font-size:12px;
     color:#6B7280;
     margin:6px 0 0 0;
+  }
+
+  .eni-quick-card-link:hover .eni-quick-card{
+    box-shadow:0 14px 28px rgba(148,163,184,.35);
+    transform:translateY(-2px);
   }
 </style>
 """, unsafe_allow_html=True)
@@ -233,17 +265,17 @@ def check_app_password() -> bool:
         font-size:14px;
         letter-spacing:0.04em;
         margin-bottom:10px;
-        white-space: nowrap;  /* evita el salto de línea */
+        white-space: nowrap;
       }
 
       /* 🎨 Botón ENTRAR jade un poquito más oscuro, letras blancas */
       [data-testid="stAppViewContainer"] .main .stButton > button{
-        background:#8FD9C1 !important;   /* jade algo más oscuro */
-        color:#FFFFFF !important;        /* texto blanco */
+        background:#8FD9C1 !important;
+        color:#FFFFFF !important;
         border-radius:12px !important;
         border:1px solid #8FD9C1 !important;
-        font-weight:900 !important;      /* negrita fuerte */
-        letter-spacing:0.04em !important;/* similar a la píldora */
+        font-weight:900 !important;
+        letter-spacing:0.04em !important;
         text-transform:uppercase !important;
       }
       [data-testid="stAppViewContainer"] .main .stButton > button:hover{
@@ -285,7 +317,7 @@ def check_app_password() -> bool:
     with col1:
         st.markdown("<div class='eni-hero-title'>BIEN<br>VENIDOS</div>", unsafe_allow_html=True)
 
-        form_col, _ = st.columns([0.66, 0.60])  # <-- ancho de píldora e inputs
+        form_col, _ = st.columns([0.66, 0.60])
         with form_col:
             st.markdown("<div class='eni-login-form'>", unsafe_allow_html=True)
 
@@ -325,7 +357,6 @@ def check_app_password() -> bool:
             if st.button("ENTRAR", use_container_width=True):
                 if pwd == APP_PASSWORD:
                     st.session_state["password_ok"] = True
-                    # usuario genérico para que el resto del código siga igual
                     st.session_state["user_email"] = "eni2025@app"
                     st.session_state["user"] = {"email": "eni2025@app"}
                     st.rerun()
@@ -512,19 +543,43 @@ with st.sidebar:
 # ============ Datos ============
 ensure_df_main()
 
-# Helper para tarjetas rápidas con icono
-def _quick_card(title: str, subtitle: str, icon: str) -> str:
+# Helper para tarjetas rápidas con icono y link clicable
+def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str:
     return f"""
-    <div class="eni-quick-card">
-      <div class="eni-quick-card-main">
-        <div class="eni-quick-card-text">
-          <div class="eni-quick-card-title">{title}</div>
-          <p class="eni-quick-card-sub">{subtitle}</p>
+    <a href="?tile={tile_key}" class="eni-quick-card-link">
+      <div class="eni-quick-card">
+        <div class="eni-quick-card-main">
+          <div class="eni-quick-card-text">
+            <div class="eni-quick-card-title">{title}</div>
+            <p class="eni-quick-card-sub">{subtitle}</p>
+          </div>
+          <div class="eni-quick-card-icon">{icon}</div>
         </div>
-        <div class="eni-quick-card-icon">{icon}</div>
       </div>
-    </div>
+    </a>
     """
+
+# Leer query param "tile" (para saber qué tarjeta se pulsó)
+tile = ""
+try:
+    params = st.query_params
+    raw = params.get("tile", "")
+    if isinstance(raw, list):
+        tile = raw[0] if raw else ""
+    else:
+        tile = raw
+except Exception:
+    try:
+        params = st.experimental_get_query_params()
+        raw = params.get("tile", [""])
+        tile = raw[0] if raw else ""
+    except Exception:
+        tile = ""
+
+if tile:
+    st.session_state["home_tile"] = tile
+else:
+    tile = st.session_state.get("home_tile", "")
 
 # ============ UI principal ============
 section = st.session_state.get("nav_section", DEFAULT_SECTION)
@@ -549,43 +604,66 @@ if section == "Gestión de tareas":
         unsafe_allow_html=True,
     )
 
-    # Fila 1: 3 rectángulos
+    # Fila 1: 3 tarjetas
     col_a1, col_a2, col_a3 = st.columns(3)
     with col_a1:
         st.markdown(
-            _quick_card("Nueva tarea", "Registrar una nueva tarea asignada.", "📝"),
+            _quick_card_link("Nueva tarea",
+                             "Registrar una nueva tarea asignada.",
+                             "📝",
+                             "nueva_tarea"),
             unsafe_allow_html=True,
         )
     with col_a2:
         st.markdown(
-            _quick_card("Editar estado", "Actualizar fases y fechas de las tareas.", "✏️"),
+            _quick_card_link("Editar estado",
+                             "Actualizar fases y fechas de las tareas.",
+                             "✏️",
+                             "editar_estado"),
             unsafe_allow_html=True,
         )
     with col_a3:
         st.markdown(
-            _quick_card("Nueva alerta", "Registrar alertas y riesgos prioritarios.", "⚠️"),
+            _quick_card_link("Nueva alerta",
+                             "Registrar alertas y riesgos prioritarios.",
+                             "⚠️",
+                             "nueva_alerta"),
             unsafe_allow_html=True,
         )
 
-    # Fila 2: 3 rectángulos
+    # Fila 2: 3 tarjetas
     col_b1, col_b2, col_b3 = st.columns(3)
     with col_b1:
         st.markdown(
-            _quick_card("Prioridad", "Revisar y ajustar la prioridad de tareas.", "⭐"),
+            _quick_card_link("Prioridad",
+                             "Revisar y ajustar la prioridad de tareas.",
+                             "⭐",
+                             "prioridad"),
             unsafe_allow_html=True,
         )
     with col_b2:
         st.markdown(
-            _quick_card(
-                "Evaluación y cumplimiento",
-                "Calificar avances y visualizar el nivel de cumplimiento.",
-                "📊",
-            ),
+            _quick_card_link("Evaluación y cumplimiento",
+                             "Calificar avances y visualizar el nivel de cumplimiento.",
+                             "📊",
+                             "evaluacion_cumplimiento"),
             unsafe_allow_html=True,
         )
     with col_b3:
         st.markdown(
-            _quick_card("Tareas recientes", "Resumen de las últimas tareas actualizadas.", "⏱️"),
+            _quick_card_link("Tareas recientes",
+                             "Resumen de las últimas tareas actualizadas.",
+                             "⏱️",
+                             "tareas_recientes"),
+            unsafe_allow_html=True,
+        )
+
+    # Mensajito pequeño abajo indicando qué tarjeta se eligió (por ahora solo informativo)
+    if tile:
+        pretty = tile.replace("_", " ").capitalize()
+        st.markdown(
+            f"<p style='font-size:12px;color:#6B7280;'>Vista seleccionada: "
+            f"<strong>{pretty}</strong> (contenido específico se implementará dentro de la app).</p>",
             unsafe_allow_html=True,
         )
 
