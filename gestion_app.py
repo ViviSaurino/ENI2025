@@ -9,8 +9,6 @@ import importlib
 import types
 import base64  # para incrustar el video como base64
 
-# from auth_google import google_login, logout  # <-- ELIMINADO
-
 # ===== Import robusto de shared con fallbacks =====
 def _fallback_ensure_df_main():
     import os
@@ -53,7 +51,7 @@ except Exception:
 
 # 🔐 ACL / Roles
 from features.security import acl
-from utils.avatar import show_user_avatar_from_session
+from utils.avatar import show_user_avatar_from_session  # ya no se usa en sidebar, pero lo dejamos disponible
 
 LOGO_PATH = Path("assets/branding/eni2025_logo.png")
 ROLES_XLSX = "data/security/roles.xlsx"
@@ -75,17 +73,15 @@ st.markdown("""
 <style>
   .eni-banner{ margin:6px 0 14px; font-weight:400; font-size:16px; color:#4B5563; }
 
+  /* Quitamos estilo tipo pastilla para botones del sidebar (ej. Cerrar sesión) */
   section[data-testid="stSidebar"] .stButton > button{
-    background:#C7A0FF !important; color:#FFFFFF !important; border:none !important;
-    border-radius:12px !important; font-weight:700 !important;
-    box-shadow:0 6px 14px rgba(199,160,255,.35) !important;
+    border-radius:8px !important;
+    font-weight:600 !important;
   }
-  section[data-testid="stSidebar"] .stButton > button:hover{ filter:brightness(0.95); }
+
   section[data-testid="stSidebar"] .eni-logo-wrap{ margin-left:-10px; margin-top:-6px !important; }
   section[data-testid="stSidebar"] .block-container{ padding-top:6px !important; padding-bottom:10px !important; }
   section[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{ gap:8px !important; }
-  section[data-testid="stSidebar"] .avatar-wrap{ margin:6px 0 6px !important; }
-  section[data-testid="stSidebar"] .avatar-wrap img{ border-radius:9999px !important; }
 
   /* Sidebar un poco más ancho y con fondo gris claro */
   [data-testid="stSidebar"]{
@@ -168,15 +164,15 @@ st.markdown("""
     margin:0;
   }
 
-  /* ===== Tarjetas rápidas (7 rectángulos) ===== */
+  /* ===== Tarjetas rápidas (7 rectángulos, sin sombra y más separadas) ===== */
   .eni-quick-card{
     background:#FFFFFF;
     border-radius:18px;
     padding:16px 18px;
-    box-shadow:0 8px 20px rgba(148,163,184,.18);
+    box-shadow:none;                 /* sin sombras */
     border:1px solid #E5E7EB;
     height:100%;
-    margin-bottom:20px;  /* separa filas */
+    margin-bottom:26px;              /* más separación entre filas */
   }
   .eni-quick-card-title{
     font-size:14px;
@@ -449,7 +445,7 @@ def _maybe_save_chain(persist_local_fn, df: pd.DataFrame):
 
 st.session_state["maybe_save"] = _maybe_save_chain
 
-# ====== Logout local (reemplaza al de auth_google) ======
+# ====== Logout local ======
 def logout():
     for k in ("user", "user_email", "password_ok", "acl_user",
               "auth_ok", "nav_section", "roles_df"):
@@ -476,8 +472,6 @@ with st.sidebar:
         st.image(str(LOGO_PATH), width=120)
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # (Quitamos el texto “Esta es la plataforma unificada...”)
-
     st.header("Secciones")
     nav_labels = ["📘 Gestión de tareas","🗂️ Kanban","📅 Gantt","📊 Dashboard"]
     default_idx = nav_labels.index(st.session_state.get("nav_section", "📘 Gestión de tareas"))
@@ -490,8 +484,8 @@ with st.sidebar:
         horizontal=False,
     )
 
-    st.divider()
-    show_user_avatar_from_session(size=130)
+    # pequeño espacio y botón Cerrar sesión (sin avatar U)
+    st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
     if st.button("🔒 Cerrar sesión", use_container_width=True):
         logout()
 
