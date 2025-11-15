@@ -6,8 +6,8 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 import importlib
-import base64  # para incrustar el video como base64
-from urllib.parse import quote  # para codificar el nombre en la URL
+import base64
+from urllib.parse import quote
 
 # ===== Import robusto de shared con fallbacks =====
 def _fallback_ensure_df_main():
@@ -18,9 +18,8 @@ def _fallback_ensure_df_main():
     if "df_main" in st.session_state:
         return
 
-    # columnas mínimas (mismas que vienes usando)
-    base_cols = ["Id","Área","Responsable","Tarea","Prioridad",
-                 "Evaluación","Fecha inicio","__DEL__"]
+    base_cols = ["Id", "Área", "Responsable", "Tarea", "Prioridad",
+                 "Evaluación", "Fecha inicio", "__DEL__"]
     try:
         if os.path.exists(path) and os.path.getsize(path) > 0:
             df = pd.read_csv(path, encoding="utf-8-sig")
@@ -34,24 +33,28 @@ def _fallback_ensure_df_main():
     df["__DEL__"] = df["__DEL__"].fillna(False).astype(bool)
 
     if "Calificación" in df.columns:
-        df["Calificación"] = pd.to_numeric(df["Calificación"], errors="coerce").fillna(0).astype(int)
+        df["Calificación"] = (
+            pd.to_numeric(df["Calificación"], errors="coerce")
+            .fillna(0)
+            .astype(int)
+        )
 
     st.session_state["df_main"] = df
+
 
 try:
     _shared = importlib.import_module("shared")
     patch_streamlit_aggrid = getattr(_shared, "patch_streamlit_aggrid")
-    inject_global_css      = getattr(_shared, "inject_global_css")
-    ensure_df_main         = getattr(_shared, "ensure_df_main")
+    inject_global_css = getattr(_shared, "inject_global_css")
+    ensure_df_main = getattr(_shared, "ensure_df_main")
 except Exception:
-    # si shared.py tiene SyntaxError o falla el import, seguimos con stubs seguros
     patch_streamlit_aggrid = lambda: None
-    inject_global_css      = lambda: None
-    ensure_df_main         = _fallback_ensure_df_main
+    inject_global_css = lambda: None
+    ensure_df_main = _fallback_ensure_df_main
 
 # 🔐 ACL / Roles
 from features.security import acl
-from utils.avatar import show_user_avatar_from_session  # por si luego lo usamos dentro
+from utils.avatar import show_user_avatar_from_session  # por si luego lo usas
 
 LOGO_PATH = Path("assets/branding/eni2025_logo.png")
 ROLES_XLSX = "data/security/roles.xlsx"
@@ -61,32 +64,29 @@ st.set_page_config(
     page_title="Gestión — ENI2025",
     page_icon="📂",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
 # ============ Parches/estilos globales ============
 patch_streamlit_aggrid()
 inject_global_css()
 
-# 👉 Estilos específicos (sidebar + layout + topbar + tarjetas)
-st.markdown("""
+st.markdown(
+    """
 <style>
-  /* ===== Reset básico + fondo general ===== */
   html, body{
     margin:0;
     padding:0;
   }
   html, body, [data-testid="stAppViewContainer"]{
-    background-color:#ECEAF7;  /* lila muy clarito */
+    background-color:#ECEAF7;
   }
 
-  /* Quitar espacio extra arriba para que la cabecera blanca quede pegada */
   [data-testid="stAppViewContainer"] > .main{
     padding-top:0 !important;
     margin-top:0 !important;
   }
 
-  /* Contenedor interno sin padding lateral extra */
   html body [data-testid="stAppViewContainer"] .main .block-container{
     padding-top:0rem !important;
     padding-left:0rem !important;
@@ -95,7 +95,7 @@ st.markdown("""
     background:transparent;
   }
 
-  /* ===== TOP BAR BLANCA (con márgenes laterales lila) ===== */
+  /* TOPBAR blanca */
   .eni-main-topbar{
     background:#FFFFFF;
     padding:10px 24px;
@@ -103,7 +103,7 @@ st.markdown("""
     display:flex;
     align-items:center;
     justify-content:space-between;
-    margin:0 24px 12px 24px;  /* marco lila a izquierda y derecha */
+    margin:0 24px 12px 24px;
     box-shadow:0 12px 26px rgba(15,23,42,0.10);
   }
   .eni-main-topbar-title{
@@ -131,7 +131,7 @@ st.markdown("""
     font-size:14px;
   }
 
-  /* ===== Sidebar blanca ===== */
+  /* Sidebar */
   section[data-testid="stSidebar"] .stButton > button{
     border-radius:8px !important;
     font-weight:600 !important;
@@ -158,7 +158,6 @@ st.markdown("""
     border-right:1px solid #E5E7EB;
   }
 
-  /* Menú de secciones: icono a la izquierda, texto a la derecha */
   section[data-testid="stSidebar"] .stRadio > div{
     gap:4px !important;
   }
@@ -189,7 +188,6 @@ st.markdown("""
     color:#4B5563 !important;
   }
 
-  /* Iconitos del menú lateral */
   section[data-testid="stSidebar"] [data-baseweb="radio"]::before{
     font-size:18px;
     margin-right:8px;
@@ -213,13 +211,13 @@ st.markdown("""
   }
 
   header[data-testid="stHeader"]{
-    height: 0px;
-    padding: 0px;
-    margin: 0px;
-    visibility: hidden;
+    height:0px;
+    padding:0px;
+    margin:0px;
+    visibility:hidden;
   }
 
-  /* ===== HERO morado "Bienvenid@" ===== */
+  /* HERO Bienvenid@ */
   .eni-hero-card{
     background:#C4A5FF;
     border-radius:22px;
@@ -239,14 +237,13 @@ st.markdown("""
     margin:0;
   }
 
-  /* ===== Tarjetas rápidas (fila de 4, tipo cuadradas) ===== */
+  /* Tarjetas rápidas */
   .eni-quick-row{
     display:grid;
     grid-template-columns:repeat(4,minmax(0,1fr));
     gap:12px;
     margin:0 0 18px 0;
   }
-
   .eni-quick-card-link{
     text-decoration:none;
     color:inherit;
@@ -272,9 +269,6 @@ st.markdown("""
     justify-content:space-between;
     height:100%;
   }
-  .eni-quick-card-text{
-    max-width:100%;
-  }
   .eni-quick-card-title{
     font-size:13px;
     font-weight:700;
@@ -297,21 +291,12 @@ st.markdown("""
     transform:translateY(-2px);
   }
 
-  /* Colores de las tarjetas rápidas */
-  .eni-quick-card--nueva_tarea{
-    background:#818CF8;
-  }
-  .eni-quick-card--nueva_alerta{
-    background:#93C5FD;
-  }
-  .eni-quick-card--editar_estado{
-    background:#C7D2FE;
-  }
-  .eni-quick-card--prioridad{
-    background:#6EE7B7;
-  }
+  .eni-quick-card--nueva_tarea{ background:#818CF8; }
+  .eni-quick-card--nueva_alerta{ background:#93C5FD; }
+  .eni-quick-card--editar_estado{ background:#C7D2FE; }
+  .eni-quick-card--prioridad{ background:#6EE7B7; }
 
-  /* ===== Tarjetas blancas inferiores (dos grandes) ===== */
+  /* Tarjetas blancas inferiores */
   .eni-bottom-row{
     display:grid;
     grid-template-columns:repeat(2,minmax(0,1fr));
@@ -325,7 +310,7 @@ st.markdown("""
     box-shadow:0 10px 26px rgba(148,163,184,0.18);
   }
 
-  /* ===== Panel derecho de trabajo (tarjeta alta blanca) ===== */
+  /* Panel derecho blanco grande */
   .eni-right-work-card{
     background:#FFFFFF;
     border-radius:24px;
@@ -338,7 +323,7 @@ st.markdown("""
     min-height:280px;
   }
 
-  /* ===== Login hero ===== */
+  /* Login */
   .eni-login-hero-title{
     font-size:77px;
     font-weight:900;
@@ -377,29 +362,14 @@ st.markdown("""
   .eni-login-form [data-testid="stTextInput"]{
     margin-top:-0.45rem !important;
   }
-
 </style>
-""", unsafe_allow_html=True)
-
-# 👉 Script para ocultar cualquier bloque que solo muestre "</div>"
-st.markdown(
-    """
-    <script>
-    document.addEventListener("DOMContentLoaded", function() {
-      const els = document.querySelectorAll("code, pre, p, span, div");
-      els.forEach(function(el) {
-        if (el.innerText && el.innerText.trim() === "</div>") {
-          el.style.display = "none";
-        }
-      });
-    });
-    </script>
-    """,
+""",
     unsafe_allow_html=True,
 )
 
 # ============ AUTENTICACIÓN POR CONTRASEÑA ============
 APP_PASSWORD = "Inei2025$"
+
 
 def check_app_password() -> bool:
     if st.session_state.get("password_ok", False):
@@ -411,20 +381,14 @@ def check_app_password() -> bool:
     try:
         params = st.query_params
         raw_auth = params.get("auth", "")
-        raw_u    = params.get("u", "")
-        if isinstance(raw_auth, list):
-            auth_flag = raw_auth[0] if raw_auth else ""
-        else:
-            auth_flag = raw_auth
-        if isinstance(raw_u, list):
-            user_name_from_qs = raw_u[0] if raw_u else ""
-        else:
-            user_name_from_qs = raw_u
+        raw_u = params.get("u", "")
+        auth_flag = raw_auth[0] if isinstance(raw_auth, list) and raw_auth else raw_auth
+        user_name_from_qs = raw_u[0] if isinstance(raw_u, list) and raw_u else raw_u
     except Exception:
         try:
             params = st.experimental_get_query_params()
             raw_auth = params.get("auth", [""])
-            raw_u    = params.get("u", [""])
+            raw_u = params.get("u", [""])
             auth_flag = raw_auth[0] if raw_auth else ""
             user_name_from_qs = raw_u[0] if raw_u else ""
         except Exception:
@@ -441,19 +405,27 @@ def check_app_password() -> bool:
             st.session_state["user"] = {"email": "eni2025@app"}
         return True
 
-    # --- PANTALLA DE LOGIN ---
+    # --- Pantalla de login ----
     st.markdown("<div style='margin-top:7vh;'></div>", unsafe_allow_html=True)
 
     space_col, col1, col2 = st.columns([0.20, 0.55, 0.35])
     with space_col:
         st.write("")
     with col1:
-        st.markdown("<div class='eni-login-hero-title'>BIEN<br>VENIDOS</div>", unsafe_allow_html=True)
+        st.markdown(
+            "<div class='eni-login-hero-title'>BIEN<br>VENIDOS</div>",
+            unsafe_allow_html=True,
+        )
 
         form_col, _ = st.columns([0.66, 0.60])
         with form_col:
-            st.markdown("<div class='eni-login-form'>", unsafe_allow_html=True)
-            st.markdown("<div class='eni-login-pill'>GESTIÓN DE TAREAS ENI 2025</div>", unsafe_allow_html=True)
+            st.markdown(
+                "<div class='eni-login-form'>", unsafe_allow_html=True
+            )
+            st.markdown(
+                "<div class='eni-login-pill'>GESTIÓN DE TAREAS ENI 2025</div>",
+                unsafe_allow_html=True,
+            )
             st.write("")
 
             editor_options = [
@@ -482,7 +454,9 @@ def check_app_password() -> bool:
             )
             st.session_state["user_display_name"] = editor_name
 
-            pwd = st.text_input("Ingresa la contraseña", type="password", key="eni_pwd")
+            pwd = st.text_input(
+                "Ingresa la contraseña", type="password", key="eni_pwd"
+            )
 
             if st.button("ENTRAR", use_container_width=True):
                 if pwd == APP_PASSWORD:
@@ -491,15 +465,23 @@ def check_app_password() -> bool:
                     st.session_state["user"] = {"email": "eni2025@app"}
 
                     name_lower = editor_name.lower()
-                    is_vivi_login = any(t in name_lower for t in ("vivian", "vivi", "saurino"))
-                    is_enrique_login = any(t in name_lower for t in ("enrique", "kike", "oyola"))
-                    st.session_state["is_247_user"] = bool(is_vivi_login or is_enrique_login)
+                    is_vivi_login = any(
+                        t in name_lower for t in ("vivian", "vivi", "saurino")
+                    )
+                    is_enrique_login = any(
+                        t in name_lower for t in ("enrique", "kike", "oyola")
+                    )
+                    st.session_state["is_247_user"] = bool(
+                        is_vivi_login or is_enrique_login
+                    )
 
                     try:
                         st.query_params["auth"] = "1"
                         st.query_params["u"] = editor_name
                     except Exception:
-                        st.experimental_set_query_params(auth="1", u=editor_name)
+                        st.experimental_set_query_params(
+                            auth="1", u=editor_name
+                        )
 
                     st.rerun()
                 else:
@@ -509,7 +491,7 @@ def check_app_password() -> bool:
 
     with col2:
         hero_video = Path("assets/hero.mp4")
-        logo_img   = Path("assets/branding/eni2025_logo.png")
+        logo_img = Path("assets/branding/eni2025_logo.png")
         if hero_video.exists():
             with open(hero_video, "rb") as f:
                 data = f.read()
@@ -531,20 +513,25 @@ def check_app_password() -> bool:
 
     return False
 
+
 if not check_app_password():
     st.stop()
 
 # ============ AUTENTICACIÓN (usuario genérico) ============
-email = st.session_state.get("user_email") or (st.session_state.get("user") or {}).get("email", "eni2025@app")
+email = (
+    st.session_state.get("user_email")
+    or (st.session_state.get("user") or {}).get("email", "eni2025@app")
+)
 
 # ============ Carga de ROLES / ACL ============
 try:
     if "roles_df" not in st.session_state:
         st.session_state["roles_df"] = acl.load_roles(ROLES_XLSX)
     user_acl = acl.find_user(st.session_state["roles_df"], email)
-except Exception as _e:
+except Exception:
     st.error("No pude cargar el archivo de roles. Verifica data/security/roles.xlsx.")
     st.stop()
+
 
 def _to_bool(v):
     if isinstance(v, bool):
@@ -553,6 +540,7 @@ def _to_bool(v):
         return False
     s = str(v).strip().lower()
     return s in ("true", "verdadero", "sí", "si", "1", "x", "y")
+
 
 if user_acl is None:
     user_acl = {}
@@ -567,7 +555,10 @@ user_acl["can_edit_all_tabs"] = True
 try:
     _roles_df = st.session_state.get("roles_df")
     if isinstance(_roles_df, pd.DataFrame):
-        mask_me = _roles_df["email"].astype(str).str.lower() == (email or "").lower()
+        mask_me = (
+            _roles_df["email"].astype(str).str.lower()
+            == (email or "").lower()
+        )
         if mask_me.any():
             _roles_df.loc[mask_me, "is_active"] = True
             _roles_df.loc[mask_me, "can_edit_all_tabs"] = True
@@ -589,12 +580,18 @@ st.session_state["save_scope"] = user_acl.get("save_scope", "all")
 
 # ========= Hook "maybe_save" + Google Sheets ==========
 def _push_gsheets(df: pd.DataFrame):
-    if "gsheets" not in st.secrets or "gcp_service_account" not in st.secrets:
+    if (
+        "gsheets" not in st.secrets
+        or "gcp_service_account" not in st.secrets
+    ):
         raise KeyError("Faltan 'gsheets' o 'gcp_service_account' en secrets.")
     import gspread
     from google.oauth2.service_account import Credentials
+
     scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-    creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scopes)
+    creds = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"], scopes=scopes
+    )
     gc = gspread.authorize(creds)
     ss = gc.open_by_url(st.secrets["gsheets"]["spreadsheet_url"])
     ws_name = st.secrets["gsheets"].get("worksheet", "TareasRecientes")
@@ -609,30 +606,47 @@ def _push_gsheets(df: pd.DataFrame):
     ws.clear()
     ws.update("A1", values)
 
+
 def _maybe_save_chain(persist_local_fn, df: pd.DataFrame):
     res = acl.maybe_save(user_acl, persist_local_fn, df)
     try:
         if st.session_state.get("user_dry_run", False):
-            res["msg"] = res.get("msg", "") + " | DRY-RUN: no se sincronizó Google Sheets."
+            res["msg"] = (
+                res.get("msg", "")
+                + " | DRY-RUN: no se sincronizó Google Sheets."
+            )
             return res
         _push_gsheets(df)
-        res["msg"] = res.get("msg", "") + " | Sincronizado a Google Sheets."
+        res["msg"] = (
+            res.get("msg", "") + " | Sincronizado a Google Sheets."
+        )
     except Exception as e:
         res["msg"] = res.get("msg", "") + f" | GSheets error: {e}"
     return res
+
 
 st.session_state["maybe_save"] = _maybe_save_chain
 
 # ====== Logout local ======
 def logout():
-    for k in ("user", "user_email", "password_ok", "acl_user",
-              "auth_ok", "nav_section", "roles_df", "home_tile", "user_display_name"):
+    for k in (
+        "user",
+        "user_email",
+        "password_ok",
+        "acl_user",
+        "auth_ok",
+        "nav_section",
+        "roles_df",
+        "home_tile",
+        "user_display_name",
+    ):
         st.session_state.pop(k, None)
     try:
         st.experimental_set_query_params()
     except Exception:
         pass
     st.rerun()
+
 
 # ====== Navegación / permisos ======
 DEFAULT_SECTION = "Gestión de tareas"
@@ -653,11 +667,13 @@ TILE_TO_VIEW_MODULE = {
     "tareas_recientes": "features.tareas_recientes.view",
 }
 
+
 def render_if_allowed(tab_key: str, render_fn):
     if acl.can_see_tab(user_acl, tab_key):
         render_fn()
     else:
         st.warning("No tienes permiso para esta sección.")
+
 
 # ============ Sidebar ============
 with st.sidebar:
@@ -672,7 +688,7 @@ with st.sidebar:
         current_section = DEFAULT_SECTION
     default_idx = nav_labels.index(current_section)
 
-    nav_choice = st.radio(
+    st.radio(
         "Navegación",
         nav_labels,
         index=default_idx,
@@ -687,6 +703,7 @@ with st.sidebar:
 
 # ============ Datos ============
 ensure_df_main()
+
 
 def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str:
     display_name = st.session_state.get("user_display_name", "Usuario")
@@ -706,14 +723,12 @@ def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str
     </a>
     """
 
+
 tile = ""
 try:
     params = st.query_params
     raw = params.get("tile", "")
-    if isinstance(raw, list):
-        tile = raw[0] if raw else ""
-    else:
-        tile = raw
+    tile = raw[0] if isinstance(raw, list) and raw else raw
 except Exception:
     try:
         params = st.experimental_get_query_params()
@@ -735,7 +750,7 @@ if section == "Gestión de tareas":
     dn = st.session_state.get("user_display_name", "Usuario")
     initials = "".join([p[0] for p in dn.split() if p])[:2].upper()
 
-    # Barra superior blanca con nombre y avatar
+    # Topbar
     st.markdown(
         f"""
         <div class="eni-main-topbar">
@@ -749,79 +764,59 @@ if section == "Gestión de tareas":
         unsafe_allow_html=True,
     )
 
-    # Dos columnas: izquierda (hero + tarjetas) / derecha (panel de trabajo)
     col_left, col_right = st.columns([2.4, 1.6])
 
-    # -------- Columna izquierda: hero + tarjetas + bloques blancos ----------
+    # -------- Columna izquierda completa en UN SOLO HTML ----------
     with col_left:
-        st.markdown(
-            """
-            <div style="margin-left:24px; margin-right:12px; margin-bottom:24px;">
-              <div class="eni-hero-card">
-                <div class="eni-hero-title">Bienvenid@</div>
-                <p class="eni-hero-sub">A la plataforma de gestión ENI — 2025</p>
-              </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        left_html = f"""
+        <div style="margin-left:24px; margin-right:12px; margin-bottom:24px;">
+          <div class="eni-hero-card">
+            <div class="eni-hero-title">Bienvenid@</div>
+            <p class="eni-hero-sub">A la plataforma de gestión ENI — 2025</p>
+          </div>
 
-        # Fila de 4 tarjetas
-        cards_html = """
-        <div class="eni-quick-row">
-          {card1}
-          {card2}
-          {card3}
-          {card4}
-        </div>
-        """.format(
-            card1=_quick_card_link(
+          <div class="eni-quick-row">
+            {_quick_card_link(
                 "Nueva tarea",
                 "Registrar una nueva tarea asignada.",
                 "📝",
                 "nueva_tarea",
-            ),
-            card2=_quick_card_link(
+            )}
+            {_quick_card_link(
                 "Nueva alerta",
                 "Registrar alertas y riesgos prioritarios.",
                 "⚠️",
                 "nueva_alerta",
-            ),
-            card3=_quick_card_link(
+            )}
+            {_quick_card_link(
                 "Editar estado",
                 "Actualizar fases y fechas de las tareas.",
                 "✏️",
                 "editar_estado",
-            ),
-            card4=_quick_card_link(
+            )}
+            {_quick_card_link(
                 "Prioridad y evaluación",
                 "Revisar prioridad y nivel de avance.",
                 "⭐",
                 "prioridad",
-            ),
-        )
-        st.markdown(cards_html, unsafe_allow_html=True)
+            )}
+          </div>
 
-        # Dos tarjetas blancas inferiores decorativas
-        st.markdown(
-            """
-            <div class="eni-bottom-row">
-              <div class="eni-bottom-card"></div>
-              <div class="eni-bottom-card"></div>
-            </div>
-            </div> <!-- wrapper margen -->
-            """,
-            unsafe_allow_html=True,
-        )
+          <div class="eni-bottom-row">
+            <div class="eni-bottom-card"></div>
+            <div class="eni-bottom-card"></div>
+          </div>
+        </div>
+        """
+        st.markdown(left_html, unsafe_allow_html=True)
 
-    # -------- Columna derecha: panel blanco alto + vista seleccionada ----------
+    # -------- Columna derecha ----------
     with col_right:
-        # Panel blanco vacío arriba
         st.markdown(
             "<div class='eni-right-work-card'></div>",
             unsafe_allow_html=True,
         )
 
-        # Vista seleccionada debajo (si hay tile)
         if tile:
             module_path = TILE_TO_VIEW_MODULE.get(tile)
             if module_path:
@@ -845,29 +840,37 @@ if section == "Gestión de tareas":
 # ============ Otras secciones ============
 elif section == "Kanban":
     st.title("🗂️ Kanban")
+
     def _render_kanban():
         try:
             from features.kanban.view import render as render_kanban
+
             render_kanban(st.session_state.get("user"))
         except Exception as e:
             st.info("Vista Kanban pendiente (features/kanban/view.py).")
             st.exception(e)
+
     render_if_allowed(tab_key, _render_kanban)
 
 elif section == "Gantt":
     st.title("📅 Gantt")
+
     def _render_gantt():
         try:
             from features.gantt.view import render as render_gantt
+
             render_gantt(st.session_state.get("user"))
         except Exception as e:
             st.info("Vista Gantt pendiente (features/gantt/view.py).")
             st.exception(e)
+
     render_if_allowed(tab_key, _render_gantt)
 
 else:
     st.title("📊 Dashboard")
+
     def _render_dashboard():
         st.caption("Próximamente: visualizaciones y KPIs del dashboard.")
         st.write("")
+
     render_if_allowed(tab_key, _render_dashboard)
