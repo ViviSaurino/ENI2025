@@ -777,16 +777,13 @@ if section == "Gestión de tareas":
         unsafe_allow_html=True,
     )
 
-    # Wrapper principal del contenido de inicio
-    st.markdown('<div class="eni-main-card">', unsafe_allow_html=True)
+    # Ya NO usamos <div class="eni-main-card"> ... </div> para evitar cierres </div> sueltos
 
     # Dos columnas: izquierda (hero + tarjetas) / derecha (panel de trabajo)
     col_left, col_right = st.columns([2.4, 1.6])
 
+    # -------- Columna izquierda: hero + tarjetas + bloques blancos ----------
     with col_left:
-        # Panel blanco izquierdo que agrupa hero + tarjetas + bloques
-        st.markdown('<div class="eni-left-panel">', unsafe_allow_html=True)
-
         # Tarjeta morada Bienvenid@
         st.markdown(
             """
@@ -845,21 +842,17 @@ if section == "Gestión de tareas":
             unsafe_allow_html=True,
         )
 
-        # cerrar panel izquierdo
-        st.markdown("</div>", unsafe_allow_html=True)
-
+    # -------- Columna derecha: panel blanco alto ----------
     with col_right:
-        # Panel de trabajo donde se cargan las vistas de cada tarjeta
-        st.markdown('<div class="eni-right-work-card">', unsafe_allow_html=True)
+        # Solo dibujamos la tarjeta blanca; el contenido de las vistas va aparte
+        st.markdown(
+            "<div class='eni-right-work-card'></div>",
+            unsafe_allow_html=True,
+        )
 
+        # Si quieres que además se muestre la vista de la tarjeta clickeada
+        # debajo del panel blanco, mantenemos la lógica anterior:
         if tile:
-            pretty = tile.replace("_", " ").capitalize()
-            st.markdown(
-                f"<div class='eni-right-work-title'>Vista seleccionada: "
-                f"<strong>{pretty}</strong></div>",
-                unsafe_allow_html=True,
-            )
-
             module_path = TILE_TO_VIEW_MODULE.get(tile)
             if module_path:
                 try:
@@ -878,14 +871,7 @@ if section == "Gestión de tareas":
                 except Exception as e:
                     st.info("No se pudo cargar la vista para esta tarjeta.")
                     st.exception(e)
-        else:
-            # sin texto "Selecciona una tarjeta..."
-            st.write("")
 
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    # cerrar wrapper principal
-    st.markdown("</div>", unsafe_allow_html=True)
 
 # ============ Otras secciones ============
 elif section == "Kanban":
