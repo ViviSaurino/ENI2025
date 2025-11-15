@@ -189,6 +189,12 @@ st.markdown("""
     text-decoration:none;
     color:inherit;
     display:block;
+    padding:0;
+    border:none;
+    background:none;
+    width:100%;
+    text-align:left;
+    cursor:pointer;
   }
 
   .eni-quick-card{
@@ -250,20 +256,34 @@ def check_app_password() -> bool:
 
     # ✅ Auto-autenticación si viene con ?auth=1 en la URL (para cuando se hace clic en tarjetas)
     auth_flag = ""
+    user_name_from_qs = ""
+
     try:
         params = st.query_params
-        raw = params.get("auth", "")
-        if isinstance(raw, list):
-            auth_flag = raw[0] if raw else ""
+        raw_auth = params.get("auth", "")
+        raw_u    = params.get("u", "")
+        if isinstance(raw_auth, list):
+            auth_flag = raw_auth[0] if raw_auth else ""
         else:
-            auth_flag = raw
+            auth_flag = raw_auth
+        if isinstance(raw_u, list):
+            user_name_from_qs = raw_u[0] if raw_u else ""
+        else:
+            user_name_from_qs = raw_u
     except Exception:
         try:
             params = st.experimental_get_query_params()
-            raw = params.get("auth", [""])
-            auth_flag = raw[0] if raw else ""
+            raw_auth = params.get("auth", [""])
+            raw_u    = params.get("u", [""])
+            auth_flag = raw_auth[0] if raw_auth else ""
+            user_name_from_qs = raw_u[0] if raw_u else ""
         except Exception:
             auth_flag = ""
+            user_name_from_qs = ""
+
+    # Si viene el nombre en la URL, lo guardamos
+    if user_name_from_qs:
+        st.session_state["user_display_name"] = user_name_from_qs
 
     if auth_flag == "1":
         if not st.session_state.get("password_ok", False):
@@ -384,17 +404,18 @@ def check_app_password() -> bool:
                     st.session_state["user_email"] = "eni2025@app"
                     st.session_state["user"] = {"email": "eni2025@app"}
 
-                    # guardamos por si luego queremos diferenciar users 24/7
                     name_lower = editor_name.lower()
                     is_vivi_login = any(t in name_lower for t in ("vivian", "vivi", "saurino"))
                     is_enrique_login = any(t in name_lower for t in ("enrique", "kike", "oyola"))
                     st.session_state["is_247_user"] = bool(is_vivi_login or is_enrique_login)
 
-                    # 💡 Añadimos auth=1 para que al hacer clic en tarjetas no vuelva a pedir contraseña
+                    # 💡 Guardamos también el nombre en la URL (u=...)
                     try:
                         st.query_params["auth"] = "1"
+                        st.query_params["u"] = editor_name
                     except Exception:
-                        st.experimental_set_query_params(auth="1")
+                        st.experimental_set_query_params(auth="1", u=editor_name)
+
                     st.rerun()
                 else:
                     st.error("Contraseña incorrecta. Vuelve a intentarlo 🙂")
@@ -529,7 +550,7 @@ st.session_state["maybe_save"] = _maybe_save_chain
 # ====== Logout local ======
 def logout():
     for k in ("user", "user_email", "password_ok", "acl_user",
-              "auth_ok", "nav_section", "roles_df", "home_tile"):
+              "auth_ok", "nav_section", "roles_df", "home_tile", "user_display_name"):
         st.session_state.pop(k, None)
     try:
         st.experimental_set_query_params()
@@ -594,9 +615,12 @@ ensure_df_main()
 
 # Helper para tarjetas rápidas con icono y link clicable
 def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str:
-    # 👇 Aquí el cambio clave: target="_self" para evitar nueva pestaña
+    display_name = st.session_state.get("user_display_name", "Usuario")
+    # escapamos comillas simples y backslashes para el JS
+    display_name_js = display_name.replace("\\", "\\\\").replace("'", "\\'")
     return f"""
-    <a href="?auth=1&tile={tile_key}" target="_self" class="eni-quick-card-link">
+    <button class="eni-quick-card-link"
+            onclick="window.location.search='?auth=1&u=' + encodeURIComponent('{display_name_js}') + '&tile={tile_key}';">
       <div class="eni-quick-card">
         <div class="eni-quick-card-main">
           <div class="eni-quick-card-text">
@@ -606,7 +630,7 @@ def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str
           <div class="eni-quick-card-icon">{icon}</div>
         </div>
       </div>
-    </a>
+    </button>
     """
 
 # Leer query param "tile" (para saber qué tarjeta se pulsó)
