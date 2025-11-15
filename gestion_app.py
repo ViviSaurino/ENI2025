@@ -69,32 +69,102 @@ st.set_page_config(
 patch_streamlit_aggrid()
 inject_global_css()
 
-# 👉 Estilos específicos (sidebar + layout + hero + tarjetas)
+# 👉 Estilos específicos (sidebar lila, barra amarilla y tarjetas derechas)
 st.markdown("""
 <style>
-  .eni-banner{ margin:6px 0 14px; font-weight:400; font-size:16px; color:#4B5563; }
+  /* Fondo general lavanda suave */
+  html, body, [data-testid="stAppViewContainer"] {
+    background-color: #F3E8FF;
+  }
+
+  .eni-banner{
+    margin:6px 0 14px;
+    font-weight:400;
+    font-size:16px;
+    color:#4B5563;
+  }
+
+  /* Sidebar lila tipo slider */
+  [data-testid="stSidebar"]{
+    overflow-y:hidden !important;
+    background: linear-gradient(180deg, #A855F7 0%, #7C3AED 100%) !important;
+    min-width:230px !important;
+    max-width:230px !important;
+    color:#E5E7EB !important;
+  }
 
   section[data-testid="stSidebar"] .stButton > button{
     border-radius:8px !important;
     font-weight:600 !important;
   }
 
-  section[data-testid="stSidebar"] .eni-logo-wrap{ margin-left:-10px; margin-top:-6px !important; }
-  section[data-testid="stSidebar"] .block-container{ padding-top:6px !important; padding-bottom:10px !important; }
-  section[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{ gap:8px !important; }
-
-  /* Sidebar gris claro, más estrecho */
-  [data-testid="stSidebar"]{
-    overflow-y:hidden !important;
-    background-color:#F5F6FB !important;
-    min-width:230px !important;
-    max-width:230px !important;
+  section[data-testid="stSidebar"] .eni-logo-wrap{
+    margin-left:-10px;
+    margin-top:-6px !important;
+  }
+  section[data-testid="stSidebar"] .block-container{
+    padding-top:6px !important;
+    padding-bottom:10px !important;
+  }
+  section[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{
+    gap:8px !important;
   }
 
-  /* Subir un poquito el contenido principal */
-  html body [data-testid="stAppViewContainer"] .main .block-container{
-    padding-top: 0rem !important;
-    margin-top: -1rem !important;
+  /* Menú de secciones: icono grande arriba, texto pequeño abajo */
+  section[data-testid="stSidebar"] .stRadio > div{
+    gap:12px !important;
+  }
+  section[data-testid="stSidebar"] [data-baseweb="radio"]{
+    margin-bottom:16px;
+    padding:10px 4px;
+    border-radius:20px;
+    background:transparent;
+    transition:all .15s ease-in-out;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    color:#E5E7EB !important;
+  }
+  /* ocultar el circulito del radio */
+  section[data-testid="stSidebar"] [data-baseweb="radio"] > div:first-child{
+    display:none;
+  }
+  section[data-testid="stSidebar"] [data-baseweb="radio"] > div:last-child{
+    padding-left:0 !important;
+    text-align:center;
+    font-size:11px;
+    font-weight:500;
+  }
+  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="true"]{
+    background:rgba(255,255,255,0.20) !important;
+    box-shadow:0 6px 14px rgba(15,23,42,0.45);
+  }
+  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="false"]{
+    color:#E5E7EB !important;
+  }
+
+  /* Iconos del menú lateral (más grandes) */
+  section[data-testid="stSidebar"] [data-baseweb="radio"]::before{
+    font-size:22px;
+    margin:0 0 4px 0;
+  }
+  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(1)::before{
+    content:"📋";
+  }
+  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(2)::before{
+    content:"🗂️";
+  }
+  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(3)::before{
+    content:"📅";
+  }
+  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(4)::before{
+    content:"📊";
+  }
+
+  /* Ocultar barras de scroll visualmente pero permitir scroll */
+  *::-webkit-scrollbar{
+    width:0px;
+    height:0px;
   }
 
   /* Comprimir header para que no deje espacio arriba */
@@ -104,134 +174,122 @@ st.markdown("""
     visibility: hidden;
   }
 
-  /* ===== Menú de secciones estilo pastilla en el sidebar ===== */
-  section[data-testid="stSidebar"] .stRadio > div{
-    gap:6px !important;
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"]{
-    margin-bottom:6px;
-    padding:6px 12px;
-    border-radius:999px;
-    background:transparent;
-    transition:all .15s ease-in-out;
-    display:flex;
-    align-items:center;
-  }
-  /* ocultar el circulito del radio */
-  section[data-testid="stSidebar"] [data-baseweb="radio"] > div:first-child{
-    display:none;
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"] > div:last-child{
-    padding-left:0 !important;
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="true"]{
-    background:#C7A0FF !important;
-    color:#FFFFFF !important;
-    box-shadow:0 6px 14px rgba(199,160,255,.35);
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="false"]{
-    color:#4B5563 !important;
+  /* Subir un poquito el contenido principal */
+  html body [data-testid="stAppViewContainer"] .main .block-container{
+    padding-top: 0rem !important;
+    margin-top: -1rem !important;
   }
 
-  /* Iconitos grises para cada opción del menú lateral */
-  section[data-testid="stSidebar"] [data-baseweb="radio"]::before{
-    content:"▣";
-    color:#9CA3AF;
-    font-size:12px;
-    margin-right:8px;
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(2)::before{
-    content:"▤";
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(3)::before{
-    content:"▦";
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(4)::before{
-    content:"▧";
-  }
-
-  /* Ocultar barras de scroll visualmente pero permitir scroll */
-  *::-webkit-scrollbar{
-    width:0px;
-    height:0px;
-  }
-
-  /* ===== Hero principal ===== */
-  .eni-main-hero-label{
-    font-size:14px;
-    font-weight:600;
-    color:#4B5563;
-    margin-top:8px;
-    margin-bottom:14px;  /* más separación con el rectángulo lila */
-  }
-  .eni-main-hero{
-    background:#E5D4FF;
+  /* ===== Barra superior amarilla estilo "Hello, Eliza" ===== */
+  .eni-top-bar{
+    background:#FACC15;
     border-radius:24px;
     padding:18px 24px;
-    margin-bottom:26px;
+    margin-bottom:20px;
     display:flex;
     align-items:center;
     justify-content:space-between;
+    box-shadow:0 10px 25px rgba(250,204,21,0.35);
   }
-  .eni-main-hero-left-name{
-    font-size:24px;
+  .eni-top-left-small{
+    font-size:12px;
+    font-weight:600;
+    color:#713F12;
+    margin-bottom:4px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+  }
+  .eni-top-name{
+    font-size:22px;
     font-weight:800;
-    color:#4C1D95;
-    margin:2px 0 6px 0;
+    color:#713F12;
+    margin-bottom:2px;
   }
-  .eni-main-hero-left-sub{
-    font-size:13px;
-    color:#4B5563;
+  .eni-top-sub{
+    font-size:12px;
+    color:#7C2D12;
     margin:0;
   }
 
-  /* ===== Tarjetas rápidas ===== */
+  /* ===== Layout principal: izquierda contenido, derecha tarjetas ===== */
+  .eni-main-layout{
+    margin-top:6px;
+  }
+
+  .eni-right-panel{
+    background:#F3F4F6;
+    border-radius:24px;
+    padding:14px 14px 10px 14px;
+    box-shadow:0 10px 25px rgba(15,23,42,0.08);
+  }
+  .eni-right-panel-title{
+    font-size:12px;
+    font-weight:600;
+    color:#4B5563;
+    margin-bottom:8px;
+  }
+
+  /* ===== Tarjetas rápidas (colores tipo mockup) ===== */
   .eni-quick-card-link{
     text-decoration:none;
     color:inherit;
     display:block;
   }
-
   .eni-quick-card{
-    background:#FFFFFF;
     border-radius:18px;
-    padding:20px 22px;
-    box-shadow:none;
-    border:1px solid #E5E7EB;
-    height:100%;
-    min-height:150px;       /* un poquito más altas */
-    margin-bottom:40px;     /* más separación vertical */
+    padding:12px 14px;
+    box-shadow:0 8px 18px rgba(148,163,184,0.35);
+    border:none;
+    height:auto;
+    margin-bottom:10px;
     transition:all .15s ease-in-out;
   }
-
   .eni-quick-card-main{
     display:flex;
     align-items:center;
     justify-content:space-between;
-    height:100%;
   }
   .eni-quick-card-text{
     max-width:72%;
   }
   .eni-quick-card-title{
-    font-size:14px;
+    font-size:13px;
     font-weight:700;
     color:#111827;
-    margin-bottom:4px;
-  }
-  .eni-quick-card-icon{
-    font-size:36px;        /* icono más grande */
-    margin-left:18px;
+    margin-bottom:2px;
   }
   .eni-quick-card-sub{
-    font-size:12px;
-    color:#6B7280;
-    margin:6px 0 0 0;
+    font-size:11px;
+    color:#374151;
+    margin:4px 0 0 0;
+  }
+  .eni-quick-card-icon{
+    font-size:30px;
+    margin-left:12px;
+  }
+  .eni-quick-card-link:hover .eni-quick-card{
+    box-shadow:0 12px 26px rgba(148,163,184,0.45);
+    transform:translateY(-2px);
   }
 
-  .eni-quick-card-link:hover .eni-quick-card{
-    box-shadow:0 14px 28px rgba(148,163,184,.35);
-    transform:translateY(-2px);
+  /* Colores por tarjeta (tipo panel derecho del mockup) */
+  .eni-quick-card--nueva_tarea{
+    background:#FDE68A;  /* amarillo suave */
+  }
+  .eni-quick-card--editar_estado{
+    background:#BFDBFE;  /* celeste */
+  }
+  .eni-quick-card--nueva_alerta{
+    background:#FECACA;  /* rosado/rojo suave */
+  }
+  .eni-quick-card--prioridad{
+    background:#FBCFE8;  /* rosado pastel */
+  }
+  .eni-quick-card--evaluacion_cumplimiento{
+    background:#DDD6FE;  /* lila clarito */
+  }
+  .eni-quick-card--tareas_recientes{
+    background:#BBF7D0;  /* verde menta suave */
   }
 </style>
 """, unsafe_allow_html=True)
@@ -608,13 +666,13 @@ with st.sidebar:
 # ============ Datos ============
 ensure_df_main()
 
-# Helper para tarjetas rápidas con icono y link clicable
+# Helper para tarjetas rápidas con icono y link clicable (colores por tile)
 def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str:
     display_name = st.session_state.get("user_display_name", "Usuario")
     u_param = quote(display_name, safe="")
     return f"""
     <a href="?auth=1&u={u_param}&tile={tile_key}" target="_self" class="eni-quick-card-link">
-      <div class="eni-quick-card">
+      <div class="eni-quick-card eni-quick-card--{tile_key}">
         <div class="eni-quick-card-main">
           <div class="eni-quick-card-text">
             <div class="eni-quick-card-title">{title}</div>
@@ -653,27 +711,36 @@ section = st.session_state.get("nav_section", DEFAULT_SECTION)
 tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
 
 if section == "Gestión de tareas":
-    # Cabecera: etiqueta "Bienvenid@" + rectángulo lila
     dn = st.session_state.get("user_display_name", "Usuario")
 
+    # Barra superior amarilla
     st.markdown(
         f"""
-        <div class="eni-main-hero-label">Bienvenid@</div>
-        <div class="eni-main-hero">
-          <div class="eni-main-hero-left">
-            <div class="eni-main-hero-left-name">{dn}</div>
-            <p class="eni-main-hero-left-sub">
-              A la plataforma unificada Gestión - ENI2025
-            </p>
+        <div class="eni-top-bar">
+          <div>
+            <div class="eni-top-left-small">Panel de gestión</div>
+            <div class="eni-top-name">{dn}</div>
+            <p class="eni-top-sub">Plataforma unificada Gestión — ENI2025</p>
           </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # Fila 1: 3 tarjetas
-    col_a1, col_a2, col_a3 = st.columns(3)
-    with col_a1:
+    # Layout principal: izquierda contenido, derecha tarjetas
+    col_left, col_right = st.columns([2.3, 1.3])
+
+    # Panel derecho: tarjetas de colores
+    with col_right:
+        st.markdown(
+            """
+            <div class="eni-main-layout">
+              <div class="eni-right-panel">
+                <div class="eni-right-panel-title">Accesos rápidos</div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         st.markdown(
             _quick_card_link("Nueva tarea",
                              "Registrar una nueva tarea asignada.",
@@ -681,7 +748,6 @@ if section == "Gestión de tareas":
                              "nueva_tarea"),
             unsafe_allow_html=True,
         )
-    with col_a2:
         st.markdown(
             _quick_card_link("Editar estado",
                              "Actualizar fases y fechas de las tareas.",
@@ -689,7 +755,6 @@ if section == "Gestión de tareas":
                              "editar_estado"),
             unsafe_allow_html=True,
         )
-    with col_a3:
         st.markdown(
             _quick_card_link("Nueva alerta",
                              "Registrar alertas y riesgos prioritarios.",
@@ -697,10 +762,6 @@ if section == "Gestión de tareas":
                              "nueva_alerta"),
             unsafe_allow_html=True,
         )
-
-    # Fila 2: 3 tarjetas
-    col_b1, col_b2, col_b3 = st.columns(3)
-    with col_b1:
         st.markdown(
             _quick_card_link("Prioridad",
                              "Revisar y ajustar la prioridad de tareas.",
@@ -708,7 +769,6 @@ if section == "Gestión de tareas":
                              "prioridad"),
             unsafe_allow_html=True,
         )
-    with col_b2:
         st.markdown(
             _quick_card_link("Evaluación y cumplimiento",
                              "Calificar avances y visualizar el nivel de cumplimiento.",
@@ -716,7 +776,6 @@ if section == "Gestión de tareas":
                              "evaluacion_cumplimiento"),
             unsafe_allow_html=True,
         )
-    with col_b3:
         st.markdown(
             _quick_card_link("Tareas recientes",
                              "Resumen de las últimas tareas actualizadas.",
@@ -725,32 +784,39 @@ if section == "Gestión de tareas":
             unsafe_allow_html=True,
         )
 
-    # Mensajito pequeño abajo indicando qué tarjeta se eligió
-    if tile:
-        pretty = tile.replace("_", " ").capitalize()
-        st.markdown(
-            f"<p style='font-size:12px;color:#6B7280;'>Vista seleccionada: "
-            f"<strong>{pretty}</strong>.</p>",
-            unsafe_allow_html=True,
-        )
+        st.markdown("</div></div>", unsafe_allow_html=True)
 
-        # 🔁 Renderizar la sección correspondiente a la tarjeta
-        module_path = TILE_TO_VIEW_MODULE.get(tile)
-        if module_path:
-            try:
-                view_module = importlib.import_module(module_path)
-                # Intentar usar `render`; si no existe, probar `render_all`
-                render_fn = getattr(view_module, "render", None)
-                if render_fn is None:
-                    render_fn = getattr(view_module, "render_all", None)
+    # Panel izquierdo: contenido de la vista seleccionada (por ahora mismo comportamiento)
+    with col_left:
+        if tile:
+            pretty = tile.replace("_", " ").capitalize()
+            st.markdown(
+                f"<p style='font-size:12px;color:#6B7280;'>Vista seleccionada: "
+                f"<strong>{pretty}</strong>.</p>",
+                unsafe_allow_html=True,
+            )
 
-                if callable(render_fn):
-                    render_fn(st.session_state.get("user"))
-                else:
-                    st.info("Vista pendiente para esta tarjeta (no se encontró función 'render' ni 'render_all').")
-            except Exception as e:
-                st.info("No se pudo cargar la vista para esta tarjeta.")
-                st.exception(e)
+            module_path = TILE_TO_VIEW_MODULE.get(tile)
+            if module_path:
+                try:
+                    view_module = importlib.import_module(module_path)
+                    # Intentar usar `render`; si no existe, probar `render_all`
+                    render_fn = getattr(view_module, "render", None)
+                    if render_fn is None:
+                        render_fn = getattr(view_module, "render_all", None)
+
+                    if callable(render_fn):
+                        render_fn(st.session_state.get("user"))
+                    else:
+                        st.info("Vista pendiente para esta tarjeta (no se encontró función 'render' ni 'render_all').")
+                except Exception as e:
+                    st.info("No se pudo cargar la vista para esta tarjeta.")
+                    st.exception(e)
+        else:
+            st.markdown(
+                "<p style='font-size:12px;color:#6B7280;'>Selecciona una tarjeta del panel derecho para empezar.</p>",
+                unsafe_allow_html=True,
+            )
 
 elif section == "Kanban":
     st.title("🗂️ Kanban")
