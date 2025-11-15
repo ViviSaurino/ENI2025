@@ -217,16 +217,16 @@ header[data-testid="stHeader"]{
   visibility:hidden;
 }
 
-/* HERO Bienvenid@ */
+/* HERO Bienvenid@ - MÁS ALTO */
 .eni-hero-card{
   background:#C4A5FF;
   border-radius:22px;
-  padding:18px 24px;
-  margin:8px 0 20px 0;
+  padding:28px 28px;          /* antes 18px 24px */
+  margin:8px 0 24px 0;        /* un poco más de aire abajo */
   box-shadow:0 12px 28px rgba(129,140,248,0.40);
 }
 .eni-hero-title{
-  font-size:20px;
+  font-size:22px;             /* antes 20px */
   font-weight:800;
   color:#FFFFFF;
   margin-bottom:4px;
@@ -255,8 +255,8 @@ header[data-testid="stHeader"]{
   padding:10px 12px;
   box-shadow:0 10px 22px rgba(148,163,184,0.40);
   border:none;
-  min-height:130px;   /* más alto para que no se corten los iconos */
-  max-height:130px;
+  min-height:150px;           /* antes 130px */
+  max-height:150px;
   display:flex;
   flex-direction:column;
   justify-content:space-between;
@@ -277,14 +277,14 @@ header[data-testid="stHeader"]{
 }
 .eni-quick-card-sub{
   font-size:11px;
-  color:#FFFFFF;      /* texto blanco */
+  color:#FFFFFF;
   margin-top:4px;
 }
 .eni-quick-card-icon{
-  font-size:24px;     /* icono más grande */
+  font-size:30px;             /* antes 24px */
   align-self:flex-end;
   margin-top:auto;
-  padding-bottom:6px; /* evita que se corte */
+  padding-bottom:8px;         /* más espacio para que no se corte la estrella */
 }
 .eni-quick-card-link:hover .eni-quick-card{
   box-shadow:0 14px 30px rgba(148,163,184,0.55);
