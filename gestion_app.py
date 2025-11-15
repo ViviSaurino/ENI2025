@@ -77,7 +77,13 @@ st.markdown("""
     background-color:#ECEAF7;
   }
 
-  /* ==== Contenedor central sin padding lateral para que la cabecera ocupe todo ==== */
+  /* Quitar espacio extra arriba para que la cabecera blanca quede pegada */
+  [data-testid="stAppViewContainer"] > .main{
+    padding-top:0 !important;
+    margin-top:0 !important;
+  }
+
+  /* Contenedor interno sin padding lateral extra */
   html body [data-testid="stAppViewContainer"] .main .block-container{
     padding-top:0rem !important;
     padding-left:0rem !important;
@@ -129,7 +135,7 @@ st.markdown("""
     font-size:14px;
   }
 
-  /* ===== Área principal (sin tarjeta blanca fuerte) ===== */
+  /* ===== Área principal ===== */
   .eni-main-card{
     background:transparent;
     border-radius:24px;
@@ -222,6 +228,7 @@ st.markdown("""
   header[data-testid="stHeader"]{
     height: 0px;
     padding: 0px;
+    margin: 0px;
     visibility: hidden;
   }
 
@@ -234,7 +241,7 @@ st.markdown("""
     background:#C4A5FF;
     border-radius:22px;
     padding:18px 24px;
-    margin:10px 6px 8px 6px;
+    margin:16px 6px 20px 6px;  /* más espacio abajo respecto a las tarjetas */
     box-shadow:0 12px 28px rgba(129,140,248,0.40);
   }
   .eni-hero-title{
@@ -254,7 +261,7 @@ st.markdown("""
     display:grid;
     grid-template-columns:repeat(4,minmax(0,1fr));
     gap:12px;
-    margin:10px 6px 18px 6px;
+    margin:0 6px 18px 6px;  /* ya no sumamos margen extra arriba */
   }
 
   .eni-quick-card-link{
@@ -274,7 +281,7 @@ st.markdown("""
     flex-direction:column;
     justify-content:space-between;
     transition:all .15s ease-in-out;
-    overflow:hidden; /* para que los iconos NO se salgan */
+    overflow:hidden; /* iconos dentro de la tarjeta */
   }
   .eni-quick-card-main{
     display:flex;
@@ -326,7 +333,7 @@ st.markdown("""
     display:grid;
     grid-template-columns:repeat(2,minmax(0,1fr));
     gap:12px;
-    margin:4px 6px 0 6px;
+    margin:18px 6px 4px 6px;  /* más espacio respecto a las tarjetas de colores */
   }
   .eni-bottom-card{
     background:#FFFFFF;
@@ -340,8 +347,9 @@ st.markdown("""
     background:#FFFFFF;
     border-radius:24px;
     padding:16px 18px 18px 18px;
-    margin-top:10px;
-    margin-right:6px;
+    margin-top:16px;
+    margin-right:18px;    /* más separación del borde derecho */
+    margin-bottom:24px;   /* más espacio con el final de la página */
     box-shadow:0 14px 30px rgba(148,163,184,0.32);
     min-height:280px;
   }
@@ -774,7 +782,7 @@ if section == "Gestión de tareas":
             unsafe_allow_html=True,
         )
 
-        # Fila de 4 tarjetas de colores (accesos rápidos) en UN SOLO markdown
+        # Fila de 4 tarjetas de colores (accesos rápidos)
         cards_html = """
         <div class="eni-quick-row">
           {card1}
@@ -852,10 +860,8 @@ if section == "Gestión de tareas":
                     st.info("No se pudo cargar la vista para esta tarjeta.")
                     st.exception(e)
         else:
-            # Ya NO mostramos texto "Selecciona una tarjeta..."
+            # sin texto "Selecciona una tarjeta..."
             st.write("")
-
-        # No añadimos ningún `</div>` suelto aquí
 
 # ============ Otras secciones ============
 elif section == "Kanban":
