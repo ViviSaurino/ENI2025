@@ -51,7 +51,7 @@ except Exception:
 
 # 🔐 ACL / Roles
 from features.security import acl
-from utils.avatar import show_user_avatar_from_session  # disponible si lo quieres usar luego
+from utils.avatar import show_user_avatar_from_session  # por si luego lo usamos dentro
 
 LOGO_PATH = Path("assets/branding/eni2025_logo.png")
 ROLES_XLSX = "data/security/roles.xlsx"
@@ -83,7 +83,7 @@ st.markdown("""
   section[data-testid="stSidebar"] .block-container{ padding-top:6px !important; padding-bottom:10px !important; }
   section[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{ gap:8px !important; }
 
-  /* Sidebar un poco más ancho y con fondo gris claro */
+  /* Sidebar más estilizado y gris claro */
   [data-testid="stSidebar"]{
     overflow-y:hidden !important;
     background-color:#F5F6FB !important;
@@ -137,7 +137,13 @@ st.markdown("""
     height:0px;
   }
 
-  /* ===== Hero principal en la vista Gestión de tareas ===== */
+  /* ===== Hero principal ===== */
+  .eni-main-hero-label{
+    font-size:14px;
+    font-weight:600;
+    color:#4B5563;
+    margin-bottom:6px;
+  }
   .eni-main-hero{
     background:#E5D4FF;
     border-radius:24px;
@@ -146,11 +152,6 @@ st.markdown("""
     display:flex;
     align-items:center;
     justify-content:space-between;
-  }
-  .eni-main-hero-left-title{
-    font-size:14px;
-    font-weight:600;
-    color:#4B5563;
   }
   .eni-main-hero-left-name{
     font-size:24px;
@@ -164,7 +165,7 @@ st.markdown("""
     margin:0;
   }
 
-  /* ===== Tarjetas rápidas (6 rectángulos, más altos, con icono a la derecha) ===== */
+  /* ===== Tarjetas rápidas ===== */
   .eni-quick-card{
     background:#FFFFFF;
     border-radius:18px;
@@ -173,14 +174,16 @@ st.markdown("""
     border:1px solid #E5E7EB;
     height:100%;
     min-height:130px;
-    margin-bottom:26px;
-    display:flex;
-    flex-direction:column;
-    justify-content:flex-start;
+    margin-bottom:32px;
   }
-  .eni-quick-card-header{
+  .eni-quick-card-main{
     display:flex;
-    align-items:flex-start;
+    align-items:center;
+    justify-content:space-between;
+    height:100%;
+  }
+  .eni-quick-card-text{
+    max-width:75%;
   }
   .eni-quick-card-title{
     font-size:14px;
@@ -189,8 +192,8 @@ st.markdown("""
     margin-bottom:4px;
   }
   .eni-quick-card-icon{
-    font-size:22px;
-    margin-left:auto;    /* se va a la derecha */
+    font-size:30px;
+    margin-left:16px;
   }
   .eni-quick-card-sub{
     font-size:12px;
@@ -464,13 +467,16 @@ def logout():
         st.session_state.pop(k, None)
     st.rerun()
 
-# Mapeo de claves de pestaña para permisos
+# ====== Navegación / permisos ======
+DEFAULT_SECTION = "Gestión de tareas"
+
 TAB_KEY_BY_SECTION = {
-    "📘 Gestión de tareas": "tareas_recientes",
-    "🗂️ Kanban": "kanban",
-    "📅 Gantt": "gantt",
-    "📊 Dashboard": "dashboard",
+    "Gestión de tareas": "tareas_recientes",
+    "Kanban": "kanban",
+    "Gantt": "gantt",
+    "Dashboard": "dashboard",
 }
+
 def render_if_allowed(tab_key: str, render_fn):
     if acl.can_see_tab(user_acl, tab_key):
         render_fn()
@@ -484,9 +490,12 @@ with st.sidebar:
         st.image(str(LOGO_PATH), width=120)
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # SIN título "Secciones"
-    nav_labels = ["📘 Gestión de tareas","🗂️ Kanban","📅 Gantt","📊 Dashboard"]
-    default_idx = nav_labels.index(st.session_state.get("nav_section", "📘 Gestión de tareas"))
+    nav_labels = ["Gestión de tareas", "Kanban", "Gantt", "Dashboard"]
+    current_section = st.session_state.get("nav_section", DEFAULT_SECTION)
+    if current_section not in nav_labels:
+        current_section = DEFAULT_SECTION
+    default_idx = nav_labels.index(current_section)
+
     nav_choice = st.radio(
         "Navegación",
         nav_labels,
@@ -507,27 +516,29 @@ ensure_df_main()
 def _quick_card(title: str, subtitle: str, icon: str) -> str:
     return f"""
     <div class="eni-quick-card">
-      <div class="eni-quick-card-header">
-        <div class="eni-quick-card-title">{title}</div>
+      <div class="eni-quick-card-main">
+        <div class="eni-quick-card-text">
+          <div class="eni-quick-card-title">{title}</div>
+          <p class="eni-quick-card-sub">{subtitle}</p>
+        </div>
         <div class="eni-quick-card-icon">{icon}</div>
       </div>
-      <p class="eni-quick-card-sub">{subtitle}</p>
     </div>
     """
 
 # ============ UI principal ============
-section = st.session_state.get("nav_section", "📘 Gestión de tareas")
+section = st.session_state.get("nav_section", DEFAULT_SECTION)
 tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
 
-if section == "📘 Gestión de tareas":
-    # Cabecera lila
+if section == "Gestión de tareas":
+    # Cabecera: etiqueta "Bienvenid@" + rectángulo lila
     dn = st.session_state.get("user_display_name", "Usuario")
 
     st.markdown(
         f"""
+        <div class="eni-main-hero-label">Bienvenid@</div>
         <div class="eni-main-hero">
           <div class="eni-main-hero-left">
-            <div class="eni-main-hero-left-title">Bienvenid@</div>
             <div class="eni-main-hero-left-name">{dn}</div>
             <p class="eni-main-hero-left-sub">
               A la plataforma unificada Gestión - ENI2025
@@ -556,7 +567,7 @@ if section == "📘 Gestión de tareas":
             unsafe_allow_html=True,
         )
 
-    # Fila 2: 3 rectángulos (Prioridad, Evaluación y cumplimiento, Tareas recientes)
+    # Fila 2: 3 rectángulos
     col_b1, col_b2, col_b3 = st.columns(3)
     with col_b1:
         st.markdown(
@@ -578,7 +589,7 @@ if section == "📘 Gestión de tareas":
             unsafe_allow_html=True,
         )
 
-elif section == "🗂️ Kanban":
+elif section == "Kanban":
     st.title("🗂️ Kanban")
     def _render_kanban():
         try:
@@ -589,7 +600,7 @@ elif section == "🗂️ Kanban":
             st.exception(e)
     render_if_allowed(tab_key, _render_kanban)
 
-elif section == "📅 Gantt":
+elif section == "Gantt":
     st.title("📅 Gantt")
     def _render_gantt():
         try:
