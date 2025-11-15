@@ -92,8 +92,8 @@ st.markdown("""
     background-color:#F5F6FB !important;
   }
   div[data-testid="stSidebar"]{
-    min-width:190px !important;
-    max-width:190px !important;
+    min-width:180px !important;
+    max-width:180px !important;
   }
 
   /* 🔼 Subir un poquito el contenido principal */
@@ -508,9 +508,7 @@ with st.sidebar:
     )
 
     st.divider()
-    # 👉 Usar el nombre elegido en el login (sin avatar grande ni correo)
-    display_name = st.session_state.get("user_display_name") or user_acl.get("display_name", "Usuario")
-    st.markdown(f"👋 **Hola, {display_name}**")
+    # solo botón de cerrar sesión (sin saludo con nombre)
     if st.button("🔒 Cerrar sesión", use_container_width=True):
         logout()
 
@@ -531,7 +529,7 @@ section = st.session_state.get("nav_section", "📘 Gestión de tareas")
 tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
 
 if section == "📘 Gestión de tareas":
-    st.title("📘 Gestión de tareas")
+    # (se quita el st.title grande para dejar solo la cabecera lila)
 
     # ---- Cabecera central lila (Bienvenid@ + nombre) ----
     dn = st.session_state.get("user_display_name", "Usuario")
