@@ -51,7 +51,7 @@ except Exception:
 
 # 🔐 ACL / Roles
 from features.security import acl
-from utils.avatar import show_user_avatar_from_session  # por si luego lo usamos dentro
+from utils.avatar import show_user_avatar_from_session
 
 LOGO_PATH = Path("assets/branding/eni2025_logo.png")
 ROLES_XLSX = "data/security/roles.xlsx"
@@ -68,15 +68,17 @@ st.set_page_config(
 patch_streamlit_aggrid()
 inject_global_css()
 
-# 👉 Estilos específicos (sidebar + layout + hero + tarjetas)
 st.markdown("""
 <style>
   .eni-banner{ margin:6px 0 14px; font-weight:400; font-size:16px; color:#4B5563; }
 
+  /* Botón Cerrar sesión en el sidebar */
   section[data-testid="stSidebar"] .stButton > button{
-    border-radius:8px !important;
-    font-weight:600 !important;
+    background:#C7A0FF !important; color:#FFFFFF !important; border:none !important;
+    border-radius:12px !important; font-weight:700 !important;
+    box-shadow:0 6px 14px rgba(199,160,255,.35) !important;
   }
+  section[data-testid="stSidebar"] .stButton > button:hover{ filter:brightness(0.95); }
 
   section[data-testid="stSidebar"] .eni-logo-wrap{ margin-left:-10px; margin-top:-6px !important; }
   section[data-testid="stSidebar"] .block-container{ padding-top:6px !important; padding-bottom:10px !important; }
@@ -96,7 +98,7 @@ st.markdown("""
     margin-top: -1rem !important;
   }
 
-  /* Comprimir header para que no deje espacio arriba */
+  /* Comprimir header */
   header[data-testid="stHeader"]{
     height: 0px;
     padding: 0px;
@@ -132,7 +134,7 @@ st.markdown("""
     color:#4B5563 !important;
   }
 
-  /* Iconitos grises en el menú lateral (un poco más grandes) */
+  /* Iconitos grises un poco más grandes */
   section[data-testid="stSidebar"] [data-baseweb="radio"]::before{
     content:"▣";
     color:#9CA3AF;
@@ -149,7 +151,7 @@ st.markdown("""
     content:"▧";
   }
 
-  /* Ocultar barras de scroll visualmente pero permitir scroll */
+  /* Ocultar scrollbars visualmente */
   *::-webkit-scrollbar{
     width:0px;
     height:0px;
@@ -161,7 +163,7 @@ st.markdown("""
     font-weight:700;
     color:#4B5563;
     margin-top:8px;
-    margin-bottom:16px;  /* más separación con el rectángulo lila */
+    margin-bottom:16px;
   }
   .eni-main-hero{
     background:#E5D4FF;
@@ -184,62 +186,53 @@ st.markdown("""
     margin:0;
   }
 
-  /* ===== Tarjetas rápidas con botones ===== */
-  .eni-dashboard-tiles [data-testid="baseButton-secondary"]{
+  /* ===== Tarjetas rápidas (botones estilizados) ===== */
+  .eni-dashboard-tiles button{
     position:relative;
     width:100%;
-    background:#FFFFFF;
-    border-radius:18px;
-    border:1px solid #E5E7EB;
-    padding:20px 22px;
-    box-shadow:none;
-    min-height:160px;
+    background:#FFFFFF !important;
+    border-radius:18px !important;
+    border:1px solid #E5E7EB !important;
+    padding:22px 24px !important;
+    box-shadow:0 8px 24px rgba(148,163,184,.26) !important;
+    min-height:170px;
     margin-bottom:40px;
     text-align:left;
-    color:#111827;
-    font-weight:600;
-    white-space:pre-line;       /* respeta salto de línea en el label */
-    font-size:13px;
-    display:block;
-    cursor:pointer;
+    color:#111827 !important;
+    font-weight:600 !important;
+    white-space:pre-line;
+    font-size:14px !important;
   }
-  .eni-dashboard-tiles [data-testid="baseButton-secondary"]:hover{
-    box-shadow:0 14px 28px rgba(148,163,184,.35);
+  .eni-dashboard-tiles button:hover{
+    box-shadow:0 14px 28px rgba(148,163,184,.35) !important;
     transform:translateY(-2px);
   }
-
-  /* centrado vertical aproximado del texto dentro del botón */
-  .eni-dashboard-tiles [data-testid="baseButton-secondary"] > div{
-    display:flex;
-    align-items:center;
-    height:100%;
+  .eni-dashboard-tiles button > div{
+    justify-content:flex-start !important;
   }
-
-  /* Icono a la derecha, más grande */
-  .eni-dashboard-tiles [data-testid="baseButton-secondary"]::after{
+  .eni-dashboard-tiles button::after{
     position:absolute;
-    right:22px;
+    right:24px;
     top:50%;
     transform:translateY(-50%);
     font-size:32px;
   }
-
-  .eni-dashboard-tiles [data-testid="baseButton-secondary"][aria-label^="Nueva tarea"]::after{
+  .eni-dashboard-tiles button[aria-label^="Nueva tarea"]::after{
     content:"📝";
   }
-  .eni-dashboard-tiles [data-testid="baseButton-secondary"][aria-label^="Editar estado"]::after{
+  .eni-dashboard-tiles button[aria-label^="Editar estado"]::after{
     content:"✏️";
   }
-  .eni-dashboard-tiles [data-testid="baseButton-secondary"][aria-label^="Nueva alerta"]::after{
+  .eni-dashboard-tiles button[aria-label^="Nueva alerta"]::after{
     content:"⚠️";
   }
-  .eni-dashboard-tiles [data-testid="baseButton-secondary"][aria-label^="Prioridad"]::after{
+  .eni-dashboard-tiles button[aria-label^="Prioridad"]::after{
     content:"⭐";
   }
-  .eni-dashboard-tiles [data-testid="baseButton-secondary"][aria-label^="Evaluación y cumplimiento"]::after{
+  .eni-dashboard-tiles button[aria-label^="Evaluación y cumplimiento"]::after{
     content:"📊";
   }
-  .eni-dashboard-tiles [data-testid="baseButton-secondary"][aria-label^="Tareas recientes"]::after{
+  .eni-dashboard-tiles button[aria-label^="Tareas recientes"]::after{
     content:"⏱️";
   }
 </style>
@@ -254,11 +247,11 @@ def check_app_password() -> bool:
     Si la contraseña es correcta, marca password_ok y crea un usuario genérico.
     """
 
-    # 🎨 Estilos para título, píldora, botón ENTRAR jade y espaciado de inputs
+    # 🎨 Estilos para título, píldora y botón ENTRAR solo dentro del login
     st.markdown("""
     <style>
       .eni-hero-title{
-        font-size:77px;          /* BIEN / VENIDOS grande */
+        font-size:77px;
         font-weight:900;
         color:#B38CFB;
         line-height:0.80;
@@ -268,9 +261,9 @@ def check_app_password() -> bool:
         display:inline-block;
         padding:10px 53px;
         border-radius:12px;
-        background-color:#C0C2FF;   /* lila un poquito más oscuro */
+        background-color:#C0C2FF;
         border:1px solid #C0C2FF;
-        color:#FFFFFF;              /* letras blancas */
+        color:#FFFFFF;
         font-weight:700;
         font-size:14px;
         letter-spacing:0.04em;
@@ -278,8 +271,8 @@ def check_app_password() -> bool:
         white-space: nowrap;
       }
 
-      /* 🎨 Botón ENTRAR jade un poquito más oscuro, letras blancas */
-      [data-testid="stAppViewContainer"] .main .stButton > button{
+      /* Botón ENTRAR solo dentro del bloque de login */
+      .eni-login-form .stButton > button{
         background:#8FD9C1 !important;
         color:#FFFFFF !important;
         border-radius:12px !important;
@@ -288,11 +281,10 @@ def check_app_password() -> bool:
         letter-spacing:0.04em !important;
         text-transform:uppercase !important;
       }
-      [data-testid="stAppViewContainer"] .main .stButton > button:hover{
+      .eni-login-form .stButton > button:hover{
         filter:brightness(0.97);
       }
 
-      /* 🔽 Reducir espacio entre select "¿Quién está editando?" y contraseña */
       .eni-login-form [data-testid="stSelectbox"]{
         margin-bottom:0.0rem !important;
       }
@@ -558,7 +550,7 @@ section = st.session_state.get("nav_section", DEFAULT_SECTION)
 tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
 
 if section == "Gestión de tareas":
-    # Cabecera: etiqueta "Bienvenid@" + rectángulo lila
+    # Cabecera
     dn = st.session_state.get("user_display_name", "Usuario")
 
     st.markdown(
@@ -576,10 +568,9 @@ if section == "Gestión de tareas":
         unsafe_allow_html=True,
     )
 
-    # Contenedor para que el CSS de tarjetas se aplique solo aquí
+    # Tarjetas (botones) dentro del contenedor para aplicar CSS
     st.markdown('<div class="eni-dashboard-tiles">', unsafe_allow_html=True)
 
-    # Fila 1: 3 tarjetas (botones estilizados)
     col_a1, col_a2, col_a3 = st.columns(3)
     with col_a1:
         if st.button(
@@ -602,7 +593,6 @@ if section == "Gestión de tareas":
         ):
             st.session_state["home_tile"] = "nueva_alerta"
 
-    # Fila 2: 3 tarjetas
     col_b1, col_b2, col_b3 = st.columns(3)
     with col_b1:
         if st.button(
@@ -627,7 +617,6 @@ if section == "Gestión de tareas":
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Mensaje pequeño de vista seleccionada (ya no cambia URL ni te manda al login)
     tile = st.session_state.get("home_tile", "")
     if tile:
         pretty = tile.replace("_", " ").capitalize()
