@@ -6,7 +6,6 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 import importlib
-import types
 import base64  # para incrustar el video como base64
 from urllib.parse import quote  # para codificar el nombre en la URL
 
@@ -96,13 +95,6 @@ st.markdown("""
     background:transparent;
   }
 
-  .eni-banner{
-    margin:6px 0 14px;
-    font-weight:400;
-    font-size:16px;
-    color:#4B5563;
-  }
-
   /* ===== TOP BAR BLANCA (con márgenes laterales lila) ===== */
   .eni-main-topbar{
     background:#FFFFFF;
@@ -137,23 +129,6 @@ st.markdown("""
     color:#FFFFFF;
     font-weight:700;
     font-size:14px;
-  }
-
-  /* ===== Área principal (marco interior) ===== */
-  .eni-main-card{
-    background:transparent;
-    border-radius:24px;
-    padding:0 24px 18px 24px;  /* mismo margen lateral que la topbar */
-    box-shadow:none;
-    margin-top:0;
-  }
-
-  /* ===== Panel blanco de la columna izquierda ===== */
-  .eni-left-panel{
-    background:#FFFFFF;
-    border-radius:24px;
-    padding:18px 18px 20px 18px;
-    box-shadow:0 14px 30px rgba(148,163,184,0.22);
   }
 
   /* ===== Sidebar blanca ===== */
@@ -244,16 +219,12 @@ st.markdown("""
     visibility: hidden;
   }
 
-  .eni-main-layout{
-    margin-top:6px;
-  }
-
   /* ===== HERO morado "Bienvenid@" ===== */
   .eni-hero-card{
     background:#C4A5FF;
     border-radius:22px;
     padding:18px 24px;
-    margin:4px 0 20px 0;
+    margin:8px 0 20px 0;
     box-shadow:0 12px 28px rgba(129,140,248,0.40);
   }
   .eni-hero-title{
@@ -293,7 +264,7 @@ st.markdown("""
     flex-direction:column;
     justify-content:space-between;
     transition:all .15s ease-in-out;
-    overflow:hidden; /* iconos dentro de la tarjeta */
+    overflow:hidden;
   }
   .eni-quick-card-main{
     display:flex;
@@ -360,17 +331,51 @@ st.markdown("""
     border-radius:24px;
     padding:16px 18px 18px 18px;
     margin-top:16px;
-    margin-right:12px;
+    margin-right:24px;
     margin-left:12px;
     margin-bottom:24px;
     box-shadow:0 14px 30px rgba(148,163,184,0.32);
     min-height:280px;
   }
-  .eni-right-work-title{
-    font-size:13px;
-    font-weight:600;
-    color:#4B5563;
+
+  /* ===== Login hero ===== */
+  .eni-login-hero-title{
+    font-size:77px;
+    font-weight:900;
+    color:#B38CFB;
+    line-height:0.80;
     margin-bottom:10px;
+  }
+  .eni-login-pill{
+    display:inline-block;
+    padding:10px 53px;
+    border-radius:12px;
+    background-color:#C0C2FF;
+    border:1px solid #C0C2FF;
+    color:#FFFFFF;
+    font-weight:700;
+    font-size:14px;
+    letter-spacing:0.04em;
+    margin-bottom:10px;
+    white-space: nowrap;
+  }
+  [data-testid="stAppViewContainer"] .main .stButton > button{
+    background:#8FD9C1 !important;
+    color:#FFFFFF !important;
+    border-radius:12px !important;
+    border:1px solid #8FD9C1 !important;
+    font-weight:900 !important;
+    letter-spacing:0.04em !important;
+    text-transform:uppercase !important;
+  }
+  [data-testid="stAppViewContainer"] .main .stButton > button:hover{
+    filter:brightness(0.97);
+  }
+  .eni-login-form [data-testid="stSelectbox"]{
+    margin-bottom:0.0rem !important;
+  }
+  .eni-login-form [data-testid="stTextInput"]{
+    margin-top:-0.45rem !important;
   }
 
 </style>
@@ -419,49 +424,7 @@ def check_app_password() -> bool:
             st.session_state["user"] = {"email": "eni2025@app"}
         return True
 
-    st.markdown("""
-    <style>
-      .eni-hero-title{
-        font-size:77px;
-        font-weight:900;
-        color:#B38CFB;
-        line-height:0.80;
-        margin-bottom:10px;
-      }
-      .eni-hero-pill{
-        display:inline-block;
-        padding:10px 53px;
-        border-radius:12px;
-        background-color:#C0C2FF;
-        border:1px solid #C0C2FF;
-        color:#FFFFFF;
-        font-weight:700;
-        font-size:14px;
-        letter-spacing:0.04em;
-        margin-bottom:10px;
-        white-space: nowrap;
-      }
-      [data-testid="stAppViewContainer"] .main .stButton > button{
-        background:#8FD9C1 !important;
-        color:#FFFFFF !important;
-        border-radius:12px !important;
-        border:1px solid #8FD9C1 !important;
-        font-weight:900 !important;
-        letter-spacing:0.04em !important;
-        text-transform:uppercase !important;
-      }
-      [data-testid="stAppViewContainer"] .main .stButton > button:hover{
-        filter:brightness(0.97);
-      }
-      .eni-login-form [data-testid="stSelectbox"]{
-        margin-bottom:0.0rem !important;
-      }
-      .eni-login-form [data-testid="stTextInput"]{
-        margin-top:-0.45rem !important;
-      }
-    </style>
-    """, unsafe_allow_html=True)
-
+    # --- PANTALLA DE LOGIN ---
     st.markdown("""
     <style>
       html, body, [data-testid="stAppViewContainer"], .main{
@@ -476,12 +439,12 @@ def check_app_password() -> bool:
     with space_col:
         st.write("")
     with col1:
-        st.markdown("<div class='eni-hero-title'>BIEN<br>VENIDOS</div>", unsafe_allow_html=True)
+        st.markdown("<div class='eni-login-hero-title'>BIEN<br>VENIDOS</div>", unsafe_allow_html=True)
 
         form_col, _ = st.columns([0.66, 0.60])
         with form_col:
             st.markdown("<div class='eni-login-form'>", unsafe_allow_html=True)
-            st.markdown("<div class='eni-hero-pill'>GESTIÓN DE TAREAS ENI 2025</div>", unsafe_allow_html=True)
+            st.markdown("<div class='eni-login-pill'>GESTIÓN DE TAREAS ENI 2025</div>", unsafe_allow_html=True)
             st.write("")
 
             editor_options = [
@@ -777,25 +740,23 @@ if section == "Gestión de tareas":
         unsafe_allow_html=True,
     )
 
-    # Ya NO usamos <div class="eni-main-card"> ... </div> para evitar cierres </div> sueltos
-
     # Dos columnas: izquierda (hero + tarjetas) / derecha (panel de trabajo)
     col_left, col_right = st.columns([2.4, 1.6])
 
     # -------- Columna izquierda: hero + tarjetas + bloques blancos ----------
     with col_left:
-        # Tarjeta morada Bienvenid@
         st.markdown(
             """
-            <div class="eni-hero-card">
-              <div class="eni-hero-title">Bienvenid@</div>
-              <p class="eni-hero-sub">A la plataforma de gestión ENI — 2025</p>
-            </div>
+            <div style="margin-left:24px; margin-right:12px; margin-bottom:24px;">
+              <div class="eni-hero-card">
+                <div class="eni-hero-title">Bienvenid@</div>
+                <p class="eni-hero-sub">A la plataforma de gestión ENI — 2025</p>
+              </div>
             """,
             unsafe_allow_html=True,
         )
 
-        # Fila de 4 tarjetas de colores (accesos rápidos)
+        # Fila de 4 tarjetas
         cards_html = """
         <div class="eni-quick-row">
           {card1}
@@ -838,20 +799,20 @@ if section == "Gestión de tareas":
               <div class="eni-bottom-card"></div>
               <div class="eni-bottom-card"></div>
             </div>
+            </div> <!-- wrapper margen -->
             """,
             unsafe_allow_html=True,
         )
 
-    # -------- Columna derecha: panel blanco alto ----------
+    # -------- Columna derecha: panel blanco alto + vista seleccionada ----------
     with col_right:
-        # Solo dibujamos la tarjeta blanca; el contenido de las vistas va aparte
+        # Panel blanco “en blanco” arriba
         st.markdown(
             "<div class='eni-right-work-card'></div>",
             unsafe_allow_html=True,
         )
 
-        # Si quieres que además se muestre la vista de la tarjeta clickeada
-        # debajo del panel blanco, mantenemos la lógica anterior:
+        # Vista seleccionada debajo (si hay tile)
         if tile:
             module_path = TILE_TO_VIEW_MODULE.get(tile)
             if module_path:
@@ -871,7 +832,6 @@ if section == "Gestión de tareas":
                 except Exception as e:
                     st.info("No se pudo cargar la vista para esta tarjeta.")
                     st.exception(e)
-
 
 # ============ Otras secciones ============
 elif section == "Kanban":
