@@ -69,12 +69,12 @@ st.set_page_config(
 patch_streamlit_aggrid()
 inject_global_css()
 
-# 👉 Estilos específicos (sidebar lila, barra amarilla y tarjetas derechas)
+# 👉 Estilos específicos (sidebar lila, barra amarilla, card blanco y panel derecho)
 st.markdown("""
 <style>
-  /* Fondo general lavanda suave */
+  /* Fondo general plomo */
   html, body, [data-testid="stAppViewContainer"] {
-    background-color: #F3E8FF;
+    background-color: #E5E7EB;
   }
 
   .eni-banner{
@@ -82,6 +82,15 @@ st.markdown("""
     font-weight:400;
     font-size:16px;
     color:#4B5563;
+  }
+
+  /* Card principal blanco (amarillo arriba, contenido abajo) */
+  .eni-main-card{
+    background:#FFFFFF;
+    border-radius:24px;
+    padding:0 18px 18px 18px;
+    box-shadow:0 18px 40px rgba(15,23,42,0.15);
+    margin-top:12px;
   }
 
   /* Sidebar lila tipo slider */
@@ -180,16 +189,16 @@ st.markdown("""
     margin-top: -1rem !important;
   }
 
-  /* ===== Barra superior amarilla estilo "Hello, Eliza" ===== */
+  /* ===== Barra superior amarilla dentro del card blanco ===== */
   .eni-top-bar{
     background:#FACC15;
-    border-radius:24px;
+    border-radius:24px 24px 0 0;
     padding:18px 24px;
-    margin-bottom:20px;
+    margin:0 -18px 16px -18px; /* que ocupe todo el ancho del card */
     display:flex;
     align-items:center;
     justify-content:space-between;
-    box-shadow:0 10px 25px rgba(250,204,21,0.35);
+    box-shadow:0 10px 25px rgba(250,204,21,0.25);
   }
   .eni-top-left-small{
     font-size:12px;
@@ -211,11 +220,11 @@ st.markdown("""
     margin:0;
   }
 
-  /* ===== Layout principal: izquierda contenido, derecha tarjetas ===== */
   .eni-main-layout{
     margin-top:6px;
   }
 
+  /* Panel derecho gris */
   .eni-right-panel{
     background:#F3F4F6;
     border-radius:24px;
@@ -229,7 +238,7 @@ st.markdown("""
     margin-bottom:8px;
   }
 
-  /* ===== Tarjetas rápidas (colores tipo mockup) ===== */
+  /* ===== Tarjetas rápidas ===== */
   .eni-quick-card-link{
     text-decoration:none;
     color:inherit;
@@ -713,24 +722,25 @@ tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
 if section == "Gestión de tareas":
     dn = st.session_state.get("user_display_name", "Usuario")
 
-    # Barra superior amarilla
+    # Card blanco que incluye barra amarilla + contenido
     st.markdown(
         f"""
-        <div class="eni-top-bar">
-          <div>
-            <div class="eni-top-left-small">Panel de gestión</div>
-            <div class="eni-top-name">{dn}</div>
-            <p class="eni-top-sub">Plataforma unificada Gestión — ENI2025</p>
+        <div class="eni-main-card">
+          <div class="eni-top-bar">
+            <div>
+              <div class="eni-top-left-small">Panel de gestión</div>
+              <div class="eni-top-name">{dn}</div>
+              <p class="eni-top-sub">Plataforma unificada Gestión — ENI2025</p>
+            </div>
           </div>
-        </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # Layout principal: izquierda contenido, derecha tarjetas
+    # Layout principal: izquierda contenido, derecha panel de accesos
     col_left, col_right = st.columns([2.3, 1.3])
 
-    # Panel derecho: tarjetas de colores
+    # Panel derecho: tarjetas en 2 columnas (tipo mockup)
     with col_right:
         st.markdown(
             """
@@ -741,52 +751,57 @@ if section == "Gestión de tareas":
             unsafe_allow_html=True,
         )
 
-        st.markdown(
-            _quick_card_link("Nueva tarea",
-                             "Registrar una nueva tarea asignada.",
-                             "📝",
-                             "nueva_tarea"),
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-            _quick_card_link("Editar estado",
-                             "Actualizar fases y fechas de las tareas.",
-                             "✏️",
-                             "editar_estado"),
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-            _quick_card_link("Nueva alerta",
-                             "Registrar alertas y riesgos prioritarios.",
-                             "⚠️",
-                             "nueva_alerta"),
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-            _quick_card_link("Prioridad",
-                             "Revisar y ajustar la prioridad de tareas.",
-                             "⭐",
-                             "prioridad"),
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-            _quick_card_link("Evaluación y cumplimiento",
-                             "Calificar avances y visualizar el nivel de cumplimiento.",
-                             "📊",
-                             "evaluacion_cumplimiento"),
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-            _quick_card_link("Tareas recientes",
-                             "Resumen de las últimas tareas actualizadas.",
-                             "⏱️",
-                             "tareas_recientes"),
-            unsafe_allow_html=True,
-        )
+        c1, c2 = st.columns(2)
+
+        with c1:
+            st.markdown(
+                _quick_card_link("Nueva tarea",
+                                 "Registrar una nueva tarea asignada.",
+                                 "📝",
+                                 "nueva_tarea"),
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                _quick_card_link("Nueva alerta",
+                                 "Registrar alertas y riesgos prioritarios.",
+                                 "⚠️",
+                                 "nueva_alerta"),
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                _quick_card_link("Evaluación y cumplimiento",
+                                 "Calificar avances y visualizar el nivel de cumplimiento.",
+                                 "📊",
+                                 "evaluacion_cumplimiento"),
+                unsafe_allow_html=True,
+            )
+
+        with c2:
+            st.markdown(
+                _quick_card_link("Editar estado",
+                                 "Actualizar fases y fechas de las tareas.",
+                                 "✏️",
+                                 "editar_estado"),
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                _quick_card_link("Prioridad",
+                                 "Revisar y ajustar la prioridad de tareas.",
+                                 "⭐",
+                                 "prioridad"),
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                _quick_card_link("Tareas recientes",
+                                 "Resumen de las últimas tareas actualizadas.",
+                                 "⏱️",
+                                 "tareas_recientes"),
+                unsafe_allow_html=True,
+            )
 
         st.markdown("</div></div>", unsafe_allow_html=True)
 
-    # Panel izquierdo: contenido de la vista seleccionada (por ahora mismo comportamiento)
+    # Panel izquierdo: contenido de la vista seleccionada
     with col_left:
         if tile:
             pretty = tile.replace("_", " ").capitalize()
@@ -817,6 +832,9 @@ if section == "Gestión de tareas":
                 "<p style='font-size:12px;color:#6B7280;'>Selecciona una tarjeta del panel derecho para empezar.</p>",
                 unsafe_allow_html=True,
             )
+
+    # Cerramos el div del card principal
+    st.markdown("</div>", unsafe_allow_html=True)
 
 elif section == "Kanban":
     st.title("🗂️ Kanban")
