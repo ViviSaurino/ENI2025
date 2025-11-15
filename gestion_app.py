@@ -72,9 +72,9 @@ inject_global_css()
 # 👉 Estilos específicos (sidebar + layout + topbar + tarjetas)
 st.markdown("""
 <style>
-  /* ===== Fondo general gris clarito ===== */
+  /* ===== Fondo general gris-lila clarito ===== */
   html, body, [data-testid="stAppViewContainer"]{
-    background-color:#E5E7EB;
+    background-color:#ECEAF7;
   }
 
   .eni-banner{
@@ -84,15 +84,15 @@ st.markdown("""
     color:#4B5563;
   }
 
-  /* ===== TOP BAR BLANCA (tipo navbar) ===== */
+  /* ===== TOP BAR BLANCA (rectángulo ancho completo) ===== */
   .eni-main-topbar{
     background:#FFFFFF;
     padding:10px 24px;
-    border-radius:0 0 16px 16px;
+    border-radius:0;
     display:flex;
     align-items:center;
     justify-content:space-between;
-    margin-bottom:12px;
+    margin:0 -1.5rem 12px -1.5rem; /* se estira a los lados */
     box-shadow:0 12px 26px rgba(15,23,42,0.10);
   }
   .eni-main-topbar-title{
@@ -348,7 +348,7 @@ st.markdown("""
     margin-bottom:10px;
   }
 
-  /* ===== Panel derecho gris (ya no se usa, pero lo dejamos por si acaso) ===== */
+  /* ===== Panel derecho gris (no usado) ===== */
   .eni-right-panel{
     background:#F3F4F6;
     border-radius:24px;
@@ -820,7 +820,7 @@ if section == "Gestión de tareas":
         )
         st.markdown(cards_html, unsafe_allow_html=True)
 
-        # Dos tarjetas blancas inferiores solo decorativas (como en el mockup)
+        # Dos tarjetas blancas inferiores solo decorativas
         st.markdown(
             """
             <div class="eni-bottom-row">
@@ -862,17 +862,17 @@ if section == "Gestión de tareas":
                     st.info("No se pudo cargar la vista para esta tarjeta.")
                     st.exception(e)
         else:
+            # SIN título "Panel de trabajo", solo el texto guía
             st.markdown(
-                "<div class='eni-right-work-title'>Panel de trabajo</div>"
                 "<p style='font-size:12px;color:#6B7280;'>"
                 "Selecciona una tarjeta de la izquierda para empezar."
                 "</p>",
                 unsafe_allow_html=True,
             )
 
-        st.markdown("</div>", unsafe_allow_html=True)  # cierre panel de trabajo
+        # Nota: no cerramos el div explícitamente para evitar que se muestre </div> como texto
 
-    st.markdown("</div>", unsafe_allow_html=True)  # cierre eni-main-card
+    # Tampoco cerramos eni-main-card con un </div> suelto para evitar texto </div>
 
 # ============ Otras secciones ============
 elif section == "Kanban":
