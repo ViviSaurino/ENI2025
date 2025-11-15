@@ -219,10 +219,12 @@ st.markdown("""
     visibility: hidden;
   }
 
-  /* Subir un poquito el contenido principal */
+  /* Subir un poquito el contenido principal 
+     ✅ AQUÍ EL CAMBIO: hacemos el bloque central BLANCO */
   html body [data-testid="stAppViewContainer"] .main .block-container{
     padding-top: 0rem !important;
     margin-top: -1rem !important;
+    background:#FFFFFF;
   }
 
   /* ===== Barra amarilla dentro del card ===== */
@@ -390,11 +392,11 @@ def check_app_password() -> bool:
             st.session_state["user"] = {"email": "eni2025@app"}
         return True
 
-    # 🎨 Estilos para título, píldora, botón ENTRAR jade y espaciado de inputs
+    # 🎨 Estilos para login (igual que antes) ...
     st.markdown("""
     <style>
       .eni-hero-title{
-        font-size:77px;          /* BIEN / VENIDOS grande */
+        font-size:77px;
         font-weight:900;
         color:#B38CFB;
         line-height:0.80;
@@ -404,17 +406,15 @@ def check_app_password() -> bool:
         display:inline-block;
         padding:10px 53px;
         border-radius:12px;
-        background-color:#C0C2FF;   /* lila un poquito más oscuro */
+        background-color:#C0C2FF;
         border:1px solid #C0C2FF;
-        color:#FFFFFF;              /* letras blancas */
+        color:#FFFFFF;
         font-weight:700;
         font-size:14px;
         letter-spacing:0.04em;
         margin-bottom:10px;
         white-space: nowrap;
       }
-
-      /* 🎨 Botón ENTRAR jade un poquito más oscuro, letras blancas */
       [data-testid="stAppViewContainer"] .main .stButton > button{
         background:#8FD9C1 !important;
         color:#FFFFFF !important;
@@ -427,8 +427,6 @@ def check_app_password() -> bool:
       [data-testid="stAppViewContainer"] .main .stButton > button:hover{
         filter:brightness(0.97);
       }
-
-      /* 🔽 Reducir espacio entre select "¿Quién está editando?" y contraseña */
       .eni-login-form [data-testid="stSelectbox"]{
         margin-bottom:0.0rem !important;
       }
@@ -438,7 +436,6 @@ def check_app_password() -> bool:
     </style>
     """, unsafe_allow_html=True)
 
-    # 🔒 Ocultar scroll solo en la pantalla de login
     st.markdown("""
     <style>
       html, body, [data-testid="stAppViewContainer"], .main{
@@ -447,13 +444,9 @@ def check_app_password() -> bool:
     </style>
     """, unsafe_allow_html=True)
 
-    # Margen superior sólo en la pantalla de login
     st.markdown("<div style='margin-top:7vh;'></div>", unsafe_allow_html=True)
 
-    # Columnas generales con espaciador a la izquierda
     space_col, col1, col2 = st.columns([0.20, 0.55, 0.35])
-        
-    # Columna izquierda: título + subcolumna
     with space_col:
         st.write("")
     with col1:
@@ -462,11 +455,9 @@ def check_app_password() -> bool:
         form_col, _ = st.columns([0.66, 0.60])
         with form_col:
             st.markdown("<div class='eni-login-form'>", unsafe_allow_html=True)
-
             st.markdown("<div class='eni-hero-pill'>GESTIÓN DE TAREAS ENI 2025</div>", unsafe_allow_html=True)
             st.write("")
 
-            # 👉 Lista desplegable: ¿Quién está editando?
             editor_options = [
                 "Brayan Pisfil 😎",
                 "Elizabet Cama 🌸",
@@ -495,7 +486,6 @@ def check_app_password() -> bool:
 
             pwd = st.text_input("Ingresa la contraseña", type="password", key="eni_pwd")
 
-            # Botón ENTRAR
             if st.button("ENTRAR", use_container_width=True):
                 if pwd == APP_PASSWORD:
                     st.session_state["password_ok"] = True
@@ -507,7 +497,6 @@ def check_app_password() -> bool:
                     is_enrique_login = any(t in name_lower for t in ("enrique", "kike", "oyola"))
                     st.session_state["is_247_user"] = bool(is_vivi_login or is_enrique_login)
 
-                    # 💡 Guardamos también el nombre en la URL (u=...)
                     try:
                         st.query_params["auth"] = "1"
                         st.query_params["u"] = editor_name
@@ -520,11 +509,9 @@ def check_app_password() -> bool:
 
             st.markdown("</div>", unsafe_allow_html=True)
 
-    # Columna derecha: héroe animado (video autoplay sin controles) o logo como respaldo
     with col2:
         hero_video = Path("assets/hero.mp4")
         logo_img   = Path("assets/branding/eni2025_logo.png")
-
         if hero_video.exists():
             with open(hero_video, "rb") as f:
                 data = f.read()
@@ -562,7 +549,6 @@ except Exception as _e:
     st.error("No pude cargar el archivo de roles. Verifica data/security/roles.xlsx.")
     st.stop()
 
-# --- AJUSTE: forzar is_active y can_edit_all_tabs para esta sesión ---
 def _to_bool(v):
     if isinstance(v, bool):
         return v
@@ -574,16 +560,13 @@ def _to_bool(v):
 if user_acl is None:
     user_acl = {}
 
-# Normaliza (por si vienen como VERDADERO/FALSO o Sí/No desde Excel)
 for _k in ("is_active", "can_edit_all_tabs"):
     if _k in user_acl:
         user_acl[_k] = _to_bool(user_acl[_k])
 
-# Fuerza flags para esta sesión
 user_acl["is_active"] = True
 user_acl["can_edit_all_tabs"] = True
 
-# Refleja también en roles_df en memoria (útil para otras vistas)
 try:
     _roles_df = st.session_state.get("roles_df")
     if isinstance(_roles_df, pd.DataFrame):
@@ -594,9 +577,7 @@ try:
             st.session_state["roles_df"] = _roles_df
 except Exception:
     pass
-# --- FIN AJUSTE ---
 
-# 🔓 Control de acceso base (sin restricciones de fin de semana)
 if not user_acl or not user_acl.get("is_active", False):
     st.error("No tienes acceso (usuario no registrado o inactivo).")
     st.stop()
@@ -666,7 +647,6 @@ TAB_KEY_BY_SECTION = {
     "Dashboard": "dashboard",
 }
 
-# 🔗 Mapa tarjeta -> módulo de vista
 TILE_TO_VIEW_MODULE = {
     "nueva_tarea": "features.nueva_tarea.view",
     "editar_estado": "features.editar_estado.view",
@@ -711,7 +691,6 @@ with st.sidebar:
 # ============ Datos ============
 ensure_df_main()
 
-# Helper para tarjetas rápidas con icono y link clicable
 def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str:
     display_name = st.session_state.get("user_display_name", "Usuario")
     u_param = quote(display_name, safe="")
@@ -730,7 +709,6 @@ def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str
     </a>
     """
 
-# Leer query param "tile" (para saber qué tarjeta se pulsó)
 tile = ""
 try:
     params = st.query_params
@@ -752,16 +730,13 @@ if tile:
 else:
     tile = st.session_state.get("home_tile", "")
 
-# ============ UI principal ============
 section = st.session_state.get("nav_section", DEFAULT_SECTION)
 tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
 
 if section == "Gestión de tareas":
     dn = st.session_state.get("user_display_name", "Usuario")
-    # Iniciales para el circulito (ej. "VS")
     initials = "".join([p[0] for p in dn.split() if p])[:2].upper()
 
-    # Barra superior blanca tipo app de música
     st.markdown(
         f"""
         <div class="eni-main-topbar">
@@ -775,7 +750,6 @@ if section == "Gestión de tareas":
         unsafe_allow_html=True,
     )
 
-    # Card blanco con cabecera amarilla
     st.markdown(
         f"""
         <div class="eni-main-card">
@@ -790,10 +764,8 @@ if section == "Gestión de tareas":
         unsafe_allow_html=True,
     )
 
-    # Layout principal: izquierda contenido, derecha panel de accesos
     col_left, col_right = st.columns([2.3, 1.3])
 
-    # Panel derecho: tarjetas en 2 columnas
     with col_right:
         st.markdown(
             """
@@ -866,7 +838,6 @@ if section == "Gestión de tareas":
 
         st.markdown("</div></div>", unsafe_allow_html=True)
 
-    # Panel izquierdo: contenido de la vista seleccionada
     with col_left:
         if tile:
             pretty = tile.replace("_", " ").capitalize()
@@ -880,7 +851,6 @@ if section == "Gestión de tareas":
             if module_path:
                 try:
                     view_module = importlib.import_module(module_path)
-                    # Intentar usar `render`; si no existe, probar `render_all`
                     render_fn = getattr(view_module, "render", None)
                     if render_fn is None:
                         render_fn = getattr(view_module, "render_all", None)
@@ -903,7 +873,6 @@ if section == "Gestión de tareas":
                 unsafe_allow_html=True,
             )
 
-    # Cerramos el div del card principal
     st.markdown("</div>", unsafe_allow_html=True)
 
 elif section == "Kanban":
