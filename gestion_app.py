@@ -19,8 +19,8 @@ def _fallback_ensure_df_main():
         return
 
     # columnas mínimas (mismas que vienes usando)
-    base_cols = ["Id", "Área", "Responsable", "Tarea", "Prioridad",
-                 "Evaluación", "Fecha inicio", "__DEL__"]
+    base_cols = ["Id","Área","Responsable","Tarea","Prioridad",
+                 "Evaluación","Fecha inicio","__DEL__"]
     try:
         if os.path.exists(path) and os.path.getsize(path) > 0:
             df = pd.read_csv(path, encoding="utf-8-sig")
@@ -37,7 +37,6 @@ def _fallback_ensure_df_main():
         df["Calificación"] = pd.to_numeric(df["Calificación"], errors="coerce").fillna(0).astype(int)
 
     st.session_state["df_main"] = df
-
 
 try:
     _shared = importlib.import_module("shared")
@@ -69,9 +68,7 @@ st.set_page_config(
 patch_streamlit_aggrid()
 inject_global_css()
 
-# 👉 Estilos específicos globales (sidebar, layout general)
-st.markdown(
-    """
+st.markdown("""
 <style>
   .eni-banner{
     margin:6px 0 14px;
@@ -115,10 +112,10 @@ st.markdown(
     overflow-y:hidden !important;
   }
 
-  /* Subir un poquito el contenido principal */
+  /* Layout principal */
   html body [data-testid="stAppViewContainer"] .main .block-container{
-    padding-top: 0.5rem !important;
-    margin-top: 0rem !important;
+    padding-top:0.5rem !important;
+    margin-top:0rem !important;
   }
 
   /* Ocultar header nativo de Streamlit */
@@ -138,7 +135,7 @@ st.markdown(
   }
   section[data-testid="stSidebar"] [data-testid="stRadio"] label span:first-child{
     font-size:1.15rem !important;
-    color:#6B7280 !important;
+    color:#6B7280 !important;  /* gris icono */
   }
   section[data-testid="stSidebar"] [data-testid="stRadio"] label p{
     margin-bottom:0px !important;
@@ -151,7 +148,7 @@ st.markdown(
     margin-bottom: 1.0rem;
   }
   .eni-main-hero-label{
-    font-size:0.95rem;
+    font-size:1.05rem;
     font-weight:800;
     color:#4B5563;
     margin-bottom:0.25rem;
@@ -194,43 +191,24 @@ st.markdown(
     text-align:left;
     white-space:normal;
   }
-  .eni-home-card-title{
-    font-weight:700;
-    font-size:0.98rem;
-    margin-bottom:4px;
-  }
-  .eni-home-card-sub{
-    font-size:0.85rem;
-    color:#6B7280;
-  }
-  .eni-home-card-icon{
-    font-size:1.75rem;
-    margin-left:12px;
-    line-height:1;
-  }
-
-  /* Ocultar el texto nativo del botón (usaremos el help para el contenido) */
+  /* Texto dentro de la tarjeta */
   .eni-home-cards [data-testid="stButton"] > button div p{
-    font-size:0;  /* truco: el texto visible vendrá en el atributo title */
+    font-size:0.95rem;
+    line-height:1.4;
+    white-space:pre-line;  /* respeta salto de línea \\n */
   }
 </style>
-""",
-    unsafe_allow_html=True,
-)
+""", unsafe_allow_html=True)
 
 # ============ AUTENTICACIÓN POR CONTRASEÑA ============
 APP_PASSWORD = "Inei2025$"
 
-
 def check_app_password() -> bool:
     """
-    Portada tipo hero: BIEN VENIDOS + píldora celeste + campo de contraseña.
-    Si la contraseña es correcta, marca password_ok y crea un usuario genérico.
+    Portada tipo hero: BIENVENIDOS + píldora + contraseña.
     """
 
-    # 🎨 Estilos para título, píldora, botón ENTRAR jade y espaciado de inputs
-    st.markdown(
-        """
+    st.markdown("""
     <style>
       .eni-hero-title{
         font-size:77px;
@@ -252,8 +230,6 @@ def check_app_password() -> bool:
         margin-bottom:10px;
         white-space:nowrap;
       }
-
-      /* Botón ENTRAR */
       [data-testid="stAppViewContainer"] .main .stButton > button{
         background:#8FD9C1 !important;
         color:#FFFFFF !important;
@@ -266,7 +242,6 @@ def check_app_password() -> bool:
       [data-testid="stAppViewContainer"] .main .stButton > button:hover{
         filter:brightness(0.97);
       }
-
       .eni-login-form [data-testid="stSelectbox"]{
         margin-bottom:0.0rem !important;
       }
@@ -274,25 +249,18 @@ def check_app_password() -> bool:
         margin-top:-0.45rem !important;
       }
     </style>
-    """,
-        unsafe_allow_html=True,
-    )
+    """, unsafe_allow_html=True)
 
-    # ✅ Si ya pasó la contraseña, no mostramos login otra vez
     if st.session_state.get("password_ok", False):
         return True
 
-    # 🔒 Ocultar scroll solo en la pantalla de login
-    st.markdown(
-        """
+    st.markdown("""
     <style>
       html, body, [data-testid="stAppViewContainer"], .main{
         overflow: hidden !important;
       }
     </style>
-    """,
-        unsafe_allow_html=True,
-    )
+    """, unsafe_allow_html=True)
 
     st.markdown("<div style='margin-top:7vh;'></div>", unsafe_allow_html=True)
 
@@ -302,19 +270,13 @@ def check_app_password() -> bool:
         st.write("")
 
     with col1:
-        st.markdown(
-            "<div class='eni-hero-title'>BIEN<br>VENIDOS</div>",
-            unsafe_allow_html=True,
-        )
+        st.markdown("<div class='eni-hero-title'>BIEN<br>VENIDOS</div>", unsafe_allow_html=True)
 
         form_col, _ = st.columns([0.66, 0.60])
         with form_col:
             st.markdown("<div class='eni-login-form'>", unsafe_allow_html=True)
 
-            st.markdown(
-                "<div class='eni-hero-pill'>GESTIÓN DE TAREAS ENI 2025</div>",
-                unsafe_allow_html=True,
-            )
+            st.markdown("<div class='eni-hero-pill'>GESTIÓN DE TAREAS ENI 2025</div>", unsafe_allow_html=True)
             st.write("")
 
             editor_options = [
@@ -343,9 +305,7 @@ def check_app_password() -> bool:
             )
             st.session_state["user_display_name"] = editor_name
 
-            pwd = st.text_input(
-                "Ingresa la contraseña", type="password", key="eni_pwd"
-            )
+            pwd = st.text_input("Ingresa la contraseña", type="password", key="eni_pwd")
 
             if st.button("ENTRAR", use_container_width=True):
                 if pwd == APP_PASSWORD:
@@ -360,7 +320,7 @@ def check_app_password() -> bool:
 
     with col2:
         hero_video = Path("assets/hero.mp4")
-        logo_img = Path("assets/branding/eni2025_logo.png")
+        logo_img   = Path("assets/branding/eni2025_logo.png")
 
         if hero_video.exists():
             with open(hero_video, "rb") as f:
@@ -383,16 +343,11 @@ def check_app_password() -> bool:
 
     return False
 
-
-# Si no pasó la contraseña, no seguimos con la app
 if not check_app_password():
     st.stop()
 
 # ============ AUTENTICACIÓN (usuario genérico) ============
-email = (
-    st.session_state.get("user_email")
-    or (st.session_state.get("user") or {}).get("email", "eni2025@app")
-)
+email = st.session_state.get("user_email") or (st.session_state.get("user") or {}).get("email", "eni2025@app")
 
 # ============ Carga de ROLES / ACL ============
 try:
@@ -403,7 +358,6 @@ except Exception as _e:
     st.error("No pude cargar el archivo de roles. Verifica data/security/roles.xlsx.")
     st.stop()
 
-
 def _to_bool(v):
     if isinstance(v, bool):
         return v
@@ -411,7 +365,6 @@ def _to_bool(v):
         return False
     s = str(v).strip().lower()
     return s in ("true", "verdadero", "sí", "si", "1", "x", "y")
-
 
 if user_acl is None:
     user_acl = {}
@@ -443,28 +396,21 @@ if not _ok:
     st.info(_msg)
     st.stop()
 
-# Hidratar sesión básica de usuario
 st.session_state["acl_user"] = user_acl
-st.session_state["user_display_name"] = (
-    st.session_state.get("user_display_name")
-    or user_acl.get("display_name", email or "Usuario")
-)
+st.session_state["user_display_name"] = st.session_state.get("user_display_name") or user_acl.get("display_name", email or "Usuario")
 st.session_state["user_dry_run"] = bool(user_acl.get("dry_run", False))
 st.session_state["save_scope"] = user_acl.get("save_scope", "all")
 
 display_name = st.session_state["user_display_name"]
 
-# ========= Hook "maybe_save" + Google Sheets ==========
+# ========= Hook "maybe_save" + Google Sheets =========
 def _push_gsheets(df: pd.DataFrame):
     if "gsheets" not in st.secrets or "gcp_service_account" not in st.secrets:
         raise KeyError("Faltan 'gsheets' o 'gcp_service_account' en secrets.")
     import gspread
     from google.oauth2.service_account import Credentials
-
     scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-    creds = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"], scopes=scopes
-    )
+    creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scopes)
     gc = gspread.authorize(creds)
     ss = gc.open_by_url(st.secrets["gsheets"]["spreadsheet_url"])
     ws_name = st.secrets["gsheets"].get("worksheet", "TareasRecientes")
@@ -479,15 +425,11 @@ def _push_gsheets(df: pd.DataFrame):
     ws.clear()
     ws.update("A1", values)
 
-
 def _maybe_save_chain(persist_local_fn, df: pd.DataFrame):
     res = acl.maybe_save(user_acl, persist_local_fn, df)
     try:
         if st.session_state.get("user_dry_run", False):
-            res["msg"] = (
-                res.get("msg", "")
-                + " | DRY-RUN: no se sincronizó Google Sheets."
-            )
+            res["msg"] = res.get("msg", "") + " | DRY-RUN: no se sincronizó Google Sheets."
             return res
         _push_gsheets(df)
         res["msg"] = res.get("msg", "") + " | Sincronizado a Google Sheets."
@@ -495,24 +437,14 @@ def _maybe_save_chain(persist_local_fn, df: pd.DataFrame):
         res["msg"] = res.get("msg", "") + f" | GSheets error: {e}"
     return res
 
-
 st.session_state["maybe_save"] = _maybe_save_chain
 
 # ====== Logout local ======
 def logout():
-    for k in (
-        "user",
-        "user_email",
-        "password_ok",
-        "acl_user",
-        "auth_ok",
-        "nav_section",
-        "roles_df",
-        "selected_home_view",
-    ):
+    for k in ("user", "user_email", "password_ok", "acl_user",
+              "auth_ok", "nav_section", "roles_df", "selected_home_view"):
         st.session_state.pop(k, None)
     st.rerun()
-
 
 # Mapeo de claves de pestaña para permisos
 TAB_KEY_BY_SECTION = {
@@ -521,14 +453,11 @@ TAB_KEY_BY_SECTION = {
     "📅 Gantt": "gantt",
     "📊 Dashboard": "dashboard",
 }
-
-
 def render_if_allowed(tab_key: str, render_fn):
     if acl.can_see_tab(user_acl, tab_key):
         render_fn()
     else:
         st.warning("No tienes permiso para esta sección.")
-
 
 # ============ Sidebar ============
 with st.sidebar:
@@ -537,22 +466,22 @@ with st.sidebar:
         st.image(str(LOGO_PATH), width=120)
         st.markdown("</div>", unsafe_allow_html=True)
 
-    st.markdown(
-        "<div class='eni-banner'>Esta es la plataforma unificada para gestión - ENI2025</div>",
-        unsafe_allow_html=True,
-    )
+    st.markdown("<div class='eni-banner'>Esta es la plataforma unificada para gestión - ENI2025</div>", unsafe_allow_html=True)
 
-    nav_labels = ["📘 Gestión de tareas", "🗂️ Kanban", "📅 Gantt", "📊 Dashboard"]
-    default_idx = nav_labels.index(
-        st.session_state.get("nav_section", "📘 Gestión de tareas")
-    )
+    nav_labels = ["📘 Gestión de tareas","🗂️ Kanban","📅 Gantt","📊 Dashboard"]
+    current_section = st.session_state.get("nav_section", "📘 Gestión de tareas")
+    # 🔧 Fix ValueError: si quedó algo viejo en sesión, volvemos a 'Gestión de tareas'
+    if current_section not in nav_labels:
+        current_section = "📘 Gestión de tareas"
+    default_idx = nav_labels.index(current_section)
+
     st.radio(
         "Navegación",
         nav_labels,
         index=default_idx,
         label_visibility="collapsed",
         key="nav_section",
-        horizontal=False,
+        horizontal=False
     )
 
     st.divider()
@@ -570,8 +499,7 @@ tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
 
 if section == "📘 Gestión de tareas":
     # ---- Hero principal ----
-    st.markdown(
-        f"""
+    st.markdown(f"""
     <div class="eni-main-hero">
       <div class="eni-main-hero-label"><strong>Bienvenid@</strong></div>
       <div class="eni-main-hero-card">
@@ -579,9 +507,7 @@ if section == "📘 Gestión de tareas":
         <div class="eni-main-hero-sub">A la plataforma unificada Gestión - ENI2025</div>
       </div>
     </div>
-    """,
-        unsafe_allow_html=True,
-    )
+    """, unsafe_allow_html=True)
 
     # ---- Tarjetas de inicio (6 tarjetas, 3 x fila) ----
     selected_view = st.session_state.get("selected_home_view", "Nueva tarea")
@@ -591,45 +517,41 @@ if section == "📘 Gestión de tareas":
     # Fila 1
     col1, col2, col3 = st.columns(3)
     with col1:
-        label = "Nueva tarea\nRegistrar una nueva tarea asignada."
-        if st.button(" ", key="card_nueva_tarea", help=label):
+        label = "Nueva tarea 📝\nRegistrar una nueva tarea asignada."
+        if st.button(label, key="card_nueva_tarea"):
             st.session_state["selected_home_view"] = "Nueva tarea"
             selected_view = "Nueva tarea"
     with col2:
-        label = "Editar estado\nActualizar fases y fechas de las tareas."
-        if st.button(" ", key="card_editar_estado", help=label):
+        label = "Editar estado ✏️\nActualizar fases y fechas de las tareas."
+        if st.button(label, key="card_editar_estado"):
             st.session_state["selected_home_view"] = "Editar estado"
             selected_view = "Editar estado"
     with col3:
-        label = "Nueva alerta\nRegistrar alertas y riesgos prioritarios."
-        if st.button(" ", key="card_nueva_alerta", help=label):
+        label = "Nueva alerta ⚠️\nRegistrar alertas y riesgos prioritarios."
+        if st.button(label, key="card_nueva_alerta"):
             st.session_state["selected_home_view"] = "Nueva alerta"
             selected_view = "Nueva alerta"
 
     # Fila 2
     col4, col5, col6 = st.columns(3)
     with col4:
-        label = "Prioridad\nRevisar y ajustar la prioridad de tareas."
-        if st.button(" ", key="card_prioridad", help=label):
+        label = "Prioridad ⭐\nRevisar y ajustar la prioridad de tareas."
+        if st.button(label, key="card_prioridad"):
             st.session_state["selected_home_view"] = "Prioridad"
             selected_view = "Prioridad"
     with col5:
-        label = (
-            "Evaluación y cumplimiento\n"
-            "Calificar avances y visualizar el nivel de cumplimiento."
-        )
-        if st.button(" ", key="card_eval_cump", help=label):
+        label = "Evaluación y cumplimiento 📊\nCalificar avances y visualizar el nivel de cumplimiento."
+        if st.button(label, key="card_eval_cump"):
             st.session_state["selected_home_view"] = "Evaluación y cumplimiento"
             selected_view = "Evaluación y cumplimiento"
     with col6:
-        label = "Tareas recientes\nResumen de las últimas tareas actualizadas."
-        if st.button(" ", key="card_tareas_recientes", help=label):
+        label = "Tareas recientes ⏱️\nResumen de las últimas tareas actualizadas."
+        if st.button(label, key="card_tareas_recientes"):
             st.session_state["selected_home_view"] = "Tareas recientes"
             selected_view = "Tareas recientes"
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Texto guía mientras conectamos las vistas reales
     st.write("")
     st.caption(
         f"Vista seleccionada: **{selected_view}** "
@@ -638,37 +560,29 @@ if section == "📘 Gestión de tareas":
 
 elif section == "🗂️ Kanban":
     st.title("🗂️ Kanban")
-
     def _render_kanban():
         try:
             from features.kanban.view import render as render_kanban
-
             render_kanban(st.session_state.get("user"))
         except Exception as e:
             st.info("Vista Kanban pendiente (features/kanban/view.py).")
             st.exception(e)
-
     render_if_allowed(tab_key, _render_kanban)
 
 elif section == "📅 Gantt":
     st.title("📅 Gantt")
-
     def _render_gantt():
         try:
             from features.gantt.view import render as render_gantt
-
             render_gantt(st.session_state.get("user"))
         except Exception as e:
             st.info("Vista Gantt pendiente (features/gantt/view.py).")
             st.exception(e)
-
     render_if_allowed(tab_key, _render_gantt)
 
 else:
     st.title("📊 Dashboard")
-
     def _render_dashboard():
         st.caption("Próximamente: visualizaciones y KPIs del dashboard.")
         st.write("")
-
     render_if_allowed(tab_key, _render_dashboard)
