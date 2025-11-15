@@ -77,6 +77,15 @@ st.markdown("""
     background-color:#ECEAF7;
   }
 
+  /* ==== Contenedor central sin padding lateral para que la cabecera ocupe todo ==== */
+  html body [data-testid="stAppViewContainer"] .main .block-container{
+    padding-top:0rem !important;
+    padding-left:0rem !important;
+    padding-right:0rem !important;
+    margin-top:0rem !important;
+    background:transparent;
+  }
+
   .eni-banner{
     margin:6px 0 14px;
     font-weight:400;
@@ -92,7 +101,7 @@ st.markdown("""
     display:flex;
     align-items:center;
     justify-content:space-between;
-    margin:0 -1.5rem 12px -1.5rem; /* se estira a los lados */
+    margin:0 0 12px 0;  /* sin márgenes laterales, ocupa todo el ancho del contenido */
     box-shadow:0 12px 26px rgba(15,23,42,0.10);
   }
   .eni-main-topbar-title{
@@ -129,7 +138,7 @@ st.markdown("""
     margin-top:0;
   }
 
-  /* ===== Sidebar blanca tipo app de música ===== */
+  /* ===== Sidebar blanca ===== */
   section[data-testid="stSidebar"] .stButton > button{
     border-radius:8px !important;
     font-weight:600 !important;
@@ -216,13 +225,6 @@ st.markdown("""
     visibility: hidden;
   }
 
-  /* bloque central sin fondo blanco total */
-  html body [data-testid="stAppViewContainer"] .main .block-container{
-    padding-top: 0rem !important;
-    margin-top: -1rem !important;
-    background:transparent;
-  }
-
   .eni-main-layout{
     margin-top:6px;
   }
@@ -272,6 +274,7 @@ st.markdown("""
     flex-direction:column;
     justify-content:space-between;
     transition:all .15s ease-in-out;
+    overflow:hidden; /* para que los iconos NO se salgan */
   }
   .eni-quick-card-main{
     display:flex;
@@ -294,9 +297,10 @@ st.markdown("""
     margin-top:4px;
   }
   .eni-quick-card-icon{
-    font-size:20px;
+    font-size:18px;
     align-self:flex-end;
-    margin-top:6px;
+    margin-top:auto;
+    padding-bottom:2px;
   }
   .eni-quick-card-link:hover .eni-quick-card{
     box-shadow:0 14px 30px rgba(148,163,184,0.55);
@@ -317,7 +321,7 @@ st.markdown("""
     background:#6EE7B7;  /* verde pastel */
   }
 
-  /* ===== Tarjetas blancas inferiores (solo visual) ===== */
+  /* ===== Tarjetas blancas inferiores (dos grandes) ===== */
   .eni-bottom-row{
     display:grid;
     grid-template-columns:repeat(2,minmax(0,1fr));
@@ -327,7 +331,7 @@ st.markdown("""
   .eni-bottom-card{
     background:#FFFFFF;
     border-radius:20px;
-    min-height:120px;
+    min-height:140px;
     box-shadow:0 10px 26px rgba(148,163,184,0.18);
   }
 
@@ -346,20 +350,6 @@ st.markdown("""
     font-weight:600;
     color:#4B5563;
     margin-bottom:10px;
-  }
-
-  /* ===== Panel derecho gris (no usado) ===== */
-  .eni-right-panel{
-    background:#F3F4F6;
-    border-radius:24px;
-    padding:14px 14px 10px 14px;
-    box-shadow:0 10px 25px rgba(15,23,42,0.08);
-  }
-  .eni-right-panel-title{
-    font-size:12px;
-    font-weight:600;
-    color:#4B5563;
-    margin-bottom:8px;
   }
 
 </style>
@@ -820,7 +810,7 @@ if section == "Gestión de tareas":
         )
         st.markdown(cards_html, unsafe_allow_html=True)
 
-        # Dos tarjetas blancas inferiores solo decorativas
+        # Dos tarjetas blancas inferiores decorativas
         st.markdown(
             """
             <div class="eni-bottom-row">
@@ -862,17 +852,10 @@ if section == "Gestión de tareas":
                     st.info("No se pudo cargar la vista para esta tarjeta.")
                     st.exception(e)
         else:
-            # SIN título "Panel de trabajo", solo el texto guía
-            st.markdown(
-                "<p style='font-size:12px;color:#6B7280;'>"
-                "Selecciona una tarjeta de la izquierda para empezar."
-                "</p>",
-                unsafe_allow_html=True,
-            )
+            # Ya NO mostramos texto "Selecciona una tarjeta..."
+            st.write("")
 
-        # Nota: no cerramos el div explícitamente para evitar que se muestre </div> como texto
-
-    # Tampoco cerramos eni-main-card con un </div> suelto para evitar texto </div>
+        # No añadimos ningún `</div>` suelto aquí
 
 # ============ Otras secciones ============
 elif section == "Kanban":
