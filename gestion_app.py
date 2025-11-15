@@ -92,15 +92,14 @@ st.markdown("""
     background-color:#F5F6FB !important;
   }
   div[data-testid="stSidebar"]{
-    min-width:220px !important;
-    max-width:220px !important;
+    min-width:190px !important;
+    max-width:190px !important;
   }
 
-  /* 🔼 Subir un poquito el contenido principal (BIEN VENIDOS + píldora + inputs)
-     👉 MUEVES EL BLOQUE LETRAS + INPUTS: cambia -1rem */
+  /* 🔼 Subir un poquito el contenido principal */
   html body [data-testid="stAppViewContainer"] .main .block-container{
     padding-top: 0rem !important;
-    margin-top: -1rem !important;  /* antes -2rem */
+    margin-top: -1rem !important;
   }
 
   /* 🔼 Comprimir header para que no deje espacio arriba */
@@ -137,6 +136,78 @@ st.markdown("""
   /* opciones no seleccionadas */
   section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="false"]{
     color:#4B5563 !important;
+  }
+
+  /* Ocultar barras de scroll visualmente pero permitir scroll */
+  *::-webkit-scrollbar{
+    width:0px;
+    height:0px;
+  }
+
+  /* ===== Hero principal en la vista Gestión de tareas ===== */
+  .eni-main-hero{
+    background:#E5D4FF;
+    border-radius:24px;
+    padding:18px 24px;
+    margin-bottom:18px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .eni-main-hero-left-title{
+    font-size:14px;
+    font-weight:600;
+    color:#4B5563;
+  }
+  .eni-main-hero-left-name{
+    font-size:24px;
+    font-weight:800;
+    color:#4C1D95;
+    margin:2px 0 6px 0;
+  }
+  .eni-main-hero-left-sub{
+    font-size:13px;
+    color:#4B5563;
+    margin:0;
+  }
+  .eni-main-hero-avatar{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .eni-main-hero-circle{
+    width:64px;
+    height:64px;
+    border-radius:999px;
+    background:#F5F3FF;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:28px;
+    font-weight:800;
+    color:#4C1D95;
+    box-shadow:0 8px 20px rgba(76,29,149,0.18);
+  }
+
+  /* ===== Tarjetas rápidas (7 rectángulos) ===== */
+  .eni-quick-card{
+    background:#FFFFFF;
+    border-radius:18px;
+    padding:16px 18px;
+    box-shadow:0 8px 20px rgba(148,163,184,.18);
+    border:1px solid #E5E7EB;
+    height:100%;
+  }
+  .eni-quick-card-title{
+    font-size:14px;
+    font-weight:700;
+    color:#111827;
+    margin-bottom:4px;
+  }
+  .eni-quick-card-sub{
+    font-size:12px;
+    color:#6B7280;
+    margin:0;
   }
 </style>
 """, unsafe_allow_html=True)
@@ -425,8 +496,6 @@ with st.sidebar:
         st.image(str(LOGO_PATH), width=120)
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # (se quita el texto de plataforma y el encabezado "Secciones")
-
     nav_labels = ["📘 Gestión de tareas","🗂️ Kanban","📅 Gantt","📊 Dashboard"]
     default_idx = nav_labels.index(st.session_state.get("nav_section", "📘 Gestión de tareas"))
     nav_choice = st.radio(
@@ -439,9 +508,8 @@ with st.sidebar:
     )
 
     st.divider()
-    # 👉 Usar el nombre elegido en el login (sin mostrar el correo)
+    # 👉 Usar el nombre elegido en el login (sin avatar grande ni correo)
     display_name = st.session_state.get("user_display_name") or user_acl.get("display_name", "Usuario")
-    show_user_avatar_from_session(size=150)
     st.markdown(f"👋 **Hola, {display_name}**")
     if st.button("🔒 Cerrar sesión", use_container_width=True):
         logout()
@@ -449,12 +517,65 @@ with st.sidebar:
 # ============ Datos ============
 ensure_df_main()
 
+# Helper para tarjetas rápidas
+def _quick_card(title: str, subtitle: str) -> str:
+    return f"""
+    <div class="eni-quick-card">
+      <div class="eni-quick-card-title">{title}</div>
+      <p class="eni-quick-card-sub">{subtitle}</p>
+    </div>
+    """
+
 # ============ UI principal ============
 section = st.session_state.get("nav_section", "📘 Gestión de tareas")
 tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
 
 if section == "📘 Gestión de tareas":
     st.title("📘 Gestión de tareas")
+
+    # ---- Cabecera central lila (Bienvenid@ + nombre) ----
+    dn = st.session_state.get("user_display_name", "Usuario")
+    inicial = (dn.strip()[:1] or "U").upper()
+
+    st.markdown(f"""
+    <div class="eni-main-hero">
+      <div class="eni-main-hero-left">
+        <div class="eni-main-hero-left-title">Bienvenid@</div>
+        <div class="eni-main-hero-left-name">{dn}</div>
+        <p class="eni-main-hero-left-sub">
+          A la plataforma unificada para gestión - ENI2025
+        </p>
+      </div>
+      <div class="eni-main-hero-avatar">
+        <div class="eni-main-hero-circle">{inicial}</div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ---- 7 rectángulos: 3 + 3 + 1 ----
+    col_a1, col_a2, col_a3 = st.columns(3)
+    with col_a1:
+        st.markdown(_quick_card("Nueva tarea", "Registrar una nueva tarea asignada."), unsafe_allow_html=True)
+    with col_a2:
+        st.markdown(_quick_card("Editar estado", "Actualizar fases y fechas de las tareas."), unsafe_allow_html=True)
+    with col_a3:
+        st.markdown(_quick_card("Nueva alerta", "Registrar alertas y riesgos prioritarios."), unsafe_allow_html=True)
+
+    col_b1, col_b2, col_b3 = st.columns(3)
+    with col_b1:
+        st.markdown(_quick_card("Prioridad", "Revisar y ajustar la prioridad de tareas."), unsafe_allow_html=True)
+    with col_b2:
+        st.markdown(_quick_card("Evaluación", "Calificar la evaluación de avances."), unsafe_allow_html=True)
+    with col_b3:
+        st.markdown(_quick_card("Cumplimiento", "Visualizar el nivel de cumplimiento."), unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown(
+        _quick_card("Tareas recientes", "Resumen de las últimas tareas actualizadas."),
+        unsafe_allow_html=True
+    )
+
+    # ---- Vista de gestión de tareas existente ----
     st.markdown('<div class="eni-gestion-wrap">', unsafe_allow_html=True)
 
     def _render_gestion():
