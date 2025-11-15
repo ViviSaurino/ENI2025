@@ -470,39 +470,40 @@ except Exception:
     pass
 # --- FIN AJUSTE ---
 
-# 🔓 Override 24/7 para Vivian Saurino y Enrique Oyola
+# 🔓 Control de acceso 24/7 basado solo en el nombre elegido (sin correos)
 if not user_acl or not user_acl.get("is_active", False):
     st.error("No tienes acceso (usuario no registrado o inactivo).")
     st.stop()
 
-display_name = (
-    st.session_state.get("user_display_name")
-    or user_acl.get("display_name", "")
-    or (email or "")
-)
-dn_lower = display_name.lower()
+# Tomamos lo que el usuario eligió en el login (con o sin emoji)
+editor_label = str(st.session_state.get("editor_name_login", "")).lower()
+user_display_name_session = str(st.session_state.get("user_display_name", "")).lower()
 
-is_247 = any(
-    key in dn_lower
-    for key in (
-        "vivian saurino",
-        "enrique oyola",
-    )
-)
+# Solo trabajamos con el nombre mostrado, nada de correos
+name_blob = f"{editor_label} {user_display_name_session}"
 
-if is_247:
-    _ok, _msg = True, ""
-else:
-    _ok, _msg = acl.can_access_now(user_acl)
+is_vivi = ("vivian" in name_blob and "saurino" in name_blob)
+is_enrique = ("enrique" in name_blob and "oyola" in name_blob)
+is_247 = is_vivi or is_enrique
 
-if not _ok:
-    st.info(_msg)
+# 📅 Bloqueo solo sábados (5) y domingos (6) para quienes NO son 24/7
+from datetime import datetime
+try:
+    import pytz
+    lima_tz = pytz.timezone("America/Lima")
+    weekday_today = datetime.now(lima_tz).weekday()
+except Exception:
+    weekday_today = datetime.now().weekday()
+
+if weekday_today in (5, 6) and not is_247:
+    st.info("Acceso restringido los sábados y domingos. Solo tienen acceso 24/7 Vivian Saurino y Enrique Oyola.")
     st.stop()
 
+# Si pasó el filtro, guardamos en session_state
 st.session_state["acl_user"] = user_acl
 st.session_state["user_display_name"] = (
     st.session_state.get("user_display_name")
-    or user_acl.get("display_name", email or "Usuario")
+    or user_acl.get("display_name", "Usuario")
 )
 st.session_state["user_dry_run"] = bool(user_acl.get("dry_run", False))
 st.session_state["save_scope"] = user_acl.get("save_scope", "all")
