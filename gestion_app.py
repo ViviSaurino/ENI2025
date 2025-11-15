@@ -93,7 +93,8 @@ st.markdown("""
     align-items:center;
     justify-content:space-between;
     margin-bottom:12px;
-    box-shadow:0 8px 18px rgba(15,23,42,0.08);
+    /* CAMBIO: sombra un poco más marcada */
+    box-shadow:0 12px 26px rgba(15,23,42,0.10);
   }
   .eni-main-topbar-title{
     font-size:14px;
@@ -170,7 +171,6 @@ st.markdown("""
     flex-direction:row;
     align-items:center;
   }
-  /* ocultar el circulito del radio */
   section[data-testid="stSidebar"] [data-baseweb="radio"] > div:first-child{
     display:none;
   }
@@ -206,25 +206,23 @@ st.markdown("""
     content:"📊";
   }
 
-  /* Ocultar barras de scroll visualmente pero permitir scroll */
   *::-webkit-scrollbar{
     width:0px;
     height:0px;
   }
 
-  /* Comprimir header para que no deje espacio arriba */
   header[data-testid="stHeader"]{
     height: 0px;
     padding: 0px;
     visibility: hidden;
   }
 
-  /* Subir un poquito el contenido principal 
-     ✅ AQUÍ EL CAMBIO: hacemos el bloque central BLANCO */
+  /* CAMBIO: quitamos fondo blanco al bloque central
+     para que se vea el plomo debajo de la card */
   html body [data-testid="stAppViewContainer"] .main .block-container{
     padding-top: 0rem !important;
     margin-top: -1rem !important;
-    background:#FFFFFF;
+    background:transparent;
   }
 
   /* ===== Barra amarilla dentro del card ===== */
@@ -319,7 +317,6 @@ st.markdown("""
     transform:translateY(-2px);
   }
 
-  /* Colores por tarjeta (tipo panel derecho del mockup) */
   .eni-quick-card--nueva_tarea{
     background:#FDE68A;
   }
@@ -345,16 +342,9 @@ st.markdown("""
 APP_PASSWORD = "Inei2025$"
 
 def check_app_password() -> bool:
-    """
-    Portada tipo hero: BIENVENIDOS + píldora celeste + campo de contraseña.
-    Si la contraseña es correcta, marca password_ok y crea un usuario genérico.
-    """
-
-    # ✅ Si ya pasó la contraseña en esta sesión, no mostramos login otra vez
     if st.session_state.get("password_ok", False):
         return True
 
-    # ✅ Auto-autenticación si viene con ?auth=1 en la URL (para cuando se hace clic en tarjetas)
     auth_flag = ""
     user_name_from_qs = ""
 
@@ -381,7 +371,6 @@ def check_app_password() -> bool:
             auth_flag = ""
             user_name_from_qs = ""
 
-    # Si viene el nombre en la URL, lo guardamos
     if user_name_from_qs:
         st.session_state["user_display_name"] = user_name_from_qs
 
@@ -392,7 +381,6 @@ def check_app_password() -> bool:
             st.session_state["user"] = {"email": "eni2025@app"}
         return True
 
-    # 🎨 Estilos para login (igual que antes) ...
     st.markdown("""
     <style>
       .eni-hero-title{
@@ -533,7 +521,6 @@ def check_app_password() -> bool:
 
     return False
 
-# Si no pasó la contraseña, no seguimos con la app
 if not check_app_password():
     st.stop()
 
