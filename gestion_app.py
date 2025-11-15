@@ -470,17 +470,40 @@ except Exception:
     pass
 # --- FIN AJUSTE ---
 
+# 🔓 Override 24/7 para Vivian Saurino y Enrique Oyola
 if not user_acl or not user_acl.get("is_active", False):
     st.error("No tienes acceso (usuario no registrado o inactivo).")
     st.stop()
 
-_ok, _msg = acl.can_access_now(user_acl)
+display_name = (
+    st.session_state.get("user_display_name")
+    or user_acl.get("display_name", "")
+    or (email or "")
+)
+dn_lower = display_name.lower()
+
+is_247 = any(
+    key in dn_lower
+    for key in (
+        "vivian saurino",
+        "enrique oyola",
+    )
+)
+
+if is_247:
+    _ok, _msg = True, ""
+else:
+    _ok, _msg = acl.can_access_now(user_acl)
+
 if not _ok:
     st.info(_msg)
     st.stop()
 
 st.session_state["acl_user"] = user_acl
-st.session_state["user_display_name"] = st.session_state.get("user_display_name") or user_acl.get("display_name", email or "Usuario")
+st.session_state["user_display_name"] = (
+    st.session_state.get("user_display_name")
+    or user_acl.get("display_name", email or "Usuario")
+)
 st.session_state["user_dry_run"] = bool(user_acl.get("dry_run", False))
 st.session_state["save_scope"] = user_acl.get("save_scope", "all")
 
