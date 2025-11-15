@@ -69,12 +69,12 @@ st.set_page_config(
 patch_streamlit_aggrid()
 inject_global_css()
 
-# 👉 Estilos específicos (sidebar lila, barra amarilla, card blanco y panel derecho)
+# 👉 Estilos específicos (sidebar + layout + topbar + tarjetas)
 st.markdown("""
 <style>
-  /* Fondo general plomo */
-  html, body, [data-testid="stAppViewContainer"] {
-    background-color: #E5E7EB;
+  /* ===== Fondo general gris clarito ===== */
+  html, body, [data-testid="stAppViewContainer"]{
+    background-color:#E5E7EB;
   }
 
   .eni-banner{
@@ -84,24 +84,52 @@ st.markdown("""
     color:#4B5563;
   }
 
-  /* Card principal blanco (amarillo arriba, contenido abajo) */
+  /* ===== TOP BAR BLANCA (tipo navbar) ===== */
+  .eni-main-topbar{
+    background:#FFFFFF;
+    padding:10px 24px;
+    border-radius:0 0 16px 16px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:12px;
+    box-shadow:0 8px 18px rgba(15,23,42,0.08);
+  }
+  .eni-main-topbar-title{
+    font-size:14px;
+    font-weight:600;
+    color:#111827;
+  }
+  .eni-main-topbar-user{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:13px;
+    color:#4B5563;
+  }
+  .eni-main-topbar-avatar{
+    width:32px;
+    height:32px;
+    border-radius:999px;
+    background:linear-gradient(135deg,#A855F7,#EC4899);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#FFFFFF;
+    font-weight:700;
+    font-size:14px;
+  }
+
+  /* ===== Card principal blanco (dentro del contenido) ===== */
   .eni-main-card{
     background:#FFFFFF;
     border-radius:24px;
     padding:0 18px 18px 18px;
     box-shadow:0 18px 40px rgba(15,23,42,0.15);
-    margin-top:12px;
+    margin-top:0;
   }
 
-  /* Sidebar lila tipo slider */
-  [data-testid="stSidebar"]{
-    overflow-y:hidden !important;
-    background: linear-gradient(180deg, #A855F7 0%, #7C3AED 100%) !important;
-    min-width:230px !important;
-    max-width:230px !important;
-    color:#E5E7EB !important;
-  }
-
+  /* ===== Sidebar blanca tipo app de música ===== */
   section[data-testid="stSidebar"] .stButton > button{
     border-radius:8px !important;
     font-weight:600 !important;
@@ -119,43 +147,51 @@ st.markdown("""
     gap:8px !important;
   }
 
-  /* Menú de secciones: icono grande arriba, texto pequeño abajo */
+  [data-testid="stSidebar"]{
+    overflow-y:hidden !important;
+    background:#FFFFFF !important;
+    min-width:230px !important;
+    max-width:230px !important;
+    color:#111827 !important;
+    border-right:1px solid #E5E7EB;
+  }
+
+  /* Menú de secciones: icono a la izquierda, texto a la derecha */
   section[data-testid="stSidebar"] .stRadio > div{
-    gap:12px !important;
+    gap:4px !important;
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"]{
-    margin-bottom:16px;
-    padding:10px 4px;
-    border-radius:20px;
+    margin-bottom:8px;
+    padding:8px 10px;
+    border-radius:12px;
     background:transparent;
     transition:all .15s ease-in-out;
     display:flex;
-    flex-direction:column;
+    flex-direction:row;
     align-items:center;
-    color:#E5E7EB !important;
   }
   /* ocultar el circulito del radio */
   section[data-testid="stSidebar"] [data-baseweb="radio"] > div:first-child{
     display:none;
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"] > div:last-child{
-    padding-left:0 !important;
-    text-align:center;
-    font-size:11px;
+    padding-left:6px !important;
+    font-size:13px;
     font-weight:500;
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="true"]{
-    background:rgba(255,255,255,0.20) !important;
-    box-shadow:0 6px 14px rgba(15,23,42,0.45);
+    background:#EEF2FF !important;
+    color:#4F46E5 !important;
+    box-shadow:none;
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="false"]{
-    color:#E5E7EB !important;
+    color:#4B5563 !important;
   }
 
-  /* Iconos del menú lateral (más grandes) */
+  /* Iconitos del menú lateral */
   section[data-testid="stSidebar"] [data-baseweb="radio"]::before{
-    font-size:22px;
-    margin:0 0 4px 0;
+    font-size:18px;
+    margin-right:8px;
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(1)::before{
     content:"📋";
@@ -189,12 +225,12 @@ st.markdown("""
     margin-top: -1rem !important;
   }
 
-  /* ===== Barra superior amarilla dentro del card blanco ===== */
+  /* ===== Barra amarilla dentro del card ===== */
   .eni-top-bar{
     background:#FACC15;
     border-radius:24px 24px 0 0;
     padding:18px 24px;
-    margin:0 -18px 16px -18px; /* que ocupe todo el ancho del card */
+    margin:0 -18px 16px -18px;
     display:flex;
     align-items:center;
     justify-content:space-between;
@@ -224,7 +260,7 @@ st.markdown("""
     margin-top:6px;
   }
 
-  /* Panel derecho gris */
+  /* ===== Panel derecho gris con tarjetas ===== */
   .eni-right-panel{
     background:#F3F4F6;
     border-radius:24px;
@@ -283,22 +319,22 @@ st.markdown("""
 
   /* Colores por tarjeta (tipo panel derecho del mockup) */
   .eni-quick-card--nueva_tarea{
-    background:#FDE68A;  /* amarillo suave */
+    background:#FDE68A;
   }
   .eni-quick-card--editar_estado{
-    background:#BFDBFE;  /* celeste */
+    background:#BFDBFE;
   }
   .eni-quick-card--nueva_alerta{
-    background:#FECACA;  /* rosado/rojo suave */
+    background:#FECACA;
   }
   .eni-quick-card--prioridad{
-    background:#FBCFE8;  /* rosado pastel */
+    background:#FBCFE8;
   }
   .eni-quick-card--evaluacion_cumplimiento{
-    background:#DDD6FE;  /* lila clarito */
+    background:#DDD6FE;
   }
   .eni-quick-card--tareas_recientes{
-    background:#BBF7D0;  /* verde menta suave */
+    background:#BBF7D0;
   }
 </style>
 """, unsafe_allow_html=True)
@@ -675,13 +711,14 @@ with st.sidebar:
 # ============ Datos ============
 ensure_df_main()
 
-# Helper para tarjetas rápidas con icono y link clicable (colores por tile)
+# Helper para tarjetas rápidas con icono y link clicable
 def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str:
     display_name = st.session_state.get("user_display_name", "Usuario")
     u_param = quote(display_name, safe="")
+    card_class = f"eni-quick-card eni-quick-card--{tile_key}"
     return f"""
     <a href="?auth=1&u={u_param}&tile={tile_key}" target="_self" class="eni-quick-card-link">
-      <div class="eni-quick-card eni-quick-card--{tile_key}">
+      <div class="{card_class}">
         <div class="eni-quick-card-main">
           <div class="eni-quick-card-text">
             <div class="eni-quick-card-title">{title}</div>
@@ -721,8 +758,24 @@ tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
 
 if section == "Gestión de tareas":
     dn = st.session_state.get("user_display_name", "Usuario")
+    # Iniciales para el circulito (ej. "VS")
+    initials = "".join([p[0] for p in dn.split() if p])[:2].upper()
 
-    # Card blanco que incluye barra amarilla + contenido
+    # Barra superior blanca tipo app de música
+    st.markdown(
+        f"""
+        <div class="eni-main-topbar">
+          <div class="eni-main-topbar-title">Dashboard</div>
+          <div class="eni-main-topbar-user">
+            <span>{dn}</span>
+            <div class="eni-main-topbar-avatar">{initials}</div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Card blanco con cabecera amarilla
     st.markdown(
         f"""
         <div class="eni-main-card">
@@ -740,7 +793,7 @@ if section == "Gestión de tareas":
     # Layout principal: izquierda contenido, derecha panel de accesos
     col_left, col_right = st.columns([2.3, 1.3])
 
-    # Panel derecho: tarjetas en 2 columnas (tipo mockup)
+    # Panel derecho: tarjetas en 2 columnas
     with col_right:
         st.markdown(
             """
@@ -755,47 +808,59 @@ if section == "Gestión de tareas":
 
         with c1:
             st.markdown(
-                _quick_card_link("Nueva tarea",
-                                 "Registrar una nueva tarea asignada.",
-                                 "📝",
-                                 "nueva_tarea"),
+                _quick_card_link(
+                    "Nueva tarea",
+                    "Registrar una nueva tarea asignada.",
+                    "📝",
+                    "nueva_tarea",
+                ),
                 unsafe_allow_html=True,
             )
             st.markdown(
-                _quick_card_link("Nueva alerta",
-                                 "Registrar alertas y riesgos prioritarios.",
-                                 "⚠️",
-                                 "nueva_alerta"),
+                _quick_card_link(
+                    "Nueva alerta",
+                    "Registrar alertas y riesgos prioritarios.",
+                    "⚠️",
+                    "nueva_alerta",
+                ),
                 unsafe_allow_html=True,
             )
             st.markdown(
-                _quick_card_link("Evaluación y cumplimiento",
-                                 "Calificar avances y visualizar el nivel de cumplimiento.",
-                                 "📊",
-                                 "evaluacion_cumplimiento"),
+                _quick_card_link(
+                    "Evaluación y cumplimiento",
+                    "Calificar avances y visualizar el nivel de cumplimiento.",
+                    "📊",
+                    "evaluacion_cumplimiento",
+                ),
                 unsafe_allow_html=True,
             )
 
         with c2:
             st.markdown(
-                _quick_card_link("Editar estado",
-                                 "Actualizar fases y fechas de las tareas.",
-                                 "✏️",
-                                 "editar_estado"),
+                _quick_card_link(
+                    "Editar estado",
+                    "Actualizar fases y fechas de las tareas.",
+                    "✏️",
+                    "editar_estado",
+                ),
                 unsafe_allow_html=True,
             )
             st.markdown(
-                _quick_card_link("Prioridad",
-                                 "Revisar y ajustar la prioridad de tareas.",
-                                 "⭐",
-                                 "prioridad"),
+                _quick_card_link(
+                    "Prioridad",
+                    "Revisar y ajustar la prioridad de tareas.",
+                    "⭐",
+                    "prioridad",
+                ),
                 unsafe_allow_html=True,
             )
             st.markdown(
-                _quick_card_link("Tareas recientes",
-                                 "Resumen de las últimas tareas actualizadas.",
-                                 "⏱️",
-                                 "tareas_recientes"),
+                _quick_card_link(
+                    "Tareas recientes",
+                    "Resumen de las últimas tareas actualizadas.",
+                    "⏱️",
+                    "tareas_recientes",
+                ),
                 unsafe_allow_html=True,
             )
 
@@ -823,13 +888,18 @@ if section == "Gestión de tareas":
                     if callable(render_fn):
                         render_fn(st.session_state.get("user"))
                     else:
-                        st.info("Vista pendiente para esta tarjeta (no se encontró función 'render' ni 'render_all').")
+                        st.info(
+                            "Vista pendiente para esta tarjeta "
+                            "(no se encontró función 'render' ni 'render_all')."
+                        )
                 except Exception as e:
                     st.info("No se pudo cargar la vista para esta tarjeta.")
                     st.exception(e)
         else:
             st.markdown(
-                "<p style='font-size:12px;color:#6B7280;'>Selecciona una tarjeta del panel derecho para empezar.</p>",
+                "<p style='font-size:12px;color:#6B7280;'>"
+                "Selecciona una tarjeta del panel derecho para empezar."
+                "</p>",
                 unsafe_allow_html=True,
             )
 
