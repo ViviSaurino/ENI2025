@@ -742,8 +742,8 @@ if section == "Gestión de tareas":
         unsafe_allow_html=True,
     )
 
-    # columna izquierda + espacio al medio + tarjetas
-    col_left, col_gap, col_right = st.columns([3, 0.1, 1.3])
+    # columnas: izquierda (lila+blanco), pequeño gap, tarjetas
+    col_left, col_gap, col_right = st.columns([3, 0.01, 1.6])
 
     with col_left:
         # Cabecera lila
@@ -759,14 +759,14 @@ if section == "Gestión de tareas":
             unsafe_allow_html=True,
         )
 
-        # Panel blanco donde se muestra la vista seleccionada o el mensaje por defecto
+        # Panel blanco donde se muestra la vista seleccionada
         st.markdown('<div class="eni-panel-card">', unsafe_allow_html=True)
         if tile:
             pretty = {
-                "nueva_tarea": "Nueva tarea",
-                "nueva_alerta": "Nueva alerta",
                 "editar_estado": "Editar estado",
-                "prioridad_evaluacion": "Prioridad y evaluación",
+                "nueva_alerta": "Nueva alerta",
+                "prioridad_evaluacion": "Prioridad / Evaluación",
+                "nueva_tarea": "Evaluación",
             }.get(tile, tile.replace("_", " ").capitalize())
 
             st.markdown(
@@ -796,28 +796,25 @@ if section == "Gestión de tareas":
             else:
                 st.info("Todavía no hay una vista vinculada a esta tarjeta.")
         else:
-            st.markdown(
-                "<p style='font-size:12px;color:#6B7280;margin-top:0;'>"
-                "Selecciona una tarjeta de la derecha para empezar."
-                "</p>",
-                unsafe_allow_html=True,
-            )
+            # 🔹 Antes aquí salía: "Selecciona una tarjeta de la derecha para empezar."
+            #    Ahora lo dejamos vacío.
+            st.write("")
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # columna de espacio (solo crea la franja entre lila/blanco y tarjetas)
+    # columna de espacio (solo deja la franja entre lila/blanco y tarjetas)
     with col_gap:
         st.write("")
 
     with col_right:
-        # Grid 2x2 de tarjetas
+        # Grid 2x2 de tarjetas con nuevos nombres
         cards_html = f"""
         <div class="eni-quick-grid-wrapper">
           <div class="eni-quick-grid">
             {_quick_card_link(
-                "Nueva tarea",
-                "Registrar una nueva tarea asignada.",
-                "📝",
-                "nueva_tarea",
+                "Editar estado",
+                "Actualizar fases y fechas de las tareas.",
+                "✏️",
+                "editar_estado",
             )}
             {_quick_card_link(
                 "Nueva alerta",
@@ -826,16 +823,16 @@ if section == "Gestión de tareas":
                 "nueva_alerta",
             )}
             {_quick_card_link(
-                "Editar estado",
-                "Actualizar fases y fechas de las tareas.",
-                "✏️",
-                "editar_estado",
-            )}
-            {_quick_card_link(
-                "Prioridad y evaluación",
-                "Revisar prioridad y nivel de avance.",
+                "Prioridad",
+                "Revisar niveles de prioridad.",
                 "⭐",
                 "prioridad_evaluacion",
+            )}
+            {_quick_card_link(
+                "Evaluación",
+                "Registrar y revisar evaluaciones.",
+                "📝",
+                "nueva_tarea",
             )}
           </div>
         </div>
