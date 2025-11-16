@@ -705,7 +705,7 @@ if section == "Gestión de tareas":
     dn = st.session_state.get("user_display_name", "Usuario")
     initials = "".join([p[0] for p in dn.split() if p])[:2].upper()
 
-    # barra superior blanca
+    # Barra superior blanca
     st.markdown(
         f"""
         <div class="eni-main-topbar">
@@ -719,9 +719,10 @@ if section == "Gestión de tareas":
         unsafe_allow_html=True,
     )
 
-    # un poco más espacio al lado izquierdo (columna más grande)
-    col_left, col_right = st.columns([3.0, 1.2])
+    # Un poco más de espacio para la parte izquierda
+    col_left, col_right = st.columns([2.9, 1.1])
 
+    # --------- COLUMNA IZQUIERDA (cabecera + panel) ----------
     with col_left:
         # Cabecera lila
         st.markdown(
@@ -736,8 +737,9 @@ if section == "Gestión de tareas":
             unsafe_allow_html=True,
         )
 
-        # Panel blanco donde se muestra la vista seleccionada o el mensaje por defecto
+        # Panel blanco donde se carga la vista
         st.markdown('<div class="eni-panel-card">', unsafe_allow_html=True)
+
         if tile:
             pretty = {
                 "nueva_tarea": "Nueva tarea",
@@ -779,10 +781,12 @@ if section == "Gestión de tareas":
                 "</p>",
                 unsafe_allow_html=True,
             )
-        # ⬅️ AQUÍ TAMBIÉN HABÍA UN st.markdown("</div>") QUE QUITAMOS
 
+        # Cierre del panel blanco (IMPORTANTE: con unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # --------- COLUMNA DERECHA (tarjetas 2x2) ----------
     with col_right:
-        # Grid 2x2 de tarjetas alineadas
         cards_html = f"""
         <div class="eni-quick-grid-wrapper">
           <div class="eni-quick-grid">
@@ -815,8 +819,10 @@ if section == "Gestión de tareas":
         """
         st.markdown(cards_html, unsafe_allow_html=True)
 
+# ------------ OTRAS SECCIONES ------------
 elif section == "Kanban":
     st.title("🗂️ Kanban")
+
     def _render_kanban():
         try:
             from features.kanban.view import render as render_kanban
@@ -824,10 +830,12 @@ elif section == "Kanban":
         except Exception as e:
             st.info("Vista Kanban pendiente (features/kanban/view.py).")
             st.exception(e)
+
     render_if_allowed(tab_key, _render_kanban)
 
 elif section == "Gantt":
     st.title("📅 Gantt")
+
     def _render_gantt():
         try:
             from features.gantt.view import render as render_gantt
@@ -835,11 +843,15 @@ elif section == "Gantt":
         except Exception as e:
             st.info("Vista Gantt pendiente (features/gantt/view.py).")
             st.exception(e)
+
     render_if_allowed(tab_key, _render_gantt)
 
 else:
     st.title("📊 Dashboard")
+
     def _render_dashboard():
         st.caption("Próximamente: visualizaciones y KPIs del dashboard.")
         st.write("")
+
     render_if_allowed(tab_key, _render_dashboard)
+
