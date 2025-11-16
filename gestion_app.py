@@ -95,7 +95,7 @@ st.markdown(
   /* ===== TOP BAR BLANCA (tipo navbar) ===== */
   .eni-main-topbar{
     background:#FFFFFF;
-    padding:18px 24px;
+    padding:21px 24px;
     border-radius:0;   /* sin curvas, rectángulo completo */
     display:flex;
     align-items:center;
