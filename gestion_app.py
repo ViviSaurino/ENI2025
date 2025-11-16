@@ -101,7 +101,7 @@ st.markdown(
     align-items:center;
     justify-content:flex-end;
     margin:0 -80px 18px -80px;   /* top  right  bottom  left */
-    box-shadow:0 12px 26px rgba(15,23,42,0.10);
+    box-shadow:none;   /* 👈 sin sombra */
   }
   .eni-main-topbar-title{
     font-size:14px;
