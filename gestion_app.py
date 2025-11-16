@@ -132,7 +132,7 @@ st.markdown(
   /* ===== Card lila principal ===== */
   .eni-main-card-header{
     background:#C4B5FD;
-    border-radius:24px;
+    border-radius:8px;
     padding:22px 28px;
     box-shadow:0 18px 40px rgba(148,163,184,0.35);
     /* un poquito más hacia la izquierda y margen cómodo a la derecha */
