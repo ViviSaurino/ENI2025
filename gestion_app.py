@@ -256,7 +256,7 @@ st.markdown(
 
   /* ===== Grid de tarjetas rápidas (derecha) ===== */
   .eni-quick-grid-wrapper{
-    margin:6px 32px 0 0;
+    margin:4px 32px 0 0;
   }
   .eni-quick-grid{
     display:grid;
