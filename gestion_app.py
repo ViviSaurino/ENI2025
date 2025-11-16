@@ -818,19 +818,19 @@ if section == "Gestión de tareas":
             )}
             {_quick_card_link(
                 "Nueva alerta",
-                "Registra alertas y riesgos prioritarios",
+                "Registra alertas y riesgos prioritarios de las tareas",
                 "⚠️",
                 "nueva_alerta",
             )}
             {_quick_card_link(
                 "Prioridad",
-                "Revisa los niveles de prioridad",
+                "Revisa los niveles de prioridad de las tareas",
                 "⭐",
                 "prioridad_evaluacion",
             )}
             {_quick_card_link(
                 "Evaluación",
-                "Revisa las evaluaciones y cumplimiento.",
+                "Revisa las evaluaciones y cumplimiento de las tareas",
                 "📝",
                 "nueva_tarea",
             )}
