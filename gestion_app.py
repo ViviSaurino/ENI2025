@@ -736,8 +736,8 @@ if section == "Gestión de tareas":
         unsafe_allow_html=True,
     )
 
-    # columna izquierda un poco más ancha
-   col_left, col_gap, col_right = st.columns([3, 0.3, 1.6])
+    # columna izquierda + espacio al medio + tarjetas
+    col_left, col_gap, col_right = st.columns([3, 0.3, 1.6])
 
     with col_left:
         # Cabecera lila
@@ -797,6 +797,10 @@ if section == "Gestión de tareas":
                 unsafe_allow_html=True,
             )
         st.markdown("</div>", unsafe_allow_html=True)
+
+    # columna de espacio (solo crea la franja entre lila/blanco y tarjetas)
+    with col_gap:
+        st.write("")
 
     with col_right:
         # Grid 2x2 de tarjetas
