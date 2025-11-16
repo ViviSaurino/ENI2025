@@ -72,19 +72,9 @@ inject_global_css()
 # 👉 Estilos específicos (sidebar + layout + topbar + tarjetas)
 st.markdown("""
 <style>
-  /* ===== Fondo general lila suave ===== */
+  /* ===== Fondo general lila suave para la APP ===== */
   html, body, [data-testid="stAppViewContainer"]{
     background:#F2EEFF;
-  }
-
-  /* Ocultar bloques de código (pre/code) donde aparece el '</div>' fantasma */
-  [data-testid="stMarkdownContainer"] pre,
-  [data-testid="stMarkdownContainer"] pre code{
-    display:none !important;
-    margin:0 !important;
-    padding:0 !important;
-    border:none !important;
-    background:transparent !important;
   }
 
   .eni-banner{
@@ -131,13 +121,14 @@ st.markdown("""
     font-size:14px;
   }
 
-  /* ===== Cabecera lila principal ===== */
+  /* ===== Card lila principal ===== */
   .eni-main-card-header{
     background:#C4B5FD;
     border-radius:24px;
     padding:22px 28px;
     box-shadow:0 18px 40px rgba(148,163,184,0.35);
-    margin:0 18px 18px 18px;   /* antes 24px a la izquierda: ahora un pelín más ancha */
+    /* un pelín más ancha hacia la izquierda */
+    margin:0 12px 18px 14px;
   }
   .eni-main-card-header-title{
     font-size:22px;
@@ -155,10 +146,11 @@ st.markdown("""
   .eni-panel-card{
     background:#FFFFFF;
     border-radius:20px;
-    min-height:180px;              /* altura más baja, alineada con tarjetas */
+    min-height:180px;
     box-shadow:0 10px 26px rgba(148,163,184,0.18);
     padding:18px 24px;
-    margin:0 18px 24px 18px;       /* idem cabecera: un poco más a la izquierda */
+    /* mismo ajuste de márgenes que la cabecera */
+    margin:0 12px 24px 14px;
   }
 
   /* ===== Sidebar blanca ===== */
@@ -242,7 +234,6 @@ st.markdown("""
     height:0px;
   }
 
-  /* Ocultar header default de Streamlit */
   header[data-testid="stHeader"]{
     height: 0px;
     padding: 0px;
@@ -257,12 +248,12 @@ st.markdown("""
 
   /* ===== Grid de tarjetas rápidas (derecha) ===== */
   .eni-quick-grid-wrapper{
-    margin:24px 40px 24px 0;      /* deja espacio a la derecha */
+    /* espacio hacia la derecha, alineado con cabecera/panel */
+    margin:24px 18px 0 4px;
   }
   .eni-quick-grid{
     display:grid;
-    grid-template-columns:repeat(2, minmax(150px, 1fr)); /* 2 x 2, más angostas */
-    grid-auto-rows:1fr;                                  /* todas las filas misma altura */
+    grid-template-columns:repeat(2, 1fr);  /* 2 x 2 simétricas */
     gap:16px;
   }
 
@@ -276,9 +267,8 @@ st.markdown("""
     padding:16px 16px 12px 16px;
     box-shadow:0 10px 22px rgba(148,163,184,0.40);
     border:none;
-    min-height:140px;
-    height:100%;                /* cada tarjeta llena la fila -> mismas alturas */
-    box-sizing:border-box;
+    min-height:150px;
+    height:170px;                  /* misma altura para que queden cuadradas */
     display:flex;
     flex-direction:row;
     justify-content:space-between;
@@ -301,7 +291,7 @@ st.markdown("""
     margin:0;
   }
   .eni-quick-card-icon{
-    font-size:34px;               /* iconos más grandes */
+    font-size:34px;               /* iconos un poco más grandes */
     margin-left:8px;
   }
   .eni-quick-card-link:hover .eni-quick-card{
@@ -412,8 +402,12 @@ def check_app_password() -> bool:
     </style>
     """, unsafe_allow_html=True)
 
+    # Fondo BLANCO solo para el login
     st.markdown("""
     <style>
+      html, body, [data-testid="stAppViewContainer"]{
+        background:#FFFFFF !important;
+      }
       html, body, [data-testid="stAppViewContainer"], .main{
         overflow: hidden !important;
       }
@@ -725,7 +719,8 @@ if section == "Gestión de tareas":
         unsafe_allow_html=True,
     )
 
-    col_left, col_right = st.columns([2.7, 1.3])
+    # un poco más espacio al lado izquierdo (columna más grande)
+    col_left, col_right = st.columns([3.0, 1.2])
 
     with col_left:
         # Cabecera lila
@@ -787,7 +782,7 @@ if section == "Gestión de tareas":
         st.markdown("</div>", unsafe_allow_html=True)
 
     with col_right:
-        # Grid 2x2 de tarjetas
+        # Grid 2x2 de tarjetas alineadas
         cards_html = f"""
         <div class="eni-quick-grid-wrapper">
           <div class="eni-quick-grid">
