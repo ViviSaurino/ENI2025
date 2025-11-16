@@ -272,7 +272,7 @@ st.markdown(
     display:block;
   }
   .eni-quick-card{
-    border-radius:20px;
+    border-radius:8px;
     padding:16px 16px 12px 16px;
     box-shadow:0 10px 22px rgba(148,163,184,0.40);
     border:none;
