@@ -217,7 +217,7 @@ header[data-testid="stHeader"]{
   visibility:hidden;
 }
 
-/* HERO Bienvenid@ - MÁS ALTO */
+/* HERO Bienvenid@ - MÁS ALTO y MÁS ANCHO (col izquierda ensanchada) */
 .eni-hero-card{
   background:#C4A5FF;
   border-radius:22px;
@@ -296,10 +296,10 @@ header[data-testid="stHeader"]{
 .eni-quick-card--evaluacion_cumplimiento{ background:#DDD6FE; }
 .eni-quick-card--tareas_recientes{ background:#BBF7D0; }
 
-/* Grilla de 3 columnas (derecha) */
-.eni-quick-grid-3{
+/* Grilla de 2 columnas (derecha) */
+.eni-quick-grid-2{
   display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
+  grid-template-columns:repeat(2,minmax(0,1fr));
   gap:12px;
 }
 
@@ -755,12 +755,13 @@ if section == "Gestión de tareas":
         unsafe_allow_html=True,
     )
 
-    col_left, col_right = st.columns([2.4, 1.6])
+    # ensanchar izquierda (2.8) y reducir derecha (1.2)
+    col_left, col_right = st.columns([2.8, 1.2])
 
     # -------- Columna izquierda: encabezado lila + rectángulo blanco ----------
     with col_left:
         left_html = """
-<div style="margin-left:24px; margin-right:12px; margin-top:24px; margin-bottom:24px;">
+<div style="margin-left:24px; margin-right:4px; margin-top:24px; margin-bottom:24px;">
   <div class="eni-hero-card">
     <div class="eni-hero-title">Bienvenid@</div>
     <p class="eni-hero-sub">A la plataforma de gestión ENI — 2025</p>
@@ -773,12 +774,12 @@ if section == "Gestión de tareas":
 """
         st.markdown(left_html, unsafe_allow_html=True)
 
-    # -------- Columna derecha: 3 tarjetas arriba + 3 abajo ----------
+    # -------- Columna derecha: 2x2 tarjetas ----------
     with col_right:
         right_html = f"""
-<div style="margin-right:24px; margin-left:12px; margin-top:24px; margin-bottom:24px;">
+<div style="margin-right:24px; margin-left:8px; margin-top:24px; margin-bottom:24px;">
 
-  <div class="eni-quick-grid-3">
+  <div class="eni-quick-grid-2">
     {_quick_card_link(
         "Nueva tarea",
         "Registrar una nueva tarea asignada.",
@@ -797,26 +798,11 @@ if section == "Gestión de tareas":
         "✏️",
         "editar_estado",
     )}
-  </div>
-
-  <div class="eni-quick-grid-3" style="margin-top:14px;">
     {_quick_card_link(
         "Prioridad y evaluación",
         "Revisar prioridad y nivel de avance.",
         "⭐",
         "prioridad",
-    )}
-    {_quick_card_link(
-        "Evaluación y cumplimiento",
-        "Calificar avances y visualizar el nivel de cumplimiento.",
-        "📊",
-        "evaluacion_cumplimiento",
-    )}
-    {_quick_card_link(
-        "Tareas recientes",
-        "Resumen de las últimas tareas actualizadas.",
-        "⏱️",
-        "tareas_recientes",
     )}
   </div>
 
