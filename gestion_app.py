@@ -153,7 +153,7 @@ st.markdown(
   /* ===== Panel blanco debajo de cabecera ===== */
   .eni-panel-card{
     background:#FFFFFF;
-    border-radius:12px;
+    border-radius:8px;
     min-height:180px;
     box-shadow:0 10px 26px rgba(148,163,184,0.18);
     padding:18px 24px;
