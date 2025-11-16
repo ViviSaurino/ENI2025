@@ -100,7 +100,7 @@ st.markdown(
     display:flex;
     align-items:center;
     justify-content:flex-end;
-    margin:0 -80px 18px -80px;   /* top  right  bottom  left */
+    margin:0 -80px 28px -80px;   /* top  right  bottom  left */
     box-shadow:none;   /* 👈 sin sombra */
   }
   .eni-main-topbar-title{
