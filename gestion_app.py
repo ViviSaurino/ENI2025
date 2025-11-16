@@ -136,7 +136,7 @@ st.markdown(
     padding:22px 28px;
     box-shadow:0 18px 40px rgba(148,163,184,0.35);
     /* un poquito más hacia la izquierda y margen cómodo a la derecha */
-    margin:0 24px 18px -70px;
+    margin:0 24px 18px -50px;
   }
   .eni-main-card-header-title{
     font-size:22px;
