@@ -70,9 +70,10 @@ patch_streamlit_aggrid()
 inject_global_css()
 
 # 👉 Estilos específicos (sidebar + layout + topbar + tarjetas)
-st.markdown("""
+st.markdown(
+    """
 <style>
-  /* ===== Fondo general lila suave para la APP ===== */
+  /* ===== Fondo general lila suave de la APP ===== */
   html, body, [data-testid="stAppViewContainer"]{
     background:#F2EEFF;
   }
@@ -82,6 +83,11 @@ st.markdown("""
     font-weight:400;
     font-size:16px;
     color:#4B5563;
+  }
+
+  /* Oculta bloques de código (evita que se vea </div> suelto) */
+  div[data-testid="stCodeBlock"]{
+    display:none !important;
   }
 
   /* ===== TOP BAR BLANCA (tipo navbar) ===== */
@@ -127,8 +133,7 @@ st.markdown("""
     border-radius:24px;
     padding:22px 28px;
     box-shadow:0 18px 40px rgba(148,163,184,0.35);
-    /* un pelín más ancha hacia la izquierda */
-    margin:0 12px 18px 14px;
+    margin:0 10px 18px 24px;  /* un poquito más ancha hacia la derecha */
   }
   .eni-main-card-header-title{
     font-size:22px;
@@ -149,8 +154,7 @@ st.markdown("""
     min-height:180px;
     box-shadow:0 10px 26px rgba(148,163,184,0.18);
     padding:18px 24px;
-    /* mismo ajuste de márgenes que la cabecera */
-    margin:0 12px 24px 14px;
+    margin:0 10px 24px 24px;  /* mismo ancho que la cabecera lila */
   }
 
   /* ===== Sidebar blanca ===== */
@@ -248,13 +252,13 @@ st.markdown("""
 
   /* ===== Grid de tarjetas rápidas (derecha) ===== */
   .eni-quick-grid-wrapper{
-    /* espacio hacia la derecha, alineado con cabecera/panel */
-    margin:24px 18px 0 4px;
+    margin:24px 32px 0 0;
   }
   .eni-quick-grid{
     display:grid;
-    grid-template-columns:repeat(2, 1fr);  /* 2 x 2 simétricas */
+    grid-template-columns:repeat(2, 1fr);  /* 2 x 2 perfectamente alineadas */
     gap:16px;
+    align-items:stretch;
   }
 
   .eni-quick-card-link{
@@ -267,8 +271,7 @@ st.markdown("""
     padding:16px 16px 12px 16px;
     box-shadow:0 10px 22px rgba(148,163,184,0.40);
     border:none;
-    min-height:150px;
-    height:170px;                  /* misma altura para que queden cuadradas */
+    height:160px;                     /* mismas alturas, cuadradas */
     display:flex;
     flex-direction:row;
     justify-content:space-between;
@@ -313,7 +316,9 @@ st.markdown("""
   }
 
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 # ============ AUTENTICACIÓN POR CONTRASEÑA ============
 APP_PASSWORD = "Inei2025$"
@@ -359,8 +364,14 @@ def check_app_password() -> bool:
         return True
 
     # ---- Pantalla de login ----
-    st.markdown("""
+    st.markdown(
+        """
     <style>
+      /* Fondo BLANCO solo para el LOGIN */
+      html, body, [data-testid="stAppViewContainer"]{
+        background:#FFFFFF !important;
+      }
+
       .eni-hero-title{
         font-size:77px;
         font-weight:900;
@@ -400,19 +411,20 @@ def check_app_password() -> bool:
         margin-top:-0.45rem !important;
       }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
-    # Fondo BLANCO solo para el login
-    st.markdown("""
+    st.markdown(
+        """
     <style>
-      html, body, [data-testid="stAppViewContainer"]{
-        background:#FFFFFF !important;
-      }
       html, body, [data-testid="stAppViewContainer"], .main{
         overflow: hidden !important;
       }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     st.markdown("<div style='margin-top:7vh;'></div>", unsafe_allow_html=True)
 
@@ -477,7 +489,7 @@ def check_app_password() -> bool:
                 else:
                     st.error("Contraseña incorrecta. Vuelve a intentarlo 🙂")
 
-            # ⬅️ AQUÍ ANTES HABÍA UN st.markdown("</div>") QUE QUITAMOS
+            st.markdown("</div>", unsafe_allow_html=True)
 
     with col2:
         hero_video = Path("assets/hero.mp4")
@@ -705,7 +717,7 @@ if section == "Gestión de tareas":
     dn = st.session_state.get("user_display_name", "Usuario")
     initials = "".join([p[0] for p in dn.split() if p])[:2].upper()
 
-    # Barra superior blanca
+    # barra superior blanca
     st.markdown(
         f"""
         <div class="eni-main-topbar">
@@ -719,10 +731,9 @@ if section == "Gestión de tareas":
         unsafe_allow_html=True,
     )
 
-    # Un poco más de espacio para la parte izquierda
+    # columna izquierda un poco más ancha
     col_left, col_right = st.columns([2.9, 1.1])
 
-    # --------- COLUMNA IZQUIERDA (cabecera + panel) ----------
     with col_left:
         # Cabecera lila
         st.markdown(
@@ -737,9 +748,8 @@ if section == "Gestión de tareas":
             unsafe_allow_html=True,
         )
 
-        # Panel blanco donde se carga la vista
+        # Panel blanco donde se muestra la vista seleccionada o el mensaje por defecto
         st.markdown('<div class="eni-panel-card">', unsafe_allow_html=True)
-
         if tile:
             pretty = {
                 "nueva_tarea": "Nueva tarea",
@@ -781,12 +791,10 @@ if section == "Gestión de tareas":
                 "</p>",
                 unsafe_allow_html=True,
             )
-
-        # Cierre del panel blanco (IMPORTANTE: con unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # --------- COLUMNA DERECHA (tarjetas 2x2) ----------
     with col_right:
+        # Grid 2x2 de tarjetas
         cards_html = f"""
         <div class="eni-quick-grid-wrapper">
           <div class="eni-quick-grid">
@@ -819,10 +827,8 @@ if section == "Gestión de tareas":
         """
         st.markdown(cards_html, unsafe_allow_html=True)
 
-# ------------ OTRAS SECCIONES ------------
 elif section == "Kanban":
     st.title("🗂️ Kanban")
-
     def _render_kanban():
         try:
             from features.kanban.view import render as render_kanban
@@ -830,12 +836,10 @@ elif section == "Kanban":
         except Exception as e:
             st.info("Vista Kanban pendiente (features/kanban/view.py).")
             st.exception(e)
-
     render_if_allowed(tab_key, _render_kanban)
 
 elif section == "Gantt":
     st.title("📅 Gantt")
-
     def _render_gantt():
         try:
             from features.gantt.view import render as render_gantt
@@ -843,15 +847,11 @@ elif section == "Gantt":
         except Exception as e:
             st.info("Vista Gantt pendiente (features/gantt/view.py).")
             st.exception(e)
-
     render_if_allowed(tab_key, _render_gantt)
 
 else:
     st.title("📊 Dashboard")
-
     def _render_dashboard():
         st.caption("Próximamente: visualizaciones y KPIs del dashboard.")
         st.write("")
-
     render_if_allowed(tab_key, _render_dashboard)
-
