@@ -137,7 +137,7 @@ st.markdown("""
     border-radius:24px;
     padding:22px 28px;
     box-shadow:0 18px 40px rgba(148,163,184,0.35);
-    margin:0 18px 18px 24px;
+    margin:0 18px 18px 18px;   /* antes 24px a la izquierda: ahora un pelín más ancha */
   }
   .eni-main-card-header-title{
     font-size:22px;
@@ -158,7 +158,7 @@ st.markdown("""
     min-height:180px;              /* altura más baja, alineada con tarjetas */
     box-shadow:0 10px 26px rgba(148,163,184,0.18);
     padding:18px 24px;
-    margin:0 18px 24px 24px;
+    margin:0 18px 24px 18px;       /* idem cabecera: un poco más a la izquierda */
   }
 
   /* ===== Sidebar blanca ===== */
@@ -262,6 +262,7 @@ st.markdown("""
   .eni-quick-grid{
     display:grid;
     grid-template-columns:repeat(2, minmax(150px, 1fr)); /* 2 x 2, más angostas */
+    grid-auto-rows:1fr;                                  /* todas las filas misma altura */
     gap:16px;
   }
 
@@ -276,6 +277,8 @@ st.markdown("""
     box-shadow:0 10px 22px rgba(148,163,184,0.40);
     border:none;
     min-height:140px;
+    height:100%;                /* cada tarjeta llena la fila -> mismas alturas */
+    box-sizing:border-box;
     display:flex;
     flex-direction:row;
     justify-content:space-between;
