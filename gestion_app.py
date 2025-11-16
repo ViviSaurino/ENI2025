@@ -313,6 +313,14 @@ header[data-testid="stHeader"]{
   gap:12px;
 }
 
+/* Tarjetas flotando a la derecha, no empujan al panel blanco */
+.eni-quick-floating{
+  position:absolute;
+  top:150px;   /* sube/baja las tarjetas ajustando este valor */
+  right:40px;
+  width:360px;
+}
+
 /* Login */
 .eni-login-hero-title{
   font-size:77px;
@@ -762,11 +770,9 @@ if section == "Gestión de tareas":
         unsafe_allow_html=True,
     )
 
-    # Fila para las tarjetas (a la derecha, sobre el panel)
-    _, col_cards = st.columns([2.2, 1.0])
-    with col_cards:
-        right_html = f"""
-<div style="margin-right:24px; margin-top:4px;">
+    # Tarjetas flotando a la derecha (no ocupan altura en el layout)
+    cards_html = f"""
+<div class="eni-quick-floating">
   <div class="eni-quick-grid-2">
     {_quick_card_link(
         "Nueva tarea",
@@ -795,7 +801,7 @@ if section == "Gestión de tareas":
   </div>
 </div>
 """
-        st.markdown(right_html, unsafe_allow_html=True)
+    st.markdown(cards_html, unsafe_allow_html=True)
 
     # Panel blanco de ancho completo para el contenido de la tarjeta
     st.markdown('<div class="eni-panel-card">', unsafe_allow_html=True)
@@ -809,8 +815,7 @@ if section == "Gestión de tareas":
                     render_fn = getattr(view_module, "render_all", None)
 
                 if callable(render_fn):
-                    # ← Aquí dentro van indicaciones, botón "Nueva tarea" y celdas,
-                    # ocupando todo el ancho del rectángulo blanco.
+                    # Dentro de este panel se dibujan indicaciones, botón, celdas, etc.
                     render_fn(st.session_state.get("user"))
                 else:
                     st.info(
