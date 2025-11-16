@@ -298,16 +298,15 @@ st.markdown(
     margin:0;
   }
   .eni-quick-card-icon{
-    font-size:40px;               /* iconos un poco más grandes */
-    margin-top:8px;
-    margin-bottom:40px;  /* 🔹 hace que el ícono “suba” dentro de la tarjeta */
-    align-self:flex-end;          /* esquina inferior derecha */
+    font-size:44px;          /* 🔹 más grande */
+    margin-left:8px;
+    /* sin margin-bottom raro */
+    transform: translateY(-10px);   /* 🔹 sube el ícono dentro de la tarjeta */
   }
   .eni-quick-card-link:hover .eni-quick-card{
     box-shadow:0 14px 28px rgba(148,163,184,0.55);
     transform:translateY(-2px);
   }
-
   .eni-quick-card--nueva_tarea{
     background:#49BEA9;
   }
