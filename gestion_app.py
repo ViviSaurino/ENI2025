@@ -308,16 +308,16 @@ st.markdown(
   }
 
   .eni-quick-card--nueva_tarea{
-    background:#6366F1;
+    background:#49BEA9;
   }
   .eni-quick-card--nueva_alerta{
-    background:#60A5FA;
+    background:#7FCCB2;
   }
   .eni-quick-card--editar_estado{
     background:#93C5FD;
   }
   .eni-quick-card--prioridad_evaluacion{
-    background:#34D399;
+    background:#A8D4F3;
   }
 
   /* Reducir al mínimo el espacio horizontal entre columnas (lila/blanco y tarjetas) */
