@@ -241,7 +241,7 @@ header[data-testid="stHeader"]{
 .eni-panel-card{
   background:#FFFFFF;
   border-radius:20px;
-  min-height:260px;
+  min-height:220px;              /* 🔽 antes 260px */
   box-shadow:0 10px 26px rgba(148,163,184,0.18);
   padding:18px 22px;
   margin:10px 16px 24px 24px;
@@ -305,7 +305,8 @@ header[data-testid="stHeader"]{
 
 /* Grilla 2x2 derecha */
 .eni-quick-grid-wrapper{
-  margin:24px 24px 24px 8px;
+  margin:24px auto 24px auto;   /* 🔽 centrado y algo más angosto */
+  max-width:440px;              /* 🔽 limita ancho de las tarjetas */
 }
 .eni-quick-grid-2{
   display:grid;
@@ -752,7 +753,7 @@ if section == "Gestión de tareas":
     )
 
     # Layout principal: izquierda (header + rectángulo blanco), derecha (tarjetas)
-    col_left, col_right = st.columns([3, 2])
+    col_left, col_right = st.columns([8, 4])   # 🔽 izquierda un poco más ancha
 
     # ---- Columna izquierda: header lila + rectángulo blanco con contenido ----
     with col_left:
