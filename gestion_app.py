@@ -222,7 +222,7 @@ header[data-testid="stHeader"]{
   background:#C4A5FF;
   border-radius:22px;
   padding:28px 28px;
-  margin:8px 0 24px 0;
+  margin:8px 0 18px 0;
   box-shadow:0 12px 28px rgba(129,140,248,0.40);
 }
 .eni-hero-title{
@@ -237,13 +237,7 @@ header[data-testid="stHeader"]{
   margin:0;
 }
 
-/* Tarjetas rápidas */
-.eni-quick-row{
-  display:grid;
-  grid-template-columns:repeat(4,minmax(0,1fr));
-  gap:12px;
-  margin:0 0 18px 0;
-}
+/* Tarjetas rápidas (base) */
 .eni-quick-card-link{
   text-decoration:none;
   color:inherit;
@@ -255,8 +249,8 @@ header[data-testid="stHeader"]{
   padding:10px 12px;
   box-shadow:0 10px 22px rgba(148,163,184,0.40);
   border:none;
-  min-height:150px;
-  max-height:150px;
+  min-height:140px;
+  max-height:140px;
   display:flex;
   flex-direction:column;
   justify-content:center;
@@ -265,8 +259,8 @@ header[data-testid="stHeader"]{
 }
 .eni-quick-card-main{
   display:flex;
-  flex-direction:row;          /* texto e ícono en fila */
-  align-items:center;          /* centrados verticalmente */
+  flex-direction:row;
+  align-items:center;
   justify-content:space-between;
   gap:8px;
   height:100%;
@@ -286,7 +280,7 @@ header[data-testid="stHeader"]{
   margin-top:4px;
 }
 .eni-quick-card-icon{
-  font-size:36px;              /* íconos más grandes */
+  font-size:36px;
   margin-top:0;
   padding-bottom:0;
 }
@@ -299,32 +293,28 @@ header[data-testid="stHeader"]{
 .eni-quick-card--nueva_alerta{ background:#93C5FD; }
 .eni-quick-card--editar_estado{ background:#C7D2FE; }
 .eni-quick-card--prioridad{ background:#6EE7B7; }
+.eni-quick-card--evaluacion_cumplimiento{ background:#DDD6FE; }
+.eni-quick-card--tareas_recientes{ background:#BBF7D0; }
 
-/* Tarjeta blanca inferior (solo una, ancho completo) */
+/* Grilla de 3 columnas (derecha) */
+.eni-quick-grid-3{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+}
+
+/* Tarjeta blanca inferior (debajo del lila) */
 .eni-bottom-row{
   display:grid;
-  grid-template-columns:1fr;   /* una sola columna */
+  grid-template-columns:1fr;
   gap:12px;
-  margin:18px 0 4px 0;
+  margin:8px 0 4px 0;
 }
 .eni-bottom-card{
   background:#FFFFFF;
   border-radius:20px;
-  min-height:140px;
+  min-height:160px;
   box-shadow:0 10px 26px rgba(148,163,184,0.18);
-}
-
-/* Panel derecho blanco grande */
-.eni-right-work-card{
-  background:#FFFFFF;
-  border-radius:24px;
-  padding:16px 18px 18px 18px;
-  margin-top:24px;             /* subido para alinearse con el lila */
-  margin-right:24px;
-  margin-left:12px;
-  margin-bottom:24px;
-  box-shadow:0 14px 30px rgba(148,163,184,0.32);
-  min-height:280px;
 }
 
 /* Login */
@@ -767,16 +757,28 @@ if section == "Gestión de tareas":
 
     col_left, col_right = st.columns([2.4, 1.6])
 
-    # -------- Columna izquierda ----------
+    # -------- Columna izquierda: encabezado lila + rectángulo blanco ----------
     with col_left:
-        left_html = f"""
+        left_html = """
 <div style="margin-left:24px; margin-right:12px; margin-top:24px; margin-bottom:24px;">
   <div class="eni-hero-card">
     <div class="eni-hero-title">Bienvenid@</div>
     <p class="eni-hero-sub">A la plataforma de gestión ENI — 2025</p>
   </div>
 
-  <div class="eni-quick-row">
+  <div class="eni-bottom-row">
+    <div class="eni-bottom-card"></div>
+  </div>
+</div>
+"""
+        st.markdown(left_html, unsafe_allow_html=True)
+
+    # -------- Columna derecha: 3 tarjetas arriba + 3 abajo ----------
+    with col_right:
+        right_html = f"""
+<div style="margin-right:24px; margin-left:12px; margin-top:24px; margin-bottom:24px;">
+
+  <div class="eni-quick-grid-3">
     {_quick_card_link(
         "Nueva tarea",
         "Registrar una nueva tarea asignada.",
@@ -795,28 +797,34 @@ if section == "Gestión de tareas":
         "✏️",
         "editar_estado",
     )}
+  </div>
+
+  <div class="eni-quick-grid-3" style="margin-top:14px;">
     {_quick_card_link(
         "Prioridad y evaluación",
         "Revisar prioridad y nivel de avance.",
         "⭐",
         "prioridad",
     )}
+    {_quick_card_link(
+        "Evaluación y cumplimiento",
+        "Calificar avances y visualizar el nivel de cumplimiento.",
+        "📊",
+        "evaluacion_cumplimiento",
+    )}
+    {_quick_card_link(
+        "Tareas recientes",
+        "Resumen de las últimas tareas actualizadas.",
+        "⏱️",
+        "tareas_recientes",
+    )}
   </div>
 
-  <div class="eni-bottom-row">
-    <div class="eni-bottom-card"></div>
-  </div>
 </div>
 """
-        st.markdown(left_html, unsafe_allow_html=True)
+        st.markdown(right_html, unsafe_allow_html=True)
 
-    # -------- Columna derecha ----------
-    with col_right:
-        st.markdown(
-            "<div class='eni-right-work-card'></div>",
-            unsafe_allow_html=True,
-        )
-
+        # Contenido dinámico (formularios, etc.) debajo de las tarjetas
         if tile:
             module_path = TILE_TO_VIEW_MODULE.get(tile)
             if module_path:
