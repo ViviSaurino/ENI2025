@@ -255,7 +255,7 @@ st.markdown(
 
   /* ===== Grid de tarjetas rápidas (derecha) ===== */
   .eni-quick-grid-wrapper{
-    margin:0px 32px 0 0;   /* top right bottom left */
+    margin:0px 16px 0 0;   /* top right bottom left */
     /* deja el último valor en 0, 4 o 8 como mucho */
   }
   .eni-quick-grid{
@@ -738,7 +738,7 @@ if section == "Gestión de tareas":
     )
 
     # columna izquierda un poco más ancha
-    col_left, col_right = st.columns([3, 1.2])
+    col_left, col_right = st.columns([3, 1.6])
 
     with col_left:
         # Cabecera lila
