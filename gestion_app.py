@@ -738,7 +738,7 @@ if section == "Gestión de tareas":
     )
 
     # columna izquierda un poco más ancha
-    col_left, col_right = st.columns([2.9, 1.1])
+    col_left, col_right = st.columns([2.6, 1.4])
 
     with col_left:
         # Cabecera lila
