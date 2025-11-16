@@ -85,8 +85,10 @@ st.markdown(
     color:#4B5563;
   }
 
-  /* Oculta bloques de código (evita que se vea </div> suelto) */
-  div[data-testid="stCodeBlock"]{
+  /* Oculta bloques de código / fragmentos sueltos tipo </div> */
+  div[data-testid="stCodeBlock"],
+  pre,
+  code{
     display:none !important;
   }
 
@@ -133,7 +135,8 @@ st.markdown(
     border-radius:24px;
     padding:22px 28px;
     box-shadow:0 18px 40px rgba(148,163,184,0.35);
-    margin:0 10px 18px 24px;  /* un poquito más ancha hacia la derecha */
+    /* un poquito más hacia la izquierda y margen cómodo a la derecha */
+    margin:0 24px 18px 8px;
   }
   .eni-main-card-header-title{
     font-size:22px;
@@ -154,7 +157,8 @@ st.markdown(
     min-height:180px;
     box-shadow:0 10px 26px rgba(148,163,184,0.18);
     padding:18px 24px;
-    margin:0 10px 24px 24px;  /* mismo ancho que la cabecera lila */
+    /* mismo ancho visual que la cabecera lila */
+    margin:0 24px 24px 8px;
   }
 
   /* ===== Sidebar blanca ===== */
@@ -259,6 +263,7 @@ st.markdown(
     grid-template-columns:repeat(2, 1fr);  /* 2 x 2 perfectamente alineadas */
     gap:16px;
     align-items:stretch;
+    grid-auto-rows:170px;                  /* misma altura en todas */
   }
 
   .eni-quick-card-link{
@@ -271,16 +276,16 @@ st.markdown(
     padding:16px 16px 12px 16px;
     box-shadow:0 10px 22px rgba(148,163,184,0.40);
     border:none;
-    height:160px;                     /* mismas alturas, cuadradas */
+    height:170px;                     /* mismas alturas, cuadradas */
     display:flex;
-    flex-direction:row;
+    flex-direction:column;            /* texto arriba, icono abajo */
     justify-content:space-between;
-    align-items:flex-end;
+    align-items:flex-start;
     transition:all .15s ease-in-out;
     overflow:hidden;
   }
   .eni-quick-card-text{
-    max-width:70%;
+    max-width:100%;
   }
   .eni-quick-card-title{
     font-size:14px;
@@ -295,7 +300,8 @@ st.markdown(
   }
   .eni-quick-card-icon{
     font-size:34px;               /* iconos un poco más grandes */
-    margin-left:8px;
+    margin-top:8px;
+    align-self:flex-end;          /* esquina inferior derecha */
   }
   .eni-quick-card-link:hover .eni-quick-card{
     box-shadow:0 14px 28px rgba(148,163,184,0.55);
