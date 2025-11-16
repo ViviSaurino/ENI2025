@@ -77,6 +77,16 @@ st.markdown("""
     background:#F2EEFF;
   }
 
+  /* Ocultar bloques de código (pre/code) donde aparece el '</div>' fantasma */
+  [data-testid="stMarkdownContainer"] pre,
+  [data-testid="stMarkdownContainer"] pre code{
+    display:none !important;
+    margin:0 !important;
+    padding:0 !important;
+    border:none !important;
+    background:transparent !important;
+  }
+
   .eni-banner{
     margin:6px 0 14px;
     font-weight:400;
@@ -121,7 +131,7 @@ st.markdown("""
     font-size:14px;
   }
 
-  /* ===== Card lila principal ===== */
+  /* ===== Cabecera lila principal ===== */
   .eni-main-card-header{
     background:#C4B5FD;
     border-radius:24px;
@@ -145,7 +155,7 @@ st.markdown("""
   .eni-panel-card{
     background:#FFFFFF;
     border-radius:20px;
-    min-height:180px;              /* más bajito para que alinee con las tarjetas */
+    min-height:180px;              /* altura más baja, alineada con tarjetas */
     box-shadow:0 10px 26px rgba(148,163,184,0.18);
     padding:18px 24px;
     margin:0 18px 24px 24px;
@@ -232,6 +242,7 @@ st.markdown("""
     height:0px;
   }
 
+  /* Ocultar header default de Streamlit */
   header[data-testid="stHeader"]{
     height: 0px;
     padding: 0px;
@@ -250,7 +261,7 @@ st.markdown("""
   }
   .eni-quick-grid{
     display:grid;
-    grid-template-columns:repeat(2, minmax(150px, 1fr)); /* 2 x 2 */
+    grid-template-columns:repeat(2, minmax(150px, 1fr)); /* 2 x 2, más angostas */
     gap:16px;
   }
 
@@ -287,7 +298,7 @@ st.markdown("""
     margin:0;
   }
   .eni-quick-card-icon{
-    font-size:34px;               /* iconos un poco más grandes */
+    font-size:34px;               /* iconos más grandes */
     margin-left:8px;
   }
   .eni-quick-card-link:hover .eni-quick-card{
