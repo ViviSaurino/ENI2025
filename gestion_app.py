@@ -263,7 +263,7 @@ st.markdown(
     grid-template-columns:repeat(2, 1fr);  /* 2 x 2 perfectamente alineadas */
     gap:16px;
     align-items:stretch;
-    grid-auto-rows:120px;                  /* misma altura en todas */
+    grid-auto-rows:150px;                  /* misma altura en todas */
   }
 
   .eni-quick-card-link{
@@ -276,7 +276,7 @@ st.markdown(
     padding:16px 16px 12px 16px;
     box-shadow:0 10px 22px rgba(148,163,184,0.40);
     border:none;
-    height:120px;                     /* mismas alturas, cuadradas */
+    height:150px;                     /* mismas alturas, cuadradas */
     display:flex;
     flex-direction:column;            /* texto arriba, icono abajo */
     justify-content:space-between;
