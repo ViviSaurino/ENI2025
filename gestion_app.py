@@ -300,7 +300,7 @@ st.markdown(
   .eni-quick-card-icon{
     font-size:40px;               /* iconos un poco más grandes */
     margin-top:8px;
-    margin-bottom:10px;  /* 🔹 hace que el ícono “suba” dentro de la tarjeta */
+    margin-bottom:20px;  /* 🔹 hace que el ícono “suba” dentro de la tarjeta */
     align-self:flex-end;          /* esquina inferior derecha */
   }
   .eni-quick-card-link:hover .eni-quick-card{
