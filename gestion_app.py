@@ -743,7 +743,7 @@ if section == "Gestión de tareas":
     )
 
     # columna izquierda + espacio al medio + tarjetas
-    col_left, col_gap, col_right = st.columns([3, 0.1, 1.4])
+    col_left, col_gap, col_right = st.columns([3, 0.1, 1.3])
 
     with col_left:
         # Cabecera lila
