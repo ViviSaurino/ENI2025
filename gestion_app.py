@@ -460,7 +460,7 @@ def check_app_password() -> bool:
                 if pwd == APP_PASSWORD:
                     st.session_state["password_ok"] = True
                     st.session_state["user_email"] = "eni2025@app"
-                    st.session_state["user"] = {"email": "eni2025@app"}
+                    st.session_state["user"] = {"email": "eni2025@app"】
 
                     name_lower = editor_name.lower()
                     is_vivi_login = any(t in name_lower for t in ("vivian", "vivi", "saurino"))
@@ -477,7 +477,7 @@ def check_app_password() -> bool:
                 else:
                     st.error("Contraseña incorrecta. Vuelve a intentarlo 🙂")
 
-            st.markdown("</div>", unsafe_allow_html=True)
+            # ⬅️ AQUÍ ANTES HABÍA UN st.markdown("</div>") QUE QUITAMOS
 
     with col2:
         hero_video = Path("assets/hero.mp4")
@@ -779,7 +779,7 @@ if section == "Gestión de tareas":
                 "</p>",
                 unsafe_allow_html=True,
             )
-        st.markdown("</div>", unsafe_allow_html=True)
+        # ⬅️ AQUÍ TAMBIÉN HABÍA UN st.markdown("</div>") QUE QUITAMOS
 
     with col_right:
         # Grid 2x2 de tarjetas alineadas
