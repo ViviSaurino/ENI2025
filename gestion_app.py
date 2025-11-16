@@ -460,7 +460,7 @@ def check_app_password() -> bool:
                 if pwd == APP_PASSWORD:
                     st.session_state["password_ok"] = True
                     st.session_state["user_email"] = "eni2025@app"
-                    st.session_state["user"] = {"email": "eni2025@app"】
+                    st.session_state["user"] = {"email": "eni2025@app"}
 
                     name_lower = editor_name.lower()
                     is_vivi_login = any(t in name_lower for t in ("vivian", "vivi", "saurino"))
