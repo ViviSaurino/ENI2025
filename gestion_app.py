@@ -221,12 +221,12 @@ header[data-testid="stHeader"]{
 .eni-hero-card{
   background:#C4A5FF;
   border-radius:22px;
-  padding:28px 28px;          /* antes 18px 24px */
-  margin:8px 0 24px 0;        /* un poco más de aire abajo */
+  padding:28px 28px;
+  margin:8px 0 24px 0;
   box-shadow:0 12px 28px rgba(129,140,248,0.40);
 }
 .eni-hero-title{
-  font-size:22px;             /* antes 20px */
+  font-size:22px;
   font-weight:800;
   color:#FFFFFF;
   margin-bottom:4px;
@@ -255,19 +255,24 @@ header[data-testid="stHeader"]{
   padding:10px 12px;
   box-shadow:0 10px 22px rgba(148,163,184,0.40);
   border:none;
-  min-height:150px;           /* antes 130px */
+  min-height:150px;
   max-height:150px;
   display:flex;
   flex-direction:column;
-  justify-content:space-between;
+  justify-content:center;
   transition:all .15s ease-in-out;
   overflow:hidden;
 }
 .eni-quick-card-main{
   display:flex;
-  flex-direction:column;
+  flex-direction:row;          /* texto e ícono en fila */
+  align-items:center;          /* centrados verticalmente */
   justify-content:space-between;
+  gap:8px;
   height:100%;
+}
+.eni-quick-card-text{
+  flex:1;
 }
 .eni-quick-card-title{
   font-size:13px;
@@ -281,10 +286,9 @@ header[data-testid="stHeader"]{
   margin-top:4px;
 }
 .eni-quick-card-icon{
-  font-size:30px;             /* antes 24px */
-  align-self:flex-end;
-  margin-top:auto;
-  padding-bottom:8px;         /* más espacio para que no se corte la estrella */
+  font-size:36px;              /* íconos más grandes */
+  margin-top:0;
+  padding-bottom:0;
 }
 .eni-quick-card-link:hover .eni-quick-card{
   box-shadow:0 14px 30px rgba(148,163,184,0.55);
@@ -296,10 +300,10 @@ header[data-testid="stHeader"]{
 .eni-quick-card--editar_estado{ background:#C7D2FE; }
 .eni-quick-card--prioridad{ background:#6EE7B7; }
 
-/* Tarjetas blancas inferiores */
+/* Tarjeta blanca inferior (solo una, ancho completo) */
 .eni-bottom-row{
   display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
+  grid-template-columns:1fr;   /* una sola columna */
   gap:12px;
   margin:18px 0 4px 0;
 }
@@ -315,7 +319,7 @@ header[data-testid="stHeader"]{
   background:#FFFFFF;
   border-radius:24px;
   padding:16px 18px 18px 18px;
-  margin-top:32px;
+  margin-top:24px;             /* subido para alinearse con el lila */
   margin-right:24px;
   margin-left:12px;
   margin-bottom:24px;
@@ -706,7 +710,6 @@ def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str
     display_name = st.session_state.get("user_display_name", "Usuario")
     u_param = quote(display_name, safe="")
     card_class = f"eni-quick-card eni-quick-card--{tile_key}"
-    # IMPORTANTE: sin espacios antes de <a> ni </a>
     return f"""
 <a href="?auth=1&u={u_param}&tile={tile_key}" target="_self" class="eni-quick-card-link">
   <div class="{card_class}">
@@ -801,7 +804,6 @@ if section == "Gestión de tareas":
   </div>
 
   <div class="eni-bottom-row">
-    <div class="eni-bottom-card"></div>
     <div class="eni-bottom-card"></div>
   </div>
 </div>
