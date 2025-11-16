@@ -96,7 +96,7 @@ st.markdown(
   .eni-main-topbar{
     background:#FFFFFF;
     padding:10px 24px;
-    border-radius:0 0 16px 16px;
+    border-radius:0;   /* sin curvas, rectángulo completo */
     display:flex;
     align-items:center;
     justify-content:flex-end;
