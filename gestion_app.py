@@ -79,7 +79,6 @@ html, body{
   padding:0;
 }
 html, body, [data-testid="stAppViewContainer"]{
-  /* Fondo suave lila gris como antes */
   background-color:#ECEAF7;
 }
 
@@ -120,7 +119,7 @@ html body [data-testid="stAppViewContainer"] .main .block-container{
   font-size:13px;
   color:#4B5563;
 }
-/* círculo VS lila como la cabecera */
+/* círculo VS lila como cabecera */
 .eni-main-topbar-avatar{
   width:32px;
   height:32px;
@@ -223,7 +222,7 @@ header[data-testid="stHeader"]{
   background:#C4A5FF;
   border-radius:22px;
   padding:28px 28px;
-  margin:24px 0 14px 0;
+  margin:24px 24px 14px 24px;
   box-shadow:0 12px 28px rgba(129,140,248,0.40);
 }
 .eni-hero-title{
@@ -238,17 +237,17 @@ header[data-testid="stHeader"]{
   margin:0;
 }
 
-/* Panel blanco grande (debajo del lila) donde va el contenido de la tarjeta */
+/* Panel blanco grande para contenido de la tarjeta */
 .eni-panel-card{
   background:#FFFFFF;
   border-radius:20px;
   min-height:260px;
   box-shadow:0 10px 26px rgba(148,163,184,0.18);
-  padding:16px 20px;
-  margin-top:14px;
+  padding:18px 22px;
+  margin:16px 24px 24px 24px;
 }
 
-/* Tarjetas rápidas (base) */
+/* Tarjetas rápidas */
 .eni-quick-card-link{
   text-decoration:none;
   color:inherit;
@@ -738,7 +737,7 @@ if section == "Gestión de tareas":
     dn = st.session_state.get("user_display_name", "Usuario")
     initials = "".join([p[0] for p in dn.split() if p])[:2].upper()
 
-    # Topbar (sin texto Dashboard visible)
+    # Topbar
     st.markdown(
         f"""
 <div class="eni-main-topbar">
@@ -752,59 +751,22 @@ if section == "Gestión de tareas":
         unsafe_allow_html=True,
     )
 
-    # Layout principal: izquierda hero + panel, derecha tarjetas 2x2
-    col_left, col_right = st.columns([2.8, 1.2])
-
-    # -------- Columna izquierda: encabezado lila + panel blanco ----------
-    with col_left:
-        st.markdown(
-            """
+    # Encabezado lila a todo el ancho central
+    st.markdown(
+        """
 <div class="eni-hero-card">
   <div class="eni-hero-title">Bienvenid@</div>
   <p class="eni-hero-sub">A la plataforma de gestión ENI — 2025</p>
 </div>
 """,
-            unsafe_allow_html=True,
-        )
+        unsafe_allow_html=True,
+    )
 
-        # Panel blanco donde va el contenido de la tarjeta seleccionada
-        st.markdown('<div class="eni-panel-card">', unsafe_allow_html=True)
-        if tile:
-            pretty = tile.replace("_", " ").capitalize()
-            # Puedes dejar o quitar este subtítulo según quieras
-            st.markdown(
-                f"<p style='font-size:12px;color:#6B7280;margin-top:0;margin-bottom:6px;'>Vista seleccionada: <strong>{pretty}</strong>.</p>",
-                unsafe_allow_html=True,
-            )
-            module_path = TILE_TO_VIEW_MODULE.get(tile)
-            if module_path:
-                try:
-                    view_module = importlib.import_module(module_path)
-                    render_fn = getattr(view_module, "render", None)
-                    if render_fn is None:
-                        render_fn = getattr(view_module, "render_all", None)
-
-                    if callable(render_fn):
-                        render_fn(st.session_state.get("user"))
-                    else:
-                        st.info(
-                            "Vista pendiente para esta tarjeta "
-                            "(no se encontró función 'render' ni 'render_all')."
-                        )
-                except Exception as e:
-                    st.info("No se pudo cargar la vista para esta tarjeta.")
-                    st.exception(e)
-        else:
-            st.markdown(
-                "<p style='font-size:12px;color:#6B7280;margin:0;'>Selecciona una tarjeta de la derecha para empezar.</p>",
-                unsafe_allow_html=True,
-            )
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    # -------- Columna derecha: 2x2 tarjetas ----------
-    with col_right:
+    # Fila para las tarjetas (a la derecha, sobre el panel)
+    _, col_cards = st.columns([2.2, 1.0])
+    with col_cards:
         right_html = f"""
-<div style="margin-right:24px; margin-left:8px; margin-top:24px; margin-bottom:24px;">
+<div style="margin-right:24px; margin-top:4px;">
   <div class="eni-quick-grid-2">
     {_quick_card_link(
         "Nueva tarea",
@@ -834,6 +796,36 @@ if section == "Gestión de tareas":
 </div>
 """
         st.markdown(right_html, unsafe_allow_html=True)
+
+    # Panel blanco de ancho completo para el contenido de la tarjeta
+    st.markdown('<div class="eni-panel-card">', unsafe_allow_html=True)
+    if tile:
+        module_path = TILE_TO_VIEW_MODULE.get(tile)
+        if module_path:
+            try:
+                view_module = importlib.import_module(module_path)
+                render_fn = getattr(view_module, "render", None)
+                if render_fn is None:
+                    render_fn = getattr(view_module, "render_all", None)
+
+                if callable(render_fn):
+                    # ← Aquí dentro van indicaciones, botón "Nueva tarea" y celdas,
+                    # ocupando todo el ancho del rectángulo blanco.
+                    render_fn(st.session_state.get("user"))
+                else:
+                    st.info(
+                        "Vista pendiente para esta tarjeta "
+                        "(no se encontró función 'render' ni 'render_all')."
+                    )
+            except Exception as e:
+                st.info("No se pudo cargar la vista para esta tarjeta.")
+                st.exception(e)
+    else:
+        st.markdown(
+            "<p style='font-size:12px;color:#6B7280;margin:0;'>Selecciona una tarjeta de la derecha para empezar.</p>",
+            unsafe_allow_html=True,
+        )
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # ============ Otras secciones ============
 elif section == "Kanban":
