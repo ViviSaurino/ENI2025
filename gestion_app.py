@@ -320,6 +320,12 @@ st.markdown(
     background:#34D399;
   }
 
+  /* Reducir al mínimo el espacio horizontal entre columnas (lila/blanco y tarjetas) */
+  div[data-testid="stHorizontalBlock"]{
+    gap: 0.1rem !important;        /* antes ~1rem, ahora casi nada */
+    column-gap: 0.1rem !important;
+  }
+
 </style>
 """,
     unsafe_allow_html=True,
