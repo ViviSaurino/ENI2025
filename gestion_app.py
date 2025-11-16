@@ -135,7 +135,7 @@ st.markdown(
     border-radius:8px;
     padding:22px 28px;
     box-shadow:0 18px 40px rgba(148,163,184,0.35);
-    margin:0 0px 18px -50px;
+    margin:0 0px 25px -50px;
   }
   .eni-main-card-header-title{
     font-size:22px;
@@ -812,25 +812,25 @@ if section == "Gestión de tareas":
           <div class="eni-quick-grid">
             {_quick_card_link(
                 "Editar estado",
-                "Actualizar fases y fechas de las tareas.",
+                "Actualiza fases y fechas de las tareas",
                 "✏️",
                 "editar_estado",
             )}
             {_quick_card_link(
                 "Nueva alerta",
-                "Registrar alertas y riesgos prioritarios.",
+                "Registra alertas y riesgos prioritarios",
                 "⚠️",
                 "nueva_alerta",
             )}
             {_quick_card_link(
                 "Prioridad",
-                "Revisar niveles de prioridad.",
+                "Revisa los niveles de prioridad",
                 "⭐",
                 "prioridad_evaluacion",
             )}
             {_quick_card_link(
                 "Evaluación",
-                "Registrar y revisar evaluaciones.",
+                "Revisa las evaluaciones y cumplimiento.",
                 "📝",
                 "nueva_tarea",
             )}
