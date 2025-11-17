@@ -235,7 +235,7 @@ def render(user: dict | None = None):
         <style>
           /* Empujar hacia arriba solo el bloque de Editar estado */
           div[data-testid="stMarkdownContainer"] > #est-section {
-              margin-top:-40px !important;
+              margin-top:-90px !important;
           }
 
           #est-section .stButton > button { 
