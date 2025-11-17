@@ -156,9 +156,14 @@ st.markdown(
     margin:0 -10px -8px -50px;
   }
 
-  /* Contenedor de la vista (Editar estado, etc.) */
+  /* Contenedor general para vistas a ancho completo (Editar estado, etc.) */
   .eni-view-wrapper{
     margin-top:-40px;   /* 🔹 levanta la vista hacia arriba */
+  }
+
+  /* Contenedor específico para NUEVA TAREA dentro del panel blanco */
+  .eni-view-wrapper-nt{
+    margin-top:0;       /* sin desplazamiento negativo */
   }
 
   /* ===== Sidebar blanca ===== */
@@ -202,7 +207,7 @@ st.markdown(
     flex-direction:row;
     align-items:center;
   }
-  section[data-testid="stSidebar"] [data-baseweb="radio"] > div:first-child{
+  section[data-testid="stSidebar"] .stRadio > div:first-child{
     display:none;
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"] > div:last-child{
@@ -742,13 +747,11 @@ tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
 # ============ Contenido principal ============
 if section == "Gestión de tareas":
     dn = st.session_state.get("user_display_name", "Usuario")
-    initials = "".join([p[0] for p in dn.split() if p])[:2].upper()
 
     # Nombre “limpio” sin emoji final (por ejemplo 💜, 😎, etc.)
     parts = dn.split()
     if parts:
         last = parts[-1]
-        # Si el último token no tiene letras ni números, lo quitamos
         if not any(ch.isalnum() for ch in last):
             dn_clean = " ".join(parts[:-1]) or dn
         else:
@@ -760,6 +763,7 @@ if section == "Gestión de tareas":
     col_left, col_gap, col_right = st.columns([3, 0.15, 1.25])
 
     with col_left:
+        # Cabecera lila
         st.markdown(
             f"""
             <div class="eni-main-card-header">
@@ -772,8 +776,38 @@ if section == "Gestión de tareas":
             unsafe_allow_html=True,
         )
 
-        # Rectángulo blanco de contenido (este se mantiene)
-        st.markdown('<div class="eni-panel-card"></div>', unsafe_allow_html=True)
+        # ===== Panel blanco =====
+        if tile == "nueva_tarea":
+            # 👉 NUEVA TAREA: se dibuja DENTRO del panel blanco
+            st.markdown('<div class="eni-panel-card">', unsafe_allow_html=True)
+
+            module_path = TILE_TO_VIEW_MODULE.get("nueva_tarea")
+            if module_path:
+                try:
+                    view_module = importlib.import_module(module_path)
+                    render_fn = getattr(view_module, "render", None)
+                    if render_fn is None:
+                        render_fn = getattr(view_module, "render_all", None)
+
+                    if callable(render_fn):
+                        st.markdown('<div class="eni-view-wrapper-nt">', unsafe_allow_html=True)
+                        render_fn(st.session_state.get("user"))
+                        st.markdown('</div>', unsafe_allow_html=True)
+                    else:
+                        st.info(
+                            "Vista pendiente para esta tarjeta "
+                            "(no se encontró función 'render' ni 'render_all')."
+                        )
+                except Exception as e:
+                    st.info("No se pudo cargar la vista para esta tarjeta.")
+                    st.exception(e)
+            else:
+                st.info("Todavía no hay una vista vinculada a esta tarjeta.")
+
+            st.markdown('</div>', unsafe_allow_html=True)
+        else:
+            # Otros casos: panel blanco vacío (como en la home)
+            st.markdown('<div class="eni-panel-card"></div>', unsafe_allow_html=True)
 
     with col_gap:
         st.write("")
@@ -812,7 +846,8 @@ if section == "Gestión de tareas":
         st.markdown(cards_html, unsafe_allow_html=True)
 
     # ---- Contenido de la vista seleccionada (ANCHO COMPLETO) ----
-    if tile:
+    # Solo para vistas que NO son "nueva_tarea"
+    if tile and tile != "nueva_tarea":
         module_path = TILE_TO_VIEW_MODULE.get(tile)
         if module_path:
             try:
