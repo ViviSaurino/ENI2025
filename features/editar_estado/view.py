@@ -224,20 +224,19 @@ def render(user: dict | None = None):
     if st.session_state["est_visible"]:
         A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
-        # 👉 Div envoltorio de la sección
+        # 👉 Div envoltorio de la sección (ahora con clase para poder mover todo el bloque)
         st.markdown(
-            '<div id="est-section">',
+            '<div class="est-wrapper-up" id="est-section">',
             unsafe_allow_html=True,
         )
 
         st.markdown(
             """
         <style>
-          /* 🔧 Reducir el espacio ANTES de la sección "Editar estado"
-             (apunta al contenedor de Streamlit que contiene #est-section) */
-          [data-testid="stVerticalBlock"]:has(#est-section){
-              margin-top:-10px;          /* ajusta -20, -24, -30 según lo que veas */
-              padding-top:0 !important;  /* elimina padding extra arriba */
+          /* 💫 Subir todo el bloque de "Editar estado" dentro del rectángulo blanco */
+          .est-wrapper-up{
+              position: relative;
+              top: -16px;   /* ajusta -10, -16, -20 según lo que veas */
           }
 
           #est-section .stButton > button { 
@@ -1014,5 +1013,5 @@ def render(user: dict | None = None):
 
         # cierra form-card + section-est
         st.markdown("</div></div>", unsafe_allow_html=True)
-        # cierra est-section
+        # cierra est-section (wrapper)
         st.markdown("</div>", unsafe_allow_html=True)
