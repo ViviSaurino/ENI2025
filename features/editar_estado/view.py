@@ -236,7 +236,7 @@ def render(user: dict | None = None):
           /* 💫 Subir todo el bloque de "Editar estado" dentro del rectángulo blanco */
           .est-wrapper-up{
               position: relative;
-              top: -16px;   /* ajusta -10, -16, -20 según lo que veas */
+              top: -40px;   /* ajusta -10, -16, -20 según lo que veas */
           }
 
           #est-section .stButton > button { 
