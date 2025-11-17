@@ -224,15 +224,20 @@ def render(user: dict | None = None):
     if st.session_state["est_visible"]:
         A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
-        # 👉 Div envoltorio de la sección (margen negativo para que suba)
+        # 👉 Div envoltorio de la sección
         st.markdown(
-            '<div id="est-section" style="margin-top:0px;">',
+            '<div id="est-section">',
             unsafe_allow_html=True,
         )
 
         st.markdown(
             """
         <style>
+          /* Empujar hacia arriba solo el bloque de Editar estado */
+          div[data-testid="stMarkdownContainer"] > #est-section {
+              margin-top:-40px !important;
+          }
+
           #est-section .stButton > button { 
             width: 100% !important; 
           }
