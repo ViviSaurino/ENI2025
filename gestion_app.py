@@ -90,7 +90,7 @@ st.markdown(
   }
 
   /* ===== Fila superior: Gestión de tareas + VS / logout ===== */
-  .eni-main-topbar{
+    .eni-main-topbar{
     padding:0 24px 0 24px;
     display:flex;
     align-items:center;
@@ -98,9 +98,9 @@ st.markdown(
     margin:0 -45px 6px -50px;   /* top  right  bottom  left */
   }
   .eni-main-topbar-title{
-    font-size:13px;
+    font-size:15px;             /* 🔹 letras un poco más grandes */
     font-weight:700;
-    color:#B38CFB;              /* lila similar a la cabecera */
+    color:#374151;              /* 🔹 plomo oscuro */
     letter-spacing:0.08em;
     text-transform:uppercase;
   }
@@ -112,8 +112,8 @@ st.markdown(
     color:#4B5563;
   }
   .eni-main-topbar-avatar{
-    width:30px;
-    height:30px;
+    width:38px;                 /* 🔹 círculo más grande */
+    height:38px;
     border-radius:999px;
     background:#C4B5FD;
     display:flex;
@@ -121,8 +121,9 @@ st.markdown(
     justify-content:center;
     color:#FFFFFF;
     font-weight:700;
-    font-size:13px;
+    font-size:15px;             /* letras dentro del círculo un pelín más grandes */
   }
+  /* Flechita eliminada: ya no se usa .eni-main-topbar-arrow */
 
   /* ===== Card lila principal ===== */
   .eni-main-card-header{
