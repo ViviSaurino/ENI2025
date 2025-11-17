@@ -249,8 +249,8 @@ st.markdown(
   }
 
   html body [data-testid="stAppViewContainer"] .main .block-container{
-    padding-top:0rem !important;
-    margin-top:-0.4rem !important;
+    padding-top:1.2rem !important;
+    margin-top:0rem !important;
     background:transparent;
   }
 
