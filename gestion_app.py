@@ -157,7 +157,7 @@ st.markdown(
     box-shadow:0 10px 26px rgba(148,163,184,0.18);
     padding:18px 24px;
     /* mismo ancho visual que la cabecera lila */
-    margin:0 -10px 0px -50px;
+    margin:0 -10px -8px -50px;
   }
 
   /* ===== Sidebar blanca ===== */
