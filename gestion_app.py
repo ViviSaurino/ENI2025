@@ -123,24 +123,6 @@ st.markdown(
     font-weight:700;
     font-size:13px;
   }
-  .eni-main-topbar-arrow{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    width:22px;
-    height:22px;
-    border-radius:999px;
-    border:none;
-    background:transparent;
-    color:#6B7280;
-    font-size:17px;
-    text-decoration:none;
-    cursor:pointer;
-  }
-  .eni-main-topbar-arrow:hover{
-    color:#4B5563;
-    background:rgba(148,163,184,0.18);
-  }
 
   /* ===== Card lila principal ===== */
   .eni-main-card-header{
