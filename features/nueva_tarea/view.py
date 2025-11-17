@@ -136,42 +136,44 @@ if "_sync_time_from_date" not in globals():
 def render(user: dict | None = None):
     """Vista: ➕ Nueva tarea"""
 
-    # ===== CSS =====
+        # ===== CSS =====
     st.markdown(
         """
     <style>
+      /* Oculta caption automático de Streamlit */
       section.main div[data-testid="stCaptionContainer"]:first-of-type{
         display:none !important;
       }
 
-      /* Card blanco SOLO para el container que envuelve los filtros */
-      div[data-testid="stContainer"]:has(#nt-card-sentinel){
-        background:#FFFFFF;
-        border-radius:14px;
-        padding:20px 22px 22px 22px;
+      /* ===== CARD BLANCO DE LOS FILTROS (Área, Fase, Tarea, etc.) ===== */
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
+        background:#FFFFFF;                 /* <<< fondo blanco */
+        border-radius:16px;
+        padding:22px 24px 24px 24px;
         margin-top:16px;
         margin-bottom:10px;
-        box-shadow:0 20px 50px rgba(15,23,42,0.10);
-        border:1px solid #E5E7EB;
+        box-shadow:0 18px 45px rgba(15,23,42,0.08);
+        border:1px solid rgba(148,163,184,0.22);
       }
 
-      /* Inputs a ancho completo dentro de ese card */
-      div[data-testid="stContainer"]:has(#nt-card-sentinel) .stTextInput,
-      div[data-testid="stContainer"]:has(#nt-card-sentinel) .stSelectbox,
-      div[data-testid="stContainer"]:has(#nt-card-sentinel) .stDateInput,
-      div[data-testid="stContainer"]:has(#nt-card-sentinel) .stTimeInput,
-      div[data-testid="stContainer"]:has(#nt-card-sentinel) .stTextArea{
+      /* Inputs al 100% dentro del card */
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea{
         width:100% !important;
       }
-      div[data-testid="stContainer"]:has(#nt-card-sentinel) .stTextInput>div,
-      div[data-testid="stContainer"]:has(#nt-card-sentinel) .stSelectbox>div,
-      div[data-testid="stContainer"]:has(#nt-card-sentinel) .stDateInput>div,
-      div[data-testid="stContainer"]:has(#nt-card-sentinel) .stTimeInput>div,
-      div[data-testid="stContainer"]:has(#nt-card-sentinel) .stTextArea>div{
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput>div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox>div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput>div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput>div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea>div{
         width:100% !important;
         max-width:none !important;
       }
 
+      /* Píldora de título "Nueva tarea" */
       .nt-pill{
         width:100%;
         height:38px;
@@ -186,9 +188,10 @@ def render(user: dict | None = None):
         user-select:none;
       }
 
+      /* Indicaciones en card blanco */
       .help-strip{
         background:#FFFFFF;
-        border:1px solid #E5E7EB;
+        border:1px solid rgba(148,163,184,0.22);
         color:#0B3B76;
         padding:12px 14px;
         border-radius:14px;
@@ -196,13 +199,14 @@ def render(user: dict | None = None):
         box-shadow:0 12px 30px rgba(15,23,42,0.06);
       }
 
+      /* Botones inferiores */
       .nt-outbtn .stButton>button{
         min-height:38px !important;
         height:38px !important;
         border-radius:10px !important;
       }
       .nt-outbtn{
-        margin-top: 6px;
+        margin-top:6px;
       }
     </style>
     """,
