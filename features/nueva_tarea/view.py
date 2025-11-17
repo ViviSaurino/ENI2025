@@ -145,15 +145,16 @@ def render(user: dict | None = None):
         display:none !important;
       }
 
-      /* ===== CARD BLANCO DE LOS FILTROS (Área, Fase, Tarea, etc.) ===== */
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
-        background:#FFFFFF;                 /* <<< fondo blanco */
-        border-radius:16px;
-        padding:22px 24px 24px 24px;
-        margin-top:16px;
-        margin-bottom:10px;
-        box-shadow:0 18px 45px rgba(15,23,42,0.08);
-        border:1px solid rgba(148,163,184,0.22);
+     /* CARD BLANCO DE LOS FILTROS */
+     div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel),
+     div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) > div{
+       background:#FFFFFF !important;   /* forzamos blanco */
+       border-radius:16px;
+       padding:22px 24px 24px 24px;
+       margin-top:16px;
+       margin-bottom:10px;
+       box-shadow:0 18px 45px rgba(15,23,42,0.08);
+       border:1px solid rgba(148,163,184,0.22);
       }
 
       /* Inputs al 100% dentro del card */
