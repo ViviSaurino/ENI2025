@@ -137,17 +137,18 @@ def render(user: dict | None = None):
     """Vista: ➕ Nueva tarea"""
 
         # ===== CSS =====
-    st.markdown(
-    """
+        st.markdown(
+        """
     <style>
       /* Oculta el caption automático de Streamlit */
       section.main div[data-testid="stCaptionContainer"]:first-of-type{
         display:none !important;
       }
 
-      /* === CARD BLANCO SOLO PARA EL FORMULARIO (bloque con #nt-card-sentinel) === */
-      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel){
-        background:#FFFFFF !important;                    /* fondo blanco */
+      /* ========== CARD SOLO DEL FORMULARIO (filtros) ========== */
+      /* Aquí: solo el verticalBlock cuyo HIJO directo es #nt-card-sentinel */
+      section.main div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
+        background:#FFFFFF !important;              /* fondo blanco SOLO del formulario */
         border-radius:16px;
         padding:22px 24px 24px 24px;
         margin-top:16px;
@@ -156,29 +157,20 @@ def render(user: dict | None = None):
         border:1px solid rgba(148,163,184,0.22);
       }
 
-      /* Dentro de ese mismo bloque, los hijos NO deben crear más tarjetas */
-      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) > div{
-        background:transparent !important;
-        box-shadow:none !important;
-        border:none !important;
-        padding:0 !important;
-        margin:0 !important;
-      }
-
-      /* Inputs al 100% dentro del card */
-      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextInput,
-      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stSelectbox,
-      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stDateInput,
-      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTimeInput,
-      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextArea{
+      /* Inputs al 100% dentro de ese card */
+      section.main div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
+      section.main div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox,
+      section.main div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput,
+      section.main div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput,
+      section.main div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea{
         width:100% !important;
       }
 
-      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextInput>div,
-      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stSelectbox>div,
-      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stDateInput>div,
-      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTimeInput>div,
-      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextArea>div{
+      section.main div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput>div,
+      section.main div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox>div,
+      section.main div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput>div,
+      section.main div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput>div,
+      section.main div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea>div{
         width:100% !important;
         max-width:none !important;
       }
@@ -198,7 +190,7 @@ def render(user: dict | None = None):
         user-select:none;
       }
 
-      /* Indicaciones en card blanco */
+      /* Indicaciones en card blanco pequeñito */
       .help-strip{
         background:#FFFFFF;
         border:1px solid rgba(148,163,184,0.22);
@@ -215,14 +207,13 @@ def render(user: dict | None = None):
         height:38px !important;
         border-radius:10px !important;
       }
-
       .nt-outbtn{
         margin-top:6px;
       }
     </style>
-    """,
-    unsafe_allow_html=True,
-)
+        """,
+        unsafe_allow_html=True,
+    )
     
     # ===== Datos =====
     if "AREAS_OPC" not in globals():
