@@ -768,53 +768,15 @@ if section == "Gestión de tareas":
             unsafe_allow_html=True,
         )
 
-        # 🔹 Rectángulo blanco JUSTO DEBAJO DEL LILA (como antes)
-        st.markdown('<div class="eni-panel-card">', unsafe_allow_html=True)
-        if tile:
-            pretty = {
-                "editar_estado": "Editar estado",
-                "nueva_alerta": "Nueva alerta",
-                "prioridad_evaluacion": "Prioridad / Evaluación",
-                "nueva_tarea": "Evaluación",
-            }.get(tile, tile.replace("_", " ").capitalize())
+        # Panel blanco vacío, solo decorativo (mismo ancho que el lila)
+        st.markdown('<div class="eni-panel-card"></div>', unsafe_allow_html=True)
 
-            st.markdown(
-                f"<p style='font-size:12px;color:#6B7280;margin-top:0;margin-bottom:8px;'>"
-                f"Vista seleccionada: <strong>{pretty}</strong>.</p>",
-                unsafe_allow_html=True,
-            )
-
-            module_path = TILE_TO_VIEW_MODULE.get(tile)
-            if module_path:
-                try:
-                    view_module = importlib.import_module(module_path)
-                    render_fn = getattr(view_module, "render", None)
-                    if render_fn is None:
-                        render_fn = getattr(view_module, "render_all", None)
-
-                    if callable(render_fn):
-                        render_fn(st.session_state.get("user"))
-                    else:
-                        st.info(
-                            "Vista pendiente para esta tarjeta "
-                            "(no se encontró función 'render' ni 'render_all')."
-                        )
-                except Exception as e:
-                    st.info("No se pudo cargar la vista para esta tarjeta.")
-                    st.exception(e)
-            else:
-                st.info("Todavía no hay una vista vinculada a esta tarjeta.")
-        else:
-            # ya no mostramos el texto de “Selecciona una tarjeta…”
-            st.write("")
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    # columna de espacio (solo deja la franja entre lila/blanco y tarjetas)
+    # columna de espacio (franja entre lila/blanco y tarjetas)
     with col_gap:
         st.write("")
 
     with col_right:
-        # Grid 2x2 de tarjetas con nuevos nombres
+        # Grid 2x2 de tarjetas con los nombres nuevos
         cards_html = f"""
         <div class="eni-quick-grid-wrapper">
           <div class="eni-quick-grid">
@@ -847,6 +809,33 @@ if section == "Gestión de tareas":
         """
         st.markdown(cards_html, unsafe_allow_html=True)
 
+    # ---- Contenido de la vista seleccionada (ANCHO COMPLETO) ----
+    if tile:
+        module_path = TILE_TO_VIEW_MODULE.get(tile)
+        if module_path:
+            try:
+                view_module = importlib.import_module(module_path)
+                render_fn = getattr(view_module, "render", None)
+                if render_fn is None:
+                    render_fn = getattr(view_module, "render_all", None)
+
+                if callable(render_fn):
+                    # aquí se dibuja Editar estado / Nueva alerta / etc.
+                    render_fn(st.session_state.get("user"))
+                else:
+                    st.info(
+                        "Vista pendiente para esta tarjeta "
+                        "(no se encontró función 'render' ni 'render_all')."
+                    )
+            except Exception as e:
+                st.info("No se pudo cargar la vista para esta tarjeta.")
+                st.exception(e)
+        else:
+            st.info("Todavía no hay una vista vinculada a esta tarjeta.")
+    else:
+        # sin mensaje "Vista seleccionada: ..."
+        st.write("")
+
 elif section == "Kanban":
     st.title("🗂️ Kanban")
     def _render_kanban():
@@ -875,4 +864,3 @@ else:
         st.caption("Próximamente: visualizaciones y KPIs del dashboard.")
         st.write("")
     render_if_allowed(tab_key, _render_dashboard)
-
