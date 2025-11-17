@@ -249,7 +249,7 @@ st.markdown(
   }
 
   html body [data-testid="stAppViewContainer"] .main .block-container{
-    padding-top:3rem !important;
+    padding-top:3.5rem !important;
     margin-top:0rem !important;
     background:transparent;
   }
