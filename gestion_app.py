@@ -201,8 +201,8 @@ st.markdown(
     flex-direction:row;
     align-items:center;
   }
-  section[data-testid="stSidebar"] .stRadio > div:first-child{
-    display:none;
+  section[data-testid="stSidebar"] [data-baseweb="radio"] > div:first-child{
+    display:none !important;   /* 👉 oculta el botón rojo */  
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"] > div:last-child{
     padding-left:6px !important;
