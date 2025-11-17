@@ -98,12 +98,12 @@ st.markdown(
   .eni-main-topbar{
     background:#FFFFFF;
     padding:19px 24px;
-    border-radius:0;   /* sin curvas, rectángulo completo */
+    border-radius:0;
     display:flex;
     align-items:center;
     justify-content:flex-end;
-    margin:0 -45px 29px -50px;   /* top  right  bottom  left */
-    box-shadow:none;   /* 👈 sin sombra */
+    margin:0 -45px 29px -50px;
+    box-shadow:none;
   }
   .eni-main-topbar-title{
     font-size:14px;
@@ -122,7 +122,7 @@ st.markdown(
     width:32px;
     height:32px;
     border-radius:999px;
-    background:#C4B5FD; /* mismo lila de cabecera */
+    background:#C4B5FD;
     display:flex;
     align-items:center;
     justify-content:center;
@@ -158,14 +158,13 @@ st.markdown(
     min-height:180px;
     box-shadow:0 10px 26px rgba(148,163,184,0.18);
     padding:18px 24px;
-    /* mismo ancho visual que la cabecera lila */
     margin:0 -10px -8px -50px;
   }
 
-  /* ⬆⬆⬆ Contenedor de la vista (Editar estado, etc.) ⬆⬆⬆ */
+  /* Contenedor de la vista (Editar estado, etc.) */
   .eni-view-wrapper{
     margin-top: 0 !important;
-    transform: translateY(0px);   /* súbelo/bájalo cambiando este valor */
+    transform: translateY(0px);
   }
 
   /* ===== Sidebar blanca ===== */
@@ -195,7 +194,7 @@ st.markdown(
     border-right:1px solid #E5E7EB;
   }
 
-  /* Menú de secciones: icono a la izquierda, texto a la derecha */
+  /* Menú de secciones */
   section[data-testid="stSidebar"] .stRadio > div{
     gap:4px !important;
   }
@@ -263,34 +262,34 @@ st.markdown(
 
   /* ===== Grid de tarjetas rápidas (derecha) ===== */
   .eni-quick-grid-wrapper{
-    margin:0px -45px 0 0;   /* top right bottom left */
+    margin:0px -45px 0 0;
   }
   .eni-quick-grid{
     display:grid;
-    grid-template-columns:repeat(2, 1fr);  /* 2 x 2 perfectamente alineadas */
+    grid-template-columns:repeat(2, 1fr);
     gap:16px;
     align-items:stretch;
-    grid-auto-rows:143px;                  /* misma altura en todas */
+    grid-auto-rows:143px;
   }
   .eni-quick-card-link,
   .eni-quick-card-link:link,
   .eni-quick-card-link:visited,
   .eni-quick-card-link:hover,
   .eni-quick-card-link:active{
-      text-decoration:none !important;  /* 👈 sin línea azul */
+      text-decoration:none !important;
       color:inherit;
   }
   .eni-quick-card-link:focus-visible{
-      outline:none;                     /* quita el borde morado/azul de foco */
+      outline:none;
   }
   .eni-quick-card{
     border-radius:8px;
     padding:16px 12px 12px 16px;
     box-shadow:0 10px 22px rgba(148,163,184,0.40);
     border:none;
-    height:143px;                     /* mismas alturas, cuadradas */
+    height:143px;
     display:flex;
-    flex-direction:column;            /* texto arriba, icono abajo */
+    flex-direction:column;
     justify-content:space-between;
     align-items:flex-start;
     transition:all .15s ease-in-out;
@@ -311,10 +310,9 @@ st.markdown(
     margin:0;
   }
   .eni-quick-card-icon{
-    font-size:42px;          /* 🔹 más grande */
+    font-size:42px;
     margin-left:60px;
-    /* sin margin-bottom raro */
-    transform: translateY(-8px);   /* 🔹 sube el ícono dentro de la tarjeta */
+    transform: translateY(-8px);
   }
   .eni-quick-card-link:hover .eni-quick-card{
     box-shadow:0 14px 28px rgba(148,163,184,0.55);
@@ -333,15 +331,15 @@ st.markdown(
     background:#A8D4F3;
   }
 
-  /* Reducir al mínimo el espacio horizontal entre columnas (lila/blanco y tarjetas) */
+  /* Reducir espacio horizontal entre columnas */
   div[data-testid="stHorizontalBlock"]{
-    gap: 0.4rem !important;        /* antes ~1rem, ahora casi nada */
+    gap: 0.4rem !important;
     column-gap: 0.4rem !important;
   }
  
   /* Solo para la tarjeta de Evaluación */
   .eni-quick-card--nueva_tarea .eni-quick-card-icon{
-      transform: translateY(-22px);  /* súbelo más: prueba -14, -16, -18 */
+      transform: translateY(-22px);
   }
 
   /* Reducir el espacio superior de los títulos dentro del contenido */
@@ -349,13 +347,12 @@ st.markdown(
   html body [data-testid="stAppViewContainer"] .main .block-container h2,
   html body [data-testid="stAppViewContainer"] .main .block-container h3{
     margin-top: 0.2rem !important;
-}
+  }
 
-  /* Ajuste fuerte del espacio vertical en la sección "Gestión de tareas":
-     reduce el gap entre la cabecera (topbar + tarjetas) y la vista seleccionada */
+  /* Ajuste fuerte del espacio vertical en la sección "Gestión de tareas" */
   html body [data-testid="stAppViewContainer"] .main .block-container
       > div[data-testid="stVerticalBlock"]:has(.eni-main-topbar){
-      row-gap: 0.1rem !important;   /* antes ~1rem, ahora bien pegadito */
+      row-gap: 0.1rem !important;
       padding-top: 0.1rem !important;
       margin-top: -0.4rem !important;
   }
@@ -564,9 +561,6 @@ if not check_app_password():
     st.stop()
 
 # 🔄 Ajuste global DESPUÉS del login:
-#    - Quitamos el overflow:hidden del login
-#    - Ajustamos el gap vertical general
-#    - Subimos un poquito la vista (Editar estado, etc.)
 st.markdown(
     """
 <style>
@@ -794,6 +788,11 @@ tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
 # ============ Contenido principal ============
 
 if section == "Gestión de tareas":
+    # 👉 Si no hay tile seleccionado, forzamos "editar_estado"
+    if not tile:
+        tile = "editar_estado"
+        st.session_state["home_tile"] = "editar_estado"
+
     dn = st.session_state.get("user_display_name", "Usuario")
     initials = "".join([p[0] for p in dn.split() if p])[:2].upper()
 
@@ -831,12 +830,12 @@ if section == "Gestión de tareas":
         # Panel blanco vacío, solo decorativo (mismo ancho que el lila)
         st.markdown('<div class="eni-panel-card"></div>', unsafe_allow_html=True)
 
-    # columna de espacio (franja entre lila/blanco y tarjetas)
+    # columna de espacio
     with col_gap:
         st.write("")
 
     with col_right:
-        # Grid 2x2 de tarjetas con los nombres nuevos
+        # Grid 2x2 de tarjetas
         cards_html = f"""
         <div class="eni-quick-grid-wrapper">
           <div class="eni-quick-grid">
@@ -880,7 +879,6 @@ if section == "Gestión de tareas":
                     render_fn = getattr(view_module, "render_all", None)
 
                 if callable(render_fn):
-                    # 👇 agrupamos TODA la vista en un solo container
                     view_container = st.container()
                     with view_container:
                         st.markdown('<div class="eni-view-wrapper">', unsafe_allow_html=True)
@@ -897,7 +895,6 @@ if section == "Gestión de tareas":
         else:
             st.info("Todavía no hay una vista vinculada a esta tarjeta.")
     else:
-        # sin mensaje "Vista seleccionada: ..."
         st.write("")
 
 elif section == "Kanban":
