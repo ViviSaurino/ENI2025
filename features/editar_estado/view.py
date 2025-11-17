@@ -228,13 +228,29 @@ def render(user: dict | None = None):
     if st.session_state["est_visible"]:
         A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
-        st.markdown('<div id="est-section">', unsafe_allow_html=True)
+        # 👉 Wrapper para poder subir/bajar todo el bloque dentro del rectángulo blanco
         st.markdown(
-            """
-        <style>
-          #est-section .stButton > button { 
-            width: 100% !important; 
-          }
+            '<div class="est-wrapper-up"><div id="est-section">',
+            unsafe_allow_html=True,
+        )
+
+        st.markdown(
+            """    
+            <style>
+              #est-section .stButton > button { width: 100% !important; }
+              #est-section .ag-header-cell-label{ font-weight: 400 !important; white-space: normal !important; line-height: 1.15 !important; }
+              /* habilita scroll horizontal inferior */
+              #est-section .ag-body-horizontal-scroll,
+              #est-section .ag-center-cols-viewport { overflow-x: auto !important; }
+              .section-est .help-strip + .form-card{ margin-top: 2px !important; }
+              .est-pill{ width:100%; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center;
+                background:#A7C8F0; color:#ffffff; font-weight:700; box-shadow:0 6px 14px rgba(167,200,240,.35); user-select:none; margin: 0 0 12px; }
+              .est-pill span{ display:inline-flex; gap:8px; align-items:center; }
+
+              /* 👉 mover bloque hacia arriba */
+              .est-wrapper-up{
+                  margin-top:-18px;   /* prueba -10, -14, -18, etc. */
+              }
 
           /* 🔹 Subir todo el bloque de "Editar estado" dentro del rectángulo blanco */
           #est-section{
