@@ -217,7 +217,7 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
 def render(user: dict | None = None):
     st.markdown("<div style='height:0px'></div>", unsafe_allow_html=True)
     # o incluso comenta esa línea si ya no quieres ningún espacio
-    # st.markdown("<div style='height:0px'></div>", unsafe_allow_html=True)
+    # st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
     # 🔒 Refuerzo: si no hay df_main en sesión, cargar desde disco
     if ("df_main" not in st.session_state) or (not isinstance(st.session_state["df_main"], pd.DataFrame)) or st.session_state["df_main"].empty:
