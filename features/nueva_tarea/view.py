@@ -141,11 +141,15 @@ def render(user: dict | None = None):
         """
     <style>
       section.main div[data-testid="stCaptionContainer"]:first-of-type{ display:none !important; }
+
+      /* Forzar ancho completo dentro de la tarjeta de filtros */
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox,
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput,
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea{ width:100% !important; }
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea{
+        width:100% !important;
+      }
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput>div,
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox>div,
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput>div,
@@ -153,6 +157,7 @@ def render(user: dict | None = None):
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea>div{
         width:100% !important; max-width:none !important;
       }
+
       .nt-pill{
         width:100%; height:38px; border-radius:12px;
         display:flex; align-items:center; justify-content:center;
@@ -160,14 +165,51 @@ def render(user: dict | None = None):
         box-shadow:0 6px 14px rgba(167,200,240,.35);
         user-select:none;
       }
+
+      /* Card blanco para indicaciones */
       .help-strip{
-        background:#F3F8FF; border:1px dashed #BDD7FF; color:#0B3B76;
-        padding:10px 12px; border-radius:10px; font-size:0.92rem;
+        background:#FFFFFF;
+        border:1px solid #E5E7EB;
+        color:#0B3B76;
+        padding:12px 14px;
+        border-radius:14px;
+        font-size:0.92rem;
+        box-shadow:0 12px 30px rgba(15,23,42,0.06);
       }
+
+      /* Card blanco para filtros / formulario */
+      .nt-card{
+        background:#FFFFFF;
+        border-radius:14px;
+        padding:20px 18px 16px 18px;
+        box-shadow:0 18px 45px rgba(15,23,42,0.08);
+        border:1px solid #E5E7EB;
+      }
+
       .nt-outbtn .stButton>button{
         min-height:38px !important; height:38px !important; border-radius:10px !important;
       }
       .nt-outbtn{ margin-top: 6px; }
+
+      /* Botón secundario (volver) como enlace */
+      .nt-backbtn{
+        width:100%; height:38px;
+        border-radius:10px;
+        border:1px solid #D1D5DB;
+        background:#FFFFFF;
+        font-weight:600;
+        font-size:0.90rem;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        color:#111827;
+        text-decoration:none;
+        box-shadow:0 3px 8px rgba(15,23,42,0.06);
+      }
+      .nt-backbtn:hover{
+        background:#F3F4F6;
+        text-decoration:none;
+      }
     </style>
     """,
         unsafe_allow_html=True,
@@ -216,7 +258,7 @@ def render(user: dict | None = None):
         if st.session_state.pop("nt_added_ok", False):
             st.success("Agregado a Tareas recientes")
 
-        # ===== Indicaciones =====
+        # ===== Indicaciones (card blanco) =====
         st.markdown(
             """
         <div class="help-strip">
@@ -230,9 +272,11 @@ def render(user: dict | None = None):
             f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True
         )
 
-        with st.container(border=True):
+        # ===== Card blanco de filtros / formulario =====
+        with st.container():
             st.markdown(
-                '<span id="nt-card-sentinel"></span>', unsafe_allow_html=True
+                '<div class="nt-card"><span id="nt-card-sentinel"></span>',
+                unsafe_allow_html=True,
             )
 
             # ===== Responsable & Área desde ACL =====
@@ -484,11 +528,27 @@ def render(user: dict | None = None):
                     key="nt_id_preview",
                 )
 
-        # ---------- Botón agregar ----------
-        _, right_btn = st.columns(
-            [A + Fw + T + D + R, C], gap="medium"
+            # --- cierre del card blanco de filtros ---
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # ---------- Botones: volver + agregar ----------
+        left_spacer, col_back, col_add = st.columns(
+            [A + Fw + T + D + R - C, C, C], gap="medium"
         )
-        with right_btn:
+
+        with col_back:
+            st.markdown(
+                """
+                <div class="nt-outbtn">
+                  <a href="?feature=gestion_tareas" class="nt-backbtn">
+                    ⬅ Volver a Gestión de tareas
+                  </a>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with col_add:
             st.markdown('<div class="nt-outbtn">', unsafe_allow_html=True)
             submitted = st.button(
                 "➕ Agregar", use_container_width=True, key="btn_agregar"
