@@ -336,11 +336,12 @@ st.markdown(
       transform: translateY(-22px);  /* súbelo más: prueba -14, -16, -18 */
   }
 
-  /* Sube el bloque de "Editar estado + filtros + tabla"
-     para que quede más pegado al rectángulo blanco */
-  .eni-view-wrapper{
-    margin-top:-40px;   /* prueba -80px, luego ajusta: -30, -50, etc. */
-  }
+  /* Reducir el espacio superior de los títulos dentro del contenido */
+  html body [data-testid="stAppViewContainer"] .main .block-container h1,
+  html body [data-testid="stAppViewContainer"] .main .block-container h2,
+  html body [data-testid="stAppViewContainer"] .main .block-container h3{
+    margin-top: 0.2rem !important;
+}
 
 </style>
 """,
