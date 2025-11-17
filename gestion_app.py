@@ -164,7 +164,9 @@ st.markdown(
 
   /* ⬆⬆⬆ Contenedor de la vista (Editar estado, etc.) ⬆⬆⬆ */
   .eni-view-wrapper{
-    margin-top:-50rem !important;  /* mueve la vista hacia arriba */
+    position: relative;
+    top: -32px;          /* súbelo / bájalo ajustando este valor */
+    margin-top: 0 !important;
   }
 
   /* ===== Sidebar blanca ===== */
