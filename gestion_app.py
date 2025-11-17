@@ -744,28 +744,26 @@ if section == "Gestión de tareas":
     dn = st.session_state.get("user_display_name", "Usuario")
     initials = "".join([p[0] for p in dn.split() if p])[:2].upper()
 
-    # barra superior blanca
-    st.markdown(
-        f"""
-        <div class="eni-main-topbar">
-          <div class="eni-main-topbar-title"></div>
-          <div class="eni-main-topbar-user">
-            <span>{dn}</span>
-            <div class="eni-main-topbar-avatar">{initials}</div>
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    # Nombre “limpio” sin emoji final (por ejemplo 💜, 😎, etc.)
+    parts = dn.split()
+    if parts:
+        last = parts[-1]
+        # Si el último token no tiene letras ni números, lo quitamos
+        if not any(ch.isalnum() for ch in last):
+            dn_clean = " ".join(parts[:-1]) or dn
+        else:
+            dn_clean = dn
+    else:
+        dn_clean = dn
 
     # columnas: izquierda (lila + rectángulo blanco), pequeño gap, tarjetas
     col_left, col_gap, col_right = st.columns([3, 0.15, 1.25])
 
     with col_left:
         st.markdown(
-            """
+            f"""
             <div class="eni-main-card-header">
-              <div class="eni-main-card-header-title">Bienvenid@</div>
+              <div class="eni-main-card-header-title">Bienvenid@ {dn_clean}</div>
               <p class="eni-main-card-header-sub">
                 A la plataforma de gestión ENI — 2025
               </p>
@@ -774,6 +772,7 @@ if section == "Gestión de tareas":
             unsafe_allow_html=True,
         )
 
+        # Rectángulo blanco de contenido (este se mantiene)
         st.markdown('<div class="eni-panel-card"></div>', unsafe_allow_html=True)
 
     with col_gap:
