@@ -95,7 +95,7 @@ st.markdown(
     display:flex;
     align-items:center;
     justify-content:space-between;
-    margin:0 -45px 30px -50px;   /* top  right  bottom  left */
+    margin:0 -45px 20px -50px;   /* top  right  bottom  left */
   }
   .eni-main-topbar-title{
     font-size:15px;             /* 🔹 letras un poco más grandes */
