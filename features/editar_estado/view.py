@@ -236,7 +236,7 @@ def render(user: dict | None = None):
           /* habilita scroll horizontal inferior */
           #est-section .ag-body-horizontal-scroll,
           #est-section .ag-center-cols-viewport { overflow-x: auto !important; }
-          .section-est .help-strip + .form-card{ margin-top: 6px !important; }
+          .section-est .help-strip + .form-card{ margin-top: 2px !important; }
           .est-pill{ width:100%; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center;
             background:#A7C8F0; color:#ffffff; font-weight:700; box-shadow:0 6px 14px rgba(167,200,240,.35); user-select:none; margin: 0 0 12px; }
           .est-pill span{ display:inline-flex; gap:8px; align-items:center; }
