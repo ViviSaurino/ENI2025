@@ -209,19 +209,22 @@ st.markdown(
     font-size:13px;
     font-weight:500;
   }
-  /* Estado ACTIVO: píldora resaltada */
+  /* ===== Opción ACTIVA en la barra lateral ===== */
   section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="true"]{
-    background:#F3E8FF !important;          /* lila muy suave */
-    color:#4F46E5 !important;               /* texto lila oscuro */
-    border:1px solid #C4B5FD;               /* borde lila */
-    box-shadow:0 6px 14px rgba(148,163,184,0.35);
+    background:#C4B5FD !important;          /* lila más fuerte */
+    color:#FFFFFF !important;               /* texto blanco */
+    border-radius:14px !important;          /* pill */
+    border:1px solid #A855F7 !important;    /* borde lila más oscuro */
+    box-shadow:0 6px 14px rgba(148,163,184,0.45);
   }
 
-  /* Estado INACTIVO: sin fondo ni borde */
+  /* ===== Opciones INACTIVAS ===== */
   section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="false"]{
     background:transparent !important;
     color:#4B5563 !important;
-    border:1px solid transparent;
+    border-radius:14px !important;
+    border:1px solid transparent !important;
+    box-shadow:none !important;
   }
 
   /* Iconitos del menú lateral */
