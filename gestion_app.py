@@ -811,7 +811,7 @@ if section == "Gestión de tareas":
              class="eni-quick-card-link">
             <div class="eni-quick-card-wide-nt">
               <div class="eni-quick-card-text">
-                <div class="eni-quick-card-title">Nueva tarea</div>
+                <div class="eni-quick-card-title">1. Nueva tarea</div>
                 <p class="eni-quick-card-sub">
                   Registra una nueva tarea y revísalas
                 </p>
