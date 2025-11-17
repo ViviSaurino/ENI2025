@@ -339,7 +339,7 @@ st.markdown(
   /* Sube el bloque de "Editar estado + filtros + tabla"
      para que quede más pegado al rectángulo blanco */
   .eni-view-wrapper{
-    margin-top:-40px;   /* prueba -40px, luego ajusta: -30, -50, etc. */
+    margin-top:-40px;   /* prueba -80px, luego ajusta: -30, -50, etc. */
   }
 
 </style>
