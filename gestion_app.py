@@ -339,7 +339,7 @@ st.markdown(
   /* Reducir SOLO el espacio entre:
      [columnas con lila+blanco+tarjetas]  y  [bloque de "Editar estado"] */
   div[data-testid="stHorizontalBlock"] + div[data-testid="stVerticalBlock"]{
-      margin-top: -1.5rem;   /* ajusta este valor según cuánto quieras subirlo */
+      margin-top: -2.5rem;   /* ajusta este valor según cuánto quieras subirlo */
   }
 
 </style>
