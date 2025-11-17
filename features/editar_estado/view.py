@@ -224,21 +224,15 @@ def render(user: dict | None = None):
     if st.session_state["est_visible"]:
         A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
-        # 👉 Div envoltorio de la sección (ahora con clase para poder mover todo el bloque)
+        # 👉 Div envoltorio de la sección (margen negativo para que suba)
         st.markdown(
-            '<div class="est-wrapper-up" id="est-section">',
+            '<div id="est-section" style="margin-top:-32px;">',
             unsafe_allow_html=True,
         )
 
         st.markdown(
             """
         <style>
-          /* 💫 Subir todo el bloque de "Editar estado" dentro del rectángulo blanco */
-          .est-wrapper-up{
-              position: relative;
-              top: 40px;   /* ajusta -10, -16, -20 según lo que veas */
-          }
-
           #est-section .stButton > button { 
             width: 100% !important; 
           }
@@ -566,9 +560,9 @@ def render(user: dict | None = None):
                 "Fecha eliminada": _fmt_date_series(fe),
                 "Hora eliminada": _fmt_time_series(he),
                 "Fecha cancelada": _fmt_date_series(fc),
-                "Hora cancelada": _fmt_date_series(hc),
+                "Hora cancelada": _fmt_time_series(hc),
                 "Fecha pausada": _fmt_date_series(fp),
-                "Hora pausada": _fmt_date_series(hp),
+                "Hora pausada": _fmt_time_series(hp),
             })[cols_out].copy()
 
         # ========= editores y estilo =========
@@ -1013,5 +1007,5 @@ def render(user: dict | None = None):
 
         # cierra form-card + section-est
         st.markdown("</div></div>", unsafe_allow_html=True)
-        # cierra est-section (wrapper)
+        # cierra est-section
         st.markdown("</div>", unsafe_allow_html=True)
