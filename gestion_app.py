@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# ============================
+# ============================  
 # Gestión — ENI2025 (App única)
 # ============================
 import streamlit as st
@@ -258,6 +258,14 @@ st.markdown(
   .eni-quick-grid-wrapper{
     margin:0px -45px 0 0;
   }
+
+  /* contenedor columna: tarjeta ancha + grid 2x2 */
+  .eni-quick-column{
+    display:flex;
+    flex-direction:column;
+    gap:14px;         /* separa la ancha del grid */
+  }
+
   .eni-quick-grid{
     display:grid;
     grid-template-columns:repeat(2, 1fr);
@@ -265,6 +273,7 @@ st.markdown(
     align-items:stretch;
     grid-auto-rows:143px;
   }
+
   .eni-quick-card-link,
   .eni-quick-card-link:link,
   .eni-quick-card-link:visited,
@@ -276,6 +285,7 @@ st.markdown(
   .eni-quick-card-link:focus-visible{
       outline:none;
   }
+
   .eni-quick-card{
     border-radius:8px;
     padding:16px 12px 12px 16px;
@@ -289,6 +299,7 @@ st.markdown(
     transition:all .15s ease-in-out;
     overflow:hidden;
   }
+
   .eni-quick-card-text{
     max-width:100%;
   }
@@ -325,33 +336,15 @@ st.markdown(
     background:#A8D4F3;
   }
 
-  /* Tarjeta ancha NUEVA TAREA debajo de las 4 tarjetas */
+  /* 🔹 Tarjeta ancha "Nueva tarea" (arriba) */
   .eni-quick-card-wide-nt{
-    background:#DDD6FE;      /* lila intermedio */
+    background:#D9C6FF;          /* lila claro, más oscuro que el fondo */
     border-radius:8px;
-    padding:18px 20px 16px 20px;
-    box-shadow:0 10px 22px rgba(148,163,184,0.40);
-    border:none;
-    height:120px;
+    padding:16px 18px 14px 18px;
+    box-shadow:0 12px 28px rgba(148,163,184,0.45);
     display:flex;
-    justify-content:space-between;
     align-items:center;
-    margin-top:-140px;
-  }
-  .eni-quick-card-wide-nt .eni-quick-card-title{
-    font-size:15px;
-    font-weight:700;
-    color:#4338CA;
-    margin-bottom:4px;
-  }
-  .eni-quick-card-wide-nt .eni-quick-card-sub{
-    font-size:11px;
-    color:#EEF2FF;
-    margin:0;
-  }
-  .eni-quick-card-wide-nt .eni-quick-card-icon{
-    font-size:40px;
-    margin-left:18px;
+    justify-content:space-between;
   }
 
   /* Reducir algo el espacio horizontal entre columnas (lila/blanco y tarjetas) */
@@ -360,7 +353,7 @@ st.markdown(
     column-gap:0.4rem !important;
   }
 
-  /* Solo para la tarjeta de Evaluación (verde) */
+  /* Solo para la tarjeta de Evaluación */
   .eni-quick-card--nueva_tarea .eni-quick-card-icon{
       transform:translateY(-22px);
   }
@@ -599,8 +592,7 @@ if user_acl is None:
 
 for _k in ("is_active", "can_edit_all_tabs"):
     if _k in user_acl:
-        _k_val = _to_bool(user_acl[_k])
-        user_acl[_k] = _k_val
+        user_acl[_k] = _to_bool(user_acl[_k])
 
 user_acl["is_active"] = True
 user_acl["can_edit_all_tabs"] = True
@@ -727,7 +719,7 @@ with st.sidebar:
 # ============ Datos ============
 ensure_df_main()
 
-# ===== Tarjetas rápidas (helper) =====
+# ===== Tarjetas rápidas =====
 def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str:
     display_name = st.session_state.get("user_display_name", "Usuario")
     u_param = quote(display_name, safe="")
@@ -811,53 +803,55 @@ if section == "Gestión de tareas":
         display_name = st.session_state.get("user_display_name", "Usuario")
         u_param = quote(display_name, safe="")
 
-        # 👉 Tarjeta ancha "Nueva tarea" ARRIBA + grid 2x2 DEBAJO
+        # 👉 Columna: tarjeta ancha ARRIBA + grid 2x2 DEBAJO
         cards_html = f"""
         <div class="eni-quick-grid-wrapper">
+          <div class="eni-quick-column">
 
-          <!-- Tarjeta ancha NUEVA TAREA -->
-          <a href="?auth=1&u={u_param}&tile=nueva_tarea"
-             target="_self"
-             class="eni-quick-card-link">
-            <div class="eni-quick-card-wide-nt">
-              <div class="eni-quick-card-text">
-                <div class="eni-quick-card-title">Nueva tarea</div>
-                <p class="eni-quick-card-sub">
-                  Registra una nueva tarea y revísalas
-                </p>
+            <!-- Tarjeta ancha NUEVA TAREA -->
+            <a href="?auth=1&u={u_param}&tile=nueva_tarea"
+               target="_self"
+               class="eni-quick-card-link">
+              <div class="eni-quick-card-wide-nt">
+                <div class="eni-quick-card-text">
+                  <div class="eni-quick-card-title">Nueva tarea</div>
+                  <p class="eni-quick-card-sub">
+                    Registra una nueva tarea y revísalas
+                  </p>
+                </div>
+                <div class="eni-quick-card-icon">➕</div>
               </div>
-              <div class="eni-quick-card-icon">➕</div>
+            </a>
+
+            <!-- Grid 2x2 con las 4 tarjetas existentes -->
+            <div class="eni-quick-grid">
+              {_quick_card_link(
+                  "Editar estado",
+                  "Actualiza fases y fechas de las tareas",
+                  "✏️",
+                  "editar_estado",
+              )}
+              {_quick_card_link(
+                  "Nueva alerta",
+                  "Registra alertas y riesgos prioritarios de las tareas",
+                  "⚠️",
+                  "nueva_alerta",
+              )}
+              {_quick_card_link(
+                  "Prioridad",
+                  "Revisa los niveles de prioridad de las tareas",
+                  "⭐",
+                  "prioridad_evaluacion",
+              )}
+              {_quick_card_link(
+                  "Evaluación",
+                  "Revisa las evaluaciones y cumplimiento de las tareas",
+                  "📝",
+                  "nueva_tarea",
+              )}
             </div>
-          </a>
 
-          <!-- Grid 2x2 con las 4 tarjetas existentes -->
-          <div class="eni-quick-grid">
-            {_quick_card_link(
-                "Editar estado",
-                "Actualiza fases y fechas de las tareas",
-                "✏️",
-                "editar_estado",
-            )}
-            {_quick_card_link(
-                "Nueva alerta",
-                "Registra alertas y riesgos prioritarios de las tareas",
-                "⚠️",
-                "nueva_alerta",
-            )}
-            {_quick_card_link(
-                "Prioridad",
-                "Revisa los niveles de prioridad de las tareas",
-                "⭐",
-                "prioridad_evaluacion",
-            )}
-            {_quick_card_link(
-                "Evaluación",
-                "Revisa las evaluaciones y cumplimiento de las tareas",
-                "📝",
-                "nueva_tarea",
-            )}
           </div>
-
         </div>
         """
         st.markdown(cards_html, unsafe_allow_html=True)
