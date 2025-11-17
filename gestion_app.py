@@ -811,9 +811,28 @@ if section == "Gestión de tareas":
         display_name = st.session_state.get("user_display_name", "Usuario")
         u_param = quote(display_name, safe="")
 
-        # 4 tarjetas pequeñas en grid
+        # Tarjeta ancha "Nueva tarea" ARRIBA + 4 tarjetas pequeñas debajo
         cards_html = f"""
         <div class="eni-quick-grid-wrapper">
+
+          <!-- Tarjeta ancha NUEVA TAREA -->
+          <div class="eni-quick-card-wide-nt-wrap">
+            <a href="?auth=1&u={u_param}&tile=nueva_tarea"
+               target="_self"
+               class="eni-quick-card-link">
+              <div class="eni-quick-card-wide-nt">
+                <div class="eni-quick-card-text">
+                  <div class="eni-quick-card-title">Nueva tarea</div>
+                  <p class="eni-quick-card-sub">
+                    Registra una nueva tarea y revísalas
+                  </p>
+                </div>
+                <div class="eni-quick-card-icon">➕</div>
+              </div>
+            </a>
+          </div>
+
+          <!-- Grid de 4 tarjetas -->
           <div class="eni-quick-grid">
             {_quick_card_link(
                 "Editar estado",
@@ -840,27 +859,10 @@ if section == "Gestión de tareas":
                 "nueva_tarea",
             )}
           </div>
+
         </div>
         """
         st.markdown(cards_html, unsafe_allow_html=True)
-
-        # Tarjeta ancha "Nueva tarea" debajo
-        nueva_tarea_html = f"""
-        <div class="eni-quick-grid-wrapper">
-          <a href="?auth=1&u={u_param}&tile=nueva_tarea" target="_self" class="eni-quick-card-link">
-            <div class="eni-quick-card-wide-nt">
-              <div class="eni-quick-card-text">
-                <div class="eni-quick-card-title">Nueva tarea</div>
-                <p class="eni-quick-card-sub">
-                  Registra una nueva tarea y revísalas
-                </p>
-              </div>
-              <div class="eni-quick-card-icon">➕</div>
-            </div>
-          </a>
-        </div>
-        """
-        st.markdown(nueva_tarea_html, unsafe_allow_html=True)
 
     # ---- Contenido de la vista seleccionada (ANCHO COMPLETO) ----
     if tile:
