@@ -144,8 +144,8 @@ def render(user: dict | None = None):
         display:none !important;
       }
 
-      /* Card blanco PARA EL BLOQUE DE FILTROS (container que tiene el sentinel) */
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
+      /* Card blanco SOLO para el container que envuelve los filtros */
+      div[data-testid="stContainer"]:has(#nt-card-sentinel){
         background:#FFFFFF;
         border-radius:14px;
         padding:20px 22px 22px 22px;
@@ -155,19 +155,19 @@ def render(user: dict | None = None):
         border:1px solid #E5E7EB;
       }
 
-      /* Forzar ancho completo de inputs dentro de ese card */
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea{
+      /* Inputs a ancho completo dentro de ese card */
+      div[data-testid="stContainer"]:has(#nt-card-sentinel) .stTextInput,
+      div[data-testid="stContainer"]:has(#nt-card-sentinel) .stSelectbox,
+      div[data-testid="stContainer"]:has(#nt-card-sentinel) .stDateInput,
+      div[data-testid="stContainer"]:has(#nt-card-sentinel) .stTimeInput,
+      div[data-testid="stContainer"]:has(#nt-card-sentinel) .stTextArea{
         width:100% !important;
       }
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput>div,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox>div,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput>div,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput>div,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea>div{
+      div[data-testid="stContainer"]:has(#nt-card-sentinel) .stTextInput>div,
+      div[data-testid="stContainer"]:has(#nt-card-sentinel) .stSelectbox>div,
+      div[data-testid="stContainer"]:has(#nt-card-sentinel) .stDateInput>div,
+      div[data-testid="stContainer"]:has(#nt-card-sentinel) .stTimeInput>div,
+      div[data-testid="stContainer"]:has(#nt-card-sentinel) .stTextArea>div{
         width:100% !important;
         max-width:none !important;
       }
@@ -266,10 +266,11 @@ def render(user: dict | None = None):
             f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True
         )
 
-        # ===== Bloque de filtros / formulario (el card lo da el CSS del sentinel) =====
-        with st.container():
+        # ===== Bloque de filtros / formulario: AQUÍ VA EL CARD BLANCO =====
+        with st.container(border=True):
+            # sentinel oculto solo para el CSS
             st.markdown(
-                '<span id="nt-card-sentinel"></span>',
+                '<span id="nt-card-sentinel" style="display:none"></span>',
                 unsafe_allow_html=True,
             )
 
@@ -753,3 +754,4 @@ def render(user: dict | None = None):
     st.markdown(
         f"<div style='height:{gap}px;'></div>", unsafe_allow_html=True
     )
+
