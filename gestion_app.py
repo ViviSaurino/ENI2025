@@ -355,7 +355,7 @@ st.markdown(
      reduce el gap entre la cabecera (topbar + tarjetas) y la vista seleccionada */
   html body [data-testid="stAppViewContainer"] .main .block-container
       > div[data-testid="stVerticalBlock"]:has(.eni-main-topbar){
-      row-gap: 0.25rem !important;   /* antes ~1rem, ahora bien pegadito */
+      row-gap: 0.05rem !important;   /* antes ~1rem, ahora bien pegadito */
       padding-top: 0.1rem !important;
       margin-top: -0.4rem !important;
   }
