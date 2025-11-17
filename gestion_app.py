@@ -822,7 +822,7 @@ if section == "Gestión de tareas":
                 if callable(render_fn):
                     # 🔹 sube el bloque de "Editar estado" acercándolo al rectángulo blanco
                     st.markdown(
-                        "<div style='margin-top:-40px;'></div>",
+                        "<div style='margin-top:-80px;'></div>",
                         unsafe_allow_html=True,
                     )
                     render_fn(st.session_state.get("user"))
