@@ -266,9 +266,9 @@ def render(user: dict | None = None):
             f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True
         )
 
-        # ===== Bloque de filtros / formulario: AQUÍ VA EL CARD BLANCO =====
+                # ===== Bloque de filtros / formulario (card blanco) =====
         with st.container(border=True):
-            # sentinel oculto solo para el CSS
+            # sentinel solo para el CSS del card
             st.markdown(
                 '<span id="nt-card-sentinel" style="display:none"></span>',
                 unsafe_allow_html=True,
@@ -340,9 +340,7 @@ def render(user: dict | None = None):
                     placeholder="Información adicional (opcional)",
                     key="nt_detalle",
                 )
-                r1c6.text_input(
-                    "Responsable", key="nt_resp", disabled=True
-                )
+                r1c6.text_input("Responsable", key="nt_resp", disabled=True)
             else:
                 r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns(
                     [A, Fw, T, D, R, C], gap="medium"
@@ -365,9 +363,7 @@ def render(user: dict | None = None):
                     placeholder="Información adicional (opcional)",
                     key="nt_detalle",
                 )
-                r1c5.text_input(
-                    "Responsable", key="nt_resp", disabled=True
-                )
+                r1c5.text_input("Responsable", key="nt_resp", disabled=True)
                 r1c6.selectbox(
                     "Ciclo de mejora",
                     options=["1", "2", "3", "+4"],
@@ -410,9 +406,8 @@ def render(user: dict | None = None):
                 else f"{prefix}_"
             )
 
-            # ---------- FILA 2 ----------
+            # ---------- FILA 2 y FILA 3 ----------
             if _is_fase_otros:
-                # Ciclo, Tipo, Estado, Complejidad, Duración, Fecha
                 r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns(
                     [A, Fw, T, D, R, C], gap="medium"
                 )
@@ -454,7 +449,6 @@ def render(user: dict | None = None):
                 )
                 _sync_time_from_date()
 
-                # ---------- FILA 3 ----------
                 r3c1, r3c2, _, _, _, _ = st.columns(
                     [A, Fw, T, D, R, C], gap="medium"
                 )
@@ -471,7 +465,6 @@ def render(user: dict | None = None):
                     key="nt_id_preview",
                 )
             else:
-                # Layout original F2/F3 con tipo editable
                 r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns(
                     [A, Fw, T, D, R, C], gap="medium"
                 )
@@ -754,4 +747,3 @@ def render(user: dict | None = None):
     st.markdown(
         f"<div style='height:{gap}px;'></div>", unsafe_allow_html=True
     )
-
