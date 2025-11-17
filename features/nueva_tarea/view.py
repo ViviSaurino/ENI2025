@@ -142,6 +142,15 @@ def render(user: dict | None = None):
     <style>
       section.main div[data-testid="stCaptionContainer"]:first-of-type{ display:none !important; }
 
+      /* Card blanco completo para el bloque de filtros (verticalBlock con el sentinel) */
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
+        background:#FFFFFF;
+        border-radius:14px;
+        padding:20px 18px 16px 18px;
+        box-shadow:0 18px 45px rgba(15,23,42,0.08);
+        border:1px solid #E5E7EB;
+      }
+
       /* Forzar ancho completo dentro de la tarjeta de filtros */
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox,
@@ -175,15 +184,6 @@ def render(user: dict | None = None):
         border-radius:14px;
         font-size:0.92rem;
         box-shadow:0 12px 30px rgba(15,23,42,0.06);
-      }
-
-      /* Card blanco para filtros / formulario */
-      .nt-card{
-        background:#FFFFFF;
-        border-radius:14px;
-        padding:20px 18px 16px 18px;
-        box-shadow:0 18px 45px rgba(15,23,42,0.08);
-        border:1px solid #E5E7EB;
       }
 
       .nt-outbtn .stButton>button{
@@ -272,10 +272,10 @@ def render(user: dict | None = None):
             f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True
         )
 
-        # ===== Card blanco de filtros / formulario =====
+        # ===== Bloque de filtros / formulario (el card lo da el CSS del sentinel) =====
         with st.container():
             st.markdown(
-                '<div class="nt-card"><span id="nt-card-sentinel"></span>',
+                '<span id="nt-card-sentinel"></span>',
                 unsafe_allow_html=True,
             )
 
@@ -527,9 +527,6 @@ def render(user: dict | None = None):
                     disabled=True,
                     key="nt_id_preview",
                 )
-
-            # --- cierre del card blanco de filtros ---
-            st.markdown("</div>", unsafe_allow_html=True)
 
         # ---------- Botones: volver + agregar ----------
         left_spacer, col_back, col_add = st.columns(
