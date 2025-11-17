@@ -13,6 +13,10 @@ from st_aggrid import (
     JsCode,
 )
 
+# ✅ Asegurar que exista la clave en session_state
+if "est_visible" not in st.session_state:
+    st.session_state["est_visible"] = True   # así la vista se muestra por defecto
+
 # ======= Toggle: Upsert a Google Sheets (AHORA True por defecto si hay secrets) =======
 DO_SHEETS_UPSERT = bool(st.secrets.get("edit_estado_upsert_to_sheets", True))
 
