@@ -809,14 +809,10 @@ if section == "Gestión de tareas":
     st.markdown(
         f"""
         <div class="eni-main-topbar">
-          <div class="eni-main-topbar-title" style="font-size:16px; color:#4B5563;">
-            Gestión de tareas
-          </div>
+          <div class="eni-main-topbar-title">📋 Gestión de tareas</div>
           <div class="eni-main-topbar-user">
-            <div class="eni-main-topbar-avatar"
-                 style="width:40px; height:40px; font-size:16px;">
-              {initials}
-            </div>
+           <div class="eni-main-topbar-avatar">{initials}</div>
+           <a href="?logout=1" class="eni-main-topbar-arrow" title="Cerrar sesión">▾</a>
           </div>
         </div>
         """,
