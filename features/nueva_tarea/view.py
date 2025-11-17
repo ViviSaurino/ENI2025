@@ -140,46 +140,12 @@ def render(user: dict | None = None):
     st.markdown(
         """
     <style>
-      section.main div[data-testid="stCaptionContainer"]:first-of-type{ display:none !important; }
-
-      /* Card blanco completo para el bloque de filtros (verticalBlock con el sentinel) */
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
-         background:#FFFFFF;
-         border-radius:14px;
-         padding:20px 22px 22px 22px;
-         margin-top:16px;
-         margin-bottom:10px;
-         box-shadow:0 20px 50px rgba(15,23,42,0.10);
-         border:1px solid #E5E7EB;
-
-      }
-
-      /* Forzar ancho completo dentro de la tarjeta de filtros */
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea{
-        width:100% !important;
-      }
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput>div,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox>div,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput>div,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput>div,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea>div{
-        width:100% !important; max-width:none !important;
-      }
-
-      .nt-pill{
-        width:100%; height:38px; border-radius:12px;
-        display:flex; align-items:center; justify-content:center;
-        background:#A7C8F0; color:#ffffff; font-weight:700;
-        box-shadow:0 6px 14px rgba(167,200,240,.35);
-        user-select:none;
+      section.main div[data-testid="stCaptionContainer"]:first-of-type{
+        display:none !important;
       }
 
       /* Card blanco completo para el bloque de filtros (donde están Área, Fase, etc.) */
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
+      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel){
         background:#FFFFFF;
         border-radius:14px;
         padding:20px 22px 22px 22px;
@@ -190,25 +156,32 @@ def render(user: dict | None = None):
       }
 
       /* Forzar ancho completo dentro del card de filtros */
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea{
+      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextInput,
+      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stSelectbox,
+      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stDateInput,
+      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTimeInput,
+      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextArea{
         width:100% !important;
       }
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput>div,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox>div,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput>div,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput>div,
-      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea>div{
-        width:100% !important; max-width:none !important;
+      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextInput>div,
+      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stSelectbox>div,
+      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stDateInput>div,
+      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTimeInput>div,
+      div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextArea>div{
+        width:100% !important;
+        max-width:none !important;
       }
 
       .nt-pill{
-        width:100%; height:38px; border-radius:12px;
-        display:flex; align-items:center; justify-content:center;
-        background:#A7C8F0; color:#ffffff; font-weight:700;
+        width:100%;
+        height:38px;
+        border-radius:12px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        background:#A7C8F0;
+        color:#ffffff;
+        font-weight:700;
         box-shadow:0 6px 14px rgba(167,200,240,.35);
         user-select:none;
       }
@@ -224,14 +197,13 @@ def render(user: dict | None = None):
       }
 
       .nt-outbtn .stButton>button{
-        min-height:38px !important; height:38px !important; border-radius:10px !important;
+        min-height:38px !important;
+        height:38px !important;
+        border-radius:10px !important;
       }
+      .nt-outbtn{
+        margin-top: 6px;
       }
-
-      .nt-outbtn .stButton>button{
-        min-height:38px !important; height:38px !important; border-radius:10px !important;
-      }
-      .nt-outbtn{ margin-top: 6px; }
     </style>
     """,
         unsafe_allow_html=True,
@@ -557,11 +529,10 @@ def render(user: dict | None = None):
 
         with col_back:
             st.markdown('<div class="nt-outbtn">', unsafe_allow_html=True)
-            # link_button para que visualmente sea igual que un botón normal
-            st.link_button(
+            back = st.button(
                 "⬅ Volver a Gestión de tareas",
-                "?feature=gestion_tareas",
                 use_container_width=True,
+                key="btn_volver_gestion",
             )
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -572,6 +543,18 @@ def render(user: dict | None = None):
             )
             st.markdown("</div>", unsafe_allow_html=True)
 
+        # ------ Acción botón Volver ------
+        if back:
+            # Intento 1: cambiar query param (router por URL)
+            try:
+                st.experimental_set_query_params(feature="gestion_tareas")
+            except Exception:
+                pass
+            # Intento 2: bandera en session_state (por si el router la usa)
+            st.session_state["feature"] = "gestion_tareas"
+            st.rerun()
+
+        # ------ Acción botón Agregar ------
         if submitted:
             try:
                 df = st.session_state.get("df_main", pd.DataFrame()).copy()
@@ -701,7 +684,6 @@ def render(user: dict | None = None):
                         return {"ok": False}
 
                 df_rows = pd.DataFrame([new])
-                # Guardado silencioso: cualquier error se ignora y NO se muestra en UI
                 try:
                     _ = _persist_to_sheets(df_rows.copy())
                 except Exception:
@@ -741,7 +723,6 @@ def render(user: dict | None = None):
                         link_archivo=new.get("Link de archivo", ""),
                     )
                 except Exception:
-                    # Nunca debe romper la vista
                     pass
 
                 # limpiar campos
@@ -768,7 +749,6 @@ def render(user: dict | None = None):
                 st.rerun()
 
             except Exception as e:
-                # Si llegas aquí es porque algo muy raro pasó;
                 st.error(f"No pude guardar la nueva tarea: {e}")
 
     gap = SECTION_GAP if "SECTION_GAP" in globals() else 30
