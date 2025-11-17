@@ -226,7 +226,7 @@ def render(user: dict | None = None):
 
         # 👉 Div envoltorio de la sección (margen negativo para que suba)
         st.markdown(
-            '<div id="est-section" style="margin-top:-32px;">',
+            '<div id="est-section" style="margin-top:-80px;">',
             unsafe_allow_html=True,
         )
 
