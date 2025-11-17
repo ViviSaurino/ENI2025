@@ -335,7 +335,13 @@ st.markdown(
   .eni-quick-card--nueva_tarea .eni-quick-card-icon{
       transform: translateY(-22px);  /* súbelo más: prueba -14, -16, -18 */
   }
-  
+
+  /* Reducir SOLO el espacio entre:
+     [columnas con lila+blanco+tarjetas]  y  [bloque de "Editar estado"] */
+  div[data-testid="stHorizontalBlock"] + div[data-testid="stVerticalBlock"]{
+      margin-top: -1.5rem;   /* ajusta este valor según cuánto quieras subirlo */
+  }
+
 </style>
 """,
     unsafe_allow_html=True,
