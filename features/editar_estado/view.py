@@ -249,12 +249,12 @@ def render(user: dict | None = None):
 
               /* 👉 mover bloque hacia arriba */
               .est-wrapper-up{
-                  margin-top:-100px;   /* prueba -10, -14, -18, etc. */
+                  margin-top:-10px;   /* prueba -10, -14, -18, etc. */
               }
 
           /* 🔹 Subir todo el bloque de "Editar estado" dentro del rectángulo blanco */
           #est-section{
-            margin-top:0px;   /* prueba -10, -18, -24 según qué tanto quieras subir */
+            margin-top:-10px;   /* prueba -10, -18, -24 según qué tanto quieras subir */
           }
 
           #est-section .ag-header-cell-label{ 
