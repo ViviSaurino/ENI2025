@@ -140,6 +140,21 @@ def render(user: dict | None = None):
     st.markdown(
         """
     <style>
+      /* Quitar el rectángulo blanco gigante del centro */
+      [data-testid="block-container"]{
+          background: transparent !important;
+          box-shadow: none !important;
+          border: none !important;
+      }
+
+      /* Oculta el caption automático de Streamlit */
+      section.main div[data-testid="stCaptionContainer"]:first-of-type{
+        display:none !important;
+      }
+
+      /* (aquí sigues con todo el CSS que ya tienes:
+         verticalBlock, nt-card-sentinel, .nt-pill, .help-strip, etc.) */
+
       /* Oculta el caption automático de Streamlit */
       section.main div[data-testid="stCaptionContainer"]:first-of-type{
         display:none !important;
