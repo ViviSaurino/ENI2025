@@ -89,33 +89,31 @@ st.markdown(
     display:none !important;
   }
 
-  /* ===== TOP BAR BLANCA (tipo navbar) ===== */
+  /* ===== Fila superior: Gestión de tareas + VS / logout ===== */
   .eni-main-topbar{
-    background:#FFFFFF;
-    padding:19px 24px;
-    border-radius:0;
+    padding:0 24px 0 24px;
     display:flex;
     align-items:center;
-    justify-content:flex-end;
-    margin:0 -45px 29px -50px;   /* top  right  bottom  left */
-    box-shadow:none;
+    justify-content:space-between;
+    margin:0 -45px 6px -50px;   /* top  right  bottom  left */
   }
   .eni-main-topbar-title{
-    font-size:14px;
-    font-weight:600;
-    color:#111827;
-    flex:1;
+    font-size:13px;
+    font-weight:700;
+    color:#B38CFB;              /* lila similar a la cabecera */
+    letter-spacing:0.08em;
+    text-transform:uppercase;
   }
   .eni-main-topbar-user{
     display:flex;
     align-items:center;
-    gap:10px;
+    gap:8px;
     font-size:13px;
     color:#4B5563;
   }
   .eni-main-topbar-avatar{
-    width:32px;
-    height:32px;
+    width:30px;
+    height:30px;
     border-radius:999px;
     background:#C4B5FD;
     display:flex;
@@ -123,7 +121,25 @@ st.markdown(
     justify-content:center;
     color:#FFFFFF;
     font-weight:700;
-    font-size:14px;
+    font-size:13px;
+  }
+  .eni-main-topbar-arrow{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:22px;
+    height:22px;
+    border-radius:999px;
+    border:none;
+    background:transparent;
+    color:#6B7280;
+    font-size:17px;
+    text-decoration:none;
+    cursor:pointer;
+  }
+  .eni-main-topbar-arrow:hover{
+    color:#4B5563;
+    background:rgba(148,163,184,0.18);
   }
 
   /* ===== Card lila principal ===== */
@@ -373,6 +389,28 @@ st.markdown(
 APP_PASSWORD = "Inei2025$"
 
 def check_app_password() -> bool:
+    # Si viene ?logout=1 limpiamos la sesión para forzar login
+    logout_flag = ""
+    try:
+        params0 = st.query_params
+        raw_logout = params0.get("logout", "")
+        if isinstance(raw_logout, list):
+            logout_flag = raw_logout[0] if raw_logout else ""
+        else:
+            logout_flag = raw_logout
+    except Exception:
+        try:
+            params0 = st.experimental_get_query_params()
+            raw_logout = params0.get("logout", [""])
+            logout_flag = raw_logout[0] if raw_logout else ""
+        except Exception:
+            logout_flag = ""
+
+    if logout_flag == "1":
+        for k in ("user", "user_email", "password_ok", "acl_user",
+                  "auth_ok", "nav_section", "roles_df", "home_tile", "user_display_name"):
+            st.session_state.pop(k, None)
+
     if st.session_state.get("password_ok", False):
         return True
 
@@ -775,6 +813,28 @@ if section == "Gestión de tareas":
             dn_clean = dn
     else:
         dn_clean = dn
+
+    # Iniciales para el círculo (VS, EO, etc.)
+    name_parts_clean = dn_clean.split()
+    initials = ""
+    for p in name_parts_clean[:2]:
+        if p:
+            initials += p[0].upper()
+    initials = initials or "VS"
+
+    # ---- Fila superior: Gestión de tareas + avatar + flecha logout ----
+    st.markdown(
+        f"""
+        <div class="eni-main-topbar">
+          <div class="eni-main-topbar-title">Gestión de tareas</div>
+          <div class="eni-main-topbar-user">
+            <div class="eni-main-topbar-avatar">{initials}</div>
+            <a href="?logout=1" class="eni-main-topbar-arrow" title="Cerrar sesión">▾</a>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     # columnas: izquierda (lila + rectángulo blanco), pequeño gap, tarjetas
     col_left, col_gap, col_right = st.columns([3, 0.15, 1.25])
