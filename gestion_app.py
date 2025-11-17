@@ -262,7 +262,7 @@ st.markdown(
   .eni-quick-column{
     display:flex;
     flex-direction:column;
-    gap:14px;         /* separa la ancha del grid */
+    gap:13px;         /* separa la ancha del grid */
   }
 
   .eni-quick-grid{
