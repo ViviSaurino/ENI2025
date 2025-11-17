@@ -339,8 +339,8 @@ st.markdown(
   /* Reducir espacio vertical entre bloques
      (por ejemplo, entre el rectángulo blanco y "Editar estado") */
   div[data-testid="stVerticalBlock"]{
-      gap: 0.3rem !important;      /* baja este valor para pegar más */
-      row-gap: 0.3rem !important;  /* algunos navegadores usan row-gap */
+      gap: 1.3rem !important;      /* baja este valor para pegar más */
+      row-gap: 1.3rem !important;  /* algunos navegadores usan row-gap */
   }
   
 </style>
