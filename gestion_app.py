@@ -161,11 +161,6 @@ st.markdown(
     margin-top:-40px;   /* 🔹 levanta la vista hacia arriba */
   }
 
-  /* Contenedor específico para NUEVA TAREA (si se usa dentro del panel) */
-  .eni-view-wrapper-nt{
-    margin-top:0;
-  }
-
   /* ===== Sidebar blanca ===== */
   section[data-testid="stSidebar"] .stButton > button{
     border-radius:8px !important;
@@ -330,15 +325,33 @@ st.markdown(
     background:#A8D4F3;
   }
 
-  /* Tarjeta ancha para NUEVA TAREA (segunda fila, ocupa 2 columnas) */
-  .eni-quick-card--nueva_tarea_wide{
-    background:#DDD6FE;      /* lila: más claro que #C4B5FD y más oscuro que #F2EEFF */
-    grid-column:1 / -1;      /* ocupa las 2 columnas del grid */
+  /* Tarjeta ancha NUEVA TAREA debajo de las 4 tarjetas */
+  .eni-quick-card-wide-nt{
+    background:#DDD6FE;      /* lila intermedio */
+    border-radius:8px;
+    padding:18px 20px 16px 20px;
+    box-shadow:0 10px 22px rgba(148,163,184,0.40);
+    border:none;
+    height:120px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:18px;
   }
-  .eni-quick-card--nueva_tarea_wide .eni-quick-card-icon{
+  .eni-quick-card-wide-nt .eni-quick-card-title{
+    font-size:15px;
+    font-weight:700;
+    color:#4338CA;
+    margin-bottom:4px;
+  }
+  .eni-quick-card-wide-nt .eni-quick-card-sub{
+    font-size:11px;
+    color:#EEF2FF;
+    margin:0;
+  }
+  .eni-quick-card-wide-nt .eni-quick-card-icon{
     font-size:40px;
-    margin-left:12px;
-    transform:translateY(-6px);
+    margin-left:18px;
   }
 
   /* Reducir algo el espacio horizontal entre columnas (lila/blanco y tarjetas) */
@@ -347,7 +360,7 @@ st.markdown(
     column-gap:0.4rem !important;
   }
 
-  /* Solo para la tarjeta de Evaluación (la pequeña verde) */
+  /* Solo para la tarjeta de Evaluación (verde) */
   .eni-quick-card--nueva_tarea .eni-quick-card-icon{
       transform:translateY(-22px);
   }
@@ -586,7 +599,8 @@ if user_acl is None:
 
 for _k in ("is_active", "can_edit_all_tabs"):
     if _k in user_acl:
-        user_acl[_k] = _to_bool(user_acl[_k])
+        _k_val = _to_bool(user_acl[_k])
+        user_acl[_k] = _k_val
 
 user_acl["is_active"] = True
 user_acl["can_edit_all_tabs"] = True
@@ -759,7 +773,7 @@ tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
 if section == "Gestión de tareas":
     dn = st.session_state.get("user_display_name", "Usuario")
 
-    # Nombre “limpio” sin emoji final (por ejemplo 💜, 😎, etc.)
+    # Nombre “limpio” sin emoji final
     parts = dn.split()
     if parts:
         last = parts[-1]
@@ -787,7 +801,7 @@ if section == "Gestión de tareas":
             unsafe_allow_html=True,
         )
 
-        # Panel blanco siempre vacío (solo contexto)
+        # Panel blanco solo como contenedor visual
         st.markdown('<div class="eni-panel-card"></div>', unsafe_allow_html=True)
 
     with col_gap:
@@ -797,21 +811,7 @@ if section == "Gestión de tareas":
         display_name = st.session_state.get("user_display_name", "Usuario")
         u_param = quote(display_name, safe="")
 
-        # Tarjeta ancha NUEVA TAREA (segunda fila, ancho 2 columnas)
-        nueva_tarea_wide = f"""
-        <a href="?auth=1&u={u_param}&tile=nueva_tarea" target="_self" class="eni-quick-card-link">
-          <div class="eni-quick-card eni-quick-card--nueva_tarea_wide">
-            <div class="eni-quick-card-text">
-              <div class="eni-quick-card-title">Nueva tarea</div>
-              <p class="eni-quick-card-sub">
-                Registra una nueva tarea y revísalas
-              </p>
-            </div>
-            <div class="eni-quick-card-icon">➕</div>
-          </div>
-        </a>
-        """
-
+        # 4 tarjetas pequeñas en grid
         cards_html = f"""
         <div class="eni-quick-grid-wrapper">
           <div class="eni-quick-grid">
@@ -839,11 +839,28 @@ if section == "Gestión de tareas":
                 "📝",
                 "nueva_tarea",
             )}
-            {nueva_tarea_wide}
           </div>
         </div>
         """
         st.markdown(cards_html, unsafe_allow_html=True)
+
+        # Tarjeta ancha "Nueva tarea" debajo
+        nueva_tarea_html = f"""
+        <div class="eni-quick-grid-wrapper">
+          <a href="?auth=1&u={u_param}&tile=nueva_tarea" target="_self" class="eni-quick-card-link">
+            <div class="eni-quick-card-wide-nt">
+              <div class="eni-quick-card-text">
+                <div class="eni-quick-card-title">Nueva tarea</div>
+                <p class="eni-quick-card-sub">
+                  Registra una nueva tarea y revísalas
+                </p>
+              </div>
+              <div class="eni-quick-card-icon">➕</div>
+            </div>
+          </a>
+        </div>
+        """
+        st.markdown(nueva_tarea_html, unsafe_allow_html=True)
 
     # ---- Contenido de la vista seleccionada (ANCHO COMPLETO) ----
     if tile:
