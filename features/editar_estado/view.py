@@ -236,7 +236,7 @@ def render(user: dict | None = None):
 
           /* 🔹 Subir todo el bloque de "Editar estado" dentro del rectángulo blanco */
           #est-section{
-            margin-top:-80px;   /* prueba -10, -18, -24 según qué tanto quieras subir */
+            margin-top:0px;   /* prueba -10, -18, -24 según qué tanto quieras subir */
           }
 
           #est-section .ag-header-cell-label{ 
