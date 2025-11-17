@@ -811,28 +811,26 @@ if section == "Gestión de tareas":
         display_name = st.session_state.get("user_display_name", "Usuario")
         u_param = quote(display_name, safe="")
 
-        # Tarjeta ancha "Nueva tarea" ARRIBA + 4 tarjetas pequeñas debajo
+        # 👉 Tarjeta ancha "Nueva tarea" ARRIBA + grid 2x2 debajo
         cards_html = f"""
         <div class="eni-quick-grid-wrapper">
 
           <!-- Tarjeta ancha NUEVA TAREA -->
-          <div class="eni-quick-card-wide-nt-wrap">
-            <a href="?auth=1&u={u_param}&tile=nueva_tarea"
-               target="_self"
-               class="eni-quick-card-link">
-              <div class="eni-quick-card-wide-nt">
-                <div class="eni-quick-card-text">
-                  <div class="eni-quick-card-title">Nueva tarea</div>
-                  <p class="eni-quick-card-sub">
-                    Registra una nueva tarea y revísalas
-                  </p>
-                </div>
-                <div class="eni-quick-card-icon">➕</div>
+          <a href="?auth=1&u={u_param}&tile=nueva_tarea"
+             target="_self"
+             class="eni-quick-card-link">
+            <div class="eni-quick-card-wide-nt">
+              <div class="eni-quick-card-text">
+                <div class="eni-quick-card-title">Nueva tarea</div>
+                <p class="eni-quick-card-sub">
+                  Registra una nueva tarea y revísalas
+                </p>
               </div>
-            </a>
-          </div>
+              <div class="eni-quick-card-icon">➕</div>
+            </div>
+          </a>
 
-          <!-- Grid de 4 tarjetas -->
+          <!-- Grid 2x2 de las 4 tarjetas existentes -->
           <div class="eni-quick-grid">
             {_quick_card_link(
                 "Editar estado",
