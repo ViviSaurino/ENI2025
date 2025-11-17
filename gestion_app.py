@@ -165,7 +165,7 @@ st.markdown(
   /* ⬆⬆⬆ Contenedor de la vista (Editar estado, etc.) ⬆⬆⬆ */
   .eni-view-wrapper{
     position: relative;
-    top: -32px;          /* súbelo / bájalo ajustando este valor */
+    top: -80px;          /* súbelo / bájalo ajustando este valor */
     margin-top: 0 !important;
   }
 
