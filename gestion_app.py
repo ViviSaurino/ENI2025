@@ -363,6 +363,10 @@ st.markdown(
   html body [data-testid="stAppViewContainer"] .main .block-container h3{
     margin-top:0.2rem !important;
   }
+
+  .eni-main-topbar-title{
+  text-transform:none !important;
+  }
 </style>
 """,
     unsafe_allow_html=True,
