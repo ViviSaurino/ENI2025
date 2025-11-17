@@ -340,7 +340,7 @@ st.markdown(
   .eni-quick-card-wide-nt{
     background:#D9C6FF;          /* lila claro, más oscuro que el fondo */
     border-radius:8px;
-    padding:22px 22px 20px 22px;
+    padding:20px 20px 20px 20px;
     box-shadow:0 12px 28px rgba(148,163,184,0.45);
     display:flex;
     align-items:center;
