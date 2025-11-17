@@ -1007,5 +1007,8 @@ def render(user: dict | None = None):
                 except Exception as e:
                     st.error(f"No pude guardar: {e}")
 
+        # cierra form-card + section-est
         st.markdown("</div></div>", unsafe_allow_html=True)
+        # cierra est-section + est-wrapper-up
         st.markdown("</div>", unsafe_allow_html=True)
+       
