@@ -820,8 +820,13 @@ if section == "Gestión de tareas":
                     render_fn = getattr(view_module, "render_all", None)
 
                 if callable(render_fn):
-                    # aquí se dibuja Editar estado / Nueva alerta / etc.
+                    # 🔹 sube el bloque de "Editar estado" acercándolo al rectángulo blanco
+                    st.markdown(
+                        "<div style='margin-top:-40px;'></div>",
+                        unsafe_allow_html=True,
+                    )
                     render_fn(st.session_state.get("user"))
+
                 else:
                     st.info(
                         "Vista pendiente para esta tarjeta "
