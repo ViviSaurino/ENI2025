@@ -138,104 +138,95 @@ def render(user: dict | None = None):
 
         # ===== CSS =====
     st.markdown(
-        """
+    """
     <style>
-      /* Quitar el rectángulo blanco gigante del centro */
-      [data-testid="block-container"]{
-          background: transparent !important;
-          box-shadow: none !important;
-          border: none !important;
-      }
-
-      /* Oculta el caption automático de Streamlit */
-      section.main div[data-testid="stCaptionContainer"]:first-of-type{
-        display:none !important;
-      }
-
-      /* (aquí sigues con todo el CSS que ya tienes:
-         verticalBlock, nt-card-sentinel, .nt-pill, .help-strip, etc.) */
-
-      /* Oculta el caption automático de Streamlit */
-      section.main div[data-testid="stCaptionContainer"]:first-of-type{
-        display:none !important;
-      }
-
-      /* 1) RESET: todos los verticalBlock sin card (fondo transparente) */
-      section.main div[data-testid="stVerticalBlock"]{
-        background: transparent !important;
+    /* ===== Quitar la “hoja” blanca gigante del centro ===== */
+    section.main{
+        background-color: transparent !important;
+    }
+    div[data-testid="block-container"]{
+        background-color: transparent !important;
         box-shadow: none !important;
         border: none !important;
-      }
+    }
+    div[data-testid="block-container"] > div{
+        background-color: transparent !important;
+        box-shadow: none !important;
+    }
 
-      /* 2) CARD SOLO PARA EL BLOQUE DEL FORMULARIO (que contiene el sentinel) */
-      section.main div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel){
-        background:#FFFFFF !important;              /* fondo blanco SOLO aquí */
-        border-radius:16px;
-        padding:22px 24px 24px 24px;
+    /* Ocultar el caption automático de Streamlit */
+    section.main div[data-testid="stCaptionContainer"]:first-of-type{
+        display:none !important;
+    }
+
+    /* ===== Tarjeta blanca SOLO para el formulario (filtros) ===== */
+    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
+        background:#FFFFFF;
+        border-radius:14px;
+        padding:20px 22px 22px 22px;
         margin-top:16px;
         margin-bottom:10px;
-        box-shadow:0 18px 45px rgba(15,23,42,0.08);
-        border:1px solid rgba(148,163,184,0.22);
-      }
+        box-shadow:0 20px 50px rgba(15,23,42,0.10);
+        border:1px solid #E5E7EB;
+    }
 
-      /* Inputs al 100% dentro de ese card */
-      section.main div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextInput,
-      section.main div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stSelectbox,
-      section.main div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stDateInput,
-      section.main div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTimeInput,
-      section.main div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextArea{
-        width:100% !important;
-      }
+    /* Inputs full width dentro del card */
+    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
+    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox,
+    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput,
+    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput,
+    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea{
+      width:100% !important;
+    }
+    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput>div,
+    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox>div,
+    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput>div,
+    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput>div,
+    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea>div{
+      width:100% !important;
+      max-width:none !important;
+    }
 
-      section.main div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextInput>div,
-      section.main div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stSelectbox>div,
-      section.main div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stDateInput>div,
-      section.main div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTimeInput>div,
-      section.main div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextArea>div{
-        width:100% !important;
-        max-width:none !important;
-      }
+    /* Pastilla “Nueva tarea” */
+    .nt-pill{
+      width:100%;
+      height:38px;
+      border-radius:12px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:#A7C8F0;
+      color:#ffffff;
+      font-weight:700;
+      box-shadow:0 6px 14px rgba(167,200,240,.35);
+      user-select:none;
+    }
 
-      /* Píldora “Nueva tarea” */
-      .nt-pill{
-        width:100%;
-        height:38px;
-        border-radius:12px;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        background:#A7C8F0;
-        color:#ffffff;
-        font-weight:700;
-        box-shadow:0 6px 14px rgba(167,200,240,.35);
-        user-select:none;
-      }
+    /* Franja de indicaciones */
+    .help-strip{
+      background:#FFFFFF;
+      border:1px solid #E5E7EB;
+      color:#0B3B76;
+      padding:12px 14px;
+      border-radius:14px;
+      font-size:0.92rem;
+      box-shadow:0 12px 30px rgba(15,23,42,0.06);
+    }
 
-      /* Indicaciones en card blanco pequeñito */
-      .help-strip{
-        background:#FFFFFF;
-        border:1px solid rgba(148,163,184,0.22);
-        color:#0B3B76;
-        padding:12px 14px;
-        border-radius:14px;
-        font-size:0.92rem;
-        box-shadow:0 12px 30px rgba(15,23,42,0.06);
-      }
-
-      /* Botones inferiores */
-      .nt-outbtn .stButton>button{
-        min-height:38px !important;
-        height:38px !important;
-        border-radius:10px !important;
-      }
-      .nt-outbtn{
-        margin-top:6px;
-      }
+    /* Botones de abajo */
+    .nt-outbtn .stButton>button{
+      min-height:38px !important;
+      height:38px !important;
+      border-radius:10px !important;
+    }
+    .nt-outbtn{
+      margin-top: 6px;
+    }
     </style>
         """,
         unsafe_allow_html=True,
     )
-    
+
     # ===== Datos =====
     if "AREAS_OPC" not in globals():
         globals()["AREAS_OPC"] = [
