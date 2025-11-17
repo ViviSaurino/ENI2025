@@ -144,8 +144,8 @@ def render(user: dict | None = None):
         display:none !important;
       }
 
-      /* Card blanco SOLO para el bloque de filtros */
-      .nt-card{
+      /* Card blanco PARA EL BLOQUE DE FILTROS (container que tiene el sentinel) */
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
         background:#FFFFFF;
         border-radius:14px;
         padding:20px 22px 22px 22px;
@@ -155,19 +155,19 @@ def render(user: dict | None = None):
         border:1px solid #E5E7EB;
       }
 
-      /* Forzar ancho completo dentro del card de filtros */
-      .nt-card .stTextInput,
-      .nt-card .stSelectbox,
-      .nt-card .stDateInput,
-      .nt-card .stTimeInput,
-      .nt-card .stTextArea{
+      /* Forzar ancho completo de inputs dentro de ese card */
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea{
         width:100% !important;
       }
-      .nt-card .stTextInput>div,
-      .nt-card .stSelectbox>div,
-      .nt-card .stDateInput>div,
-      .nt-card .stTimeInput>div,
-      .nt-card .stTextArea>div{
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput>div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox>div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput>div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput>div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea>div{
         width:100% !important;
         max-width:none !important;
       }
@@ -252,7 +252,7 @@ def render(user: dict | None = None):
         if st.session_state.pop("nt_added_ok", False):
             st.success("Agregado a Tareas recientes")
 
-        # ===== Indicaciones (card blanco fino) =====
+        # ===== Indicaciones (card blanco) =====
         st.markdown(
             """
         <div class="help-strip">
@@ -266,11 +266,8 @@ def render(user: dict | None = None):
             f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True
         )
 
-        # ===== Bloque de filtros / formulario =====
+        # ===== Bloque de filtros / formulario (el card lo da el CSS del sentinel) =====
         with st.container():
-            # Abrimos el card blanco de filtros
-            st.markdown('<div class="nt-card">', unsafe_allow_html=True)
-            # Sentinel por si lo necesitas en otro lado
             st.markdown(
                 '<span id="nt-card-sentinel"></span>',
                 unsafe_allow_html=True,
@@ -525,9 +522,6 @@ def render(user: dict | None = None):
                     key="nt_id_preview",
                 )
 
-            # Cerramos el div del card de filtros
-            st.markdown("</div>", unsafe_allow_html=True)
-
         # ---------- Botones: volver + agregar (misma altura) ----------
         left_spacer, col_back, col_add = st.columns(
             [A + Fw + T + D + R - C, C, C], gap="medium"
@@ -551,7 +545,6 @@ def render(user: dict | None = None):
 
         # ------ Acción botón Volver ------
         if back:
-            # Si tu router usa otro nombre, cambia "gestion_tareas" por el slug correcto
             try:
                 st.experimental_set_query_params(feature="gestion_tareas")
             except Exception:
