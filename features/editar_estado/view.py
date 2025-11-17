@@ -236,7 +236,7 @@ def render(user: dict | None = None):
           /* 🔧 Reducir el espacio ANTES de la sección "Editar estado"
              (apunta al contenedor de Streamlit que contiene #est-section) */
           [data-testid="stVerticalBlock"]:has(#est-section){
-              margin-top:10px;          /* ajusta -20, -24, -30 según lo que veas */
+              margin-top:100px;          /* ajusta -20, -24, -30 según lo que veas */
               padding-top:0 !important;  /* elimina padding extra arriba */
           }
 
