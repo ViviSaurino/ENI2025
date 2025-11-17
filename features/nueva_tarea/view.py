@@ -178,7 +178,41 @@ def render(user: dict | None = None):
         user-select:none;
       }
 
-      /* Card blanco para indicaciones */
+      /* Card blanco completo para el bloque de filtros (donde están Área, Fase, etc.) */
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
+        background:#FFFFFF;
+        border-radius:14px;
+        padding:20px 22px 22px 22px;
+        margin-top:16px;
+        margin-bottom:10px;
+        box-shadow:0 20px 50px rgba(15,23,42,0.10);
+        border:1px solid #E5E7EB;
+      }
+
+      /* Forzar ancho completo dentro del card de filtros */
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea{
+        width:100% !important;
+      }
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput>div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox>div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput>div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput>div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea>div{
+        width:100% !important; max-width:none !important;
+      }
+
+      .nt-pill{
+        width:100%; height:38px; border-radius:12px;
+        display:flex; align-items:center; justify-content:center;
+        background:#A7C8F0; color:#ffffff; font-weight:700;
+        box-shadow:0 6px 14px rgba(167,200,240,.35);
+        user-select:none;
+      }
+
       .help-strip{
         background:#FFFFFF;
         border:1px solid #E5E7EB;
@@ -187,6 +221,11 @@ def render(user: dict | None = None):
         border-radius:14px;
         font-size:0.92rem;
         box-shadow:0 12px 30px rgba(15,23,42,0.06);
+      }
+
+      .nt-outbtn .stButton>button{
+        min-height:38px !important; height:38px !important; border-radius:10px !important;
+      }
       }
 
       .nt-outbtn .stButton>button{
