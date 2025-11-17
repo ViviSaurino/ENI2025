@@ -165,7 +165,7 @@ st.markdown(
   /* ⬆⬆⬆ Contenedor de la vista (Editar estado, etc.) ⬆⬆⬆ */
   .eni-view-wrapper{
     margin-top: 0 !important;
-    transform: translateY(-80px);   /* súbelo/bájalo cambiando este valor */
+    transform: translateY(-40px);   /* súbelo/bájalo cambiando este valor */
   }
 
   /* ===== Sidebar blanca ===== */
@@ -836,7 +836,7 @@ if section == "Gestión de tareas":
         """
         st.markdown(cards_html, unsafe_allow_html=True)
 
-    # ---- Contenido de la vista seleccionada (ANCHO COMPLETO) ----
+        # ---- Contenido de la vista seleccionada (ANCHO COMPLETO) ----
     if tile:
         module_path = TILE_TO_VIEW_MODULE.get(tile)
         if module_path:
@@ -847,11 +847,12 @@ if section == "Gestión de tareas":
                     render_fn = getattr(view_module, "render_all", None)
 
                 if callable(render_fn):
-                    # 👇 contenedor para poder mover TODO el bloque de la vista
-                    st.markdown('<div class="eni-view-wrapper">', unsafe_allow_html=True)
-                    render_fn(st.session_state.get("user"))
-                    st.markdown('</div>', unsafe_allow_html=True)
-                  
+                    # 👇 agrupamos TODA la vista en un solo container
+                    view_container = st.container()
+                    with view_container:
+                        st.markdown('<div class="eni-view-wrapper">', unsafe_allow_html=True)
+                        render_fn(st.session_state.get("user"))
+                        st.markdown('</div>', unsafe_allow_html=True)
                 else:
                     st.info(
                         "Vista pendiente para esta tarjeta "
@@ -865,32 +866,3 @@ if section == "Gestión de tareas":
     else:
         # sin mensaje "Vista seleccionada: ..."
         st.write("")
-
-elif section == "Kanban":
-    st.title("🗂️ Kanban")
-    def _render_kanban():
-        try:
-            from features.kanban.view import render as render_kanban
-            render_kanban(st.session_state.get("user"))
-        except Exception as e:
-            st.info("Vista Kanban pendiente (features/kanban/view.py).")
-            st.exception(e)
-    render_if_allowed(tab_key, _render_kanban)
-
-elif section == "Gantt":
-    st.title("📅 Gantt")
-    def _render_gantt():
-        try:
-            from features.gantt.view import render as render_gantt
-            render_gantt(st.session_state.get("user"))
-        except Exception as e:
-            st.info("Vista Gantt pendiente (features/gantt/view.py).")
-            st.exception(e)
-    render_if_allowed(tab_key, _render_gantt)
-
-else:
-    st.title("📊 Dashboard")
-    def _render_dashboard():
-        st.caption("Próximamente: visualizaciones y KPIs del dashboard.")
-        st.write("")
-    render_if_allowed(tab_key, _render_dashboard)
