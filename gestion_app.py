@@ -272,7 +272,7 @@ st.markdown(
     align-items:stretch;
     grid-auto-rows:143px;
     /* 👇 AGREGA o MODIFICA ESTA LÍNEA */
-    margin-top:18px;
+    margin-top:15px;
   }
 
   .eni-quick-card-link,
