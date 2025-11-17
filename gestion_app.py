@@ -271,6 +271,8 @@ st.markdown(
     gap:16px;
     align-items:stretch;
     grid-auto-rows:143px;
+    /* 👇 AGREGA o MODIFICA ESTA LÍNEA */
+    margin-top:18px;
   }
 
   .eni-quick-card-link,
