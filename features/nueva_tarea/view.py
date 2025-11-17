@@ -144,11 +144,14 @@ def render(user: dict | None = None):
 
       /* Card blanco completo para el bloque de filtros (verticalBlock con el sentinel) */
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
-        background:#FFFFFF;
-        border-radius:14px;
-        padding:20px 18px 18px 18px;
-        box-shadow:0 20px 50px rgba(15,23,42,0.10);
-        border:1px solid #E5E7EB;
+         background:#FFFFFF;
+         border-radius:14px;
+         padding:20px 22px 22px 22px;
+         margin-top:16px;
+         margin-bottom:10px;
+         box-shadow:0 20px 50px rgba(15,23,42,0.10);
+         border:1px solid #E5E7EB;
+
       }
 
       /* Forzar ancho completo dentro de la tarjeta de filtros */
