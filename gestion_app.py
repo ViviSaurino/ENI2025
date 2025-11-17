@@ -325,7 +325,11 @@ st.markdown(
     gap: 0.4rem !important;        /* antes ~1rem, ahora casi nada */
     column-gap: 0.4rem !important;
   }
-
+ 
+  /* Solo para la tarjeta de Evaluación */
+  .eni-quick-card--nueva_tarea .eni-quick-card-icon{
+      transform: translateY(-16px);  /* súbelo más: prueba -14, -16, -18 */
+  }
 </style>
 """,
     unsafe_allow_html=True,
