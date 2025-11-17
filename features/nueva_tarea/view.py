@@ -145,10 +145,16 @@ def render(user: dict | None = None):
         display:none !important;
       }
 
-      /* ========== CARD SOLO DEL FORMULARIO (filtros) ========== */
-      /* VerticalBlock que CONTIENE (en cualquier nivel) el sentinel */
+      /* 1) RESET: todos los verticalBlock sin card (fondo transparente) */
+      section.main div[data-testid="stVerticalBlock"]{
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+      }
+
+      /* 2) CARD SOLO PARA EL BLOQUE DEL FORMULARIO (que contiene el sentinel) */
       section.main div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel){
-        background:#FFFFFF !important;              /* fondo blanco SOLO del formulario */
+        background:#FFFFFF !important;              /* fondo blanco SOLO aquí */
         border-radius:16px;
         padding:22px 24px 24px 24px;
         margin-top:16px;
