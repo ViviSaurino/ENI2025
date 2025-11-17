@@ -811,7 +811,7 @@ if section == "Gestión de tareas":
         display_name = st.session_state.get("user_display_name", "Usuario")
         u_param = quote(display_name, safe="")
 
-        # 👉 Tarjeta ancha "Nueva tarea" ARRIBA + grid 2x2 debajo
+        # 👉 Tarjeta ancha "Nueva tarea" ARRIBA + grid 2x2 DEBAJO
         cards_html = f"""
         <div class="eni-quick-grid-wrapper">
 
@@ -830,7 +830,7 @@ if section == "Gestión de tareas":
             </div>
           </a>
 
-          <!-- Grid 2x2 de las 4 tarjetas existentes -->
+          <!-- Grid 2x2 con las 4 tarjetas existentes -->
           <div class="eni-quick-grid">
             {_quick_card_link(
                 "Editar estado",
