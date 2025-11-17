@@ -298,10 +298,10 @@ st.markdown(
     margin:0;
   }
   .eni-quick-card-icon{
-    font-size:44px;          /* 🔹 más grande */
-    margin-left:8px;
+    font-size:42px;          /* 🔹 más grande */
+    margin-left:12px;
     /* sin margin-bottom raro */
-    transform: translateY(-10px);   /* 🔹 sube el ícono dentro de la tarjeta */
+    transform: translateY(-8px);   /* 🔹 sube el ícono dentro de la tarjeta */
   }
   .eni-quick-card-link:hover .eni-quick-card{
     box-shadow:0 14px 28px rgba(148,163,184,0.55);
