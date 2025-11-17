@@ -165,7 +165,7 @@ st.markdown(
   /* ⬆⬆⬆ Contenedor de la vista (Editar estado, etc.) ⬆⬆⬆ */
   .eni-view-wrapper{
     margin-top: 0 !important;
-    transform: translateY(-10px);   /* súbelo/bájalo cambiando este valor */
+    transform: translateY(0px);   /* súbelo/bájalo cambiando este valor */
   }
 
   /* ===== Sidebar blanca ===== */
