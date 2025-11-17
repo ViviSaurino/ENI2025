@@ -336,7 +336,7 @@ st.markdown(
     display:flex;
     justify-content:space-between;
     align-items:center;
-    margin-top:-120px;
+    margin-top:-130px;
   }
   .eni-quick-card-wide-nt .eni-quick-card-title{
     font-size:15px;
