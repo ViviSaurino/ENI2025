@@ -91,7 +91,7 @@ st.markdown(
 
   /* ===== Fila superior: Gestión de tareas + VS / logout ===== */
     .eni-main-topbar{
-    padding:0 24px 0 24px;
+    padding:19px 16px;
     display:flex;
     align-items:center;
     justify-content:space-between;
