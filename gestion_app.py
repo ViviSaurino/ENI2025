@@ -809,14 +809,13 @@ if section == "Gestión de tareas":
             initials += p[0].upper()
     initials = initials or "VS"
 
-    # ---- Fila superior: Gestión de tareas + avatar (sin flecha) ----
+    # ---- Fila superior: gestión de tareas + avatar (sin flecha) ----
     st.markdown(
         f"""
         <div class="eni-main-topbar">
           <div class="eni-main-topbar-title">📋 Gestión de tareas</div>
           <div class="eni-main-topbar-user">
-           <div class="eni-main-topbar-avatar">{initials}</div>
-           <a href="?logout=1" class="eni-main-topbar-arrow" title="Cerrar sesión">▾</a>
+            <div class="eni-main-topbar-avatar">{initials}</div>
           </div>
         </div>
         """,
@@ -902,6 +901,35 @@ if section == "Gestión de tareas":
         </div>
         """
         st.markdown(cards_html, unsafe_allow_html=True)
+
+    # ---- Contenido de la vista seleccionada (ANCHO COMPLETO) ----
+    if tile:
+        module_path = TILE_TO_VIEW_MODULE.get(tile)
+        if module_path:
+            try:
+                view_module = importlib.import_module(module_path)
+                render_fn = getattr(view_module, "render", None)
+                if render_fn is None:
+                    render_fn = getattr(view_module, "render_all", None)
+
+                if callable(render_fn):
+                    st.markdown('<div class="eni-view-wrapper">', unsafe_allow_html=True)
+                    view_module_fn_user = st.session_state.get("user")
+                    render_fn(view_module_fn_user)
+                    st.markdown('</div>', unsafe_allow_html=True)
+                else:
+                    st.info(
+                        "Vista pendiente para esta tarjeta "
+                        "(no se encontró función 'render' ni 'render_all')."
+                    )
+            except Exception as e:
+                st.info("No se pudo cargar la vista para esta tarjeta.")
+                st.exception(e)
+        else:
+            st.info("Todavía no hay una vista vinculada a esta tarjeta.")
+    else:
+        st.write("")
+
 
     # ---- Contenido de la vista seleccionada (ANCHO COMPLETO) ----
     if tile:
