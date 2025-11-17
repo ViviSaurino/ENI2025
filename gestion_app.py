@@ -58,6 +58,7 @@ LOGO_PATH = Path("assets/branding/eni2025_logo.png")
 ROLES_XLSX = "data/security/roles.xlsx"
 
 # ============ Config de página ============
+
 st.set_page_config(
     page_title="Gestión — ENI2025",
     page_icon="📂",
@@ -66,6 +67,7 @@ st.set_page_config(
 )
 
 # ============ Parches/estilos globales ============
+
 patch_streamlit_aggrid()
 inject_global_css()
 
@@ -158,6 +160,11 @@ st.markdown(
     padding:18px 24px;
     /* mismo ancho visual que la cabecera lila */
     margin:0 -10px -8px -50px;
+  }
+
+  /* ⬆⬆⬆ Contenedor de la vista (Editar estado, etc.) ⬆⬆⬆ */
+  .eni-view-wrapper{
+    margin-top:-0.85rem !important;  /* mueve la vista hacia arriba */
   }
 
   /* ===== Sidebar blanca ===== */
@@ -349,6 +356,7 @@ st.markdown(
 )
 
 # ============ AUTENTICACIÓN POR CONTRASEÑA ============
+
 APP_PASSWORD = "Inei2025$"
 
 def check_app_password() -> bool:
@@ -547,9 +555,11 @@ if not check_app_password():
     st.stop()
 
 # ============ AUTENTICACIÓN (usuario genérico) ============
+
 email = st.session_state.get("user_email") or (st.session_state.get("user") or {}).get("email", "eni2025@app")
 
 # ============ Carga de ROLES / ACL ============
+
 try:
     if "roles_df" not in st.session_state:
         st.session_state["roles_df"] = acl.load_roles(ROLES_XLSX)
@@ -600,6 +610,7 @@ st.session_state["user_dry_run"] = bool(user_acl.get("dry_run", False))
 st.session_state["save_scope"] = user_acl.get("save_scope", "all")
 
 # ========= Hook "maybe_save" + Google Sheets ==========
+
 def _push_gsheets(df: pd.DataFrame):
     if "gsheets" not in st.secrets or "gcp_service_account" not in st.secrets:
         raise KeyError("Faltan 'gsheets' o 'gcp_service_account' en secrets.")
@@ -636,6 +647,7 @@ def _maybe_save_chain(persist_local_fn, df: pd.DataFrame):
 st.session_state["maybe_save"] = _maybe_save_chain
 
 # ====== Logout local ======
+
 def logout():
     for k in ("user", "user_email", "password_ok", "acl_user",
               "auth_ok", "nav_section", "roles_df", "home_tile", "user_display_name"):
@@ -647,6 +659,7 @@ def logout():
     st.rerun()
 
 # ====== Navegación / permisos ======
+
 DEFAULT_SECTION = "Gestión de tareas"
 
 TAB_KEY_BY_SECTION = {
@@ -670,6 +683,7 @@ def render_if_allowed(tab_key: str, render_fn):
         st.warning("No tienes permiso para esta sección.")
 
 # ============ Sidebar ============
+
 with st.sidebar:
     if LOGO_PATH.exists():
         st.markdown("<div class='eni-logo-wrap'>", unsafe_allow_html=True)
@@ -696,9 +710,11 @@ with st.sidebar:
         logout()
 
 # ============ Datos ============
+
 ensure_df_main()
 
 # ===== Tarjetas rápidas =====
+
 def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str:
     display_name = st.session_state.get("user_display_name", "Usuario")
     u_param = quote(display_name, safe="")
@@ -716,6 +732,7 @@ def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str
     """
 
 # ===== leer parámetro de tarjeta seleccionada =====
+
 tile = ""
 try:
     params = st.query_params
@@ -741,6 +758,7 @@ section = st.session_state.get("nav_section", DEFAULT_SECTION)
 tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
 
 # ============ Contenido principal ============
+
 if section == "Gestión de tareas":
     dn = st.session_state.get("user_display_name", "Usuario")
     initials = "".join([p[0] for p in dn.split() if p])[:2].upper()
