@@ -335,6 +335,14 @@ st.markdown(
   .eni-quick-card--nueva_tarea .eni-quick-card-icon{
       transform: translateY(-22px);  /* súbelo más: prueba -14, -16, -18 */
   }
+
+  /* Reducir espacio vertical entre bloques
+     (por ejemplo, entre el rectángulo blanco y "Editar estado") */
+  div[data-testid="stVerticalBlock"]{
+      gap: 0.3rem !important;      /* baja este valor para pegar más */
+      row-gap: 0.3rem !important;  /* algunos navegadores usan row-gap */
+  }
+  
 </style>
 """,
     unsafe_allow_html=True,
