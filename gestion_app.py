@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# ============================  
+# ============================
 # Gestión — ENI2025 (App única)
 # ============================
 import streamlit as st
@@ -161,9 +161,9 @@ st.markdown(
     margin-top:-40px;   /* 🔹 levanta la vista hacia arriba */
   }
 
-  /* Contenedor específico para NUEVA TAREA dentro del panel blanco */
+  /* Contenedor específico para NUEVA TAREA (si se usa dentro del panel) */
   .eni-view-wrapper-nt{
-    margin-top:0;       /* sin desplazamiento negativo */
+    margin-top:0;
   }
 
   /* ===== Sidebar blanca ===== */
@@ -330,13 +330,24 @@ st.markdown(
     background:#A8D4F3;
   }
 
+  /* Tarjeta ancha para NUEVA TAREA (segunda fila, ocupa 2 columnas) */
+  .eni-quick-card--nueva_tarea_wide{
+    background:#DDD6FE;      /* lila: más claro que #C4B5FD y más oscuro que #F2EEFF */
+    grid-column:1 / -1;      /* ocupa las 2 columnas del grid */
+  }
+  .eni-quick-card--nueva_tarea_wide .eni-quick-card-icon{
+    font-size:40px;
+    margin-left:12px;
+    transform:translateY(-6px);
+  }
+
   /* Reducir algo el espacio horizontal entre columnas (lila/blanco y tarjetas) */
   div[data-testid="stHorizontalBlock"]{
     gap:0.4rem !important;
     column-gap:0.4rem !important;
   }
 
-  /* Solo para la tarjeta de Evaluación */
+  /* Solo para la tarjeta de Evaluación (la pequeña verde) */
   .eni-quick-card--nueva_tarea .eni-quick-card-icon{
       transform:translateY(-22px);
   }
@@ -702,7 +713,7 @@ with st.sidebar:
 # ============ Datos ============
 ensure_df_main()
 
-# ===== Tarjetas rápidas =====
+# ===== Tarjetas rápidas (helper) =====
 def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str:
     display_name = st.session_state.get("user_display_name", "Usuario")
     u_param = quote(display_name, safe="")
@@ -776,43 +787,31 @@ if section == "Gestión de tareas":
             unsafe_allow_html=True,
         )
 
-        # ===== Panel blanco =====
-        if tile == "nueva_tarea":
-            # 👉 NUEVA TAREA: se dibuja DENTRO del panel blanco
-            st.markdown('<div class="eni-panel-card">', unsafe_allow_html=True)
-
-            module_path = TILE_TO_VIEW_MODULE.get("nueva_tarea")
-            if module_path:
-                try:
-                    view_module = importlib.import_module(module_path)
-                    render_fn = getattr(view_module, "render", None)
-                    if render_fn is None:
-                        render_fn = getattr(view_module, "render_all", None)
-
-                    if callable(render_fn):
-                        st.markdown('<div class="eni-view-wrapper-nt">', unsafe_allow_html=True)
-                        render_fn(st.session_state.get("user"))
-                        st.markdown('</div>', unsafe_allow_html=True)
-                    else:
-                        st.info(
-                            "Vista pendiente para esta tarjeta "
-                            "(no se encontró función 'render' ni 'render_all')."
-                        )
-                except Exception as e:
-                    st.info("No se pudo cargar la vista para esta tarjeta.")
-                    st.exception(e)
-            else:
-                st.info("Todavía no hay una vista vinculada a esta tarjeta.")
-
-            st.markdown('</div>', unsafe_allow_html=True)
-        else:
-            # Otros casos: panel blanco vacío (como en la home)
-            st.markdown('<div class="eni-panel-card"></div>', unsafe_allow_html=True)
+        # Panel blanco siempre vacío (solo contexto)
+        st.markdown('<div class="eni-panel-card"></div>', unsafe_allow_html=True)
 
     with col_gap:
         st.write("")
 
     with col_right:
+        display_name = st.session_state.get("user_display_name", "Usuario")
+        u_param = quote(display_name, safe="")
+
+        # Tarjeta ancha NUEVA TAREA (segunda fila, ancho 2 columnas)
+        nueva_tarea_wide = f"""
+        <a href="?auth=1&u={u_param}&tile=nueva_tarea" target="_self" class="eni-quick-card-link">
+          <div class="eni-quick-card eni-quick-card--nueva_tarea_wide">
+            <div class="eni-quick-card-text">
+              <div class="eni-quick-card-title">Nueva tarea</div>
+              <p class="eni-quick-card-sub">
+                Registra una nueva tarea y revísalas
+              </p>
+            </div>
+            <div class="eni-quick-card-icon">➕</div>
+          </div>
+        </a>
+        """
+
         cards_html = f"""
         <div class="eni-quick-grid-wrapper">
           <div class="eni-quick-grid">
@@ -840,14 +839,14 @@ if section == "Gestión de tareas":
                 "📝",
                 "nueva_tarea",
             )}
+            {nueva_tarea_wide}
           </div>
         </div>
         """
         st.markdown(cards_html, unsafe_allow_html=True)
 
     # ---- Contenido de la vista seleccionada (ANCHO COMPLETO) ----
-    # Solo para vistas que NO son "nueva_tarea"
-    if tile and tile != "nueva_tarea":
+    if tile:
         module_path = TILE_TO_VIEW_MODULE.get(tile)
         if module_path:
             try:
