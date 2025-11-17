@@ -1,345 +1,9 @@
-# -*- coding: utf-8 -*-
-# ============================  
-# Gestión — ENI2025 (App única)
-# ============================
-import streamlit as st
-import pandas as pd
-from pathlib import Path
-import importlib
-import types
-import base64  # para incrustar el video como base64
-from urllib.parse import quote  # para codificar el nombre en la URL
-
-# ===== Import robusto de shared con fallbacks =====
-def _fallback_ensure_df_main():
-    import os
-    path = os.path.join("data", "tareas.csv")
-    os.makedirs("data", exist_ok=True)
-
-    if "df_main" in st.session_state:
-        return
-
-    # columnas mínimas (mismas que vienes usando)
-    base_cols = ["Id","Área","Responsable","Tarea","Prioridad",
-                 "Evaluación","Fecha inicio","__DEL__"]
-    try:
-        if os.path.exists(path) and os.path.getsize(path) > 0:
-            df = pd.read_csv(path, encoding="utf-8-sig")
-        else:
-            df = pd.DataFrame([], columns=base_cols)
-    except Exception:
-        df = pd.DataFrame([], columns=base_cols)
-
-    if "__DEL__" not in df.columns:
-        df["__DEL__"] = False
-    df["__DEL__"] = df["__DEL__"].fillna(False).astype(bool)
-
-    if "Calificación" in df.columns:
-        df["Calificación"] = pd.to_numeric(df["Calificación"], errors="coerce").fillna(0).astype(int)
-
-    st.session_state["df_main"] = df
-
-try:
-    _shared = importlib.import_module("shared")
-    patch_streamlit_aggrid = getattr(_shared, "patch_streamlit_aggrid")
-    inject_global_css      = getattr(_shared, "inject_global_css")
-    ensure_df_main         = getattr(_shared, "ensure_df_main")
-except Exception:
-    # si shared.py tiene SyntaxError o falla el import, seguimos con stubs seguros
-    patch_streamlit_aggrid = lambda: None
-    inject_global_css      = lambda: None
-    ensure_df_main         = _fallback_ensure_df_main
-
-# 🔐 ACL / Roles
-from features.security import acl
-from utils.avatar import show_user_avatar_from_session  # por si luego lo usamos dentro
-
-LOGO_PATH = Path("assets/branding/eni2025_logo.png")
-ROLES_XLSX = "data/security/roles.xlsx"
-
-# ============ Config de página ============
-
-st.set_page_config(
-    page_title="Gestión — ENI2025",
-    page_icon="📂",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# ============ Parches/estilos globales ============
-
-patch_streamlit_aggrid()
-inject_global_css()
-
-# 👉 Estilos específicos (sidebar + layout + topbar + tarjetas)
-st.markdown(
-    """
-<style>
-  /* ===== Fondo general lila suave de la APP ===== */
-  html, body, [data-testid="stAppViewContainer"]{
-    background:#F2EEFF;
-  }
-
-  .eni-banner{
-    margin:6px 0 14px;
-    font-weight:400;
-    font-size:16px;
-    color:#4B5563;
-  }
-
-  /* Oculta bloques de código / fragmentos sueltos tipo </div> */
-  div[data-testid="stCodeBlock"],
-  pre,
-  code{
-    display:none !important;
-  }
-
-  /* ===== TOP BAR BLANCA (tipo navbar) ===== */
-  .eni-main-topbar{
-    background:#FFFFFF;
-    padding:19px 24px;
-    border-radius:0;
-    display:flex;
-    align-items:center;
-    justify-content:flex-end;
-    margin:0 -45px 29px -50px;
-    box-shadow:none;
-  }
-  .eni-main-topbar-title{
-    font-size:14px;
-    font-weight:600;
-    color:#111827;
-    flex:1;
-  }
-  .eni-main-topbar-user{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    font-size:13px;
-    color:#4B5563;
-  }
-  .eni-main-topbar-avatar{
-    width:32px;
-    height:32px;
-    border-radius:999px;
-    background:#C4B5FD;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    color:#FFFFFF;
-    font-weight:700;
-    font-size:14px;
-  }
-
-  /* ===== Card lila principal ===== */
-  .eni-main-card-header{
-    background:#C4B5FD;
-    border-radius:8px;
-    padding:22px 28px;
-    box-shadow:0 18px 40px rgba(148,163,184,0.35);
-    margin:0 -10px 18px -50px;
-  }
-  .eni-main-card-header-title{
-    font-size:22px;
-    font-weight:800;
-    color:#FFFFFF;
-    margin-bottom:4px;
-  }
-  .eni-main-card-header-sub{
-    font-size:12px;
-    color:#F9FAFB;
-    margin:0;
-  }
-
-  /* ===== Panel blanco debajo de cabecera ===== */
-  .eni-panel-card{
-    background:#FFFFFF;
-    border-radius:8px;
-    min-height:180px;
-    box-shadow:0 10px 26px rgba(148,163,184,0.18);
-    padding:18px 24px;
-    margin:0 -10px -8px -50px;
-  }
-
-  /* Contenedor de la vista (Editar estado, etc.) */
-  .eni-view-wrapper{
-    margin-top: 0 !important;
-    transform: translateY(0px);
-  }
-
-  /* ===== Sidebar blanca ===== */
-  section[data-testid="stSidebar"] .stButton > button{
-    border-radius:8px !important;
-    font-weight:600 !important;
-  }
-
-  section[data-testid="stSidebar"] .eni-logo-wrap{
-    margin-left:-10px;
-    margin-top:-6px !important;
-  }
-  section[data-testid="stSidebar"] .block-container{
-    padding-top:6px !important;
-    padding-bottom:10px !important;
-  }
-  section[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{
-    gap:8px !important;
-  }
-
-  [data-testid="stSidebar"]{
-    overflow-y:hidden !important;
-    background:#FFFFFF !important;
-    min-width:230px !important;
-    max-width:230px !important;
-    color:#111827 !important;
-    border-right:1px solid #E5E7EB;
-  }
-
-  /* Menú de secciones */
-  section[data-testid="stSidebar"] .stRadio > div{
-    gap:4px !important;
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"]{
-    margin-bottom:8px;
-    padding:8px 10px;
-    border-radius:12px;
-    background:transparent;
-    transition:all .15s ease-in-out;
-    display:flex;
-    flex-direction:row;
-    align-items:center;
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"] > div:first-child{
-    display:none;
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"] > div:last-child{
-    padding-left:6px !important;
-    font-size:13px;
-    font-weight:500;
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="true"]{
-    background:#EEF2FF !important;
-    color:#4F46E5 !important;
-    box-shadow:none;
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="false"]{
-    color:#4B5563 !important;
-  }
-
-  /* Iconitos del menú lateral */
-  section[data-testid="stSidebar"] [data-baseweb="radio"]::before{
-    font-size:18px;
-    margin-right:8px;
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(1)::before{
-    content:"📋";
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(2)::before{
-    content:"🗂️";
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(3)::before{
-    content:"📅";
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(4)::before{
-    content:"📊";
-  }
-
-  *::-webkit-scrollbar{
-    width:0px;
-    height:0px;
-  }
-
-  header[data-testid="stHeader"]{
-    height: 0px;
-    padding: 0px;
-    visibility: hidden;
-  }
-
-  html body [data-testid="stAppViewContainer"] .main .block-container{
-    padding-top: 0rem !important;
-    margin-top: -0.4rem !important;
-    background:transparent;
-  }
-
-  /* ===== Grid de tarjetas rápidas (derecha) ===== */
-  .eni-quick-grid-wrapper{
-    margin:0px -45px 0 0;
-  }
-  .eni-quick-grid{
-    display:grid;
-    grid-template-columns:repeat(2, 1fr);
-    gap:16px;
-    align-items:stretch;
-    grid-auto-rows:143px;
-  }
-  .eni-quick-card-link,
-  .eni-quick-card-link:link,
-  .eni-quick-card-link:visited,
-  .eni-quick-card-link:hover,
-  .eni-quick-card-link:active{
-      text-decoration:none !important;
-      color:inherit;
-  }
-  .eni-quick-card-link:focus-visible{
-      outline:none;
-  }
-  .eni-quick-card{
-    border-radius:8px;
-    padding:16px 12px 12px 16px;
-    box-shadow:0 10px 22px rgba(148,163,184,0.40);
-    border:none;
-    height:143px;
-    display:flex;
-    flex-direction:column;
-    justify-content:space-between;
-    align-items:flex-start;
-    transition:all .15s ease-in-out;
-    overflow:hidden;
-  }
-  .eni-quick-card-text{
-    max-width:100%;
-  }
-  .eni-quick-card-title{
-    font-size:14px;
-    font-weight:700;
-    color:#FFFFFF;
-    margin-bottom:4px;
-  }
-  .eni-quick-card-sub{
-    font-size:11px;
-    color:#F9FAFB;
-    margin:0;
-  }
-  .eni-quick-card-icon{
-    font-size:42px;
-    margin-left:60px;
-    transform: translateY(-8px);
-  }
-  .eni-quick-card-link:hover .eni-quick-card{
-    box-shadow:0 14px 28px rgba(148,163,184,0.55);
-    transform:translateY(-2px);
-  }
-  .eni-quick-card--nueva_tarea{
-    background:#49BEA9;
-  }
-  .eni-quick-card--nueva_alerta{
-    background:#7FCCB2;
-  }
-  .eni-quick-card--editar_estado{
-    background:#93C5FD;
-  }
-  .eni-quick-card--prioridad_evaluacion{
-    background:#A8D4F3;
-  }
-
-  /* Reducir espacio horizontal entre columnas */
-  div[data-testid="stHorizontalBlock"]{
-    gap: 0.4rem !important;
     column-gap: 0.4rem !important;
   }
  
   /* Solo para la tarjeta de Evaluación */
   .eni-quick-card--nueva_tarea .eni-quick-card-icon{
-      transform: translateY(-22px);
+      transform: translateY(-22px);  /* súbelo más: prueba -14, -16, -18 */
   }
 
   /* Reducir el espacio superior de los títulos dentro del contenido */
@@ -349,10 +13,11 @@ st.markdown(
     margin-top: 0.2rem !important;
   }
 
-  /* Ajuste fuerte del espacio vertical en la sección "Gestión de tareas" */
+  /* Ajuste fuerte del espacio vertical en la sección "Gestión de tareas":
+     reduce el gap entre la cabecera (topbar + tarjetas) y la vista seleccionada */
   html body [data-testid="stAppViewContainer"] .main .block-container
       > div[data-testid="stVerticalBlock"]:has(.eni-main-topbar){
-      row-gap: 0.1rem !important;
+      row-gap: 0.1rem !important;   /* antes ~1rem, ahora bien pegadito */
       padding-top: 0.1rem !important;
       margin-top: -0.4rem !important;
   }
@@ -560,28 +225,6 @@ def check_app_password() -> bool:
 if not check_app_password():
     st.stop()
 
-# 🔄 Ajuste global DESPUÉS del login:
-st.markdown(
-    """
-<style>
-  html, body, [data-testid="stAppViewContainer"], .main{
-      overflow: visible !important;
-  }
-
-  html body [data-testid="stAppViewContainer"] .main .block-container
-      > div[data-testid="stVerticalBlock"]{
-      row-gap: 0.45rem !important;
-      padding-top: 0.15rem !important;
-  }
-
-  .eni-view-wrapper{
-      margin-top: -18px !important;
-  }
-</style>
-""",
-    unsafe_allow_html=True,
-)
-
 # ============ AUTENTICACIÓN (usuario genérico) ============
 
 email = st.session_state.get("user_email") or (st.session_state.get("user") or {}).get("email", "eni2025@app")
@@ -788,11 +431,6 @@ tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
 # ============ Contenido principal ============
 
 if section == "Gestión de tareas":
-    # 👉 Si no hay tile seleccionado, forzamos "editar_estado"
-    if not tile:
-        tile = "editar_estado"
-        st.session_state["home_tile"] = "editar_estado"
-
     dn = st.session_state.get("user_display_name", "Usuario")
     initials = "".join([p[0] for p in dn.split() if p])[:2].upper()
 
@@ -830,12 +468,12 @@ if section == "Gestión de tareas":
         # Panel blanco vacío, solo decorativo (mismo ancho que el lila)
         st.markdown('<div class="eni-panel-card"></div>', unsafe_allow_html=True)
 
-    # columna de espacio
+    # columna de espacio (franja entre lila/blanco y tarjetas)
     with col_gap:
         st.write("")
 
     with col_right:
-        # Grid 2x2 de tarjetas
+        # Grid 2x2 de tarjetas con los nombres nuevos
         cards_html = f"""
         <div class="eni-quick-grid-wrapper">
           <div class="eni-quick-grid">
@@ -879,6 +517,7 @@ if section == "Gestión de tareas":
                     render_fn = getattr(view_module, "render_all", None)
 
                 if callable(render_fn):
+                    # 👇 agrupamos TODA la vista en un solo container
                     view_container = st.container()
                     with view_container:
                         st.markdown('<div class="eni-view-wrapper">', unsafe_allow_html=True)
@@ -895,6 +534,7 @@ if section == "Gestión de tareas":
         else:
             st.info("Todavía no hay una vista vinculada a esta tarjeta.")
     else:
+        # sin mensaje "Vista seleccionada: ..."
         st.write("")
 
 elif section == "Kanban":
