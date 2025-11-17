@@ -328,7 +328,7 @@ st.markdown(
  
   /* Solo para la tarjeta de Evaluación */
   .eni-quick-card--nueva_tarea .eni-quick-card-icon{
-      transform: translateY(-16px);  /* súbelo más: prueba -14, -16, -18 */
+      transform: translateY(-18px);  /* súbelo más: prueba -14, -16, -18 */
   }
 </style>
 """,
