@@ -828,25 +828,25 @@ if section == "Gestión de tareas":
         <div class="eni-quick-grid-wrapper">
           <div class="eni-quick-grid">
             {_quick_card_link(
-                "Editar estado",
+                "2. Editar estado",
                 "Actualiza fases y fechas de las tareas",
                 "✏️",
                 "editar_estado",
             )}
             {_quick_card_link(
-                "Nueva alerta",
+                "3. Nueva alerta",
                 "Registra alertas y riesgos prioritarios de las tareas",
                 "⚠️",
                 "nueva_alerta",
             )}
             {_quick_card_link(
-                "Prioridad",
+                "4. Prioridad",
                 "Revisa los niveles de prioridad de las tareas",
                 "⭐",
                 "prioridad_evaluacion",
             )}
             {_quick_card_link(
-                "Evaluación",
+                "5. Evaluación",
                 "Revisa las evaluaciones y cumplimiento de las tareas",
                 "📝",
                 "nueva_tarea",
