@@ -136,7 +136,7 @@ if "_sync_time_from_date" not in globals():
 def render(user: dict | None = None):
     """Vista: ➕ Nueva tarea"""
 
-    # ===== CSS =====
+        # ===== CSS =====
     st.markdown(
         """
     <style>
@@ -146,8 +146,8 @@ def render(user: dict | None = None):
       }
 
       /* ========== CARD SOLO DEL FORMULARIO (filtros) ========== */
-      /* Solo el verticalBlock cuyo HIJO directo es #nt-card-sentinel */
-      section.main div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
+      /* VerticalBlock que CONTIENE (en cualquier nivel) el sentinel */
+      section.main div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel){
         background:#FFFFFF !important;              /* fondo blanco SOLO del formulario */
         border-radius:16px;
         padding:22px 24px 24px 24px;
@@ -158,19 +158,19 @@ def render(user: dict | None = None):
       }
 
       /* Inputs al 100% dentro de ese card */
-      section.main div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
-      section.main div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox,
-      section.main div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput,
-      section.main div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput,
-      section.main div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea{
+      section.main div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextInput,
+      section.main div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stSelectbox,
+      section.main div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stDateInput,
+      section.main div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTimeInput,
+      section.main div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextArea{
         width:100% !important;
       }
 
-      section.main div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput>div,
-      section.main div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox>div,
-      section.main div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput>div,
-      section.main div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput>div,
-      section.main div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea>div{
+      section.main div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextInput>div,
+      section.main div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stSelectbox>div,
+      section.main div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stDateInput>div,
+      section.main div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTimeInput>div,
+      section.main div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextArea>div{
         width:100% !important;
         max-width:none !important;
       }
