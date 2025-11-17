@@ -336,12 +336,6 @@ st.markdown(
       transform: translateY(-22px);  /* súbelo más: prueba -14, -16, -18 */
   }
 
-  /* Reducir SOLO el espacio entre:
-     [columnas con lila+blanco+tarjetas]  y  [bloque de "Editar estado"] */
-  div[data-testid="stHorizontalBlock"] + div[data-testid="stVerticalBlock"]{
-      margin-top: -5.5rem;   /* ajusta este valor según cuánto quieras subirlo */
-  }
-
 </style>
 """,
     unsafe_allow_html=True,
@@ -827,13 +821,11 @@ if section == "Gestión de tareas":
                     render_fn = getattr(view_module, "render_all", None)
 
                 if callable(render_fn):
-                    # 🔹 sube el bloque de "Editar estado" acercándolo al rectángulo blanco
-                    st.markdown(
-                        "<div style='margin-top:-40px;'></div>",
-                        unsafe_allow_html=True,
-                    )
+                    # 👇 contenedor para poder mover TODO el bloque de la vista
+                    st.markdown('<div class="eni-view-wrapper">', unsafe_allow_html=True)
                     render_fn(st.session_state.get("user"))
-
+                    st.markdown('</div>', unsafe_allow_html=True)
+                  
                 else:
                     st.info(
                         "Vista pendiente para esta tarjeta "
