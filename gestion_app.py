@@ -803,54 +803,54 @@ if section == "Gestión de tareas":
         display_name = st.session_state.get("user_display_name", "Usuario")
         u_param = quote(display_name, safe="")
 
-        # 👉 Columna: tarjeta ancha ARRIBA + grid 2x2 DEBAJO
+        # 🔹 1) Tarjeta ancha NUEVA TAREA ARRIBA
+        nueva_tarea_html = f"""
+        <div class="eni-quick-grid-wrapper">
+          <a href="?auth=1&u={u_param}&tile=nueva_tarea"
+             target="_self"
+             class="eni-quick-card-link">
+            <div class="eni-quick-card-wide-nt">
+              <div class="eni-quick-card-text">
+                <div class="eni-quick-card-title">Nueva tarea</div>
+                <p class="eni-quick-card-sub">
+                  Registra una nueva tarea y revísalas
+                </p>
+              </div>
+              <div class="eni-quick-card-icon">➕</div>
+            </div>
+          </a>
+        </div>
+        """
+        st.markdown(nueva_tarea_html, unsafe_allow_html=True)
+
+        # 🔹 2) Grid 2×2 con las 4 tarjetas DEBAJO (mismo tamaño que siempre)
         cards_html = f"""
         <div class="eni-quick-grid-wrapper">
-          <div class="eni-quick-column">
-
-            <!-- Tarjeta ancha NUEVA TAREA -->
-            <a href="?auth=1&u={u_param}&tile=nueva_tarea"
-               target="_self"
-               class="eni-quick-card-link">
-              <div class="eni-quick-card-wide-nt">
-                <div class="eni-quick-card-text">
-                  <div class="eni-quick-card-title">Nueva tarea</div>
-                  <p class="eni-quick-card-sub">
-                    Registra una nueva tarea y revísalas
-                  </p>
-                </div>
-                <div class="eni-quick-card-icon">➕</div>
-              </div>
-            </a>
-
-            <!-- Grid 2x2 con las 4 tarjetas existentes -->
-            <div class="eni-quick-grid">
-              {_quick_card_link(
-                  "Editar estado",
-                  "Actualiza fases y fechas de las tareas",
-                  "✏️",
-                  "editar_estado",
-              )}
-              {_quick_card_link(
-                  "Nueva alerta",
-                  "Registra alertas y riesgos prioritarios de las tareas",
-                  "⚠️",
-                  "nueva_alerta",
-              )}
-              {_quick_card_link(
-                  "Prioridad",
-                  "Revisa los niveles de prioridad de las tareas",
-                  "⭐",
-                  "prioridad_evaluacion",
-              )}
-              {_quick_card_link(
-                  "Evaluación",
-                  "Revisa las evaluaciones y cumplimiento de las tareas",
-                  "📝",
-                  "nueva_tarea",
-              )}
-            </div>
-
+          <div class="eni-quick-grid">
+            {_quick_card_link(
+                "Editar estado",
+                "Actualiza fases y fechas de las tareas",
+                "✏️",
+                "editar_estado",
+            )}
+            {_quick_card_link(
+                "Nueva alerta",
+                "Registra alertas y riesgos prioritarios de las tareas",
+                "⚠️",
+                "nueva_alerta",
+            )}
+            {_quick_card_link(
+                "Prioridad",
+                "Revisa los niveles de prioridad de las tareas",
+                "⭐",
+                "prioridad_evaluacion",
+            )}
+            {_quick_card_link(
+                "Evaluación",
+                "Revisa las evaluaciones y cumplimiento de las tareas",
+                "📝",
+                "nueva_tarea",
+            )}
           </div>
         </div>
         """
@@ -868,7 +868,8 @@ if section == "Gestión de tareas":
 
                 if callable(render_fn):
                     st.markdown('<div class="eni-view-wrapper">', unsafe_allow_html=True)
-                    render_fn(st.session_state.get("user"))
+                    view_module_fn_user = st.session_state.get("user")
+                    render_fn(view_module_fn_user)
                     st.markdown('</div>', unsafe_allow_html=True)
                 else:
                     st.info(
