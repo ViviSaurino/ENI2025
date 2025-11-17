@@ -90,7 +90,7 @@ st.markdown(
   }
 
   /* ===== Fila superior: Gestión de tareas + VS / logout ===== */
-    .eni-main-topbar{
+  .eni-main-topbar{
     padding:-10 0px 0 24px;
     display:flex;
     align-items:center;
@@ -280,7 +280,6 @@ st.markdown(
     gap:16px;
     align-items:stretch;
     grid-auto-rows:143px;
-    /* 👇 AGREGA o MODIFICA ESTA LÍNEA */
     margin-top:10px;
   }
 
@@ -376,7 +375,52 @@ st.markdown(
   }
 
   .eni-main-topbar-title{
-  text-transform:none !important;
+    text-transform:none !important;
+  }
+
+  /* ====== NUEVOS ESTILOS PARA TARJETAS-BOTÓN (sin recarga) ===== */
+  .eni-card-btn-wrap,
+  .eni-card-btn-wrap-wide{
+    margin-bottom:12px;
+  }
+  .eni-card-btn-wrap button,
+  .eni-card-btn-wrap-wide button{
+    width:100%;
+    text-align:left;
+    border-radius:8px;
+    box-shadow:0 10px 22px rgba(148,163,184,0.40);
+    border:none;
+    padding:16px 16px 12px 16px;
+    color:#FFFFFF;
+    font-weight:600;
+    font-size:13px;
+    white-space:pre-wrap;  /* respeta el salto de línea \\n */
+    background:#93C5FD;
+  }
+  .eni-card-btn-wrap-wide button{
+    padding:18px 20px;
+  }
+  .eni-card-btn-wrap button:hover,
+  .eni-card-btn-wrap-wide button:hover{
+    box-shadow:0 14px 28px rgba(148,163,184,0.55);
+    transform:translateY(-2px);
+  }
+
+  .eni-card-nt-wide button{
+    background:#D9C6FF;
+    color:#1F2937;
+  }
+  .eni-card-editar button{
+    background:#93C5FD;
+  }
+  .eni-card-alerta button{
+    background:#7FCCB2;
+  }
+  .eni-card-prioridad button{
+    background:#A8D4F3;
+  }
+  .eni-card-evaluacion button{
+    background:#49BEA9;
   }
 </style>
 """,
@@ -757,6 +801,7 @@ ensure_df_main()
 
 # ===== Tarjetas rápidas =====
 def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str:
+    # (ya no se usa para navegar, lo dejamos por si acaso)
     display_name = st.session_state.get("user_display_name", "Usuario")
     u_param = quote(display_name, safe="")
     card_class = f"eni-quick-card eni-quick-card--{tile_key}"
@@ -772,27 +817,39 @@ def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str
     </a>
     """
 
+# 👉 Nuevo helper: tarjetas como botones (sin recarga)
+def quick_card_button(title: str, subtitle: str, icon: str,
+                      tile_key: str, style_class: str, wide: bool = False):
+    label = f"{title} {icon}\n{subtitle}"
+    wrapper_class = "eni-card-btn-wrap-wide" if wide else "eni-card-btn-wrap"
+    wrapper_class = f"{wrapper_class} {style_class}"
+    st.markdown(f'<div class="{wrapper_class}">', unsafe_allow_html=True)
+    clicked = st.button(label, key=f"card_{tile_key}_{title}")
+    st.markdown("</div>", unsafe_allow_html=True)
+    if clicked:
+        st.session_state["home_tile"] = tile_key
+
 # ===== leer parámetro de tarjeta seleccionada =====
-tile = ""
+tile_param = ""
 try:
     params = st.query_params
     raw = params.get("tile", "")
     if isinstance(raw, list):
-        tile = raw[0] if raw else ""
+        tile_param = raw[0] if raw else ""
     else:
-        tile = raw
+        tile_param = raw
 except Exception:
     try:
         params = st.experimental_get_query_params()
         raw = params.get("tile", [""])
-        tile = raw[0] if raw else ""
+        tile_param = raw[0] if raw else ""
     except Exception:
-        tile = ""
+        tile_param = ""
 
-if tile:
-    st.session_state["home_tile"] = tile
-else:
-    tile = st.session_state.get("home_tile", "")
+if tile_param:
+    st.session_state["home_tile"] = tile_param
+
+tile = st.session_state.get("home_tile", "")
 
 section = st.session_state.get("nav_section", DEFAULT_SECTION)
 tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
@@ -857,61 +914,56 @@ if section == "Gestión de tareas":
         st.write("")
 
     with col_right:
-        display_name = st.session_state.get("user_display_name", "Usuario")
-        u_param = quote(display_name, safe="")
+        # 🔹 1) Tarjeta ancha NUEVA TAREA ARRIBA (botón)
+        quick_card_button(
+            title="1. Nueva tarea",
+            subtitle="Registra una nueva tarea y revísalas",
+            icon="➕",
+            tile_key="nueva_tarea",
+            style_class="eni-card-nt-wide",
+            wide=True,
+        )
 
-        # 🔹 1) Tarjeta ancha NUEVA TAREA ARRIBA
-        nueva_tarea_html = f"""
-        <div class="eni-quick-grid-wrapper">
-          <a href="?auth=1&u={u_param}&tile=nueva_tarea"
-             target="_self"
-             class="eni-quick-card-link">
-            <div class="eni-quick-card-wide-nt">
-              <div class="eni-quick-card-text">
-                <div class="eni-quick-card-title">1. Nueva tarea</div>
-                <p class="eni-quick-card-sub">
-                  Registra una nueva tarea y revísalas
-                </p>
-              </div>
-              <div class="eni-quick-card-icon">➕</div>
-            </div>
-          </a>
-        </div>
-        """
-        st.markdown(nueva_tarea_html, unsafe_allow_html=True)
+        # 🔹 2) Grid 2×2 con las 4 tarjetas DEBAJO (botones)
+        st.markdown("<div class='eni-quick-grid-wrapper'>", unsafe_allow_html=True)
 
-        # 🔹 2) Grid 2×2 con las 4 tarjetas DEBAJO (mismo tamaño que siempre)
-        cards_html = f"""
-        <div class="eni-quick-grid-wrapper">
-          <div class="eni-quick-grid">
-            {_quick_card_link(
-                "2. Editar estado",
-                "Actualiza fases y fechas de las tareas",
-                "✏️",
-                "editar_estado",
-            )}
-            {_quick_card_link(
-                "3. Nueva alerta",
-                "Registra alertas y riesgos prioritarios de las tareas",
-                "⚠️",
-                "nueva_alerta",
-            )}
-            {_quick_card_link(
-                "4. Prioridad",
-                "Revisa los niveles de prioridad de las tareas",
-                "⭐",
-                "prioridad_evaluacion",
-            )}
-            {_quick_card_link(
-                "5. Evaluación",
-                "Revisa las evaluaciones y cumplimiento de las tareas",
-                "📝",
-                "nueva_tarea",
-            )}
-          </div>
-        </div>
-        """
-        st.markdown(cards_html, unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        with c1:
+            quick_card_button(
+                title="2. Editar estado",
+                subtitle="Actualiza fases y fechas de las tareas",
+                icon="✏️",
+                tile_key="editar_estado",
+                style_class="eni-card-editar",
+            )
+        with c2:
+            quick_card_button(
+                title="3. Nueva alerta",
+                subtitle="Registra alertas y riesgos prioritarios de las tareas",
+                icon="⚠️",
+                tile_key="nueva_alerta",
+                style_class="eni-card-alerta",
+            )
+
+        c3, c4 = st.columns(2)
+        with c3:
+            quick_card_button(
+                title="4. Prioridad",
+                subtitle="Revisa los niveles de prioridad de las tareas",
+                icon="⭐",
+                tile_key="prioridad_evaluacion",
+                style_class="eni-card-prioridad",
+            )
+        with c4:
+            quick_card_button(
+                title="5. Evaluación",
+                subtitle="Revisa las evaluaciones y cumplimiento de las tareas",
+                icon="📝",
+                tile_key="nueva_tarea",   # abre la misma vista que Nueva tarea
+                style_class="eni-card-evaluacion",
+            )
+
+        st.markdown("</div>", unsafe_allow_html=True)
 
     # ---- Contenido de la vista seleccionada (ANCHO COMPLETO) ----
     if tile:
@@ -942,7 +994,7 @@ if section == "Gestión de tareas":
         st.write("")
 
 
-    # ---- Contenido de la vista seleccionada (ANCHO COMPLETO) ----
+    # ---- (bloque duplicado original, lo dejo tal cual) ----
     if tile:
         module_path = TILE_TO_VIEW_MODULE.get(tile)
         if module_path:
