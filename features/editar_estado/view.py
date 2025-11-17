@@ -215,10 +215,6 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
 
 # ===============================================================================
 def render(user: dict | None = None):
-    st.markdown("<div style='height:0px'></div>", unsafe_allow_html=True)
-    # o incluso comenta esa línea si ya no quieres ningún espacio
-    # st.markdown("<div style='height:0px'></div>", unsafe_allow_html=True)
-
     # 🔒 Refuerzo: si no hay df_main en sesión, cargar desde disco
     if ("df_main" not in st.session_state) or (not isinstance(st.session_state["df_main"], pd.DataFrame)) or st.session_state["df_main"].empty:
         df_local = _load_local_if_exists()
@@ -228,33 +224,24 @@ def render(user: dict | None = None):
     if st.session_state["est_visible"]:
         A, Fw, T_width, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
-        # 👉 Wrapper para poder subir/bajar todo el bloque dentro del rectángulo blanco
+        # 👉 Div envoltorio de la sección
         st.markdown(
-            '<div class="est-wrapper-up"><div id="est-section">',
+            '<div id="est-section">',
             unsafe_allow_html=True,
         )
 
         st.markdown(
-            """    
-            <style>
-              #est-section .stButton > button { width: 100% !important; }
-              #est-section .ag-header-cell-label{ font-weight: 400 !important; white-space: normal !important; line-height: 1.15 !important; }
-              /* habilita scroll horizontal inferior */
-              #est-section .ag-body-horizontal-scroll,
-              #est-section .ag-center-cols-viewport { overflow-x: auto !important; }
-              .section-est .help-strip + .form-card{ margin-top: 2px !important; }
-              .est-pill{ width:100%; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center;
-                background:#A7C8F0; color:#ffffff; font-weight:700; box-shadow:0 6px 14px rgba(167,200,240,.35); user-select:none; margin: 0 0 12px; }
-              .est-pill span{ display:inline-flex; gap:8px; align-items:center; }
+            """
+        <style>
+          /* 🔧 Reducir el espacio ANTES de la sección "Editar estado"
+             (apunta al contenedor de Streamlit que contiene #est-section) */
+          [data-testid="stVerticalBlock"]:has(#est-section){
+              margin-top:-26px;          /* ajusta -20, -24, -30 según lo que veas */
+              padding-top:0 !important;  /* elimina padding extra arriba */
+          }
 
-              /* 👉 mover bloque hacia arriba */
-              .est-wrapper-up{
-                  margin-top:-10px;   /* prueba -10, -14, -18, etc. */
-              }
-
-          /* 🔹 Subir todo el bloque de "Editar estado" dentro del rectángulo blanco */
-          #est-section{
-            margin-top:-10px;   /* prueba -10, -18, -24 según qué tanto quieras subir */
+          #est-section .stButton > button { 
+            width: 100% !important; 
           }
 
           #est-section .ag-header-cell-label{ 
@@ -297,13 +284,22 @@ def render(user: dict | None = None):
           /* ===== Colores de encabezados por bloques (sin emojis en headers) ===== */
           /* Registro — lila */
           #est-section .ag-header-cell[col-id="Fecha de registro"],
-          #est-section .ag-header-cell[col-id="Hora de registro"] { background:#F5F3FF !important; }
+          #est-section .ag-header-cell[col-id="Hora de registro"] { 
+            background:#F5F3FF !important; 
+          }
+
           /* Inicio — celeste muy claro */
           #est-section .ag-header-cell[col-id="Fecha de inicio"],
-          #est-section .ag-header-cell[col-id="Hora de inicio"] { background:#E0F2FE !important; }
+          #est-section .ag-header-cell[col-id="Hora de inicio"] { 
+            background:#E0F2FE !important; 
+          }
+
           /* Término — jade muy claro */
           #est-section .ag-header-cell[col-id="Fecha terminada"],
-          #est-section .ag-header-cell[col-id="Hora terminada"] { background:#D1FAE5 !important; }
+          #est-section .ag-header-cell[col-id="Hora terminada"] { 
+            background:#D1FAE5 !important; 
+          }
+
           /* Bloque Eliminada / Cancelada / Pausada — gris suave */
           #est-section .ag-header-cell[col-id="Fecha eliminada"],
           #est-section .ag-header-cell[col-id="Hora eliminada"],
@@ -314,17 +310,26 @@ def render(user: dict | None = None):
               background:#E5E7EB !important;
               color:#374151 !important;
           }
+
           /* Estado actual neutro (solo emojis en celdas) */
-          #est-section .ag-header-cell[col-id="Estado actual"] { background:#F3F4F6 !important; color:#111827 !important; }
+          #est-section .ag-header-cell[col-id="Estado actual"] { 
+            background:#F3F4F6 !important; 
+            color:#111827 !important; 
+          }
         </style>
         """,
             unsafe_allow_html=True,
         )
 
+        # ==== Título tipo "píldora" ====
         c_pill, _, _, _, _, _ = st.columns([A, Fw, T_width, D, R, C], gap="medium")
         with c_pill:
-            st.markdown('<div class="est-pill"><span>✏️&nbsp;Editar estado</span></div>', unsafe_allow_html=True)
+            st.markdown(
+                '<div class="est-pill"><span>✏️&nbsp;Editar estado</span></div>',
+                unsafe_allow_html=True,
+            )
 
+        # ==== Texto de ayuda + tarjeta contenedora ====
         st.markdown(
             """
         <div class="section-est">
@@ -562,9 +567,9 @@ def render(user: dict | None = None):
                 "Fecha eliminada": _fmt_date_series(fe),
                 "Hora eliminada": _fmt_time_series(he),
                 "Fecha cancelada": _fmt_date_series(fc),
-                "Hora cancelada": _fmt_time_series(hc),
+                "Hora cancelada": _fmt_date_series(hc),
                 "Fecha pausada": _fmt_date_series(fp),
-                "Hora pausada": _fmt_time_series(hp),
+                "Hora pausada": _fmt_date_series(hp),
             })[cols_out].copy()
 
         # ========= editores y estilo =========
@@ -1009,6 +1014,5 @@ def render(user: dict | None = None):
 
         # cierra form-card + section-est
         st.markdown("</div></div>", unsafe_allow_html=True)
-        # cierra est-section + est-wrapper-up
+        # cierra est-section
         st.markdown("</div>", unsafe_allow_html=True)
-       
