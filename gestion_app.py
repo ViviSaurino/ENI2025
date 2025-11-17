@@ -89,7 +89,7 @@ st.markdown(
     display:none !important;
   }
 
-  /* ===== Fila superior: Gestión de tareas + VS / logout ===== */
+  /* ===== Fila superior: Gestión de tareas + VS ===== */
   .eni-main-topbar{
     padding:-10 0px 0 24px;
     display:flex;
@@ -98,9 +98,9 @@ st.markdown(
     margin:0 -45px 20px -50px;   /* top  right  bottom  left */
   }
   .eni-main-topbar-title{
-    font-size:15px;             /* 🔹 letras un poco más grandes */
+    font-size:15px;
     font-weight:700;
-    color:#374151;              /* 🔹 plomo oscuro */
+    color:#374151;
     letter-spacing:0.08em;
     text-transform:uppercase;
   }
@@ -112,7 +112,7 @@ st.markdown(
     color:#4B5563;
   }
   .eni-main-topbar-avatar{
-    width:38px;                 /* 🔹 círculo más grande */
+    width:38px;
     height:38px;
     border-radius:999px;
     background:#C4B5FD;
@@ -121,9 +121,8 @@ st.markdown(
     justify-content:center;
     color:#FFFFFF;
     font-weight:700;
-    font-size:15px;             /* letras dentro del círculo un pelín más grandes */
+    font-size:15px;
   }
-  /* Flechita eliminada: ya no se usa .eni-main-topbar-arrow */
 
   /* ===== Card lila principal ===== */
   .eni-main-card-header{
@@ -157,7 +156,7 @@ st.markdown(
 
   /* Contenedor general para vistas a ancho completo (Editar estado, etc.) */
   .eni-view-wrapper{
-    margin-top:-40px;   /* 🔹 levanta la vista hacia arriba */
+    margin-top:-40px;
   }
 
   /* ===== Sidebar blanca ===== */
@@ -187,7 +186,7 @@ st.markdown(
     border-right:1px solid #E5E7EB;
   }
 
-  /* Menú de secciones: icono a la izquierda, texto a la derecha */
+  /* Menú de secciones */
   section[data-testid="stSidebar"] .stRadio > div{
     gap:4px !important;
   }
@@ -202,23 +201,22 @@ st.markdown(
     align-items:center;
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"] > div:first-child{
-    display:none !important;   /* 👉 oculta el botón rojo */  
+    display:none !important;   /* oculta el botón redondo */
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"] > div:last-child{
     padding-left:6px !important;
     font-size:13px;
     font-weight:500;
   }
-  /* ===== Opción ACTIVA en la barra lateral ===== */
+  /* Opción ACTIVA */
   section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="true"]{
-    background:#C4B5FD !important;          /* lila más fuerte */
-    color:#FFFFFF !important;               /* texto blanco */
-    border-radius:14px !important;          /* pill */
-    border:1px solid #A855F7 !important;    /* borde lila más oscuro */
+    background:#C4B5FD !important;
+    color:#FFFFFF !important;
+    border-radius:14px !important;
+    border:1px solid #A855F7 !important;
     box-shadow:0 6px 14px rgba(148,163,184,0.45);
   }
-
-  /* ===== Opciones INACTIVAS ===== */
+  /* Opciones INACTIVAS */
   section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="false"]{
     background:transparent !important;
     color:#4B5563 !important;
@@ -267,11 +265,10 @@ st.markdown(
     margin:0px -45px 18px 0;
   }
 
-  /* contenedor columna: tarjeta ancha + grid 2x2 */
   .eni-quick-column{
     display:flex;
     flex-direction:column;
-    gap:13px;         /* separa la ancha del grid */
+    gap:13px;
   }
 
   .eni-quick-grid{
@@ -283,18 +280,7 @@ st.markdown(
     margin-top:10px;
   }
 
-  .eni-quick-card-link,
-  .eni-quick-card-link:link,
-  .eni-quick-card-link:visited,
-  .eni-quick-card-link:hover,
-  .eni-quick-card-link:active{
-      text-decoration:none !important;
-      color:inherit;
-  }
-  .eni-quick-card-link:focus-visible{
-      outline:none;
-  }
-
+  /* Tarjetas clásicas (las dejamos por si acaso) */
   .eni-quick-card{
     border-radius:8px;
     padding:16px 12px 12px 16px;
@@ -308,7 +294,6 @@ st.markdown(
     transition:all .15s ease-in-out;
     overflow:hidden;
   }
-
   .eni-quick-card-text{
     max-width:100%;
   }
@@ -328,26 +313,15 @@ st.markdown(
     margin-left:60px;
     transform:translateY(-8px);
   }
-  .eni-quick-card-link:hover .eni-quick-card{
-    box-shadow:0 14px 28px rgba(148,163,184,0.55);
-    transform:translateY(-2px);
-  }
-  .eni-quick-card--nueva_tarea{
-    background:#49BEA9;
-  }
-  .eni-quick-card--nueva_alerta{
-    background:#7FCCB2;
-  }
-  .eni-quick-card--editar_estado{
-    background:#93C5FD;
-  }
-  .eni-quick-card--prioridad_evaluacion{
-    background:#A8D4F3;
-  }
 
-  /* 🔹 Tarjeta ancha "Nueva tarea" (arriba) */
+  .eni-quick-card--nueva_tarea{ background:#49BEA9; }
+  .eni-quick-card--nueva_alerta{ background:#7FCCB2; }
+  .eni-quick-card--editar_estado{ background:#93C5FD; }
+  .eni-quick-card--prioridad_evaluacion{ background:#A8D4F3; }
+
+  /* Tarjeta ancha "Nueva tarea" */
   .eni-quick-card-wide-nt{
-    background:#D9C6FF;          /* lila claro, más oscuro que el fondo */
+    background:#D9C6FF;
     border-radius:8px;
     padding:15px 15px 20px 15px;
     box-shadow:0 12px 28px rgba(148,163,184,0.45);
@@ -356,18 +330,13 @@ st.markdown(
     justify-content:space-between;
   }
 
-  /* Reducir algo el espacio horizontal entre columnas (lila/blanco y tarjetas) */
+  /* Reducir espacio entre columnas principales */
   div[data-testid="stHorizontalBlock"]{
     gap:0.4rem !important;
     column-gap:0.4rem !important;
   }
 
-  /* Solo para la tarjeta de Evaluación */
-  .eni-quick-card--nueva_tarea .eni-quick-card-icon{
-      transform:translateY(-22px);
-  }
-
-  /* Reducir el espacio superior de títulos dentro del contenido */
+  /* Reducir espacio superior en títulos internos */
   html body [data-testid="stAppViewContainer"] .main .block-container h1,
   html body [data-testid="stAppViewContainer"] .main .block-container h2,
   html body [data-testid="stAppViewContainer"] .main .block-container h3{
@@ -378,7 +347,7 @@ st.markdown(
     text-transform:none !important;
   }
 
-  /* ====== NUEVOS ESTILOS PARA TARJETAS-BOTÓN (sin recarga) ===== */
+  /* ===== TARJETAS-BOTÓN (para no recargar página) ===== */
   .eni-card-btn-wrap,
   .eni-card-btn-wrap-wide{
     margin-bottom:12px;
@@ -387,40 +356,39 @@ st.markdown(
   .eni-card-btn-wrap-wide button{
     width:100%;
     text-align:left;
-    border-radius:8px;
-    box-shadow:0 10px 22px rgba(148,163,184,0.40);
-    border:none;
-    padding:16px 16px 12px 16px;
-    color:#FFFFFF;
-    font-weight:600;
-    font-size:13px;
-    white-space:pre-wrap;  /* respeta el salto de línea \\n */
-    background:#93C5FD;
-  }
-  .eni-card-btn-wrap-wide button{
-    padding:18px 20px;
+    border-radius:10px !important;
+    box-shadow:0 10px 22px rgba(148,163,184,0.40) !important;
+    border:none !important;
+    padding:16px 18px 14px 18px !important;
+    color:#FFFFFF !important;
+    font-weight:700 !important;
+    font-size:13px !important;
+    line-height:1.4 !important;
+    white-space:pre-wrap;
+    background:#93C5FD !important;
   }
   .eni-card-btn-wrap button:hover,
   .eni-card-btn-wrap-wide button:hover{
-    box-shadow:0 14px 28px rgba(148,163,184,0.55);
+    box-shadow:0 14px 28px rgba(148,163,184,0.55) !important;
     transform:translateY(-2px);
   }
 
+  /* Colores por tipo de tarjeta */
   .eni-card-nt-wide button{
-    background:#D9C6FF;
-    color:#1F2937;
+    background:#D9C6FF !important;
+    color:#1F2937 !important;
   }
   .eni-card-editar button{
-    background:#93C5FD;
+    background:#93C5FD !important;
   }
   .eni-card-alerta button{
-    background:#7FCCB2;
+    background:#7FCCB2 !important;
   }
   .eni-card-prioridad button{
-    background:#A8D4F3;
+    background:#A8D4F3 !important;
   }
   .eni-card-evaluacion button{
-    background:#49BEA9;
+    background:#49BEA9 !important;
   }
 </style>
 """,
@@ -799,9 +767,8 @@ with st.sidebar:
 # ============ Datos ============
 ensure_df_main()
 
-# ===== Tarjetas rápidas =====
+# ===== Tarjetas rápidas (helper antiguo, lo dejo por si acaso) =====
 def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str:
-    # (ya no se usa para navegar, lo dejamos por si acaso)
     display_name = st.session_state.get("user_display_name", "Usuario")
     u_param = quote(display_name, safe="")
     card_class = f"eni-quick-card eni-quick-card--{tile_key}"
@@ -817,7 +784,7 @@ def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str
     </a>
     """
 
-# 👉 Nuevo helper: tarjetas como botones (sin recarga)
+# 👉 Nuevo helper: tarjetas como botones (sin recarga completa)
 def quick_card_button(title: str, subtitle: str, icon: str,
                       tile_key: str, style_class: str, wide: bool = False):
     label = f"{title} {icon}\n{subtitle}"
@@ -829,7 +796,7 @@ def quick_card_button(title: str, subtitle: str, icon: str,
     if clicked:
         st.session_state["home_tile"] = tile_key
 
-# ===== leer parámetro de tarjeta seleccionada =====
+# ===== leer parámetro de tarjeta seleccionada (URL) =====
 tile_param = ""
 try:
     params = st.query_params
@@ -849,6 +816,7 @@ except Exception:
 if tile_param:
     st.session_state["home_tile"] = tile_param
 
+# valor inicial (puede cambiar luego con los botones)
 tile = st.session_state.get("home_tile", "")
 
 section = st.session_state.get("nav_section", DEFAULT_SECTION)
@@ -869,7 +837,7 @@ if section == "Gestión de tareas":
     else:
         dn_clean = dn
 
-    # Iniciales para el círculo (VS, EO, etc.)
+    # Iniciales para el círculo
     name_parts_clean = dn_clean.split()
     initials = ""
     for p in name_parts_clean[:2]:
@@ -877,7 +845,7 @@ if section == "Gestión de tareas":
             initials += p[0].upper()
     initials = initials or "VS"
 
-    # ---- Fila superior: gestión de tareas + avatar (sin flecha) ----
+    # ---- Fila superior: gestión de tareas + avatar ----
     st.markdown(
         f"""
         <div class="eni-main-topbar">
@@ -914,7 +882,7 @@ if section == "Gestión de tareas":
         st.write("")
 
     with col_right:
-        # 🔹 1) Tarjeta ancha NUEVA TAREA ARRIBA (botón)
+        # 🔹 1) Tarjeta ancha NUEVA TAREA (botón tipo tarjeta)
         quick_card_button(
             title="1. Nueva tarea",
             subtitle="Registra una nueva tarea y revísalas",
@@ -924,7 +892,7 @@ if section == "Gestión de tareas":
             wide=True,
         )
 
-        # 🔹 2) Grid 2×2 con las 4 tarjetas DEBAJO (botones)
+        # 🔹 2) Grid 2×2 con las 4 tarjetas
         st.markdown("<div class='eni-quick-grid-wrapper'>", unsafe_allow_html=True)
 
         c1, c2 = st.columns(2)
@@ -959,11 +927,14 @@ if section == "Gestión de tareas":
                 title="5. Evaluación",
                 subtitle="Revisa las evaluaciones y cumplimiento de las tareas",
                 icon="📝",
-                tile_key="nueva_tarea",   # abre la misma vista que Nueva tarea
+                tile_key="nueva_tarea",   # misma vista que Nueva tarea
                 style_class="eni-card-evaluacion",
             )
 
         st.markdown("</div>", unsafe_allow_html=True)
+
+    # 🔸 IMPORTANTE: volver a leer tile después de los botones
+    tile = st.session_state.get("home_tile", "")
 
     # ---- Contenido de la vista seleccionada (ANCHO COMPLETO) ----
     if tile:
@@ -993,8 +964,7 @@ if section == "Gestión de tareas":
     else:
         st.write("")
 
-
-    # ---- (bloque duplicado original, lo dejo tal cual) ----
+    # ---- BLOQUE DUPLICADO ORIGINAL (lo mantengo igual) ----
     if tile:
         module_path = TILE_TO_VIEW_MODULE.get(tile)
         if module_path:
