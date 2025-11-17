@@ -146,8 +146,8 @@ def render(user: dict | None = None):
       div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
         background:#FFFFFF;
         border-radius:14px;
-        padding:20px 18px 16px 18px;
-        box-shadow:0 18px 45px rgba(15,23,42,0.08);
+        padding:20px 18px 18px 18px;
+        box-shadow:0 20px 50px rgba(15,23,42,0.10);
         border:1px solid #E5E7EB;
       }
 
@@ -190,26 +190,6 @@ def render(user: dict | None = None):
         min-height:38px !important; height:38px !important; border-radius:10px !important;
       }
       .nt-outbtn{ margin-top: 6px; }
-
-      /* Botón secundario (volver) como enlace */
-      .nt-backbtn{
-        width:100%; height:38px;
-        border-radius:10px;
-        border:1px solid #D1D5DB;
-        background:#FFFFFF;
-        font-weight:600;
-        font-size:0.90rem;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        color:#111827;
-        text-decoration:none;
-        box-shadow:0 3px 8px rgba(15,23,42,0.06);
-      }
-      .nt-backbtn:hover{
-        background:#F3F4F6;
-        text-decoration:none;
-      }
     </style>
     """,
         unsafe_allow_html=True,
@@ -528,22 +508,20 @@ def render(user: dict | None = None):
                     key="nt_id_preview",
                 )
 
-        # ---------- Botones: volver + agregar ----------
+        # ---------- Botones: volver + agregar (misma altura) ----------
         left_spacer, col_back, col_add = st.columns(
             [A + Fw + T + D + R - C, C, C], gap="medium"
         )
 
         with col_back:
-            st.markdown(
-                """
-                <div class="nt-outbtn">
-                  <a href="?feature=gestion_tareas" class="nt-backbtn">
-                    ⬅ Volver a Gestión de tareas
-                  </a>
-                </div>
-                """,
-                unsafe_allow_html=True,
+            st.markdown('<div class="nt-outbtn">', unsafe_allow_html=True)
+            # link_button para que visualmente sea igual que un botón normal
+            st.link_button(
+                "⬅ Volver a Gestión de tareas",
+                "?feature=gestion_tareas",
+                use_container_width=True,
             )
+            st.markdown("</div>", unsafe_allow_html=True)
 
         with col_add:
             st.markdown('<div class="nt-outbtn">', unsafe_allow_html=True)
