@@ -299,7 +299,7 @@ st.markdown(
   }
   .eni-quick-card-icon{
     font-size:42px;          /* 🔹 más grande */
-    margin-left:12px;
+    margin-left:20px;
     /* sin margin-bottom raro */
     transform: translateY(-8px);   /* 🔹 sube el ícono dentro de la tarjeta */
   }
