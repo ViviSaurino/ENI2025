@@ -136,8 +136,8 @@ if "_sync_time_from_date" not in globals():
 def render(user: dict | None = None):
     """Vista: ➕ Nueva tarea"""
 
-        # ===== CSS =====
-        st.markdown(
+    # ===== CSS =====
+    st.markdown(
         """
     <style>
       /* Oculta el caption automático de Streamlit */
@@ -146,7 +146,7 @@ def render(user: dict | None = None):
       }
 
       /* ========== CARD SOLO DEL FORMULARIO (filtros) ========== */
-      /* Aquí: solo el verticalBlock cuyo HIJO directo es #nt-card-sentinel */
+      /* Solo el verticalBlock cuyo HIJO directo es #nt-card-sentinel */
       section.main div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
         background:#FFFFFF !important;              /* fondo blanco SOLO del formulario */
         border-radius:16px;
