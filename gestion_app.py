@@ -264,11 +264,16 @@ st.markdown(
     align-items:stretch;
     grid-auto-rows:143px;                  /* misma altura en todas */
   }
-
-  .eni-quick-card-link{
-    text-decoration:none;
-    color:inherit;
-    display:block;
+  .eni-quick-card-link,
+  .eni-quick-card-link:link,
+  .eni-quick-card-link:visited,
+  .eni-quick-card-link:hover,
+  .eni-quick-card-link:active{
+      text-decoration:none !important;  /* 👈 sin línea azul */
+      color:inherit;
+  }
+  .eni-quick-card-link:focus-visible{
+      outline:none;                     /* quita el borde morado/azul de foco */
   }
   .eni-quick-card{
     border-radius:8px;
