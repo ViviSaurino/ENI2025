@@ -336,6 +336,12 @@ st.markdown(
       transform: translateY(-22px);  /* súbelo más: prueba -14, -16, -18 */
   }
 
+  /* Sube el bloque de "Editar estado + filtros + tabla"
+     para que quede más pegado al rectángulo blanco */
+  .eni-view-wrapper{
+    margin-top:-40px;   /* prueba -40px, luego ajusta: -30, -50, etc. */
+  }
+
 </style>
 """,
     unsafe_allow_html=True,
