@@ -563,6 +563,31 @@ def check_app_password() -> bool:
 if not check_app_password():
     st.stop()
 
+# 🔄 Ajuste global DESPUÉS del login:
+#    - Quitamos el overflow:hidden del login
+#    - Ajustamos el gap vertical general
+#    - Subimos un poquito la vista (Editar estado, etc.)
+st.markdown(
+    """
+<style>
+  html, body, [data-testid="stAppViewContainer"], .main{
+      overflow: visible !important;
+  }
+
+  html body [data-testid="stAppViewContainer"] .main .block-container
+      > div[data-testid="stVerticalBlock"]{
+      row-gap: 0.45rem !important;
+      padding-top: 0.15rem !important;
+  }
+
+  .eni-view-wrapper{
+      margin-top: -18px !important;
+  }
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
 # ============ AUTENTICACIÓN (usuario genérico) ============
 
 email = st.session_state.get("user_email") or (st.session_state.get("user") or {}).get("email", "eni2025@app")
@@ -844,7 +869,7 @@ if section == "Gestión de tareas":
         """
         st.markdown(cards_html, unsafe_allow_html=True)
 
-        # ---- Contenido de la vista seleccionada (ANCHO COMPLETO) ----
+    # ---- Contenido de la vista seleccionada (ANCHO COMPLETO) ----
     if tile:
         module_path = TILE_TO_VIEW_MODULE.get(tile)
         if module_path:
@@ -874,3 +899,32 @@ if section == "Gestión de tareas":
     else:
         # sin mensaje "Vista seleccionada: ..."
         st.write("")
+
+elif section == "Kanban":
+    st.title("🗂️ Kanban")
+    def _render_kanban():
+        try:
+            from features.kanban.view import render as render_kanban
+            render_kanban(st.session_state.get("user"))
+        except Exception as e:
+            st.info("Vista Kanban pendiente (features/kanban/view.py).")
+            st.exception(e)
+    render_if_allowed(tab_key, _render_kanban)
+
+elif section == "Gantt":
+    st.title("📅 Gantt")
+    def _render_gantt():
+        try:
+            from features.gantt.view import render as render_gantt
+            render_gantt(st.session_state.get("user"))
+        except Exception as e:
+            st.info("Vista Gantt pendiente (features/gantt/view.py).")
+            st.exception(e)
+    render_if_allowed(tab_key, _render_gantt)
+
+else:
+    st.title("📊 Dashboard")
+    def _render_dashboard():
+        st.caption("Próximamente: visualizaciones y KPIs del dashboard.")
+        st.write("")
+    render_if_allowed(tab_key, _render_dashboard)
