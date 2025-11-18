@@ -1919,8 +1919,8 @@ def render_nueva_tarea(user: dict | None = None):
 
         /* Cabecera blanca "Gestión de tareas" más angosta SOLO en Nueva tarea */
         .eni-main-topbar{
-            margin-left:40px !important;   /* izquierda */
-            margin-right:40px !important;  /* derecha  */
+            margin-left:70px !important;   /* izquierda */
+            margin-right:70px !important;  /* derecha  */
         }
 
     /* Inputs full width dentro del card */
