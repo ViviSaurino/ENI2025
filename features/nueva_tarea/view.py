@@ -1912,6 +1912,10 @@ def render_nueva_tarea(user: dict | None = None):
         margin-bottom:10px;
         box-shadow:0 20px 50px rgba(15,23,42,0.10);
         border:1px solid #E5E7EB;
+
+        /* 🔹 Mismo ancho horizontal que la cabecera */
+        margin-left:8px;
+        margin-right:24px;
     }
 
     /* Inputs full width dentro del card */
