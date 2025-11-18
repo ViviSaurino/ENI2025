@@ -92,7 +92,7 @@ st.markdown(
   /* ===== Fila superior: Gestión de tareas + VS EN RECTÁNGULO BLANCO ===== */
   .eni-main-topbar{
     background:#FFFFFF;
-    border-radius:14px;
+    border-radius:8px;
     border:1px solid #E5E7EB;
     padding:10px 20px;
     display:flex;
