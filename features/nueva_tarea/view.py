@@ -1939,7 +1939,6 @@ def render_nueva_tarea(user: dict | None = None):
     .nt-pill{
       width:calc:100%;
       margin-left:-45px;
-      margin-right:45px;
       height:38px;
       border-radius:12px;
       display:flex;
@@ -1950,6 +1949,17 @@ def render_nueva_tarea(user: dict | None = None):
       font-weight:700;
       box-shadow:0 6px 14px rgba(167,200,240,.35);
       user-select:none;
+    }
+
+    /* Hacer que la columna de la pildora use todo el ancho
+       y ocultar las otras columnas de esa fila */
+    div[data-testid="column"]:has(.nt-pill){
+      flex: 1 1 100% !important;
+      max-width: 100% !important;
+    }
+
+    div[data-testid="column"]:has(.nt-pill) ~ div[data-testid="column"]{
+      display: none !important;
     }
 
     /* Franja de indicaciones */
