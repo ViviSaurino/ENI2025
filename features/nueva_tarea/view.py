@@ -559,7 +559,6 @@ def render(user: dict | None = None):
         if back:
             # limpiar selección de tarjeta y volver al home de Gestión de tareas
             st.session_state["home_tile"] = ""
-            st.session_state["nav_section"] = "Gestión de tareas"
             display_name = st.session_state.get("user_display_name", "Usuario")
             try:
                 # dejamos solo auth y u en la URL (sin tile)
