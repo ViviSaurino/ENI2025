@@ -1998,7 +1998,7 @@ def render_nueva_tarea(user: dict | None = None):
     st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
 
     # anchos base
-    A, Fw, T, D, R, C = 2.80, 2.10, 3.00, 2.00, 2.00, 1.60
+    A, Fw, T, D, R, C = 8.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
     c_pill, _, _, _, _, _ = st.columns([A, Fw, T, D, R, C], gap="medium")
     with c_pill:
