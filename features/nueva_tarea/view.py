@@ -1916,7 +1916,12 @@ def render_nueva_tarea(user: dict | None = None):
         /* 🔹 Mismo ancho horizontal que la cabecera */
         margin-left:8px;
         margin-right:24px;
-    }
+
+        /* Cabecera blanca "Gestión de tareas" más angosta SOLO en Nueva tarea */
+        .eni-main-topbar{
+            margin-left:40px !important;   /* izquierda */
+            margin-right:40px !important;  /* derecha  */
+        }
 
     /* Inputs full width dentro del card */
     div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
