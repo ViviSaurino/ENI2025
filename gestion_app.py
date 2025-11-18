@@ -70,9 +70,9 @@ inject_global_css()
 st.markdown(
     """
 <style>
-  /* ===== Fondo general lila suave de la APP ===== */
+  /* ===== Fondo general de la APP → BLANCO ===== */
   html, body, [data-testid="stAppViewContainer"]{
-    background:#F2EEFF;
+    background:#FFFFFF;
   }
 
   .eni-banner{
@@ -159,7 +159,7 @@ st.markdown(
     margin-top:-8px;
   }
 
-  /* ===== Sidebar blanca ===== */
+  /* ===== Sidebar plomito clarito ===== */
   section[data-testid="stSidebar"] .stButton > button{
     border-radius:8px !important;
     font-weight:600 !important;
@@ -179,7 +179,7 @@ st.markdown(
 
   [data-testid="stSidebar"]{
     overflow-y:hidden !important;
-    background:#FFFFFF !important;
+    background:#F3F4F6 !important;   /* gris muy clarito */
     min-width:230px !important;
     max-width:230px !important;
     color:#111827 !important;
@@ -960,4 +960,3 @@ else:
         st.caption("Próximamente: visualizaciones y KPIs del dashboard.")
         st.write("")
     render_if_allowed(tab_key, _render_dashboard)
-
