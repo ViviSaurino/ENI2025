@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*- 
 # ============================  
 # Gestión — ENI2025 (App única)
 # ============================
@@ -89,13 +89,17 @@ st.markdown(
     display:none !important;
   }
 
-  /* ===== Fila superior: Gestión de tareas + VS ===== */
+  /* ===== Fila superior: Gestión de tareas + VS EN RECTÁNGULO BLANCO ===== */
   .eni-main-topbar{
-    padding:-10 0px 0 24px;
+    background:#FFFFFF;
+    border-radius:14px;
+    border:1px solid #E5E7EB;
+    padding:10px 20px;
     display:flex;
     align-items:center;
     justify-content:space-between;
-    margin:0 -45px 20px -50px;   /* top  right  bottom  left */
+    margin:6px -45px 18px -50px;   /* top  right  bottom  left */
+    box-shadow:0 6px 16px rgba(15,23,42,0.06);
   }
   .eni-main-topbar-title{
     font-size:15px;
@@ -171,7 +175,7 @@ st.markdown(
   }
   section[data-testid="stSidebar"] .block-container{
     padding-top:6px !important;
-    padding-bottom:10px !important;
+    padding-bottom:10px !Important;
   }
   section[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{
     gap:8px !important;
