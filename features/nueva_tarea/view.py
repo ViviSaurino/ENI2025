@@ -136,94 +136,63 @@ if "_sync_time_from_date" not in globals():
 def render(user: dict | None = None):
     """Vista: ➕ Nueva tarea"""
 
-        # ===== CSS =====
+    # ===== CSS =====
     st.markdown(
-    """
+        """
     <style>
-    /* ===== Quitar la “hoja” blanca gigante del centro ===== */
-    section.main{
-        background-color: transparent !important;
-    }
-    div[data-testid="block-container"]{
-        background-color: transparent !important;
-        box-shadow: none !important;
-        border: none !important;
-    }
-    div[data-testid="block-container"] > div{
-        background-color: transparent !important;
-        box-shadow: none !important;
-    }
+      section.main div[data-testid="stCaptionContainer"]:first-of-type{ display:none !important; }
 
-    /* Ocultar el caption automático de Streamlit */
-    section.main div[data-testid="stCaptionContainer"]:first-of-type{
-        display:none !important;
-    }
+      /* Card blanco completo para el bloque de filtros (verticalBlock con el sentinel) */
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
+         background:#FFFFFF;
+         border-radius:14px;
+         padding:20px 22px 22px 22px;
+         margin-top:16px;
+         margin-bottom:10px;
+         box-shadow:0 20px 50px rgba(15,23,42,0.10);
+         border:1px solid #E5E7EB;
+      }
 
-    /* ===== Tarjeta blanca SOLO para el formulario (filtros) ===== */
-    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
+      /* Forzar ancho completo dentro de la tarjeta de filtros */
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea{
+        width:100% !important;
+      }
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput>div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox>div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput>div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput>div,
+      div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea>div{
+        width:100% !important; max-width:none !important;
+      }
+
+      .nt-pill{
+        width:100%; height:38px; border-radius:12px;
+        display:flex; align-items:center; justify-content:center;
+        background:#A7C8F0; color:#ffffff; font-weight:700;
+        box-shadow:0 6px 14px rgba(167,200,240,.35);
+        user-select:none;
+      }
+
+      .help-strip{
         background:#FFFFFF;
-        border-radius:14px;
-        padding:20px 22px 22px 22px;
-        margin-top:16px;
-        margin-bottom:10px;
-        box-shadow:0 20px 50px rgba(15,23,42,0.10);
         border:1px solid #E5E7EB;
-    }
+        color:#0B3B76;
+        padding:12px 14px;
+        border-radius:14px;
+        font-size:0.92rem;
+        box-shadow:0 12px 30px rgba(15,23,42,0.06);
+      }
 
-    /* Inputs full width dentro del card */
-    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
-    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox,
-    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput,
-    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput,
-    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea{
-      width:100% !important;
-    }
-    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput>div,
-    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox>div,
-    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput>div,
-    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput>div,
-    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea>div{
-      width:100% !important;
-      max-width:none !important;
-    }
-
-    /* Pastilla “Nueva tarea” */
-    .nt-pill{
-      width:100%;
-      height:38px;
-      border-radius:12px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      background:#A7C8F0;
-      color:#ffffff;
-      font-weight:700;
-      box-shadow:0 6px 14px rgba(167,200,240,.35);
-      user-select:none;
-    }
-
-    /* Franja de indicaciones */
-    .help-strip{
-      background:#FFFFFF;
-      border:1px solid #E5E7EB;
-      color:#0B3B76;
-      padding:12px 14px;
-      border-radius:14px;
-      font-size:0.92rem;
-      box-shadow:0 12px 30px rgba(15,23,42,0.06);
-    }
-
-    /* Botones de abajo */
-    .nt-outbtn .stButton>button{
-      min-height:38px !important;
-      height:38px !important;
-      border-radius:10px !important;
-    }
-    .nt-outbtn{
-      margin-top: 6px;
-    }
+      .nt-outbtn .stButton>button{
+        min-height:38px !important; height:38px !important; border-radius:10px !important;
+      }
+      .nt-outbtn{ margin-top: 6px; }
     </style>
-        """,
+    """,
         unsafe_allow_html=True,
     )
 
@@ -284,11 +253,10 @@ def render(user: dict | None = None):
             f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True
         )
 
-                # ===== Bloque de filtros / formulario (card blanco) =====
-        with st.container(border=True):
-            # sentinel solo para el CSS del card
+        # ===== Bloque de filtros / formulario (el card lo da el CSS del sentinel) =====
+        with st.container():
             st.markdown(
-                '<span id="nt-card-sentinel" style="display:none"></span>',
+                '<span id="nt-card-sentinel"></span>',
                 unsafe_allow_html=True,
             )
 
@@ -358,7 +326,9 @@ def render(user: dict | None = None):
                     placeholder="Información adicional (opcional)",
                     key="nt_detalle",
                 )
-                r1c6.text_input("Responsable", key="nt_resp", disabled=True)
+                r1c6.text_input(
+                    "Responsable", key="nt_resp", disabled=True
+                )
             else:
                 r1c1, r1c2, r1c3, r1c4, r1c5, r1c6 = st.columns(
                     [A, Fw, T, D, R, C], gap="medium"
@@ -381,7 +351,9 @@ def render(user: dict | None = None):
                     placeholder="Información adicional (opcional)",
                     key="nt_detalle",
                 )
-                r1c5.text_input("Responsable", key="nt_resp", disabled=True)
+                r1c5.text_input(
+                    "Responsable", key="nt_resp", disabled=True
+                )
                 r1c6.selectbox(
                     "Ciclo de mejora",
                     options=["1", "2", "3", "+4"],
@@ -424,8 +396,9 @@ def render(user: dict | None = None):
                 else f"{prefix}_"
             )
 
-            # ---------- FILA 2 y FILA 3 ----------
+            # ---------- FILA 2 ----------
             if _is_fase_otros:
+                # Ciclo, Tipo, Estado, Complejidad, Duración, Fecha
                 r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns(
                     [A, Fw, T, D, R, C], gap="medium"
                 )
@@ -467,6 +440,7 @@ def render(user: dict | None = None):
                 )
                 _sync_time_from_date()
 
+                # ---------- FILA 3 ----------
                 r3c1, r3c2, _, _, _, _ = st.columns(
                     [A, Fw, T, D, R, C], gap="medium"
                 )
@@ -483,6 +457,7 @@ def render(user: dict | None = None):
                     key="nt_id_preview",
                 )
             else:
+                # Layout original F2/F3 con tipo editable
                 r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns(
                     [A, Fw, T, D, R, C], gap="medium"
                 )
@@ -541,7 +516,7 @@ def render(user: dict | None = None):
 
         with col_back:
             st.markdown('<div class="nt-outbtn">', unsafe_allow_html=True)
-            back = st.button(
+            back_clicked = st.button(
                 "⬅ Volver a Gestión de tareas",
                 use_container_width=True,
                 key="btn_volver_gestion",
@@ -555,16 +530,19 @@ def render(user: dict | None = None):
             )
             st.markdown("</div>", unsafe_allow_html=True)
 
-        # ------ Acción botón Volver ------
-        if back:
+        # === Lógica del botón VOLVER ===
+        if back_clicked:
+            # limpiar selección de tarjeta y volver al home de Gestión
+            st.session_state["home_tile"] = ""
+            display_name = st.session_state.get("user_display_name", "Usuario")
             try:
-                st.experimental_set_query_params(feature="gestion_tareas")
+                # dejamos solo auth y u en la URL (sin tile)
+                st.experimental_set_query_params(auth="1", u=display_name)
             except Exception:
                 pass
-            st.session_state["feature"] = "gestion_tareas"
             st.rerun()
 
-        # ------ Acción botón Agregar ------
+        # === Lógica del botón AGREGAR ===
         if submitted:
             try:
                 df = st.session_state.get("df_main", pd.DataFrame()).copy()
@@ -694,6 +672,7 @@ def render(user: dict | None = None):
                         return {"ok": False}
 
                 df_rows = pd.DataFrame([new])
+                # Guardado silencioso: cualquier error se ignora y NO se muestra en UI
                 try:
                     _ = _persist_to_sheets(df_rows.copy())
                 except Exception:
@@ -733,6 +712,7 @@ def render(user: dict | None = None):
                         link_archivo=new.get("Link de archivo", ""),
                     )
                 except Exception:
+                    # Nunca debe romper la vista
                     pass
 
                 # limpiar campos
@@ -759,6 +739,7 @@ def render(user: dict | None = None):
                 st.rerun()
 
             except Exception as e:
+                # Si llegas aquí es porque algo muy raro pasó;
                 st.error(f"No pude guardar la nueva tarea: {e}")
 
     gap = SECTION_GAP if "SECTION_GAP" in globals() else 30
