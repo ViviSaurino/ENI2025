@@ -1986,8 +1986,8 @@ def render_nueva_tarea(user: dict | None = None):
     .nt-pill,
     .help-strip,
     div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
-        margin-left:-50px;
-        margin-right:-45px;
+        margin-left:-30px;
+        margin-right:-35px;
     }
     </style>
         """,
