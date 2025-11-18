@@ -1938,7 +1938,7 @@ def render_nueva_tarea(user: dict | None = None):
     /* Pastilla “Nueva tarea” */
     .nt-pill{
       width:100%;
-      margin-left:-50px;
+      margin-left:-45px;
       height:38px;
       border-radius:12px;
       display:flex;
