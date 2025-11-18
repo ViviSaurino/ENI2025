@@ -1981,6 +1981,14 @@ def render_nueva_tarea(user: dict | None = None):
     .nt-outbtn{
       margin-top: 6px;
     }
+
+    /* Igualar ancho con la cabecera blanca (usa márgenes de .eni-main-topbar) */
+    .nt-pill,
+    .help-strip,
+    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
+        margin-left:-50px;
+        margin-right:-45px;
+    }
     </style>
         """,
         unsafe_allow_html=True,
