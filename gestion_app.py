@@ -139,8 +139,8 @@ st.markdown(
   .eni-main-hero-img{
     display:block;
     width:100%;
-    height:auto;
-    max-height:220px;  
+    height:200px; 
+    object-fit:cover; 
   }
 
   /* ===== Card lila principal (ya no se usa, pero lo dejo por si acaso) ===== */
