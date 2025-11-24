@@ -131,15 +131,17 @@ st.markdown(
 
   /* ===== Banner horizontal ENCABEZADO debajo del topbar ===== */
   .eni-main-hero{
-    margin:0 -45px 26px -50px;   /* mismo ancho que el topbar */
+    margin:0 -45px 22px -50px;   /* mismo ancho que el topbar */
     border-radius:0px;
     overflow:hidden;
     box-shadow:0 18px 40px rgba(148,163,184,0.32);
+    height:100px; 
   }
   .eni-main-hero-img{
     display:block;
     width:100%;
     height:auto;
+    object-fit:cover; 
   }
 
   /* ===== Card lila principal (ya no se usa, pero lo dejo por si acaso) ===== */
