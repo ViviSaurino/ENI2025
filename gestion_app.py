@@ -135,7 +135,7 @@ st.markdown(
     border-radius:0px;
     overflow:hidden;
     box-shadow:0 18px 40px rgba(148,163,184,0.32);
-    height:100px; 
+    height:200px; 
   }
   .eni-main-hero-img{
     display:block;
