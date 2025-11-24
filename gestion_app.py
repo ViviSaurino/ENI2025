@@ -132,7 +132,7 @@ st.markdown(
   /* ===== Banner horizontal ENCABEZADO debajo del topbar ===== */
   .eni-main-hero{
     margin:0 -45px 22px -50px;   /* mismo ancho que el topbar */
-    border-radius:0px;
+    border-radius:10px;
     box-shadow:0 18px 40px rgba(148,163,184,0.32);
     height:190px; 
     background:linear-gradient(90deg,  #93C5FD 0%, #B157D6 100%);
@@ -145,6 +145,22 @@ st.markdown(
     bottom:0;
     height:200px; 
     width:auto; 
+  }
+  .eni-main-hero-text{
+    position:absolute;
+    left:32px;
+    top:40px;
+    color:#FFFFFF;
+  }
+  .eni-main-hero-welcome{
+    font-size:18px;
+    font-weight:500;
+    opacity:0.95;
+  }
+  .eni-main-hero-name{
+    font-size:26px;
+    font-weight:800;
+    margin-top:2px;
   }
 
   /* ===== Card lila principal (ya no se usa, pero lo dejo por si acaso) ===== */
@@ -875,6 +891,14 @@ if section == "Gestión de tareas":
 
     # ===== SIN TARJETA → Banner ENCABEZADO + 5 tarjetas debajo =====
     else:
+        # --- Texto de bienvenida según nombre ---
+        first_name = dn_clean.split()[0] if dn_clean else "Usuario"
+        welcome_word = "Bienvenido"
+        if first_name.lower().endswith("a"):
+            welcome_word = "Bienvenida"
+        welcome_line1 = welcome_word + ","
+        welcome_line2 = dn_clean
+
         # --- Banner horizontal ENCABEZADO ---
         if HEADER_IMG_PATH.exists():
             try:
@@ -884,6 +908,10 @@ if section == "Gestión de tareas":
                 st.markdown(
                     f"""
                     <div class="eni-main-hero">
+                      <div class="eni-main-hero-text">
+                        <div class="eni-main-hero-welcome">{welcome_line1}</div>
+                        <div class="eni-main-hero-name">{welcome_line2}</div>
+                      </div>
                       <img src="data:image/png;base64,{b64_header}"
                            alt="ENI 2025 encabezado"
                            class="eni-main-hero-img" />
