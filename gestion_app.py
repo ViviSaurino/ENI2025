@@ -63,7 +63,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ============ Parches/etilos globales ============
+# ============ Parches/estilos globales ============
 patch_streamlit_aggrid()
 inject_global_css()
 
@@ -301,7 +301,7 @@ st.markdown(
 
   /* ===== Grid de tarjetas rápidas ===== */
   .eni-quick-grid-wrapper{
-    margin:10px -45px 18px -50px;
+    margin:0px -45px 18px 0;
   }
 
   .eni-quick-column{
@@ -316,7 +316,7 @@ st.markdown(
     gap:16px;
     align-items:stretch;
     grid-auto-rows:143px;
-    margin-top:10px;
+    margin-top:24px;
   }
 
   .eni-quick-card-link,
@@ -334,8 +334,8 @@ st.markdown(
   .eni-quick-card{
     border-radius:8px;
     padding:16px 12px 12px 16px;
-    box-shadow:0 10px 22px rgba(148,163,184,0.40);
-    border:none;
+    box-shadow:none;
+    border:1px solid #E5E7EB;  /* borde plomo */
     height:143px;
     display:flex;
     flex-direction:column;
@@ -343,6 +343,7 @@ st.markdown(
     align-items:flex-start;
     transition:all .15s ease-in-out;
     overflow:hidden;
+    background:#FFFFFF;         /* fondo blanco */
   }
 
   .eni-quick-card-text{
@@ -351,12 +352,12 @@ st.markdown(
   .eni-quick-card-title{
     font-size:14px;
     font-weight:700;
-    color:#FFFFFF;
+    color:#111827;              /* texto oscuro */
     margin-bottom:4px;
   }
   .eni-quick-card-sub{
     font-size:11px;
-    color:#F9FAFB;
+    color:#4B5563;              /* gris para subtítulo */
     margin:0;
   }
   .eni-quick-card-icon{
@@ -365,28 +366,25 @@ st.markdown(
     transform:translateY(-8px);
   }
   .eni-quick-card-link:hover .eni-quick-card{
-    box-shadow:0 14px 28px rgba(148,163,184,0.55);
+    box-shadow:0 8px 18px rgba(148,163,184,0.35);
     transform:translateY(-2px);
   }
-  .eni-quick-card--nueva_tarea{
-    background:#49BEA9;
-  }
-  .eni-quick-card--nueva_alerta{
-    background:#7FCCB2;
-  }
-  .eni-quick-card--editar_estado{
-    background:#93C5FD;
-  }
+
+  /* Las variantes YA NO cambian color de fondo */
+  .eni-quick-card--nueva_tarea,
+  .eni-quick-card--nueva_alerta,
+  .eni-quick-card--editar_estado,
   .eni-quick-card--prioridad_evaluacion{
-    background:#A8D4F3;
+    background:#FFFFFF;
   }
 
-  /* Tarjeta ancha (ya no se usa, la dejamos por si luego la quieres reutilizar) */
+  /* Tarjeta ancha (por si se usa en el futuro) también blanca con borde plomo */
   .eni-quick-card-wide-nt{
-    background:#D9C6FF;
+    background:#FFFFFF;
     border-radius:8px;
     padding:15px 15px 20px 15px;
-    box-shadow:0 12px 28px rgba(148,163,184,0.45);
+    box-shadow:none;
+    border:1px solid #E5E7EB;
     display:flex;
     align-items:center;
     justify-content:space-between;
@@ -785,7 +783,7 @@ with st.sidebar:
 # ============ Datos ============
 ensure_df_main()
 
-# ===== Tarjetas rápidas (HTML con <a>, como antes) =====
+# ===== Tarjetas rápidas (HTML con <a>) =====
 def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str:
     display_name = st.session_state.get("user_display_name", "Usuario")
     u_param = quote(display_name, safe="")
@@ -889,7 +887,7 @@ if section == "Gestión de tareas":
         else:
             st.info("Todavía no hay una vista vinculada a esta tarjeta.")
 
-    # ===== SIN TARJETA → Banner ENCABEZADO + 5 tarjetas en fila =====
+    # ===== SIN TARJETA → Banner ENCABEZADO + 5 tarjetas en una fila =====
     else:
         # --- Texto de bienvenida según nombre ---
         first_name = dn_clean.split()[0] if dn_clean else "Usuario"
@@ -927,12 +925,11 @@ if section == "Gestión de tareas":
                     unsafe_allow_html=True,
                 )
             except Exception:
-                # Fallback sencillo
                 st.image(str(HEADER_IMG_PATH), use_column_width=True)
         else:
             st.caption("Plataforma de gestión ENI — 2025")
 
-        # --- 5 tarjetas en una sola fila debajo del encabezado ---
+        # --- 5 tarjetas en una fila debajo del banner ---
         display_name = st.session_state.get("user_display_name", "Usuario")
         u_param = quote(display_name, safe="")
 
