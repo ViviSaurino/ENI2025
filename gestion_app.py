@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*- 
+# -*- coding: utf-8 -*-
 # ============================  
 # Gestión — ENI2025 (App única)
 # ============================
@@ -107,7 +107,7 @@ st.markdown(
     font-weight:700;
     color:#374151;
     letter-spacing:0.08em;
-    text-transform:uppercase;
+    text-transform:none !important;
   }
   .eni-main-topbar-user{
     display:flex;
@@ -163,27 +163,7 @@ st.markdown(
     margin-top:2px;
   }
 
-  /* ===== Card lila principal (ya no se usa, pero lo dejo por si acaso) ===== */
-  .eni-main-card-header{
-    background:#C4B5FD;
-    border-radius:8px;
-    padding:22px 28px;
-    box-shadow:0 18px 40px rgba(148,163,184,0.35);
-    margin:0 -10px 26px -50px;
-  }
-  .eni-main-card-header-title{
-    font-size:22px;
-    font-weight:800;
-    color:#FFFFFF;
-    margin-bottom:4px;
-  }
-  .eni-main-card-header-sub{
-    font-size:12px;
-    color:#F9FAFB;
-    margin:0;
-  }
-
-  /* ===== Panel blanco debajo de cabecera (ya no se usa aquí) ===== */
+  /* ===== Panel blanco debajo de cabecera (no se usa aquí, pero se deja) ===== */
   .eni-panel-card{
     background:#FFFFFF;
     border-radius:8px;
@@ -301,7 +281,7 @@ st.markdown(
 
   /* ===== Grid de tarjetas rápidas ===== */
   .eni-quick-grid-wrapper{
-    margin:0px -45px 18px 0;
+    margin:0 -45px 18px -50px;  /* mismo ancho que la cabecera */
   }
 
   .eni-quick-column{
@@ -312,11 +292,11 @@ st.markdown(
 
   .eni-quick-grid{
     display:grid;
-    grid-template-columns:repeat(5, 1fr);  /* 5 tarjetas en una fila */
+    grid-template-columns:repeat(5, minmax(0, 1fr));  /* 5 tarjetas iguales en una fila */
     gap:16px;
     align-items:stretch;
-    grid-auto-rows:143px;
-    margin-top:24px;
+    grid-auto-rows:150px;
+    margin-top:18px;
   }
 
   .eni-quick-card-link,
@@ -332,18 +312,18 @@ st.markdown(
   }
 
   .eni-quick-card{
-    border-radius:8px;
-    padding:16px 12px 12px 16px;
-    box-shadow:none;
-    border:1px solid #E5E7EB;  /* borde plomo */
-    height:143px;
+    border-radius:10px;
+    padding:18px 16px 16px 18px;
+    box-shadow:0 8px 18px rgba(148,163,184,0.18);
+    border:1px solid #E5E7EB;
+    background:#FFFFFF;
+    height:150px;
     display:flex;
     flex-direction:column;
     justify-content:space-between;
     align-items:flex-start;
     transition:all .15s ease-in-out;
     overflow:hidden;
-    background:#FFFFFF;         /* fondo blanco */
   }
 
   .eni-quick-card-text{
@@ -352,38 +332,45 @@ st.markdown(
   .eni-quick-card-title{
     font-size:14px;
     font-weight:700;
-    color:#111827;              /* texto oscuro */
+    color:#111827;
     margin-bottom:4px;
   }
   .eni-quick-card-sub{
     font-size:11px;
-    color:#4B5563;              /* gris para subtítulo */
+    color:#6B7280;
     margin:0;
   }
   .eni-quick-card-icon{
-    font-size:42px;
-    margin-left:60px;
-    transform:translateY(-8px);
+    font-size:40px;
+    margin-left:0;
+    align-self:flex-end;
+    transform:none;
   }
   .eni-quick-card-link:hover .eni-quick-card{
-    box-shadow:0 8px 18px rgba(148,163,184,0.35);
-    transform:translateY(-2px);
+    box-shadow:0 12px 24px rgba(148,163,184,0.30);
+    transform:translateY(-3px);
   }
 
-  /* Las variantes YA NO cambian color de fondo */
-  .eni-quick-card--nueva_tarea,
-  .eni-quick-card--nueva_alerta,
-  .eni-quick-card--editar_estado,
+  /* Clases específicas (mantenemos por si luego queremos colores distintos) */
+  .eni-quick-card--nueva_tarea{
+    background:#FFFFFF;
+  }
+  .eni-quick-card--nueva_alerta{
+    background:#FFFFFF;
+  }
+  .eni-quick-card--editar_estado{
+    background:#FFFFFF;
+  }
   .eni-quick-card--prioridad_evaluacion{
     background:#FFFFFF;
   }
 
-  /* Tarjeta ancha (por si se usa en el futuro) también blanca con borde plomo */
+  /* Tarjeta "Nueva tarea" (la 1) con mismo estilo que las otras */
   .eni-quick-card-wide-nt{
     background:#FFFFFF;
-    border-radius:8px;
-    padding:15px 15px 20px 15px;
-    box-shadow:none;
+    border-radius:10px;
+    padding:18px 20px;
+    box-shadow:0 10px 22px rgba(148,163,184,0.20);
     border:1px solid #E5E7EB;
     display:flex;
     align-items:center;
@@ -401,10 +388,6 @@ st.markdown(
   html body [data-testid="stAppViewContainer"] .main .block-container h2,
   html body [data-testid="stAppViewContainer"] .main .block-container h3{
     margin-top:0.2rem !important;
-  }
-
-  .eni-main-topbar-title{
-    text-transform:none !important;
   }
 </style>
 """,
@@ -523,14 +506,6 @@ def check_app_password() -> bool:
       .eni-login-form [data-testid="stTextInput"]{
         margin-top:-0.45rem !important;
       }
-    </style>
-    """,
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
-        """
-    <style>
       html, body, [data-testid="stAppViewContainer"], .main{
         overflow: hidden !important;
       }
@@ -783,7 +758,7 @@ with st.sidebar:
 # ============ Datos ============
 ensure_df_main()
 
-# ===== Tarjetas rápidas (HTML con <a>) =====
+# ===== Tarjetas rápidas (HTML con <a>, como antes) =====
 def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str:
     display_name = st.session_state.get("user_display_name", "Usuario")
     u_param = quote(display_name, safe="")
@@ -887,22 +862,23 @@ if section == "Gestión de tareas":
         else:
             st.info("Todavía no hay una vista vinculada a esta tarjeta.")
 
-    # ===== SIN TARJETA → Banner ENCABEZADO + 5 tarjetas en una fila =====
+    # ===== SIN TARJETA → Banner ENCABEZADO + 5 tarjetas debajo =====
     else:
         # --- Texto de bienvenida según nombre ---
-        first_name = dn_clean.split()[0] if dn_clean else "Usuario"
+        dn_clean_local = dn_clean
+        first_name = dn_clean_local.split()[0] if dn_clean_local else "Usuario"
         first_name_l = first_name.lower()
-        
+
         # nombres que son de mujer aunque no terminen en "a"
         female_names = {"elizabet", "lucy", "tiffany", "vivian"}
-        
+
         if first_name_l.endswith("a") or first_name_l in female_names:
             welcome_word = "Bienvenida"
         else:
             welcome_word = "Bienvenido"
 
         welcome_line1 = welcome_word
-        welcome_line2 = dn_clean
+        welcome_line2 = dn_clean_local
 
         # --- Banner horizontal ENCABEZADO ---
         if HEADER_IMG_PATH.exists():
@@ -929,19 +905,26 @@ if section == "Gestión de tareas":
         else:
             st.caption("Plataforma de gestión ENI — 2025")
 
-        # --- 5 tarjetas en una fila debajo del banner ---
+        # --- Tarjeta 1 NUEVA TAREA ---
         display_name = st.session_state.get("user_display_name", "Usuario")
         u_param = quote(display_name, safe="")
 
-        cards_html = f"""
+        nueva_tarea_html = f"""
         <div class="eni-quick-grid-wrapper">
           <div class="eni-quick-grid">
-            {_quick_card_link(
-                "1. Nueva tarea",
-                "Registra una nueva tarea y revísalas",
-                "➕",
-                "nueva_tarea",
-            )}
+            <a href="?auth=1&u={u_param}&tile=nueva_tarea"
+               target="_self"
+               class="eni-quick-card-link">
+              <div class="eni-quick-card eni-quick-card--nueva_tarea">
+                <div class="eni-quick-card-text">
+                  <div class="eni-quick-card-title">1. Nueva tarea</div>
+                  <p class="eni-quick-card-sub">
+                    Registra una nueva tarea y revísalas
+                  </p>
+                </div>
+                <div class="eni-quick-card-icon">➕</div>
+              </div>
+            </a>
             {_quick_card_link(
                 "2. Editar estado",
                 "Actualiza fases y fechas de las tareas",
@@ -969,7 +952,7 @@ if section == "Gestión de tareas":
           </div>
         </div>
         """
-        st.markdown(cards_html, unsafe_allow_html=True)
+        st.markdown(nueva_tarea_html, unsafe_allow_html=True)
 
 elif section == "Kanban":
     st.title("🗂️ Kanban")
