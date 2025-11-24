@@ -893,9 +893,16 @@ if section == "Gestión de tareas":
     else:
         # --- Texto de bienvenida según nombre ---
         first_name = dn_clean.split()[0] if dn_clean else "Usuario"
-        welcome_word = "Bienvenido"
-        if first_name.lower().endswith("a"):
+        first_name_l = first_name.lower()
+        
+        # nombres que son de mujer aunque no terminen en "a"
+        female_names = {"elizabet", "lucy", "tiffany", "vivian"}
+        
+        if first_name_l.endswith("a") or first_name_l in female_names:
             welcome_word = "Bienvenida"
+        else:
+            welcome_word = "Bienvenido"
+
         welcome_line1 = welcome_word + ","
         welcome_line2 = dn_clean
 
