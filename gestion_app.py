@@ -52,6 +52,7 @@ from features.security import acl
 from utils.avatar import show_user_avatar_from_session  # por si luego lo usamos
 
 LOGO_PATH = Path("assets/branding/eni2025_logo.png")
+HEADER_IMG_PATH = Path("assets/ENCABEZADO.png")  # 👈 nuevo banner horizontal
 ROLES_XLSX = "data/security/roles.xlsx"
 
 # ============ Config de página ============
@@ -128,7 +129,20 @@ st.markdown(
     font-size:15px;
   }
 
-  /* ===== Card lila principal ===== */
+  /* ===== Banner horizontal ENCABEZADO debajo del topbar ===== */
+  .eni-main-hero{
+    margin:0 -45px 26px -50px;   /* mismo ancho que el topbar */
+    border-radius:0px;
+    overflow:hidden;
+    box-shadow:0 18px 40px rgba(148,163,184,0.32);
+  }
+  .eni-main-hero-img{
+    display:block;
+    width:100%;
+    height:auto;
+  }
+
+  /* ===== Card lila principal (ya no se usa, pero lo dejo por si acaso) ===== */
   .eni-main-card-header{
     background:#C4B5FD;
     border-radius:8px;
@@ -148,7 +162,7 @@ st.markdown(
     margin:0;
   }
 
-  /* ===== Panel blanco debajo de cabecera ===== */
+  /* ===== Panel blanco debajo de cabecera (ya no se usa aquí) ===== */
   .eni-panel-card{
     background:#FFFFFF;
     border-radius:8px;
@@ -854,87 +868,86 @@ if section == "Gestión de tareas":
         else:
             st.info("Todavía no hay una vista vinculada a esta tarjeta.")
 
-    # ===== SI NO HAY TARJETA → HOME con cabecera lila + rectángulo blanco + tarjetas =====
+    # ===== SIN TARJETA → Banner ENCABEZADO + 5 tarjetas debajo =====
     else:
-        # columnas: izquierda (lila + rectángulo blanco), pequeño gap, tarjetas
-        col_left, col_gap, col_right = st.columns([3, 0.15, 1.25])
+        # --- Banner horizontal ENCABEZADO ---
+        if HEADER_IMG_PATH.exists():
+            try:
+                with open(HEADER_IMG_PATH, "rb") as f:
+                    data = f.read()
+                b64_header = base64.b64encode(data).decode("utf-8")
+                st.markdown(
+                    f"""
+                    <div class="eni-main-hero">
+                      <img src="data:image/png;base64,{b64_header}"
+                           alt="ENI 2025 encabezado"
+                           class="eni-main-hero-img" />
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+            except Exception:
+                # Fallback sencillo
+                st.image(str(HEADER_IMG_PATH), use_column_width=True)
+        else:
+            st.caption("Plataforma de gestión ENI — 2025")
 
-        with col_left:
-            # Cabecera lila
-            st.markdown(
-                f"""
-                <div class="eni-main-card-header">
-                  <div class="eni-main-card-header-title">Bienvenid@ {dn_clean}</div>
-                  <p class="eni-main-card-header-sub">
-                    A la plataforma de gestión ENI — 2025
-                  </p>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+        # --- Tarjeta ancha + grid de 4 tarjetas DEBAJO del banner ---
+        display_name = st.session_state.get("user_display_name", "Usuario")
+        u_param = quote(display_name, safe="")
 
-            # Panel blanco solo como contenedor visual
-            st.markdown('<div class="eni-panel-card"></div>', unsafe_allow_html=True)
-
-        with col_gap:
-            st.write("")
-
-        with col_right:
-            display_name = st.session_state.get("user_display_name", "Usuario")
-            u_param = quote(display_name, safe="")
-
-            # 🔹 1) Tarjeta ancha NUEVA TAREA ARRIBA
-            nueva_tarea_html = f"""
-            <div class="eni-quick-grid-wrapper">
-              <a href="?auth=1&u={u_param}&tile=nueva_tarea"
-                 target="_self"
-                 class="eni-quick-card-link">
-                <div class="eni-quick-card-wide-nt">
-                  <div class="eni-quick-card-text">
-                    <div class="eni-quick-card-title">1. Nueva tarea</div>
-                    <p class="eni-quick-card-sub">
-                      Registra una nueva tarea y revísalas
-                    </p>
-                  </div>
-                  <div class="eni-quick-card-icon">➕</div>
-                </div>
-              </a>
-            </div>
-            """
-            st.markdown(nueva_tarea_html, unsafe_allow_html=True)
-
-            # 🔹 2) Grid 2×2 con las 4 tarjetas DEBAJO
-            cards_html = f"""
-            <div class="eni-quick-grid-wrapper">
-              <div class="eni-quick-grid">
-                {_quick_card_link(
-                    "2. Editar estado",
-                    "Actualiza fases y fechas de las tareas",
-                    "✏️",
-                    "editar_estado",
-                )}
-                {_quick_card_link(
-                    "3. Nueva alerta",
-                    "Registra alertas y riesgos prioritarios de las tareas",
-                    "⚠️",
-                    "nueva_alerta",
-                )}
-                {_quick_card_link(
-                    "4. Prioridad",
-                    "Revisa los niveles de prioridad de las tareas",
-                    "⭐",
-                    "prioridad_evaluacion",
-                )}
-                {_quick_card_link(
-                    "5. Evaluación",
-                    "Revisa las evaluaciones y cumplimiento de las tareas",
-                    "📝",
-                    "nueva_tarea",
-                )}
+        # 🔹 1) Tarjeta ancha NUEVA TAREA ARRIBA
+        nueva_tarea_html = f"""
+        <div class="eni-quick-grid-wrapper">
+          <a href="?auth=1&u={u_param}&tile=nueva_tarea"
+             target="_self"
+             class="eni-quick-card-link">
+            <div class="eni-quick-card-wide-nt">
+              <div class="eni-quick-card-text">
+                <div class="eni-quick-card-title">1. Nueva tarea</div>
+                <p class="eni-quick-card-sub">
+                  Registra una nueva tarea y revísalas
+                </p>
               </div>
+              <div class="eni-quick-card-icon">➕</div>
             </div>
-            """
-            st.markdown(cards_html, unsafe_allow_html=True)
+          </a>
+        </div>
+        """
+        st.markdown(nueva_tarea_html, unsafe_allow_html=True)
+
+        # 🔹 2) Grid 2×2 con las 4 tarjetas DEBAJO
+        cards_html = f"""
+        <div class="eni-quick-grid-wrapper">
+          <div class="eni-quick-grid">
+            {_quick_card_link(
+                "2. Editar estado",
+                "Actualiza fases y fechas de las tareas",
+                "✏️",
+                "editar_estado",
+            )}
+            {_quick_card_link(
+                "3. Nueva alerta",
+                "Registra alertas y riesgos prioritarios de las tareas",
+                "⚠️",
+                "nueva_alerta",
+            )}
+            {_quick_card_link(
+                "4. Prioridad",
+                "Revisa los niveles de prioridad de las tareas",
+                "⭐",
+                "prioridad_evaluacion",
+            )}
+            {_quick_card_link(
+                "5. Evaluación",
+                "Revisa las evaluaciones y cumplimiento de las tareas",
+                "📝",
+                "nueva_tarea",
+            )}
+          </div>
+        </div>
+        """
+        st.markdown(cards_html, unsafe_allow_html=True)
 
 elif section == "Kanban":
     st.title("🗂️ Kanban")
