@@ -135,7 +135,7 @@ st.markdown(
     border-radius:0px;
     box-shadow:0 18px 40px rgba(148,163,184,0.32);
     height:190px; 
-    background:linear-gradient(90deg, #60A5FA 0%, #C4B5FD 100%);
+    background:linear-gradient(90deg, #60A5FA 0%, #B157D6 100%);
     position:relative;
     overflow:hidden;
   }
