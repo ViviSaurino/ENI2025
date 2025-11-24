@@ -903,7 +903,7 @@ if section == "Gestión de tareas":
         else:
             welcome_word = "Bienvenido"
 
-        welcome_line1 = welcome_word + ","
+        welcome_line1 = welcome_word
         welcome_line2 = dn_clean
 
         # --- Banner horizontal ENCABEZADO ---
