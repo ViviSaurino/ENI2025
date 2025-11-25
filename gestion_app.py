@@ -352,6 +352,10 @@ st.markdown(
     justify-content:space-between;
     align-items:center;
     transition:all .15s ease-in-out;
+
+    /* 👇 MISMA ALTURA PARA TODAS LAS TARJETAS */
+    min-height: 120px;
+    height: 120px;
   }
 
   .eni-quick-card-text{
