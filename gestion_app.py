@@ -219,7 +219,7 @@ st.markdown(
     overflow-y:hidden !important;
     background:#F3F4F6 !important;   /* gris muy clarito */
     /* Ancho cuando está visible, pero SIN !important para que pueda ir a 0 al colapsar */
-    width:200px;
+    width:150px;
     color:#111827 !important;
     border-right:1px solid #E5E7EB;
   }
