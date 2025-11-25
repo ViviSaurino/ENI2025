@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+import base64
 from io import BytesIO
 from datetime import date, datetime
 import time
@@ -1877,6 +1878,26 @@ if "_sync_time_from_date" not in globals():
                 st.session_state["fi_t_view"] = str(st.session_state["fi_t"])
 
 
+# ===== Helper imagen banner (base64) =====
+def _hero_img_base64() -> str:
+    """
+    Carga ENI2025/assets/NUEVA_TAREA.png y la devuelve en base64.
+    Si no la encuentra, devuelve '' (no rompe la app).
+    """
+    candidates = [
+        os.path.join("assets", "NUEVA_TAREA.png"),
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets", "NUEVA_TAREA.png"),
+    ]
+    for p in candidates:
+        try:
+            if os.path.exists(p):
+                with open(p, "rb") as f:
+                    return base64.b64encode(f.read()).decode("utf-8")
+        except Exception:
+            continue
+    return ""
+
+
 # ============================================================
 #           VISTA SUPERIOR: ➕ NUEVA TAREA
 # ============================================================
@@ -2053,15 +2074,21 @@ def render_nueva_tarea(user: dict | None = None):
     A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
     # ===== Banner superior “Nueva tarea” =====
+    hero_b64 = _hero_img_base64()
+    if hero_b64:
+        hero_img_html = f'<img src="data:image/png;base64,{hero_b64}" alt="Nueva tarea" class="nt-hero-img">'
+    else:
+        hero_img_html = ""
+
     st.markdown(
-        """
+        f"""
         <div class="nt-hero-wrapper">
           <div class="nt-hero">
             <div class="nt-hero-left">
               <div class="nt-hero-title">Nueva tarea</div>
             </div>
             <div class="nt-hero-right">
-              <img src="assets/NUEVA_TAREA.png" alt="Nueva tarea" class="nt-hero-img">
+              {hero_img_html}
             </div>
           </div>
         </div>
