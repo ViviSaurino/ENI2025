@@ -1937,7 +1937,7 @@ def render_nueva_tarea(user: dict | None = None):
     .nt-hero{
       border-radius:8px;
       background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
-      padding:70px 32px;
+      padding:50px 32px;
       display:flex;
       align-items:center;
       justify-content:space-between;
@@ -1962,7 +1962,7 @@ def render_nueva_tarea(user: dict | None = None):
     }
     .nt-hero-img{
       display:block;
-      height:140px;
+      height:160px;
       max-width:160px;
     }
 
