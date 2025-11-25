@@ -224,68 +224,65 @@ st.markdown(
     border-right:1px solid #E5E7EB;
   }
 
-  /* Menú de secciones: icono + texto, estilo tipo imagen 2 */
+  /* === Menú de secciones tipo dashboard (como imagen) === */
   section[data-testid="stSidebar"] .stRadio > div{
-    gap:4px !important;
+    gap:0 !important;
   }
+
   section[data-testid="stSidebar"] [data-baseweb="radio"]{
-    margin-bottom:12px;
-    padding:6px 4px;
+    margin-bottom:4px;
+    padding:10px 14px;
     border-radius:6px;
     background:transparent;
-    transition:all .15s ease-in-out;
+    border:none;
     display:flex;
     flex-direction:row;
     align-items:center;
-    gap:8px;
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"] > div:first-child{
-    display:none !important;   /* oculta el botón redondo */
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"] > div:last-child{
-    padding-left:0 !important;
     font-size:13px;
     font-weight:500;
+    color:#6B7280;              /* gris suave */
+    transition:background 0.15s ease, color 0.15s ease;
   }
-  /* Opción ACTIVA */
+
+  /* ocultar el circulito del radio */
+  section[data-testid="stSidebar"] [data-baseweb="radio"] > div:first-child{
+    display:none !important;
+  }
+
+  section[data-testid="stSidebar"] [data-baseweb="radio"] > div:last-child{
+    padding-left:8px !important;
+  }
+
+  /* HOVER en opción inactiva → lila suave */
+  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="false"]:hover{
+    background:#EDE9FE !important;  /* lila pastel */
+    color:#374151 !important;
+  }
+
+  /* Opción ACTIVA → barra lila completa */
   section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="true"]{
-    background:transparent !important;
-    color:#111827 !important;
-    border-radius:0 !important;
-    border-left:3px solid #6366F1 !important;
-    padding-left:12px !important;
-    font-weight:600 !important;
-    box-shadow:none !important;
-  }
-  /* Opciones INACTIVAS */
-  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="false"]{
-    background:transparent !important;
-    color:#6B7280 !important;
-    border-radius:0 !important;
-    border-left:3px solid transparent !important;
+    background:#C4B5FD !important;  /* lila principal */
+    color:#FFFFFF !important;
+    border-radius:6px !important;
     box-shadow:none !important;
   }
 
-  /* Iconitos del menú lateral (tipo texto + icono) */
+  /* Iconitos del menú lateral (emoji) */
   section[data-testid="stSidebar"] [data-baseweb="radio"]::before{
     font-size:18px;
-    margin-right:10px;
-    color:#6B7280;
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="true"]::before{
-    color:#6366F1;
+    margin-right:8px;
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(1)::before{
-    content:"📋";
+    content:"📊";   /* Gestión de tareas / Dashboard */
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(2)::before{
-    content:"🗂️";
+    content:"📦";   /* Kanban */
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(3)::before{
-    content:"📅";
+    content:"📅";   /* Gantt */
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(4)::before{
-    content:"📊";
+    content:"📈";   /* Dashboard */
   }
 
   *::-webkit-scrollbar{
