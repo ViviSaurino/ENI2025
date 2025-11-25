@@ -99,7 +99,7 @@ st.markdown(
     display:flex;
     align-items:center;
     justify-content:space-between;
-    margin:40px -45px 47px -50px;   /* top  right  bottom  left  (más espacio con el banner) */
+    margin:35px -45px 47px -50px;   /* top  right  bottom  left  (más espacio con el banner) */
     box-shadow:none;  /* sin sombra */
   }
   .eni-main-topbar-title{
