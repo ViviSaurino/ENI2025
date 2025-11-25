@@ -219,15 +219,15 @@ st.markdown(
     overflow-y:hidden !important;
     background:#F3F4F6 !important;   /* gris muy clarito */
     /* Ancho cuando está visible, pero SIN !important para que pueda ir a 0 al colapsar */
-    width:200px;
+    width:230px;
     color:#111827 !important;
     border-right:1px solid #E5E7EB;
   }
 
   /* Cuando está visible: fijamos ancho 200px */
   [data-testid="stSidebar"][aria-expanded="true"]{
-    min-width:200px !important;
-    max-width:200px !important;
+    min-width:230px !important;
+    max-width:230px !important;
   }
 
   /* Cuando está oculta: ancho 0 para que el contenido se expanda */
