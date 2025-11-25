@@ -1964,7 +1964,7 @@ def render_nueva_tarea(user: dict | None = None):
       display:block;
       height:160px;
       max-width:160px;
-      transform: translateY(10px);  /* ⬅️ Esto la baja visualmente */
+      transform: translateY(10px);  /* ⬅️ Baja un poco la imagen dentro del banner */
     }
 
     /* ===== Tarjeta blanca SOLO para el formulario (filtros) ===== */
@@ -2024,7 +2024,7 @@ def render_nueva_tarea(user: dict | None = None):
        }
     */
 
-    /* Franja de indicaciones */
+    /* Franja de indicaciones (ya no usada, pero dejamos el estilo por si la reutilizamos) */
     .help-strip{
       background:#FFFFFF;
       border:1px solid #E5E7EB;
@@ -2033,6 +2033,42 @@ def render_nueva_tarea(user: dict | None = None):
       border-radius:14px;
       font-size:0.92rem;
       box-shadow:0 12px 30px rgba(15,23,42,0.06);
+    }
+
+    /* Tarjetas de pasos de indicaciones */
+    .nt-steps-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      margin-top:4px;
+      margin-bottom:16px;
+    }
+    .nt-step-card{
+      flex:1 1 0;
+      min-width:160px;
+      background:#FFFFFF;
+      border-radius:14px;
+      border:1px solid #E5E7EB;
+      padding:10px 12px;
+      box-shadow:0 12px 30px rgba(15,23,42,0.06);
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+    .nt-step-title{
+      font-weight:600;
+      font-size:0.9rem;
+      color:#0F172A;
+      display:flex;
+      align-items:center;
+      gap:6px;
+    }
+    .nt-step-icon{
+      font-size:1.1rem;
+    }
+    .nt-step-text{
+      font-size:0.80rem;
+      color:#4B5563;
     }
 
     /* Botones de abajo */
@@ -2104,11 +2140,55 @@ def render_nueva_tarea(user: dict | None = None):
         if st.session_state.pop("nt_added_ok", False):
             st.success("Agregado a Tareas recientes")
 
-        # ===== Indicaciones (card blanco) =====
+        # ===== Indicaciones en tarjetas (5 pasos con íconos) =====
         st.markdown(
             """
-        <div class="help-strip">
-          <strong>Indicaciones:</strong> ✳️ Completa los campos obligatorios → pulsa <b>➕ Agregar</b> → revisa en <b>🕑 Tareas recientes</b> → confirma con <b>💾 Grabar</b> y <b>📤 Subir a Sheets</b>.
+        <div class="nt-steps-row">
+          <div class="nt-step-card">
+            <div class="nt-step-title">
+              <span class="nt-step-icon">✳️</span>
+              <span>1. Completa los campos obligatorios</span>
+            </div>
+            <div class="nt-step-text">
+              Llena los campos requeridos del formulario de nueva tarea.
+            </div>
+          </div>
+          <div class="nt-step-card">
+            <div class="nt-step-title">
+              <span class="nt-step-icon">➕</span>
+              <span>2. Pulsa “Agregar”</span>
+            </div>
+            <div class="nt-step-text">
+              Haz clic en <b>➕ Agregar</b> para registrar la tarea en la base.
+            </div>
+          </div>
+          <div class="nt-step-card">
+            <div class="nt-step-title">
+              <span class="nt-step-icon">🕑</span>
+              <span>3. Revisa en “Tareas recientes”</span>
+            </div>
+            <div class="nt-step-text">
+              Verifica y, si es necesario, edita la tarea en el bloque de <b>Tareas recientes</b>.
+            </div>
+          </div>
+          <div class="nt-step-card">
+            <div class="nt-step-title">
+              <span class="nt-step-icon">💾</span>
+              <span>4. Grabar</span>
+            </div>
+            <div class="nt-step-text">
+              Usa el botón <b>💾 Grabar</b> para actualizar el archivo local (Excel).
+            </div>
+          </div>
+          <div class="nt-step-card">
+            <div class="nt-step-title">
+              <span class="nt-step-icon">📤</span>
+              <span>5. Subir a Sheets</span>
+            </div>
+            <div class="nt-step-text">
+              Finalmente, pulsa <b>📤 Subir a Sheets</b> para enviar los cambios a Google Sheets.
+            </div>
+          </div>
         </div>
         """,
             unsafe_allow_html=True,
