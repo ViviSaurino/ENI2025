@@ -6,8 +6,6 @@ from io import BytesIO
 from datetime import date, datetime
 import time
 import uuid
-from pathlib import Path
-import base64
 
 import numpy as np
 import pandas as pd
@@ -305,7 +303,8 @@ def pull_user_slice_from_sheet(replace_df_main: bool = True):
         if c.lower().startswith("fecha"):
             df[c] = to_naive_local_series(df[c])
 
-    def _strip_html(x): return re.sub(r"<[^>]+>", "", str(x) if x is not None else "")
+    def _strip_html(x):
+        return re.sub(r"<[^>]+>", "", str(x) if x is not None else "")
     for cc in [c for c in df.columns if "archivo" in c.lower()]:
         df[cc] = df[cc].map(_strip_html)
 
@@ -494,7 +493,8 @@ def _sheet_upsert_eval_cumpl(df_rows: pd.DataFrame) -> dict:
         ws.update("A1", [headers])
 
     # buscar columna de cumplimiento (tolerante)
-    def _norm(s): return re.sub(r'[^a-z]', '', (s or '').lower())
+    def _norm(s):
+        return re.sub(r'[^a-z]', '', (s or '').lower())
     cumpl_col_name = None
     for h in headers:
         if _norm(h).startswith("cumplimiento"):
@@ -570,7 +570,8 @@ def _add_business_days(start_dates: pd.Series, days: pd.Series) -> pd.Series:
     ok = (~pd.isna(sd)) & (n > 0)
     out = pd.Series(pd.NaT, index=start_dates.index, dtype="datetime64[ns]")
     if ok.any():
-        a = np.array(sd[ok], dtype="datetime64[D]"])
+        # 🔧 FIX: paréntesis correcto en dtype
+        a = np.array(sd[ok], dtype="datetime64[D]")
         b = n[ok].to_numpy()
         res = np.busday_offset(a, b, weekmask="Mon Tue Wed Thu Fri")
         out.loc[ok] = pd.to_datetime(res)
@@ -1249,7 +1250,6 @@ def render_historial(user: dict | None = None):
     _acl_user = st.session_state.get("acl_user", {}) or {}
     _ro_acl = {re.sub(r"[^a-z0-9]", "", x.lower()) for x in _get_readonly_cols_from_acl(_acl_user)}
 
-
     def _normkey(x: str) -> str:
         return re.sub(r"[^a-z0-9]", "", (x or "").lower())
 
@@ -1851,36 +1851,6 @@ def _get_sheet_conf():
 SECTION_GAP = globals().get("SECTION_GAP", 30)
 
 
-# ===== Helper para icono de Nueva tarea (assets/NUEVA_TAREA.*) =====
-def _load_nt_icon_b64() -> str:
-    """
-    Busca la imagen NUEVA_TAREA.* en la carpeta assets y la devuelve en base64
-    para incrustarla en el encabezado sin rutas raras.
-    """
-    if "_nt_icon_b64" in st.session_state:
-        return st.session_state["_nt_icon_b64"]
-
-    candidates = [
-        Path("assets/NUEVA_TAREA.png"),
-        Path("assets/NUEVA_TAREA.jpg"),
-        Path("assets/NUEVA_TAREA.jpeg"),
-        Path("assets/nueva_tarea.png"),
-        Path("assets/nueva_tarea.jpg"),
-    ]
-    enc = ""
-    for p in candidates:
-        try:
-            if p.is_file():
-                with open(p, "rb") as f:
-                    enc = base64.b64encode(f.read()).decode("utf-8")
-                break
-        except Exception:
-            continue
-
-    st.session_state["_nt_icon_b64"] = enc
-    return enc
-
-
 # --- helpers de hora para esta vista ---
 if "_auto_time_on_date" not in globals():
 
@@ -1963,17 +1933,16 @@ def render_nueva_tarea(user: dict | None = None):
       font-weight:700;
     }
     .nt-hero-right{
-      display:flex;
-      align-items:center;
-      justify-content:flex-end;
       flex:0 0 auto;
-      margin-left:16px;
+      display:flex;
+      align-items:flex-end;
+      justify-content:flex-end;
+      padding-left:24px;
     }
     .nt-hero-img{
-      max-height:72px;
-      width:auto;
       display:block;
-      object-fit:contain;
+      height:110px;
+      max-width:160px;
     }
 
     /* ===== Tarjeta blanca SOLO para el formulario (filtros) ===== */
@@ -2007,6 +1976,31 @@ def render_nueva_tarea(user: dict | None = None):
       width:100% !important;
       max-width:none !important;
     }
+
+    /* Pastilla “Nueva tarea” (ya no se usa visualmente, pero dejamos estilos por si acaso)
+       .nt-pill{
+         width:calc:100%;
+         height:38px;
+         border-radius:12px;
+         display:flex;
+         align-items:center;
+         justify-content:center;
+         background:#A7C8F0;
+         color:#ffffff;
+         font-weight:700;
+         box-shadow:0 6px 14px rgba(167,200,240,.35);
+         user-select:none;
+       }
+
+       div[data-testid="column"]:has(.nt-pill){
+         flex: 1 1 100% !important;
+         max-width: 100% !important;
+       }
+
+       div[data-testid="column"]:has(.nt-pill) ~ div[data-testid="column"]{
+         display: none !important;
+       }
+    */
 
     /* Franja de indicaciones */
     .help-strip{
@@ -2059,23 +2053,16 @@ def render_nueva_tarea(user: dict | None = None):
     A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
     # ===== Banner superior “Nueva tarea” =====
-    nt_icon_b64 = _load_nt_icon_b64()
-    img_html = ""
-    if nt_icon_b64:
-        img_html = f"""
-            <div class="nt-hero-right">
-              <img src="data:image/png;base64,{nt_icon_b64}" alt="Nueva tarea" class="nt-hero-img" />
-            </div>
-        """
-
     st.markdown(
-        f"""
+        """
         <div class="nt-hero-wrapper">
           <div class="nt-hero">
             <div class="nt-hero-left">
               <div class="nt-hero-title">Nueva tarea</div>
             </div>
-            {img_html}
+            <div class="nt-hero-right">
+              <img src="assets/NUEVA_TAREA.png" alt="Nueva tarea" class="nt-hero-img">
+            </div>
           </div>
         </div>
         """,
