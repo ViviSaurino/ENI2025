@@ -99,7 +99,7 @@ st.markdown(
     display:flex;
     align-items:center;
     justify-content:space-between;
-    margin:6px -45px 26px -50px;   /* top  right  bottom  left */
+    margin:6px -45px 36px -50px;   /* top  right  bottom  left  (↑ antes 26px) */
     box-shadow:none;  /* sin sombra */
   }
   .eni-main-topbar-title{
@@ -152,7 +152,7 @@ st.markdown(
   .eni-main-hero{
     margin:0 -45px 30px -50px;   /* mismo ancho que el topbar */
     border-radius:10px;
-    box-shadow:0 18px 40px rgba(148,163,184,0.32);
+    box-shadow:none;             /* ← quitamos la sombra */
     height:190px; 
     background:linear-gradient(90deg,  #93C5FD 0%, #B157D6 100%);
     position:relative;
@@ -253,8 +253,8 @@ st.markdown(
     padding-left:8px !important;
   }
 
-  /* HOVER en opción inactiva → lila suave */
-  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="false"]:hover{
+  /* HOVER en cualquier opción → lila pastel tipo pastilla */
+  section[data-testid="stSidebar"] [data-baseweb="radio"]:hover{
     background:#EDE9FE !important;  /* lila pastel */
     color:#374151 !important;
   }
