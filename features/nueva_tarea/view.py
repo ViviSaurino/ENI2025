@@ -1905,7 +1905,7 @@ def render_nueva_tarea(user: dict | None = None):
 
     /* ===== Banner superior tipo “Bienvenida” pero para NUEVA TAREA ===== */
     .nt-hero-wrapper{
-      margin-left:8px;
+      margin-left:0px;
       margin-right:0px;
       margin-top:-50px;
       margin-bottom:0;
