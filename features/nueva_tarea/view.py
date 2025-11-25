@@ -1935,7 +1935,7 @@ def render_nueva_tarea(user: dict | None = None):
       margin-bottom:0;
     }
     .nt-hero{
-      border-radius:18px;
+      border-radius:8px;
       background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
       padding:70px 32px;
       display:flex;
@@ -1962,8 +1962,9 @@ def render_nueva_tarea(user: dict | None = None):
     }
     .nt-hero-img{
       display:block;
-      height:110px;
+      height:140px;
       max-width:160px;
+      margin-top:12px;
     }
 
     /* ===== Tarjeta blanca SOLO para el formulario (filtros) ===== */
