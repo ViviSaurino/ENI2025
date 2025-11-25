@@ -100,7 +100,7 @@ st.markdown(
     align-items:center;
     justify-content:space-between;
     margin:6px -45px 18px -50px;   /* top  right  bottom  left */
-    box-shadow:none;               /* 👈 SIN SOMBRA */
+    box-shadow:none;  /* 👈 sin sombra */
   }
   .eni-main-topbar-title{
     font-size:15px;
@@ -161,26 +161,6 @@ st.markdown(
     font-size:26px;
     font-weight:800;
     margin-top:2px;
-  }
-
-  /* ===== Card lila principal (ya no se usa, pero lo dejo por si acaso) ===== */
-  .eni-main-card-header{
-    background:#C4B5FD;
-    border-radius:8px;
-    padding:22px 28px;
-    box-shadow:0 18px 40px rgba(148,163,184,0.35);
-    margin:0 -10px 26px -50px;
-  }
-  .eni-main-card-header-title{
-    font-size:22px;
-    font-weight:800;
-    color:#FFFFFF;
-    margin-bottom:4px;
-  }
-  .eni-main-card-header-sub{
-    font-size:12px;
-    color:#F9FAFB;
-    margin:0;
   }
 
   /* ===== Panel blanco debajo de cabecera (ya no se usa aquí) ===== */
@@ -301,14 +281,15 @@ st.markdown(
 
   /* ===== Grid de tarjetas rápidas ===== */
   .eni-quick-grid-wrapper{
-    margin:26px -45px 18px -50px;
+    margin:18px -45px 18px -50px;  /* mismo ancho que la cabecera */
   }
 
   .eni-quick-grid{
     display:grid;
-    grid-template-columns:repeat(5, minmax(0, 1fr));  /* 👈 5 TARJETAS IGUALES */
-    gap:18px;
+    grid-template-columns:repeat(5, minmax(0,1fr));  /* 5 tarjetas iguales */
+    gap:16px;
     align-items:stretch;
+    margin-top:0;
   }
 
   .eni-quick-card-link,
@@ -324,30 +305,32 @@ st.markdown(
   }
 
   .eni-quick-card{
-    border-radius:10px;
-    padding:18px 18px 20px 18px;
-    box-shadow:0 10px 22px rgba(148,163,184,0.18);
+    border-radius:12px;
+    padding:18px 18px;
+    box-shadow:0 8px 18px rgba(148,163,184,0.10);
     border:1px solid #E5E7EB;
-    height:150px;
+    background:#FFFFFF;
+    height:135px;
     display:flex;
-    flex-direction:row;              /* 👈 TEXTO + ICONO AL COSTADO */
-    align-items:center;
+    flex-direction:row;
     justify-content:space-between;
+    align-items:center;
     transition:all .15s ease-in-out;
     overflow:hidden;
-    background:#FFFFFF;
   }
 
   .eni-quick-card-text{
-    flex:1;
-    max-width:100%;
-    text-align:center;              /* 👈 TEXTO CENTRADO */
+    max-width:70%;
+    text-align:left;              /* 👈 texto alineado a la izquierda */
+    display:flex;
+    flex-direction:column;
+    gap:4px;
   }
   .eni-quick-card-title{
     font-size:14px;
     font-weight:700;
     color:#111827;
-    margin-bottom:6px;
+    margin-bottom:2px;
   }
   .eni-quick-card-sub{
     font-size:11px;
@@ -355,31 +338,20 @@ st.markdown(
     margin:0;
   }
   .eni-quick-card-icon{
-    font-size:32px;                 /* 👈 TAMAÑO MEDIANO */
-    margin-left:16px;
-    transform:none;
+    font-size:44px;               /* 👈 icono un poco más grande */
+    margin-left:8px;
   }
   .eni-quick-card-link:hover .eni-quick-card{
-    box-shadow:0 14px 28px rgba(148,163,184,0.30);
+    box-shadow:0 14px 26px rgba(148,163,184,0.30);
     transform:translateY(-2px);
   }
 
+  /* Clases de tipo de tarjeta: sin colores de fondo */
   .eni-quick-card--nueva_tarea,
   .eni-quick-card--nueva_alerta,
   .eni-quick-card--editar_estado,
   .eni-quick-card--prioridad_evaluacion{
     background:#FFFFFF;
-  }
-
-  /* Tarjeta ancha "Nueva tarea" (ya no se usa, pero la dejo por si acaso) */
-  .eni-quick-card-wide-nt{
-    background:#FFFFFF;
-    border-radius:8px;
-    padding:15px 15px 20px 15px;
-    box-shadow:0 12px 28px rgba(148,163,184,0.45);
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
   }
 
   /* Reducir espacio entre columnas principales */
@@ -879,15 +851,12 @@ if section == "Gestión de tareas":
         else:
             st.info("Todavía no hay una vista vinculada a esta tarjeta.")
 
-    # ===== SIN TARJETA → Banner + 5 TARJETAS EN LÍNEA =====
+    # ===== SIN TARJETA → Banner + 5 tarjetas =====
     else:
         # --- Texto de bienvenida según nombre ---
         first_name = dn_clean.split()[0] if dn_clean else "Usuario"
         first_name_l = first_name.lower()
-        
-        # nombres que son de mujer aunque no terminen en "a"
         female_names = {"elizabet", "lucy", "tiffany", "vivian"}
-        
         if first_name_l.endswith("a") or first_name_l in female_names:
             welcome_word = "Bienvenida"
         else:
@@ -921,7 +890,7 @@ if section == "Gestión de tareas":
         else:
             st.caption("Plataforma de gestión ENI — 2025")
 
-        # --- ÚNICA FILA CON 5 TARJETAS ---
+        # --- 5 tarjetas en una fila ---
         cards_html = f"""
         <div class="eni-quick-grid-wrapper">
           <div class="eni-quick-grid">
