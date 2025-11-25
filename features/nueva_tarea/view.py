@@ -2043,6 +2043,12 @@ def render_nueva_tarea(user: dict | None = None):
       margin-top:4px;
       margin-bottom:16px;
     }
+
+     /* Ocultar subtítulos de las tarjetas */
+    .nt-step-text{
+      display:none !important;
+    }
+    
     .nt-step-card{
       flex:1 1 0;
       min-width:160px;
