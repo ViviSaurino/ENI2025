@@ -1907,7 +1907,7 @@ def render_nueva_tarea(user: dict | None = None):
     .nt-hero-wrapper{
       margin-left:8px;
       margin-right:24px;
-      margin-top:8px;
+      margin-top:-8px;
       margin-bottom:0;
     }
     .nt-hero{
@@ -2031,8 +2031,8 @@ def render_nueva_tarea(user: dict | None = None):
     else:
         st.session_state.setdefault("nt_tipo", "")
 
-    _NT_SPACE = -20
-    st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
+    _NT_SPACE = 20
+    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
     # anchos base
     A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
