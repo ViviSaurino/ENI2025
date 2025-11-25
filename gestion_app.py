@@ -219,15 +219,29 @@ st.markdown(
     overflow-y:hidden !important;
     background:#F3F4F6 !important;   /* gris muy clarito */
     /* Ancho cuando está visible, pero SIN !important para que pueda ir a 0 al colapsar */
-    width:150px;
+    width:200px;
     color:#111827 !important;
     border-right:1px solid #E5E7EB;
   }
 
+  /* Cuando está visible: fijamos ancho 200px */
+  [data-testid="stSidebar"][aria-expanded="true"]{
+    min-width:200px !important;
+    max-width:200px !important;
+  }
+
+  /* Cuando está oculta: ancho 0 para que el contenido se expanda */
+  [data-testid="stSidebar"][aria-expanded="false"]{
+    min-width:0 !important;
+    max-width:0 !important;
+    border-right:none !important;
+  } 
+  
   /* Menú de secciones: icono + texto, con pastilla lila en hover y activo */
   section[data-testid="stSidebar"] .stRadio > div{
     gap:4px !important;
   }
+  
   section[data-testid="stSidebar"] [data-baseweb="radio"]{
     margin-bottom:10px;
     padding:10px 14px;
@@ -242,9 +256,11 @@ st.markdown(
     box-sizing:border-box;
     cursor:pointer;
   }
+  
   section[data-testid="stSidebar"] [data-baseweb="radio"] > div:first-child{
     display:none !important;   /* oculta el botón redondo */
   }
+  
   section[data-testid="stSidebar"] [data-baseweb="radio"] > div:last-child{
     padding-left:0 !important;
     font-size:10px !important; 
