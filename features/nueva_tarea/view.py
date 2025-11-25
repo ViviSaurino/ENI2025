@@ -1906,14 +1906,14 @@ def render_nueva_tarea(user: dict | None = None):
     /* ===== Banner superior tipo “Bienvenida” pero para NUEVA TAREA ===== */
     .nt-hero-wrapper{
       margin-left:8px;
-      margin-right:24px;
+      margin-right:30px;
       margin-top:-50px;
       margin-bottom:0;
     }
     .nt-hero{
       border-radius:18px;
       background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
-      padding:22px 28px;
+      padding:34px 32px;
       display:flex;
       align-items:center;
       justify-content:space-between;
