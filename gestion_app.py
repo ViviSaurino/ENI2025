@@ -218,7 +218,6 @@ st.markdown(
   [data-testid="stSidebar"]{
     overflow-y:hidden !important;
     background:#F3F4F6 !important;   /* gris muy clarito */
-    min-width:230px !important;
     max-width:230px !important;
     color:#111827 !important;
     border-right:1px solid #E5E7EB;
