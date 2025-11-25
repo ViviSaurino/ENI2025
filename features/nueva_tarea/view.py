@@ -2050,31 +2050,43 @@ def render_nueva_tarea(user: dict | None = None):
     }
     
     .nt-step-card{
-      flex:1 1 0;
-      min-width:160px;
+      flex:1 1 180px;
+      min-width:180px;
       background:#FFFFFF;
       border-radius:14px;
       border:1px solid #E5E7EB;
       padding:10px 12px;
-      box-shadow:0 12px 30px rgba(15,23,42,0.06);
+      box-shadow:0 12px 30px rgba(15,23,42,0.04);
       display:flex;
-      flex-direction:column;
-      gap:4px;
+      gap:8px;
+      align-items:center;        /* ANTES: flex-start */
+      flex-direction:row-reverse;/* 👉 Icono a la derecha */
     }
     .nt-step-title{
-      font-weight:600;
-      font-size:0.9rem;
-      color:#0F172A;
-      display:flex;
-      align-items:center;
-      gap:6px;
+      font-size:0.92rem;
+      font-weight:400;           /* 👉 Sin negrita (antes 600) */
+      color:#111827;
     }
     .nt-step-icon{
-      font-size:1.1rem;
+      width:32px;                /* ANTES: 24px */
+      height:32px;               /* ANTES: 24px */
+      border-radius:10px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:#EEF2FF;
+      font-size:1.6rem;          /* 👉 Icono más grande (antes 1.1rem) */
+      flex-shrink:0;
     }
     .nt-step-text{
       font-size:0.80rem;
       color:#4B5563;
+    }
+
+    .nt-step-main{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
     }
 
     /* Botones de abajo */
