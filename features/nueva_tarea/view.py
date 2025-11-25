@@ -1918,7 +1918,7 @@ def render_nueva_tarea(user: dict | None = None):
       align-items:center;
       justify-content:space-between;
       color:#FFFFFF;
-      box-shadow:0 20px 50px rgba(15,23,42,0.20);
+      box-shadow:none;
     }
     .nt-hero-left{
       display:flex;
@@ -2031,7 +2031,7 @@ def render_nueva_tarea(user: dict | None = None):
     else:
         st.session_state.setdefault("nt_tipo", "")
 
-    _NT_SPACE = 36
+    _NT_SPACE = 10
     st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
 
     # anchos base
