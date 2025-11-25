@@ -364,12 +364,17 @@ st.markdown(
     color:#111827;
     margin-bottom:4px;
     text-align:left;
+    white-space:nowrap;  
   }
   .eni-quick-card-sub{
     font-size:11px;
     color:#6B7280;
     margin:0;
     text-align:left;
+    display:-webkit-box;         /* 👉 máximo 3 líneas en el texto */
+    -webkit-line-clamp:3;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
   }
   .eni-quick-card-icon{
     font-size:46px;
