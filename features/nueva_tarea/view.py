@@ -1964,7 +1964,6 @@ def render_nueva_tarea(user: dict | None = None):
       display:block;
       height:140px;
       max-width:160px;
-      margin-top:-100px;
     }
 
     /* ===== Tarjeta blanca SOLO para el formulario (filtros) ===== */
