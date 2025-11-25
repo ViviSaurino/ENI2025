@@ -99,7 +99,7 @@ st.markdown(
     display:flex;
     align-items:center;
     justify-content:space-between;
-    margin:6px -45px 36px -50px;   /* top  right  bottom  left  (↑ antes 26px) */
+    margin:6px -45px 22px -50px;   /* top  right  bottom  left */
     box-shadow:none;  /* sin sombra */
   }
   .eni-main-topbar-title{
@@ -150,9 +150,9 @@ st.markdown(
 
   /* ===== Banner horizontal ENCABEZADO debajo del topbar ===== */
   .eni-main-hero{
-    margin:0 -45px 30px -50px;   /* mismo ancho que el topbar */
+    margin:12px -45px 30px -50px;   /* separamos un poquito más del topbar */
     border-radius:10px;
-    box-shadow:none;             /* ← quitamos la sombra */
+    box-shadow:none !important;    /* sin sombra */
     height:190px; 
     background:linear-gradient(90deg,  #93C5FD 0%, #B157D6 100%);
     position:relative;
@@ -224,65 +224,79 @@ st.markdown(
     border-right:1px solid #E5E7EB;
   }
 
-  /* === Menú de secciones tipo dashboard (como imagen) === */
+  /* Menú de secciones: icono + texto, tipo imagen */
   section[data-testid="stSidebar"] .stRadio > div{
-    gap:0 !important;
+    gap:4px !important;
   }
-
   section[data-testid="stSidebar"] [data-baseweb="radio"]{
-    margin-bottom:4px;
-    padding:10px 14px;
-    border-radius:6px;
+    margin-bottom:8px;
+    padding:8px 10px;
+    border-radius:8px;
     background:transparent;
-    border:none;
+    transition:all .15s ease-in-out;
     display:flex;
     flex-direction:row;
     align-items:center;
+    gap:10px;
+  }
+  section[data-testid="stSidebar"] [data-baseweb="radio"] > div:first-child{
+    display:none !important;   /* oculta el botón redondo */
+  }
+  section[data-testid="stSidebar"] [data-baseweb="radio"] > div:last-child{
+    padding-left:0 !important;
     font-size:13px;
     font-weight:500;
-    color:#6B7280;              /* gris suave */
-    transition:background 0.15s ease, color 0.15s ease;
   }
 
-  /* ocultar el circulito del radio */
-  section[data-testid="stSidebar"] [data-baseweb="radio"] > div:first-child{
-    display:none !important;
-  }
-
-  section[data-testid="stSidebar"] [data-baseweb="radio"] > div:last-child{
-    padding-left:8px !important;
-  }
-
-  /* HOVER en cualquier opción → lila pastel tipo pastilla */
-  section[data-testid="stSidebar"] [data-baseweb="radio"]:hover{
-    background:#EDE9FE !important;  /* lila pastel */
-    color:#374151 !important;
-  }
-
-  /* Opción ACTIVA → barra lila completa */
+  /* Opción ACTIVA */
   section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="true"]{
-    background:#C4B5FD !important;  /* lila principal */
-    color:#FFFFFF !important;
-    border-radius:6px !important;
+    background:#EDE9FE !important;
+    color:#4B5563 !important;
+    border-radius:8px !important;
+    border-left:3px solid #C4B5FD !important;
+    font-weight:600 !important;
     box-shadow:none !important;
   }
 
-  /* Iconitos del menú lateral (emoji) */
+  /* Opciones INACTIVAS */
+  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="false"]{
+    background:transparent !important;
+    color:#6B7280 !important;
+    border-radius:8px !important;
+    border-left:3px solid transparent !important;
+    box-shadow:none !important;
+  }
+
+  /* Hover: misma “pastilla” que la activa, pero lila suave */
+  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="false"]:hover{
+    background:#F5F3FF !important;
+    color:#4B5563 !important;
+    border-left:3px solid #C4B5FD !important;
+  }
+
+  /* Iconitos del menú lateral (tipo texto + icono) */
   section[data-testid="stSidebar"] [data-baseweb="radio"]::before{
     font-size:18px;
-    margin-right:8px;
+    margin-right:10px;
+    color:#6B7280;
+  }
+  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="true"]::before{
+    color:#6366F1;
+  }
+  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="false"]:hover::before{
+    color:#6366F1;
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(1)::before{
-    content:"📊";   /* Gestión de tareas / Dashboard */
+    content:"📋";
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(2)::before{
-    content:"📦";   /* Kanban */
+    content:"🗂️";
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(3)::before{
-    content:"📅";   /* Gantt */
+    content:"📅";
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(4)::before{
-    content:"📈";   /* Dashboard */
+    content:"📊";
   }
 
   *::-webkit-scrollbar{
@@ -693,7 +707,7 @@ def _maybe_save_chain(persist_local_fn, df: pd.DataFrame):
 
 st.session_state["maybe_save"] = _maybe_save_chain
 
-# ====== Logout local (ya no se usa en botón lateral, pero lo dejamos por si acaso) ======
+# ====== Logout local ======
 def logout():
     for k in ("user", "user_email", "password_ok", "acl_user",
               "auth_ok", "nav_section", "roles_df", "home_tile", "user_display_name"):
@@ -749,12 +763,12 @@ with st.sidebar:
         horizontal=False,
     )
 
-    # (Botón Cerrar sesión se quitó; ahora está en el círculo VS del topbar)
+    # Botón Cerrar sesión ahora está en el círculo VS del topbar
 
 # ============ Datos ============
 ensure_df_main()
 
-# ===== Tarjetas rápidas (HTML con <a>, como antes) =====
+# ===== Tarjetas rápidas (HTML con <a>) =====
 def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str:
     display_name = st.session_state.get("user_display_name", "Usuario")
     u_param = quote(display_name, safe="")
@@ -833,7 +847,7 @@ if section == "Gestión de tareas":
         unsafe_allow_html=True,
     )
 
-    # ===== SI HAY TARJETA SELECCIONADA → SOLO FEATURE (como Kanban/Gantt) =====
+    # ===== SI HAY TARJETA SELECCIONADA → SOLO FEATURE =====
     if tile:
         module_path = TILE_TO_VIEW_MODULE.get(tile)
         if module_path:
@@ -897,7 +911,6 @@ if section == "Gestión de tareas":
                     unsafe_allow_html=True,
                 )
             except Exception:
-                # Fallback sencillo
                 st.image(str(HEADER_IMG_PATH), use_column_width=True)
         else:
             st.caption("Plataforma de gestión ENI — 2025")
