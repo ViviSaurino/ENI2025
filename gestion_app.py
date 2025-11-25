@@ -247,8 +247,10 @@ st.markdown(
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"] > div:last-child{
     padding-left:0 !important;
-    font-size:7px;
+    font-size:10px !important; 
+    line-height:1.1 !important; 
     font-weight:500;
+    white-space:nowrap; 
   }
 
   /* Hover: pastilla lila suave, mismo tamaño en todas */
