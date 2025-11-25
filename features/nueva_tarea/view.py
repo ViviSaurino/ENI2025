@@ -1937,7 +1937,7 @@ def render_nueva_tarea(user: dict | None = None):
     .nt-hero{
       border-radius:8px;
       background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
-      padding:50px 32px;
+      padding:40px 32px;
       display:flex;
       align-items:center;
       justify-content:space-between;
@@ -1964,6 +1964,7 @@ def render_nueva_tarea(user: dict | None = None):
       display:block;
       height:160px;
       max-width:160px;
+      transform: translateY(10px);  /* ⬅️ Esto la baja visualmente */
     }
 
     /* ===== Tarjeta blanca SOLO para el formulario (filtros) ===== */
