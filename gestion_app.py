@@ -247,7 +247,7 @@ st.markdown(
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"] > div:last-child{
     padding-left:0 !important;
-    font-size:13px;
+    font-size:11px;
     font-weight:500;
   }
 
