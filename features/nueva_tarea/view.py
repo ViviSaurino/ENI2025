@@ -1903,6 +1903,33 @@ def render_nueva_tarea(user: dict | None = None):
         display:none !important;
     }
 
+    /* ===== Banner superior tipo “Bienvenida” pero para NUEVA TAREA ===== */
+    .nt-hero-wrapper{
+      margin-left:8px;
+      margin-right:24px;
+      margin-top:8px;
+      margin-bottom:0;
+    }
+    .nt-hero{
+      border-radius:18px;
+      background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
+      padding:22px 28px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      color:#FFFFFF;
+      box-shadow:0 20px 50px rgba(15,23,42,0.20);
+    }
+    .nt-hero-left{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+    .nt-hero-title{
+      font-size:1.8rem;
+      font-weight:700;
+    }
+
     /* ===== Tarjeta blanca SOLO para el formulario (filtros) ===== */
     div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
         background:#FFFFFF;
@@ -1935,31 +1962,30 @@ def render_nueva_tarea(user: dict | None = None):
       max-width:none !important;
     }
 
-    /* Pastilla “Nueva tarea” */
-    .nt-pill{
-      width:calc:100%;
-      height:38px;
-      border-radius:12px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      background:#A7C8F0;
-      color:#ffffff;
-      font-weight:700;
-      box-shadow:0 6px 14px rgba(167,200,240,.35);
-      user-select:none;
-    }
+    /* Pastilla “Nueva tarea” (ya no se usa visualmente, pero dejamos estilos por si acaso)
+       .nt-pill{
+         width:calc:100%;
+         height:38px;
+         border-radius:12px;
+         display:flex;
+         align-items:center;
+         justify-content:center;
+         background:#A7C8F0;
+         color:#ffffff;
+         font-weight:700;
+         box-shadow:0 6px 14px rgba(167,200,240,.35);
+         user-select:none;
+       }
 
-    /* Hacer que la columna de la pildora use todo el ancho
-       y ocultar las otras columnas de esa fila */
-    div[data-testid="column"]:has(.nt-pill){
-      flex: 1 1 100% !important;
-      max-width: 100% !important;
-    }
+       div[data-testid="column"]:has(.nt-pill){
+         flex: 1 1 100% !important;
+         max-width: 100% !important;
+       }
 
-    div[data-testid="column"]:has(.nt-pill) ~ div[data-testid="column"]{
-      display: none !important;
-    }
+       div[data-testid="column"]:has(.nt-pill) ~ div[data-testid="column"]{
+         display: none !important;
+       }
+    */
 
     /* Franja de indicaciones */
     .help-strip{
@@ -2011,12 +2037,19 @@ def render_nueva_tarea(user: dict | None = None):
     # anchos base
     A, Fw, T, D, R, C = 1.80, 2.10, 3.00, 2.00, 2.00, 1.60
 
-    c_pill, _, _, _, _, _ = st.columns([A, Fw, T, D, R, C], gap="medium")
-    with c_pill:
-        st.markdown(
-            '<div class="nt-pill"><span>📝 Nueva tarea</span></div>',
-            unsafe_allow_html=True,
-        )
+    # ===== Banner superior “Nueva tarea” (sin píldora celeste) =====
+    st.markdown(
+        """
+        <div class="nt-hero-wrapper">
+          <div class="nt-hero">
+            <div class="nt-hero-left">
+              <div class="nt-hero-title">Nueva tarea</div>
+            </div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
 
