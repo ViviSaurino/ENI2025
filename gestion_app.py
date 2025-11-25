@@ -954,7 +954,7 @@ if section == "Gestión de tareas":
             )}
             {_quick_card_link(
                 "5. Evaluación",
-                "Revisa las evaluaciones y cumplimiento de las tareas",
+                "Revisa las evaluaciones y cumplimiento",
                 "📝",
                 "nueva_tarea",
             )}
