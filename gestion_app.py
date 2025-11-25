@@ -18,8 +18,8 @@ def _fallback_ensure_df_main():
     if "df_main" in st.session_state:
         return
 
-    base_cols = ["Id","Área","Responsable","Tarea","Prioridad",
-                 "Evaluación","Fecha inicio","__DEL__"]
+    base_cols = ["Id", "Área", "Responsable", "Tarea", "Prioridad",
+                 "Evaluación", "Fecha inicio", "__DEL__"]
     try:
         if os.path.exists(path) and os.path.getsize(path) > 0:
             df = pd.read_csv(path, encoding="utf-8-sig")
@@ -99,15 +99,15 @@ st.markdown(
     display:flex;
     align-items:center;
     justify-content:space-between;
-    margin:6px -45px 38px -50px;   /* top  right  bottom  left */
-    box-shadow:none;  /* 👈 sin sombra */
+    margin:6px -45px 26px -50px;   /* top  right  bottom  left */
+    box-shadow:none;  /* sin sombra */
   }
   .eni-main-topbar-title{
     font-size:15px;
     font-weight:700;
     color:#374151;
     letter-spacing:0.08em;
-    text-transform:uppercase;
+    text-transform:none;
   }
   .eni-main-topbar-user{
     display:flex;
@@ -115,6 +115,7 @@ st.markdown(
     gap:8px;
     font-size:13px;
     color:#4B5563;
+    position:relative;
   }
   .eni-main-topbar-avatar{
     width:38px;
@@ -127,11 +128,29 @@ st.markdown(
     color:#FFFFFF;
     font-weight:700;
     font-size:15px;
+    cursor:pointer;
+  }
+  /* Link Cerrar sesión que aparece al pasar/clickear sobre el avatar */
+  .eni-main-topbar-logout{
+    display:none;
+    margin-left:8px;
+    padding:6px 12px;
+    border-radius:999px;
+    border:1px solid #E5E7EB;
+    background:#F9FAFB;
+    font-size:12px;
+    color:#6B7280;
+    text-decoration:none;
+    white-space:nowrap;
+  }
+  .eni-main-topbar-user:hover .eni-main-topbar-logout,
+  .eni-main-topbar-user:focus-within .eni-main-topbar-logout{
+    display:inline-flex;
   }
 
   /* ===== Banner horizontal ENCABEZADO debajo del topbar ===== */
   .eni-main-hero{
-    margin:0 -45px 22px -50px;   /* mismo ancho que el topbar */
+    margin:0 -45px 30px -50px;   /* mismo ancho que el topbar */
     border-radius:10px;
     box-shadow:0 18px 40px rgba(148,163,184,0.32);
     height:190px; 
@@ -163,7 +182,7 @@ st.markdown(
     margin-top:2px;
   }
 
-  /* ===== Panel blanco debajo de cabecera (ya no se usa aquí) ===== */
+  /* ===== Panel blanco (no se usa aquí pero lo dejamos) ===== */
   .eni-panel-card{
     background:#FFFFFF;
     border-radius:8px;
@@ -178,7 +197,7 @@ st.markdown(
     margin-top:-8px;
   }
 
-  /* ===== Sidebar plomito clarito ===== */
+  /* ===== Sidebar minimalista ===== */
   section[data-testid="stSidebar"] .stButton > button{
     border-radius:8px !important;
     font-weight:600 !important;
@@ -190,7 +209,7 @@ st.markdown(
   }
   section[data-testid="stSidebar"] .block-container{
     padding-top:6px !important;
-    padding-bottom:10px !Important;
+    padding-bottom:10px !important;
   }
   section[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{
     gap:8px !important;
@@ -205,49 +224,56 @@ st.markdown(
     border-right:1px solid #E5E7EB;
   }
 
-  /* Menú de secciones */
+  /* Menú de secciones: icono + texto, estilo tipo imagen 2 */
   section[data-testid="stSidebar"] .stRadio > div{
     gap:4px !important;
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"]{
-    margin-bottom:8px;
-    padding:8px 10px;
-    border-radius:12px;
+    margin-bottom:12px;
+    padding:6px 4px;
+    border-radius:6px;
     background:transparent;
     transition:all .15s ease-in-out;
     display:flex;
     flex-direction:row;
     align-items:center;
+    gap:8px;
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"] > div:first-child{
     display:none !important;   /* oculta el botón redondo */
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"] > div:last-child{
-    padding-left:6px !important;
+    padding-left:0 !important;
     font-size:13px;
     font-weight:500;
   }
   /* Opción ACTIVA */
   section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="true"]{
-    background:#C4B5FD !important;
-    color:#FFFFFF !important;
-    border-radius:14px !important;
-    border:1px solid #A855F7 !important;
-    box-shadow:0 6px 14px rgba(148,163,184,0.45);
+    background:transparent !important;
+    color:#111827 !important;
+    border-radius:0 !important;
+    border-left:3px solid #6366F1 !important;
+    padding-left:12px !important;
+    font-weight:600 !important;
+    box-shadow:none !important;
   }
   /* Opciones INACTIVAS */
   section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="false"]{
     background:transparent !important;
-    color:#4B5563 !important;
-    border-radius:14px !important;
-    border:1px solid transparent !important;
+    color:#6B7280 !important;
+    border-radius:0 !important;
+    border-left:3px solid transparent !important;
     box-shadow:none !important;
   }
 
-  /* Iconitos del menú lateral */
+  /* Iconitos del menú lateral (tipo texto + icono) */
   section[data-testid="stSidebar"] [data-baseweb="radio"]::before{
     font-size:18px;
-    margin-right:8px;
+    margin-right:10px;
+    color:#6B7280;
+  }
+  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="true"]::before{
+    color:#6366F1;
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(1)::before{
     content:"📋";
@@ -281,15 +307,15 @@ st.markdown(
 
   /* ===== Grid de tarjetas rápidas ===== */
   .eni-quick-grid-wrapper{
-    margin:18px -45px 18px -50px;  /* mismo ancho que la cabecera */
+    margin:0px -45px 18px -50px;
   }
 
   .eni-quick-grid{
     display:grid;
-    grid-template-columns:repeat(5, minmax(0,1fr));  /* 5 tarjetas iguales */
-    gap:16px;
+    grid-template-columns:repeat(5, minmax(0, 1fr));
+    gap:18px;
     align-items:stretch;
-    margin-top:0;
+    margin-top:20px;
   }
 
   .eni-quick-card-link,
@@ -306,52 +332,41 @@ st.markdown(
 
   .eni-quick-card{
     border-radius:12px;
-    padding:18px 18px;
-    box-shadow:0 8px 18px rgba(148,163,184,0.10);
+    padding:18px 18px 16px 18px;
+    box-shadow:0 10px 22px rgba(148,163,184,0.30);
     border:1px solid #E5E7EB;
     background:#FFFFFF;
-    height:135px;
     display:flex;
     flex-direction:row;
     justify-content:space-between;
     align-items:center;
     transition:all .15s ease-in-out;
-    overflow:hidden;
   }
 
   .eni-quick-card-text{
-    max-width:70%;
-    text-align:left;              /* 👈 texto alineado a la izquierda */
-    display:flex;
-    flex-direction:column;
-    gap:4px;
+    max-width:100%;
+    text-align:left;
   }
   .eni-quick-card-title{
     font-size:14px;
     font-weight:700;
     color:#111827;
-    margin-bottom:2px;
+    margin-bottom:4px;
+    text-align:left;
   }
   .eni-quick-card-sub{
     font-size:11px;
     color:#6B7280;
     margin:0;
+    text-align:left;
   }
   .eni-quick-card-icon{
-    font-size:44px;               /* 👈 icono un poco más grande */
-    margin-left:8px;
+    font-size:46px;
+    margin-left:16px;
   }
   .eni-quick-card-link:hover .eni-quick-card{
-    box-shadow:0 14px 26px rgba(148,163,184,0.30);
+    box-shadow:0 14px 28px rgba(148,163,184,0.45);
     transform:translateY(-2px);
-  }
-
-  /* Clases de tipo de tarjeta: sin colores de fondo */
-  .eni-quick-card--nueva_tarea,
-  .eni-quick-card--nueva_alerta,
-  .eni-quick-card--editar_estado,
-  .eni-quick-card--prioridad_evaluacion{
-    background:#FFFFFF;
   }
 
   /* Reducir espacio entre columnas principales */
@@ -367,9 +382,6 @@ st.markdown(
     margin-top:0.2rem !important;
   }
 
-  .eni-main-topbar-title{
-    text-transform:none !important;
-  }
 </style>
 """,
     unsafe_allow_html=True,
@@ -684,7 +696,7 @@ def _maybe_save_chain(persist_local_fn, df: pd.DataFrame):
 
 st.session_state["maybe_save"] = _maybe_save_chain
 
-# ====== Logout local ======
+# ====== Logout local (ya no se usa en botón lateral, pero lo dejamos por si acaso) ======
 def logout():
     for k in ("user", "user_email", "password_ok", "acl_user",
               "auth_ok", "nav_section", "roles_df", "home_tile", "user_display_name"):
@@ -740,14 +752,12 @@ with st.sidebar:
         horizontal=False,
     )
 
-    st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
-    if st.button("🔒 Cerrar sesión", use_container_width=True):
-        logout()
+    # (Botón Cerrar sesión se quitó; ahora está en el círculo VS del topbar)
 
 # ============ Datos ============
 ensure_df_main()
 
-# ===== Tarjetas rápidas (HTML con <a>) =====
+# ===== Tarjetas rápidas (HTML con <a>, como antes) =====
 def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str:
     display_name = st.session_state.get("user_display_name", "Usuario")
     u_param = quote(display_name, safe="")
@@ -812,20 +822,21 @@ if section == "Gestión de tareas":
             initials += p[0].upper()
     initials = initials or "VS"
 
-    # ---- Topbar siempre igual ----
+    # ---- Topbar con avatar + logout ----
     st.markdown(
         f"""
         <div class="eni-main-topbar">
           <div class="eni-main-topbar-title">📋 Gestión de tareas</div>
           <div class="eni-main-topbar-user">
             <div class="eni-main-topbar-avatar">{initials}</div>
+            <a href="?logout=1" class="eni-main-topbar-logout">Cerrar sesión</a>
           </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # ===== SI HAY TARJETA SELECCIONADA → SOLO FEATURE =====
+    # ===== SI HAY TARJETA SELECCIONADA → SOLO FEATURE (como Kanban/Gantt) =====
     if tile:
         module_path = TILE_TO_VIEW_MODULE.get(tile)
         if module_path:
@@ -851,12 +862,15 @@ if section == "Gestión de tareas":
         else:
             st.info("Todavía no hay una vista vinculada a esta tarjeta.")
 
-    # ===== SIN TARJETA → Banner + 5 tarjetas =====
+    # ===== SIN TARJETA → Banner ENCABEZADO + tarjetas debajo =====
     else:
         # --- Texto de bienvenida según nombre ---
         first_name = dn_clean.split()[0] if dn_clean else "Usuario"
         first_name_l = first_name.lower()
+        
+        # nombres que son de mujer aunque no terminen en "a"
         female_names = {"elizabet", "lucy", "tiffany", "vivian"}
+        
         if first_name_l.endswith("a") or first_name_l in female_names:
             welcome_word = "Bienvenida"
         else:
@@ -886,11 +900,15 @@ if section == "Gestión de tareas":
                     unsafe_allow_html=True,
                 )
             except Exception:
+                # Fallback sencillo
                 st.image(str(HEADER_IMG_PATH), use_column_width=True)
         else:
             st.caption("Plataforma de gestión ENI — 2025")
 
-        # --- 5 tarjetas en una fila ---
+        # --- Tarjetas 5 en fila ---
+        display_name = st.session_state.get("user_display_name", "Usuario")
+        u_param = quote(display_name, safe="")
+
         cards_html = f"""
         <div class="eni-quick-grid-wrapper">
           <div class="eni-quick-grid">
