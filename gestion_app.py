@@ -99,7 +99,7 @@ st.markdown(
     display:flex;
     align-items:center;
     justify-content:space-between;
-    margin:6px -45px 22px -50px;   /* top  right  bottom  left */
+    margin:6px -45px 30px -50px;   /* top  right  bottom  left  (más espacio con el banner) */
     box-shadow:none;  /* sin sombra */
   }
   .eni-main-topbar-title{
@@ -150,9 +150,9 @@ st.markdown(
 
   /* ===== Banner horizontal ENCABEZADO debajo del topbar ===== */
   .eni-main-hero{
-    margin:12px -45px 30px -50px;   /* separamos un poquito más del topbar */
+    margin:0 -45px 30px -50px;   /* mismo ancho que el topbar */
     border-radius:10px;
-    box-shadow:none !important;    /* sin sombra */
+    box-shadow:none;  /* sin sombra en el encabezado lila/azul */
     height:190px; 
     background:linear-gradient(90deg,  #93C5FD 0%, #B157D6 100%);
     position:relative;
@@ -224,20 +224,23 @@ st.markdown(
     border-right:1px solid #E5E7EB;
   }
 
-  /* Menú de secciones: icono + texto, tipo imagen */
+  /* Menú de secciones: icono + texto, con pastilla lila en hover y activo */
   section[data-testid="stSidebar"] .stRadio > div{
     gap:4px !important;
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"]{
-    margin-bottom:8px;
-    padding:8px 10px;
-    border-radius:8px;
+    margin-bottom:10px;
+    padding:10px 14px;
+    border-radius:10px;
     background:transparent;
     transition:all .15s ease-in-out;
     display:flex;
     flex-direction:row;
     align-items:center;
-    gap:10px;
+    gap:8px;
+    width:100%;
+    box-sizing:border-box;
+    cursor:pointer;
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"] > div:first-child{
     display:none !important;   /* oculta el botón redondo */
@@ -248,43 +251,38 @@ st.markdown(
     font-weight:500;
   }
 
-  /* Opción ACTIVA */
-  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="true"]{
-    background:#EDE9FE !important;
-    color:#4B5563 !important;
-    border-radius:8px !important;
-    border-left:3px solid #C4B5FD !important;
-    font-weight:600 !important;
-    box-shadow:none !important;
+  /* Hover: pastilla lila suave, mismo tamaño en todas */
+  section[data-testid="stSidebar"] [data-baseweb="radio"]:hover{
+    background:#F3E8FF !important;  /* lila pastel */
+    color:#4338CA !important;
   }
 
-  /* Opciones INACTIVAS */
+  /* Opción ACTIVA: pastilla un poco más marcada */
+  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="true"]{
+    background:#EDE9FE !important;
+    color:#4C1D95 !important;
+    border-radius:10px !important;
+    box-shadow:none !important;
+    font-weight:600 !important;
+  }
+
+  /* Opciones INACTIVAS (estado base) */
   section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="false"]{
     background:transparent !important;
     color:#6B7280 !important;
-    border-radius:8px !important;
-    border-left:3px solid transparent !important;
+    border-radius:10px !important;
     box-shadow:none !important;
-  }
-
-  /* Hover: misma “pastilla” que la activa, pero lila suave */
-  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="false"]:hover{
-    background:#F5F3FF !important;
-    color:#4B5563 !important;
-    border-left:3px solid #C4B5FD !important;
   }
 
   /* Iconitos del menú lateral (tipo texto + icono) */
   section[data-testid="stSidebar"] [data-baseweb="radio"]::before{
     font-size:18px;
     margin-right:10px;
-    color:#6B7280;
+    color:#9CA3AF;
   }
+  section[data-testid="stSidebar"] [data-baseweb="radio"]:hover::before,
   section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="true"]::before{
-    color:#6366F1;
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="false"]:hover::before{
-    color:#6366F1;
+    color:#7C3AED;
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(1)::before{
     content:"📋";
@@ -707,7 +705,7 @@ def _maybe_save_chain(persist_local_fn, df: pd.DataFrame):
 
 st.session_state["maybe_save"] = _maybe_save_chain
 
-# ====== Logout local ======
+# ====== Logout local (se usa desde el enlace del avatar) ======
 def logout():
     for k in ("user", "user_email", "password_ok", "acl_user",
               "auth_ok", "nav_section", "roles_df", "home_tile", "user_display_name"):
@@ -763,12 +761,12 @@ with st.sidebar:
         horizontal=False,
     )
 
-    # Botón Cerrar sesión ahora está en el círculo VS del topbar
+    # (Botón Cerrar sesión se quitó; ahora está en el círculo VS del topbar)
 
 # ============ Datos ============
 ensure_df_main()
 
-# ===== Tarjetas rápidas (HTML con <a>) =====
+# ===== Tarjetas rápidas (HTML con <a>, como antes) =====
 def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str:
     display_name = st.session_state.get("user_display_name", "Usuario")
     u_param = quote(display_name, safe="")
@@ -847,7 +845,7 @@ if section == "Gestión de tareas":
         unsafe_allow_html=True,
     )
 
-    # ===== SI HAY TARJETA SELECCIONADA → SOLO FEATURE =====
+    # ===== SI HAY TARJETA SELECCIONADA → SOLO FEATURE (como Kanban/Gantt) =====
     if tile:
         module_path = TILE_TO_VIEW_MODULE.get(tile)
         if module_path:
@@ -911,6 +909,7 @@ if section == "Gestión de tareas":
                     unsafe_allow_html=True,
                 )
             except Exception:
+                # Fallback sencillo
                 st.image(str(HEADER_IMG_PATH), use_column_width=True)
         else:
             st.caption("Plataforma de gestión ENI — 2025")
