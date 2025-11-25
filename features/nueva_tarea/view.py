@@ -2031,7 +2031,7 @@ def render_nueva_tarea(user: dict | None = None):
     else:
         st.session_state.setdefault("nt_tipo", "")
 
-    _NT_SPACE = 10
+    _NT_SPACE = 0
     st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
 
     # anchos base
