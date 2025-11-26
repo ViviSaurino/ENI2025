@@ -1897,7 +1897,6 @@ def _hero_img_base64() -> str:
             continue
     return ""
 
-
 # ============================================================
 #           VISTA SUPERIOR: ➕ NUEVA TAREA
 # ============================================================
@@ -1969,11 +1968,11 @@ def render_nueva_tarea(user: dict | None = None):
 
     /* ===== Botón Volver en la barra gris debajo de las secciones ===== */
     .nt-top-back{
-      margin-top:-32px;          /* súbelo/bájalo ajustando este valor */
+      margin-top:-32px;
       margin-bottom:8px;
       display:flex;
-      justify-content:flex-end;  /* lo manda a la derecha */
-      padding-right:90px;        /* acerca/aleja del círculo VS */
+      justify-content:flex-end;
+      padding-right:90px;
     }
     .nt-top-back div.stButton>button{
       background:transparent !important;
@@ -2244,7 +2243,7 @@ def render_nueva_tarea(user: dict | None = None):
     st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
 
     # ===== Bloque de filtros / formulario =====
-    COLS_5 = [1, 1, 1, 1, 1]  # ⬅️ 5 columnas iguales por fila
+    COLS_5 = [1, 1, 1, 1, 1]  # 5 columnas iguales
 
     # --- FORMULARIO COMPLETO ---
     with st.form("form_nueva_tarea"):
@@ -2292,7 +2291,7 @@ def render_nueva_tarea(user: dict | None = None):
             _fase_sel = st.session_state.get("nt_fase", None)
             _is_fase_otros = str(_fase_sel).strip() == "Otros"
 
-            # ---------- FILA 1 (máx. 5 campos) ----------
+            # ---------- FILA 1 ----------
             if _is_fase_otros:
                 c1, c2, c3, c4, c5 = st.columns(COLS_5, gap="medium")
                 c1.text_input("Área", value=area_fixed, key="nt_area_view", disabled=True)
@@ -2366,7 +2365,7 @@ def render_nueva_tarea(user: dict | None = None):
                 else f"{prefix}_"
             )
 
-            # ---------- FILA 2 y FILA 3 (máx. 5 campos por fila) ----------
+            # ---------- FILA 2 y FILA 3 ----------
             if _is_fase_otros:
                 # FILA 2
                 r2c1, r2c2, r2c3, r2c4, r2c5 = st.columns(COLS_5, gap="medium")
@@ -2406,8 +2405,7 @@ def render_nueva_tarea(user: dict | None = None):
                 r3c2.date_input(
                     "Fecha de registro",
                     key="fi_d",
-                    on_change=_auto_time_on_date,
-                )
+                )  # 🔹 sin on_change
                 _sync_time_from_date()
                 r3c3.text_input(
                     "Hora de registro (auto)",
@@ -2459,8 +2457,7 @@ def render_nueva_tarea(user: dict | None = None):
                 r3c1.date_input(
                     "Fecha de registro",
                     key="fi_d",
-                    on_change=_auto_time_on_date,
-                )
+                )  # 🔹 sin on_change
                 _sync_time_from_date()
                 r3c2.text_input(
                     "Hora de registro",
@@ -2474,7 +2471,7 @@ def render_nueva_tarea(user: dict | None = None):
                     disabled=True,
                     key="nt_id_preview",
                 )
-                # r3c4 queda vacío (espacio) para mantener solo 5 celdas totales
+                # r3c4 vacío
 
         # ---------- Botón Agregar (abajo, lila letras blancas) ----------
         st.markdown('<div class="nt-outbtn">', unsafe_allow_html=True)
@@ -2486,7 +2483,6 @@ def render_nueva_tarea(user: dict | None = None):
         try:
             df = st.session_state.get("df_main", pd.DataFrame()).copy()
             # 👉 Aquí va TODA tu lógica de guardado que ya tenías antes
-            #    (insertar fila nueva, actualizar df_main, etc.)
             pass
         except Exception as e:
             st.error(f"No pude guardar la nueva tarea: {e}")
@@ -2504,7 +2500,6 @@ def render(user: dict | None = None):
     - Arriba: ➕ Nueva tarea
     - Abajo: 🕑 Tareas recientes
     """
-    # Aseguramos que df_main esté inicializado antes de ambos bloques
     _bootstrap_df_main_hist()
     render_nueva_tarea(user=user)
     render_historial(user=user)
