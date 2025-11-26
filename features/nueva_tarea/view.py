@@ -2235,7 +2235,9 @@ def render_nueva_tarea(user: dict | None = None):
     st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
 
     # ===== Bloque de filtros / formulario (card blanco) =====
-    with st.container(border=True):
+    with st.container():          # opción 1 (sin borde)
+    # o, si quieres explícito:
+    # with st.container(border=False):
         # sentinel solo para el CSS del card
         st.markdown(
             '<span id="nt-card-sentinel" style="display:none"></span>',
