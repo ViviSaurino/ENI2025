@@ -1969,13 +1969,12 @@ def render_nueva_tarea(user: dict | None = None):
 
     /* ===== Botón Volver en el encabezado (al lado de VS) ===== */
     .nt-top-back{
-      position:fixed;
-      /* ajusta estos offsets si quedara un poco corrido */
-      top:18px;
-      right:120px;
-      z-index:100;
+      position:fixed;          /* pegado arriba a la derecha */
+      top:18px;                /* ajusta si lo ves muy arriba/abajo */
+      right:110px;             /* ajusta si lo quieres más cerca/lejos del VS */
+      z-index:999;
     }
-    .nt-top-back .stButton>button{
+    .nt-top-back div.stButton>button{
       background:transparent !important;
       color:#2563EB !important;
       border-radius:999px !important;
@@ -1986,7 +1985,7 @@ def render_nueva_tarea(user: dict | None = None):
       min-height:30px !important;
       box-shadow:none !important;
     }
-    .nt-top-back .stButton>button:hover{
+    .nt-top-back div.stButton>button:hover{
       background:#EFF6FF !important;
     }
 
@@ -2101,20 +2100,21 @@ def render_nueva_tarea(user: dict | None = None):
       display:none !important;
     }
 
+    /* Botón Agregar (lila, texto blanco) */
+    .nt-outbtn{
+      margin-top: 6px;
+    }
     .nt-outbtn .stButton>button{
       min-height:38px !important;
       height:38px !important;
       border-radius:999px !important;
-      background:#A855F7 !important;
-      color:#FFFFFF !important;
+      background:#A855F7 !important;   /* lila */
+      color:#FFFFFF !important;        /* letras blancas */
       border:none !important;
       font-weight:600 !important;
     }
     .nt-outbtn .stButton>button:hover{
       background:#9333EA !important;
-    }
-    .nt-outbtn{
-      margin-top: 6px;
     }
 
     div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel)
@@ -2245,250 +2245,248 @@ def render_nueva_tarea(user: dict | None = None):
     # ===== Bloque de filtros / formulario =====
     COLS_5 = [1, 1, 1, 1, 1]  # ⬅️ 5 columnas iguales por fila
 
-    with st.container():
-        # sentinel solo para el CSS del card
-        st.markdown(
-            '<span id="nt-card-sentinel" style="display:none"></span>',
-            unsafe_allow_html=True,
-        )
-
-        # ===== Responsable & Área desde ACL =====
-        _acl = st.session_state.get("acl_user", {}) or {}
-        display_name_txt = (
-            _acl.get("display")
-            or st.session_state.get("user_display_name", "")
-            or _acl.get("name", "")
-            or (st.session_state.get("user") or {}).get("name", "")
-            or ""
-        )
-        if not str(st.session_state.get("nt_resp", "")).strip():
-            st.session_state["nt_resp"] = display_name_txt
-
-        _area_acl = (
-            _acl.get("area")
-            or _acl.get("Área")
-            or _acl.get("area_name")
-            or ""
-        ).strip()
-        area_fixed = _area_acl if _area_acl else (AREAS_OPC[0] if AREAS_OPC else "")
-        st.session_state["nt_area"] = area_fixed
-
-        # ===== Fases =====
-        FASES = [
-            "Capacitación",
-            "Post-capacitación",
-            "Pre-consistencia",
-            "Consistencia",
-            "Operación de campo",
-            "Implementación del sistema de monitoreo",
-            "Uso del sistema de monitoreo",
-            "Uso del sistema de capacitación",
-            "Levantamiento en campo",
-            "Otros",
-        ]
-        _fase_sel = st.session_state.get("nt_fase", None)
-        _is_fase_otros = str(_fase_sel).strip() == "Otros"
-
-        # ---------- FILA 1 (máx. 5 campos) ----------
-        if _is_fase_otros:
-            c1, c2, c3, c4, c5 = st.columns(COLS_5, gap="medium")
-            c1.text_input("Área", value=area_fixed, key="nt_area_view", disabled=True)
-            c2.selectbox(
-                "Fase",
-                options=FASES,
-                key="nt_fase",
-                index=FASES.index("Otros"),
+    # --- FORMULARIO COMPLETO ---
+    with st.form("form_nueva_tarea"):
+        with st.container():
+            # sentinel solo para el CSS del card
+            st.markdown(
+                '<span id="nt-card-sentinel" style="display:none"></span>',
+                unsafe_allow_html=True,
             )
-            c3.text_input(
-                "Otros (especifique)",
-                key="nt_fase_otro",
-                placeholder="Describe la fase",
-            )
-            c4.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
-            c5.text_input(
-                "Detalle de tarea",
-                placeholder="Información adicional (opcional)",
-                key="nt_detalle",
-            )
-        else:
-            c1, c2, c3, c4, c5 = st.columns(COLS_5, gap="medium")
-            c1.text_input("Área", value=area_fixed, key="nt_area_view", disabled=True)
-            c2.selectbox(
-                "Fase",
-                options=FASES,
-                index=None,
-                placeholder="Selecciona una fase",
-                key="nt_fase",
-            )
-            c3.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
-            c4.text_input(
-                "Detalle de tarea",
-                placeholder="Información adicional (opcional)",
-                key="nt_detalle",
-            )
-            c5.text_input("Responsable", key="nt_resp", disabled=True)
 
-        # ---------- Fecha/Hora (estado interno) ----------
-        if st.session_state.get("fi_d", "___MISSING___") is None:
-            st.session_state.pop("fi_d")
-        if st.session_state.get("fi_t", "___MISSING___") is None:
-            st.session_state.pop("fi_t")
-        if "fi_d" not in st.session_state:
-            if st.session_state.get("nt_skip_date_init", False):
-                st.session_state.pop("nt_skip_date_init", None)
+            # ===== Responsable & Área desde ACL =====
+            _acl = st.session_state.get("acl_user", {}) or {}
+            display_name_txt = (
+                _acl.get("display")
+                or st.session_state.get("user_display_name", "")
+                or _acl.get("name", "")
+                or (st.session_state.get("user") or {}).get("name", "")
+                or ""
+            )
+            if not str(st.session_state.get("nt_resp", "")).strip():
+                st.session_state["nt_resp"] = display_name_txt
+
+            _area_acl = (
+                _acl.get("area")
+                or _acl.get("Área")
+                or _acl.get("area_name")
+                or ""
+            ).strip()
+            area_fixed = _area_acl if _area_acl else (AREAS_OPC[0] if AREAS_OPC else "")
+            st.session_state["nt_area"] = area_fixed
+
+            # ===== Fases =====
+            FASES = [
+                "Capacitación",
+                "Post-capacitación",
+                "Pre-consistencia",
+                "Consistencia",
+                "Operación de campo",
+                "Implementación del sistema de monitoreo",
+                "Uso del sistema de monitoreo",
+                "Uso del sistema de capacitación",
+                "Levantamiento en campo",
+                "Otros",
+            ]
+            _fase_sel = st.session_state.get("nt_fase", None)
+            _is_fase_otros = str(_fase_sel).strip() == "Otros"
+
+            # ---------- FILA 1 (máx. 5 campos) ----------
+            if _is_fase_otros:
+                c1, c2, c3, c4, c5 = st.columns(COLS_5, gap="medium")
+                c1.text_input("Área", value=area_fixed, key="nt_area_view", disabled=True)
+                c2.selectbox(
+                    "Fase",
+                    options=FASES,
+                    key="nt_fase",
+                    index=FASES.index("Otros"),
+                )
+                c3.text_input(
+                    "Otros (especifique)",
+                    key="nt_fase_otro",
+                    placeholder="Describe la fase",
+                )
+                c4.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
+                c5.text_input(
+                    "Detalle de tarea",
+                    placeholder="Información adicional (opcional)",
+                    key="nt_detalle",
+                )
             else:
-                st.session_state["fi_d"] = now_lima_trimmed().date()
-        _sync_time_from_date()
+                c1, c2, c3, c4, c5 = st.columns(COLS_5, gap="medium")
+                c1.text_input("Área", value=area_fixed, key="nt_area_view", disabled=True)
+                c2.selectbox(
+                    "Fase",
+                    options=FASES,
+                    index=None,
+                    placeholder="Selecciona una fase",
+                    key="nt_fase",
+                )
+                c3.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
+                c4.text_input(
+                    "Detalle de tarea",
+                    placeholder="Información adicional (opcional)",
+                    key="nt_detalle",
+                )
+                c5.text_input("Responsable", key="nt_resp", disabled=True)
 
-        _t = st.session_state.get("fi_t")
-        st.session_state["fi_t_view"] = _t.strftime("%H:%M") if _t else ""
+            # ---------- Fecha/Hora (estado interno) ----------
+            if st.session_state.get("fi_d", "___MISSING___") is None:
+                st.session_state.pop("fi_d")
+            if st.session_state.get("fi_t", "___MISSING___") is None:
+                st.session_state.pop("fi_t")
+            if "fi_d" not in st.session_state:
+                if st.session_state.get("nt_skip_date_init", False):
+                    st.session_state.pop("nt_skip_date_init", None)
+                else:
+                    st.session_state["fi_d"] = now_lima_trimmed().date()
+            _sync_time_from_date()
 
-        # ID preview
-        _df_tmp = (
-            st.session_state.get("df_main", pd.DataFrame()).copy()
-            if "df_main" in st.session_state
-            else pd.DataFrame()
-        )
-        prefix = make_id_prefix(
-            st.session_state.get("nt_area", area_fixed),
-            st.session_state.get("nt_resp", ""),
-        )
-        id_preview = (
-            next_id_by_person(
-                _df_tmp,
+            _t = st.session_state.get("fi_t")
+            st.session_state["fi_t_view"] = _t.strftime("%H:%M") if _t else ""
+
+            # ID preview
+            _df_tmp = (
+                st.session_state.get("df_main", pd.DataFrame()).copy()
+                if "df_main" in st.session_state
+                else pd.DataFrame()
+            )
+            prefix = make_id_prefix(
                 st.session_state.get("nt_area", area_fixed),
                 st.session_state.get("nt_resp", ""),
             )
-            if st.session_state.get("fi_d")
-            else f"{prefix}_"
-        )
-
-        # ---------- FILA 2 y FILA 3 (máx. 5 campos por fila) ----------
-        if _is_fase_otros:
-            # FILA 2
-            r2c1, r2c2, r2c3, r2c4, r2c5 = st.columns(COLS_5, gap="medium")
-            r2c1.text_input("Responsable", key="nt_resp", disabled=True)
-            r2c2.selectbox(
-                "Ciclo de mejora",
-                options=["1", "2", "3", "+4"],
-                index=0,
-                key="nt_ciclo_mejora",
-            )
-            r2c3.text_input(
-                "Tipo de tarea",
-                key="nt_tipo",
-                placeholder="Escribe el tipo de tarea",
-            )
-            r2c4.text_input(
-                "Estado actual",
-                value="No iniciado",
-                disabled=True,
-                key="nt_estado_view",
-            )
-            r2c5.selectbox(
-                "Complejidad",
-                options=["🟢 Baja", "🟡 Media", "🔴 Alta"],
-                index=0,
-                key="nt_complejidad",
+            id_preview = (
+                next_id_by_person(
+                    _df_tmp,
+                    st.session_state.get("nt_area", area_fixed),
+                    st.session_state.get("nt_resp", ""),
+                )
+                if st.session_state.get("fi_d")
+                else f"{prefix}_"
             )
 
-            # FILA 3
-            r3c1, r3c2, r3c3, r3c4, _ = st.columns(COLS_5, gap="medium")
-            r3c1.selectbox(
-                "Duración",
-                options=[f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)],
-                index=0,
-                key="nt_duracion_label",
-            )
-            r3c2.date_input(
-                "Fecha de registro",
-                key="fi_d",
-                on_change=_auto_time_on_date,
-            )
-            _sync_time_from_date()
-            r3c3.text_input(
-                "Hora de registro (auto)",
-                key="fi_t_view",
-                disabled=True,
-                help="Se asigna al elegir la fecha",
-            )
-            r3c4.text_input(
-                "ID asignado",
-                value=id_preview,
-                disabled=True,
-                key="nt_id_preview",
-            )
-        else:
-            # FILA 2
-            r2c1, r2c2, r2c3, r2c4, r2c5 = st.columns(COLS_5, gap="medium")
-            r2c1.selectbox(
-                "Ciclo de mejora",
-                options=["1", "2", "3", "+4"],
-                index=0,
-                key="nt_ciclo_mejora",
-            )
-            r2c2.text_input(
-                "Tipo de tarea",
-                key="nt_tipo",
-                placeholder="Escribe el tipo de tarea",
-            )
-            r2c3.text_input(
-                "Estado actual",
-                value="No iniciado",
-                disabled=True,
-                key="nt_estado_view",
-            )
-            r2c4.selectbox(
-                "Complejidad",
-                options=["🟢 Baja", "🟡 Media", "🔴 Alta"],
-                index=0,
-                key="nt_complejidad",
-            )
-            r2c5.selectbox(
-                "Duración",
-                options=[f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)],
-                index=0,
-                key="nt_duracion_label",
-            )
+            # ---------- FILA 2 y FILA 3 (máx. 5 campos por fila) ----------
+            if _is_fase_otros:
+                # FILA 2
+                r2c1, r2c2, r2c3, r2c4, r2c5 = st.columns(COLS_5, gap="medium")
+                r2c1.text_input("Responsable", key="nt_resp", disabled=True)
+                r2c2.selectbox(
+                    "Ciclo de mejora",
+                    options=["1", "2", "3", "+4"],
+                    index=0,
+                    key="nt_ciclo_mejora",
+                )
+                r2c3.text_input(
+                    "Tipo de tarea",
+                    key="nt_tipo",
+                    placeholder="Escribe el tipo de tarea",
+                )
+                r2c4.text_input(
+                    "Estado actual",
+                    value="No iniciado",
+                    disabled=True,
+                    key="nt_estado_view",
+                )
+                r2c5.selectbox(
+                    "Complejidad",
+                    options=["🟢 Baja", "🟡 Media", "🔴 Alta"],
+                    index=0,
+                    key="nt_complejidad",
+                )
 
-            # FILA 3
-            r3c1, r3c2, r3c3, r3c4, _ = st.columns(COLS_5, gap="medium")
-            r3c1.date_input(
-                "Fecha de registro",
-                key="fi_d",
-                on_change=_auto_time_on_date,
-            )
-            _sync_time_from_date()
-            r3c2.text_input(
-                "Hora de registro",
-                key="fi_t_view",
-                disabled=True,
-                help="Se asigna al elegir la fecha",
-            )
-            r3c3.text_input(
-                "ID asignado",
-                value=id_preview,
-                disabled=True,
-                key="nt_id_preview",
-            )
-            # r3c4 queda vacío (espacio) para mantener solo 5 celdas totales
+                # FILA 3
+                r3c1, r3c2, r3c3, r3c4, _ = st.columns(COLS_5, gap="medium")
+                r3c1.selectbox(
+                    "Duración",
+                    options=[f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)],
+                    index=0,
+                    key="nt_duracion_label",
+                )
+                r3c2.date_input(
+                    "Fecha de registro",
+                    key="fi_d",
+                    on_change=_auto_time_on_date,
+                )
+                _sync_time_from_date()
+                r3c3.text_input(
+                    "Hora de registro (auto)",
+                    key="fi_t_view",
+                    disabled=True,
+                    help="Se asigna al elegir la fecha",
+                )
+                r3c4.text_input(
+                    "ID asignado",
+                    value=id_preview,
+                    disabled=True,
+                    key="nt_id_preview",
+                )
+            else:
+                # FILA 2
+                r2c1, r2c2, r2c3, r2c4, r2c5 = st.columns(COLS_5, gap="medium")
+                r2c1.selectbox(
+                    "Ciclo de mejora",
+                    options=["1", "2", "3", "+4"],
+                    index=0,
+                    key="nt_ciclo_mejora",
+                )
+                r2c2.text_input(
+                    "Tipo de tarea",
+                    key="nt_tipo",
+                    placeholder="Escribe el tipo de tarea",
+                )
+                r2c3.text_input(
+                    "Estado actual",
+                    value="No iniciado",
+                    disabled=True,
+                    key="nt_estado_view",
+                )
+                r2c4.selectbox(
+                    "Complejidad",
+                    options=["🟢 Baja", "🟡 Media", "🔴 Alta"],
+                    index=0,
+                    key="nt_complejidad",
+                )
+                r2c5.selectbox(
+                    "Duración",
+                    options=[f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)],
+                    index=0,
+                    key="nt_duracion_label",
+                )
 
-    # ---------- Botón Agregar (abajo, lila letras blancas) ----------
-    left_spacer, col_add = st.columns([5, 1], gap="medium")
+                # FILA 3
+                r3c1, r3c2, r3c3, r3c4, _ = st.columns(COLS_5, gap="medium")
+                r3c1.date_input(
+                    "Fecha de registro",
+                    key="fi_d",
+                    on_change=_auto_time_on_date,
+                )
+                _sync_time_from_date()
+                r3c2.text_input(
+                    "Hora de registro",
+                    key="fi_t_view",
+                    disabled=True,
+                    help="Se asigna al elegir la fecha",
+                )
+                r3c3.text_input(
+                    "ID asignado",
+                    value=id_preview,
+                    disabled=True,
+                    key="nt_id_preview",
+                )
+                # r3c4 queda vacío (espacio) para mantener solo 5 celdas totales
 
-    with col_add:
+        # ---------- Botón Agregar (abajo, lila letras blancas) ----------
         st.markdown('<div class="nt-outbtn">', unsafe_allow_html=True)
-        submitted = st.button(
-            "➕ Agregar", use_container_width=True, key="btn_agregar"
-        )
+        submitted = st.form_submit_button("Agregar")
         st.markdown("</div>", unsafe_allow_html=True)
 
     # ------ Acción botón Agregar ------
     if submitted:
         try:
             df = st.session_state.get("df_main", pd.DataFrame()).copy()
-            # Aquí iría tu lógica completa de agregado
-            # (se dejó igual que en tu versión anterior, sin cambios funcionales)
+            # 👉 Aquí va TODA tu lógica de guardado que ya tenías antes
+            #    (insertar fila nueva, actualizar df_main, etc.)
+            pass
         except Exception as e:
             st.error(f"No pude guardar la nueva tarea: {e}")
 
