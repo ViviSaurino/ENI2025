@@ -2073,6 +2073,7 @@ def render_nueva_tarea(user: dict | None = None):
       font-size:0.88rem;             /* texto un poco más pequeño */
       font-weight:400;
       color:#111827;
+      white-space: nowrap;
     }
 
     .nt-step-icon-slot{
