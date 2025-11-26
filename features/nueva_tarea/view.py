@@ -2162,61 +2162,52 @@ def render_nueva_tarea(user: dict | None = None):
         if st.session_state.pop("nt_added_ok", False):
             st.success("Agregado a Tareas recientes")
 
-        # ===== Indicaciones en tarjetas (5 pasos con íconos) =====
-        st.markdown(
-            """
-        <div class="nt-steps-row">
-          <div class="nt-step-card">
-            <div class="nt-step-title">
-              <span class="nt-step-icon">✳️</span>
-              <span>1. Completa los campos obligatorios</span>
-            </div>
-            <div class="nt-step-text">
-              Llena los campos requeridos del formulario de nueva tarea.
-            </div>
-          </div>
-          <div class="nt-step-card">
-            <div class="nt-step-title">
-              <span class="nt-step-icon">➕</span>
-              <span>2. Pulsa “Agregar”</span>
-            </div>
-            <div class="nt-step-text">
-              Haz clic en <b>➕ Agregar</b> para registrar la tarea en la base.
-            </div>
-          </div>
-          <div class="nt-step-card">
-            <div class="nt-step-title">
-              <span class="nt-step-icon">🕑</span>
-              <span>3. Revisa en “Tareas recientes”</span>
-            </div>
-            <div class="nt-step-text">
-              Verifica y, si es necesario, edita la tarea en el bloque de <b>Tareas recientes</b>.
-            </div>
-          </div>
-          <div class="nt-step-card">
-            <div class="nt-step-title">
-              <span class="nt-step-icon">💾</span>
-              <span>4. Grabar</span>
-            </div>
-            <div class="nt-step-text">
-              Usa el botón <b>💾 Grabar</b> para actualizar el archivo local (Excel).
-            </div>
-          </div>
-          <div class="nt-step-card">
-            <div class="nt-step-title">
-              <span class="nt-step-icon">📤</span>
-              <span>5. Subir a Sheets</span>
-            </div>
-            <div class="nt-step-text">
-              Finalmente, pulsa <b>📤 Subir a Sheets</b> para enviar los cambios a Google Sheets.
-            </div>
-          </div>
-        </div>
-        """,
-            unsafe_allow_html=True,
-        )
+    # ===== Indicaciones en tarjetas (5 pasos con íconos) =====
+    st.markdown(
+        """
+    <div class="nt-steps-row">
 
-        st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
+      <div class="nt-step-card">
+        <div class="nt-step-main">
+          <div class="nt-step-title">1. Completa los campos obligatorios</div>
+        </div>
+        <div class="nt-step-icon">✳️</div>
+      </div>
+
+      <div class="nt-step-card">
+        <div class="nt-step-main">
+          <div class="nt-step-title">2. Pulsa “Agregar”</div>
+        </div>
+        <div class="nt-step-icon">➕</div>
+      </div>
+
+      <div class="nt-step-card">
+        <div class="nt-step-main">
+          <div class="nt-step-title">3. Revisa en “Tareas recientes”</div>
+        </div>
+        <div class="nt-step-icon">🕑</div>
+      </div>
+
+      <div class="nt-step-card">
+        <div class="nt-step-main">
+          <div class="nt-step-title">4. Grabar</div>
+        </div>
+        <div class="nt-step-icon">💾</div>
+      </div>
+
+      <div class="nt-step-card">
+        <div class="nt-step-main">
+          <div class="nt-step-title">5. Subir a Sheets</div>
+        </div>
+        <div class="nt-step-icon">📤</div>
+      </div>
+
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True))
 
         # ===== Bloque de filtros / formulario (card blanco) =====
         with st.container(border=True):
