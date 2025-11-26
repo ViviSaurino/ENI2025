@@ -1966,13 +1966,12 @@ def render_nueva_tarea(user: dict | None = None):
       transform: translateY(10px);
     }
 
-    /* ===== Botón Volver en la barra gris debajo de las secciones ===== */
+    /* ===== Botón Volver al costado del círculo VS (header superior) ===== */
     .nt-top-back{
-      margin-top:-32px;
-      margin-bottom:8px;
-      display:flex;
-      justify-content:flex-end;
-      padding-right:90px;
+      position:fixed;          /* lo pegamos arriba a la derecha */
+      top:22px;                /* ajusta si lo ves muy arriba/abajo */
+      right:120px;             /* ajusta para acercarlo/alejarlo del VS */
+      z-index:999;
     }
     .nt-top-back div.stButton>button{
       background:transparent !important;
@@ -2132,7 +2131,7 @@ def render_nueva_tarea(user: dict | None = None):
         unsafe_allow_html=True,
     )
 
-    # ===== Botón Volver (debajo de las secciones, en la barra gris) =====
+    # ===== Botón Volver (al costado del VS) =====
     st.markdown('<div class="nt-top-back">', unsafe_allow_html=True)
     top_back_clicked = st.button("Volver", key="btn_top_volver")
     st.markdown("</div>", unsafe_allow_html=True)
@@ -2405,7 +2404,7 @@ def render_nueva_tarea(user: dict | None = None):
                 r3c2.date_input(
                     "Fecha de registro",
                     key="fi_d",
-                )  # 🔹 sin on_change
+                )
                 _sync_time_from_date()
                 r3c3.text_input(
                     "Hora de registro (auto)",
@@ -2457,7 +2456,7 @@ def render_nueva_tarea(user: dict | None = None):
                 r3c1.date_input(
                     "Fecha de registro",
                     key="fi_d",
-                )  # 🔹 sin on_change
+                )
                 _sync_time_from_date()
                 r3c2.text_input(
                     "Hora de registro",
@@ -2471,7 +2470,6 @@ def render_nueva_tarea(user: dict | None = None):
                     disabled=True,
                     key="nt_id_preview",
                 )
-                # r3c4 vacío
 
         # ---------- Botón Agregar (abajo, lila letras blancas) ----------
         st.markdown('<div class="nt-outbtn">', unsafe_allow_html=True)
