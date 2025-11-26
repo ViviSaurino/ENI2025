@@ -609,12 +609,17 @@ def _ensure_deadline_and_compliance(df: pd.DataFrame) -> pd.DataFrame:
     df["Hora Vencimiento"] = hv.mask(mask_empty, "17:00")
 
     # Cumplimiento
-    fv = to_naive_local_series(df["Fecha Vencimiento"]) if "Fecha Vencimiento" in df.columns else pd.Series(
-        pd.NaT, index=df.index, dtype="datetime64[ns]"]
+    fv = (
+        to_naive_local_series(df["Fecha Vencimiento"])
+        if "Fecha Vencimiento" in df.columns
+        else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]")
     )
-    ft = to_naive_local_series(df["Fecha Terminado"]) if "Fecha Terminado" in df.columns else pd.Series(
-        pd.NaT, index=df.index, dtype="datetime64[ns]"]
+    ft = (
+        to_naive_local_series(df["Fecha Terminado"])
+        if "Fecha Terminado" in df.columns
+        else pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]")
     )
+
     today_ts = pd.Timestamp(date.today())
     fv_n = fv.dt.normalize()
     ft_n = ft.dt.normalize()
