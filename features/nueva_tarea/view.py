@@ -1967,12 +1967,13 @@ def render_nueva_tarea(user: dict | None = None):
       transform: translateY(10px);
     }
 
-    /* ===== Botón Volver en el encabezado (al lado de VS) ===== */
+    /* ===== Botón Volver en la barra gris debajo de las secciones ===== */
     .nt-top-back{
-      position:fixed;          /* pegado arriba a la derecha */
-      top:18px;                /* ajusta si lo ves muy arriba/abajo */
-      right:110px;             /* ajusta si lo quieres más cerca/lejos del VS */
-      z-index:999;
+      margin-top:-32px;          /* súbelo/bájalo ajustando este valor */
+      margin-bottom:8px;
+      display:flex;
+      justify-content:flex-end;  /* lo manda a la derecha */
+      padding-right:90px;        /* acerca/aleja del círculo VS */
     }
     .nt-top-back div.stButton>button{
       background:transparent !important;
@@ -2132,7 +2133,7 @@ def render_nueva_tarea(user: dict | None = None):
         unsafe_allow_html=True,
     )
 
-    # ===== Botón Volver (arriba, al costado de VS) =====
+    # ===== Botón Volver (debajo de las secciones, en la barra gris) =====
     st.markdown('<div class="nt-top-back">', unsafe_allow_html=True)
     top_back_clicked = st.button("Volver", key="btn_top_volver")
     st.markdown("</div>", unsafe_allow_html=True)
