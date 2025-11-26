@@ -1966,14 +1966,14 @@ def render_nueva_tarea(user: dict | None = None):
       transform: translateY(10px);
     }
 
-    /* ===== Botón Volver: pastilla al costado del header (Gestión de tareas + VS) ===== */
-    html body .nt-top-back{
-      position:fixed !important;     /* pegado a la ventana, no al contenedor */
-      top:22px !important;           /* altura: ajústalo si lo ves muy arriba/abajo */
-      right:150px !important;        /* distancia respecto al borde derecho (VS está más a la derecha) */
-      z-index:9999 !important;
+    /* ===== Botón Volver: pastilla pequeña junto al VS, en el encabezado superior ===== */
+    .nt-back-global{
+      position:fixed !important;   /* respecto al viewport del app */
+      top:26px !important;         /* ajusta si lo ves muy arriba/abajo */
+      right:170px !important;      /* ajusta si lo quieres más cerca/lejos del círculo VS */
+      z-index:10000 !important;
     }
-    html body .nt-top-back div.stButton>button{
+    .nt-back-global div.stButton>button{
       background:transparent !important;
       color:#2563EB !important;
       border-radius:999px !important;
@@ -1984,7 +1984,7 @@ def render_nueva_tarea(user: dict | None = None):
       min-height:30px !important;
       box-shadow:none !important;
     }
-    html body .nt-top-back div.stButton>button:hover{
+    .nt-back-global div.stButton>button:hover{
       background:#EFF6FF !important;
     }
 
@@ -2131,8 +2131,8 @@ def render_nueva_tarea(user: dict | None = None):
         unsafe_allow_html=True,
     )
 
-    # ===== Botón Volver (pastilla fija arriba a la derecha) =====
-    st.markdown('<div class="nt-top-back">', unsafe_allow_html=True)
+    # ===== Botón Volver flotando en el encabezado superior =====
+    st.markdown('<div class="nt-back-global">', unsafe_allow_html=True)
     top_back_clicked = st.button("Volver", key="btn_top_volver")
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -2242,10 +2242,12 @@ def render_nueva_tarea(user: dict | None = None):
     st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
 
     # ===== Bloque de filtros / formulario =====
-    COLS_5 = [1, 1, 1, 1, 1]
+    COLS_5 = [1, 1, 1, 1, 1]  # ⬅️ 5 columnas iguales por fila
 
+    # --- FORMULARIO COMPLETO ---
     with st.form("form_nueva_tarea"):
         with st.container():
+            # sentinel solo para el CSS del card
             st.markdown(
                 '<span id="nt-card-sentinel" style="display:none"></span>',
                 unsafe_allow_html=True,
@@ -2288,7 +2290,7 @@ def render_nueva_tarea(user: dict | None = None):
             _fase_sel = st.session_state.get("nt_fase", None)
             _is_fase_otros = str(_fase_sel).strip() == "Otros"
 
-            # ---------- FILA 1 ----------
+            # ---------- FILA 1 (máx. 5 campos) ----------
             if _is_fase_otros:
                 c1, c2, c3, c4, c5 = st.columns(COLS_5, gap="medium")
                 c1.text_input("Área", value=area_fixed, key="nt_area_view", disabled=True)
@@ -2327,7 +2329,7 @@ def render_nueva_tarea(user: dict | None = None):
                 )
                 c5.text_input("Responsable", key="nt_resp", disabled=True)
 
-            # ---------- Fecha/Hora ----------
+            # ---------- Fecha/Hora (estado interno) ----------
             if st.session_state.get("fi_d", "___MISSING___") is None:
                 st.session_state.pop("fi_d")
             if st.session_state.get("fi_t", "___MISSING___") is None:
@@ -2342,6 +2344,7 @@ def render_nueva_tarea(user: dict | None = None):
             _t = st.session_state.get("fi_t")
             st.session_state["fi_t_view"] = _t.strftime("%H:%M") if _t else ""
 
+            # ID preview
             _df_tmp = (
                 st.session_state.get("df_main", pd.DataFrame()).copy()
                 if "df_main" in st.session_state
@@ -2361,8 +2364,9 @@ def render_nueva_tarea(user: dict | None = None):
                 else f"{prefix}_"
             )
 
-            # ---------- FILA 2 y 3 ----------
+            # ---------- FILA 2 y FILA 3 (máx. 5 campos por fila) ----------
             if _is_fase_otros:
+                # FILA 2
                 r2c1, r2c2, r2c3, r2c4, r2c5 = st.columns(COLS_5, gap="medium")
                 r2c1.text_input("Responsable", key="nt_resp", disabled=True)
                 r2c2.selectbox(
@@ -2389,6 +2393,7 @@ def render_nueva_tarea(user: dict | None = None):
                     key="nt_complejidad",
                 )
 
+                # FILA 3
                 r3c1, r3c2, r3c3, r3c4, _ = st.columns(COLS_5, gap="medium")
                 r3c1.selectbox(
                     "Duración",
@@ -2396,7 +2401,11 @@ def render_nueva_tarea(user: dict | None = None):
                     index=0,
                     key="nt_duracion_label",
                 )
-                r3c2.date_input("Fecha de registro", key="fi_d")
+                r3c2.date_input(
+                    "Fecha de registro",
+                    key="fi_d",
+                    on_change=_auto_time_on_date,
+                )
                 _sync_time_from_date()
                 r3c3.text_input(
                     "Hora de registro (auto)",
@@ -2411,6 +2420,7 @@ def render_nueva_tarea(user: dict | None = None):
                     key="nt_id_preview",
                 )
             else:
+                # FILA 2
                 r2c1, r2c2, r2c3, r2c4, r2c5 = st.columns(COLS_5, gap="medium")
                 r2c1.selectbox(
                     "Ciclo de mejora",
@@ -2442,8 +2452,13 @@ def render_nueva_tarea(user: dict | None = None):
                     key="nt_duracion_label",
                 )
 
+                # FILA 3
                 r3c1, r3c2, r3c3, r3c4, _ = st.columns(COLS_5, gap="medium")
-                r3c1.date_input("Fecha de registro", key="fi_d")
+                r3c1.date_input(
+                    "Fecha de registro",
+                    key="fi_d",
+                    on_change=_auto_time_on_date,
+                )
                 _sync_time_from_date()
                 r3c2.text_input(
                     "Hora de registro",
@@ -2457,15 +2472,19 @@ def render_nueva_tarea(user: dict | None = None):
                     disabled=True,
                     key="nt_id_preview",
                 )
+                # r3c4 queda vacío (espacio) para mantener solo 5 celdas totales
 
+        # ---------- Botón Agregar (abajo, lila letras blancas) ----------
         st.markdown('<div class="nt-outbtn">', unsafe_allow_html=True)
         submitted = st.form_submit_button("Agregar")
         st.markdown("</div>", unsafe_allow_html=True)
 
+    # ------ Acción botón Agregar ------
     if submitted:
         try:
             df = st.session_state.get("df_main", pd.DataFrame()).copy()
-            # lógica de guardado aquí
+            # 👉 Aquí va TODA tu lógica de guardado que ya tenías antes
+            #    (insertar fila nueva, actualizar df_main, etc.)
             pass
         except Exception as e:
             st.error(f"No pude guardar la nueva tarea: {e}")
@@ -2478,7 +2497,12 @@ def render_nueva_tarea(user: dict | None = None):
 #             VISTA UNIFICADA (NUEVA + RECIENTES)
 # ============================================================
 def render(user: dict | None = None):
+    """
+    Vista combinada:
+    - Arriba: ➕ Nueva tarea
+    - Abajo: 🕑 Tareas recientes
+    """
+    # Aseguramos que df_main esté inicializado antes de ambos bloques
     _bootstrap_df_main_hist()
     render_nueva_tarea(user=user)
     render_historial(user=user)
-
