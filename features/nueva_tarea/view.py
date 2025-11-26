@@ -1969,18 +1969,21 @@ def render_nueva_tarea(user: dict | None = None):
 
     /* ===== Tarjeta blanca SOLO para el formulario (filtros) ===== */
     div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
-        background:#FFFFFF;
-        border-radius:14px;
-        padding:20px 22px 22px 22px;
+        background:transparent;
+        border-radius:0;
+        padding:20px 0 22px 0;
         margin-top:16px;
         margin-bottom:10px;
-        box-shadow:0 20px 50px rgba(15,23,42,0.10);
-        border:1px solid #E5E7EB;
+        box-shadow:none;
 
-        /* 🔹 Mismo ancho horizontal que la cabecera */
+        /* solo líneas horizontales arriba y abajo */
+        border-top:1px solid #E5E7EB;
+        border-bottom:1px solid #E5E7EB;
+
+        /* opcional: ajusta si quieres que las líneas corran más a los lados */
         margin-left:8px;
         margin-right:24px;
-        }
+}
 
     /* Inputs full width dentro del card */
     div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
