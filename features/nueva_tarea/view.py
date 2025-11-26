@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import annotations  
 
 import os
 import re
@@ -610,10 +610,10 @@ def _ensure_deadline_and_compliance(df: pd.DataFrame) -> pd.DataFrame:
 
     # Cumplimiento
     fv = to_naive_local_series(df["Fecha Vencimiento"]) if "Fecha Vencimiento" in df.columns else pd.Series(
-        pd.NaT, index=df.index, dtype="datetime64[ns]"
+        pd.NaT, index=df.index, dtype="datetime64[ns]"]
     )
     ft = to_naive_local_series(df["Fecha Terminado"]) if "Fecha Terminado" in df.columns else pd.Series(
-        pd.NaT, index=df.index, dtype="datetime64[ns]"
+        pd.NaT, index=df.index, dtype="datetime64[ns]"]
     )
     today_ts = pd.Timestamp(date.today())
     fv_n = fv.dt.normalize()
@@ -2087,6 +2087,28 @@ def render_nueva_tarea(user: dict | None = None):
       margin-top: 6px;
     }
 
+    /* 🔹 Estilo botón VOLVER (secundario) */
+    .nt-outbtn-back .stButton>button{
+      background-color:#FFFFFF !important;
+      color:#1E3A8A !important;
+      border:1px solid #A855F7 !important;
+      font-weight:600 !important;
+    }
+    .nt-outbtn-back .stButton>button:hover{
+      background-color:#EEF2FF !important;
+    }
+
+    /* 🔹 Estilo botón AGREGAR (lila, texto blanco) */
+    .nt-outbtn-add .stButton>button{
+      background-color:#A855F7 !important;
+      color:#FFFFFF !important;
+      border:1px solid #A855F7 !important;
+      font-weight:600 !important;
+    }
+    .nt-outbtn-add .stButton>button:hover{
+      background-color:#9333EA !important;
+    }
+
     div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel)
         > form[data-testid="stForm"]{
         background: transparent !important;
@@ -2430,19 +2452,22 @@ def render_nueva_tarea(user: dict | None = None):
             # r3c4 queda vacío (espacio) para mantener solo 5 celdas totales
 
     # ---------- Botones: volver + agregar ----------
-    left_spacer, col_back, col_add = st.columns([3, 1, 1], gap="medium")
+    # ⬅️ Ahora dejamos espacio para [Volver] [VS] [Agregar]
+    left_spacer, col_back, col_vs, col_add = st.columns([3, 1, 1, 1], gap="medium")
 
     with col_back:
-        st.markdown('<div class="nt-outbtn">', unsafe_allow_html=True)
+        st.markdown('<div class="nt-outbtn nt-outbtn-back">', unsafe_allow_html=True)
         back = st.button(
-            "⬅ Volver a Gestión de tareas",
+            "⬅ Volver",
             use_container_width=True,
             key="btn_volver_gestion",
         )
         st.markdown("</div>", unsafe_allow_html=True)
 
+    # (col_vs queda para que coloques ahí tu botón “VS” en otro momento)
+
     with col_add:
-        st.markdown('<div class="nt-outbtn">', unsafe_allow_html=True)
+        st.markdown('<div class="nt-outbtn nt-outbtn-add">', unsafe_allow_html=True)
         submitted = st.button(
             "➕ Agregar", use_container_width=True, key="btn_agregar"
         )
@@ -2460,13 +2485,9 @@ def render_nueva_tarea(user: dict | None = None):
 
     # ------ Acción botón Agregar ------
     if submitted:
-        # (TODO: aquí va exactamente el mismo bloque que ya tenías
-        #  para construir `new`, grabar en df_main y subir a Sheets.
-        #  No lo toqué, déjalo igual que en tu versión anterior.)
         try:
             df = st.session_state.get("df_main", pd.DataFrame()).copy()
-            # ... ⬅️ desde aquí continúa todo tu código original
-            #     de guardado, sin cambios ...
+            # ... aquí sigue intacto tu bloque de guardado original ...
         except Exception as e:
             st.error(f"No pude guardar la nueva tarea: {e}")
 
