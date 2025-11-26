@@ -1969,21 +1969,35 @@ def render_nueva_tarea(user: dict | None = None):
 
     /* ===== Tarjeta blanca SOLO para el formulario (filtros) ===== */
     div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
-        background:transparent;
-        border-radius:0;
-        padding:20px 0 22px 0;
-        margin-top:16px;
-        margin-bottom:10px;
-        box-shadow:none;
+        /* contenedor general de "Nueva tarea" */
+    background: transparent !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
 
-        /* solo líneas horizontales arriba y abajo */
-        border-top:1px solid #E5E7EB;
-        border-bottom:1px solid #E5E7EB;
+    padding: 20px 0 22px 0;
+    margin-top: 16px;
+    margin-bottom: 10px;
 
-        /* opcional: ajusta si quieres que las líneas corran más a los lados */
-        margin-left:8px;
-        margin-right:24px;
+    /* solo líneas horizontales */
+    border-top: 1px solid #E5E7EB !important;
+    border-bottom: 1px solid #E5E7EB !important;
+    border-left: none !important;
+    border-right: none !important;
+
+    margin-left: 8px;
+    margin-right: 24px;
 }
+    /* Quitar el rectángulo del formulario "Nueva tarea" */
+    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel)
+       > form[data-testid="stForm"]{
+       background: transparent !important;
+       box-shadow: none !important;
+       border-radius: 0 !important;
+       border: none !important;
+
+       padding-left: 0 !important;
+       padding-right: 0 !important;
+    }
 
     /* Inputs full width dentro del card */
     div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
