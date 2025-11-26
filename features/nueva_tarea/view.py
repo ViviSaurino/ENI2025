@@ -1987,17 +1987,6 @@ def render_nueva_tarea(user: dict | None = None):
     margin-left: 8px;
     margin-right: 24px;
 }
-    /* Quitar el rectángulo del formulario "Nueva tarea" */
-    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel)
-       > form[data-testid="stForm"]{
-       background: transparent !important;
-       box-shadow: none !important;
-       border-radius: 0 !important;
-       border: none !important;
-
-       padding-left: 0 !important;
-       padding-right: 0 !important;
-    }
 
     /* Inputs full width dentro del card */
     div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
@@ -2127,6 +2116,18 @@ def render_nueva_tarea(user: dict | None = None):
     }
     .nt-outbtn{
       margin-top: 6px;
+    }
+
+    /* Quitar el rectángulo del formulario "Nueva tarea" */
+    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel)
+        > form[data-testid="stForm"]{
+        background: transparent !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        border: none !important;
+
+       padding-left: 0 !important;
+       padding-right: 0 !important;
     }
     </style>
         """,
