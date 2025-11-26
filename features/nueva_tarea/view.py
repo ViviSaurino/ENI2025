@@ -2088,7 +2088,7 @@ def render_nueva_tarea(user: dict | None = None):
       display:flex;
       align-items:center;
       justify-content:center;
-      background:#EEF2FF;
+      background: transparent;
       font-size:1.8rem;              /* icono más grande */
       flex-shrink:0;
     }
