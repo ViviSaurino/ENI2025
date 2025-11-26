@@ -2032,7 +2032,7 @@ def render_nueva_tarea(user: dict | None = None):
       padding:12px 14px;
       border-radius:14px;
       font-size:0.92rem;
-      box-shadow:0 12px 30px rgba(15,23,42,0.06);
+      box-shadow:none;
     }
 
     /* Tarjetas de pasos de indicaciones */
@@ -2050,8 +2050,9 @@ def render_nueva_tarea(user: dict | None = None):
       background:#FFFFFF;
       border-radius:14px;
       border:1px solid #E5E7EB;
-      padding:10px 14px;
-      box-shadow:0 12px 30px rgba(15,23,42,0.04);
+      padding:18px 18px;     /* ⬅️ MÁS ALTA SOLO CON PADDING   */
+      min-height:70px;       /* ⬅️ (opcional) altura mínima fija */
+      box-shadow:none;       /* ⬅️ aquí quitamos la sombra, ver punto 2 */
 
       display:flex;
       align-items:center;            /* icono centrado vertical */
