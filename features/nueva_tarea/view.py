@@ -2166,40 +2166,39 @@ def render_nueva_tarea(user: dict | None = None):
     st.markdown(
         """
     <div class="nt-steps-row">
-
       <div class="nt-step-card">
         <div class="nt-step-main">
-          <div class="nt-step-title">1. Completa los campos obligatorios</div>
+          <div class="nt-step-label">1. Completa los campos obligatorios</div>
+          <div class="nt-step-icon-slot"><span class="nt-step-icon">✳️</span></div>
         </div>
-        <div class="nt-step-icon">✳️</div>
       </div>
 
       <div class="nt-step-card">
         <div class="nt-step-main">
-          <div class="nt-step-title">2. Pulsa “Agregar”</div>
+          <div class="nt-step-label">2. Pulsa “Agregar”</div>
+          <div class="nt-step-icon-slot"><span class="nt-step-icon">➕</span></div>
         </div>
-        <div class="nt-step-icon">➕</div>
       </div>
 
       <div class="nt-step-card">
         <div class="nt-step-main">
-          <div class="nt-step-title">3. Revisa en “Tareas recientes”</div>
+          <div class="nt-step-label">3. Revisa en “Tareas recientes”</div>
+          <div class="nt-step-icon-slot"><span class="nt-step-icon">🕑</span></div>
         </div>
-        <div class="nt-step-icon">🕑</div>
       </div>
 
       <div class="nt-step-card">
         <div class="nt-step-main">
-          <div class="nt-step-title">4. Grabar</div>
+          <div class="nt-step-label">4. Grabar</div>
+          <div class="nt-step-icon-slot"><span class="nt-step-icon">💾</span></div>
         </div>
-        <div class="nt-step-icon">💾</div>
       </div>
 
       <div class="nt-step-card">
         <div class="nt-step-main">
-          <div class="nt-step-title">5. Subir a Sheets</div>
+          <div class="nt-step-label">5. Subir a Sheets</div>
+          <div class="nt-step-icon-slot"><span class="nt-step-icon">📤</span></div>
         </div>
-        <div class="nt-step-icon">📤</div>
       </div>
 
     </div>
