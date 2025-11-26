@@ -27,7 +27,6 @@ except Exception:
     upsert_rows_by_id = None
     open_sheet_by_url = None
 
-
 # 👇 Solo-lectura por usuario (si viene de ACL). Acepta nombres separados por coma.
 def _split_list(s: str) -> set[str]:
     return {x.strip() for x in str(s or "").split(",") if x and x.strip()}
@@ -1968,6 +1967,29 @@ def render_nueva_tarea(user: dict | None = None):
       transform: translateY(10px);
     }
 
+    /* ===== Botón Volver en el encabezado (al lado de VS) ===== */
+    .nt-top-back{
+      position:fixed;
+      /* ajusta estos offsets si quedara un poco corrido */
+      top:18px;
+      right:120px;
+      z-index:100;
+    }
+    .nt-top-back .stButton>button{
+      background:transparent !important;
+      color:#2563EB !important;
+      border-radius:999px !important;
+      border:1px solid #DBEAFE !important;
+      font-size:0.9rem !important;
+      padding:4px 16px !important;
+      height:30px !important;
+      min-height:30px !important;
+      box-shadow:none !important;
+    }
+    .nt-top-back .stButton>button:hover{
+      background:#EFF6FF !important;
+    }
+
     /* ===== Tarjeta blanca SOLO para el formulario (filtros) ===== */
     div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
         background: transparent !important;
@@ -2082,40 +2104,17 @@ def render_nueva_tarea(user: dict | None = None):
     .nt-outbtn .stButton>button{
       min-height:38px !important;
       height:38px !important;
-      border-radius:10px !important;
+      border-radius:999px !important;
+      background:#A855F7 !important;
+      color:#FFFFFF !important;
+      border:none !important;
+      font-weight:600 !important;
+    }
+    .nt-outbtn .stButton>button:hover{
+      background:#9333EA !important;
     }
     .nt-outbtn{
       margin-top: 6px;
-    }
-
-    /* ===== Botón Volver flotante cerca del VS ===== */
-    .nt-backtop{
-      margin-top:-40px;  /* lo sube hacia el encabezado */
-      display:flex;
-      justify-content:flex-end;
-      padding-right:96px; /* lo acerca al VS */
-    }
-    .nt-backtop .stButton>button{
-      background:#FFFFFF !important;
-      color:#4B5563 !important;
-      border-radius:999px !important;
-      border:1px solid #E5E7EB !important;
-      padding:4px 16px !important;
-      font-size:0.92rem !important;
-      font-weight:500 !important;
-    }
-
-    /* ===== Botón Agregar lila con letras blancas ===== */
-    .nt-addbtn .stButton>button{
-      background:#A855F7 !important;
-      color:#FFFFFF !important;
-      border-radius:999px !important;
-      border:none !important;
-      font-weight:600 !important;
-      box-shadow:none !important;
-    }
-    .nt-addbtn .stButton>button:hover{
-      filter:brightness(0.96);
     }
 
     div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel)
@@ -2132,6 +2131,20 @@ def render_nueva_tarea(user: dict | None = None):
         """,
         unsafe_allow_html=True,
     )
+
+    # ===== Botón Volver (arriba, al costado de VS) =====
+    st.markdown('<div class="nt-top-back">', unsafe_allow_html=True)
+    top_back_clicked = st.button("Volver", key="btn_top_volver")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    if top_back_clicked:
+        st.session_state["home_tile"] = ""
+        display_name = st.session_state.get("user_display_name", "Usuario")
+        try:
+            st.experimental_set_query_params(auth="1", u=display_name)
+        except Exception:
+            pass
+        st.rerun()
 
     # ===== Datos =====
     if "AREAS_OPC" not in globals():
@@ -2179,13 +2192,6 @@ def render_nueva_tarea(user: dict | None = None):
     )
 
     st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
-
-    # ===== Botón Volver en la parte superior (cerca del VS) =====
-    back_col_sp, back_col_btn = st.columns([6, 1], gap="small")
-    with back_col_btn:
-        st.markdown('<div class="nt-outbtn nt-backtop">', unsafe_allow_html=True)
-        back = st.button("← Volver", key="btn_volver_gestion")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     if st.session_state.get("nt_visible", True):
         if st.session_state.pop("nt_added_ok", False):
@@ -2467,30 +2473,22 @@ def render_nueva_tarea(user: dict | None = None):
             )
             # r3c4 queda vacío (espacio) para mantener solo 5 celdas totales
 
-    # ---------- Botones: solo Agregar abajo ----------
-    spacer, col_add = st.columns([6, 1], gap="medium")
+    # ---------- Botón Agregar (abajo, lila letras blancas) ----------
+    left_spacer, col_add = st.columns([5, 1], gap="medium")
+
     with col_add:
-        st.markdown('<div class="nt-outbtn nt-addbtn">', unsafe_allow_html=True)
+        st.markdown('<div class="nt-outbtn">', unsafe_allow_html=True)
         submitted = st.button(
             "➕ Agregar", use_container_width=True, key="btn_agregar"
         )
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # ------ Acción botón Volver ------
-    if back:
-        st.session_state["home_tile"] = ""
-        display_name = st.session_state.get("user_display_name", "Usuario")
-        try:
-            st.experimental_set_query_params(auth="1", u=display_name)
-        except Exception:
-            pass
-        st.rerun()
-
     # ------ Acción botón Agregar ------
     if submitted:
         try:
             df = st.session_state.get("df_main", pd.DataFrame()).copy()
-            # aquí va tu lógica original de guardar la nueva tarea
+            # Aquí iría tu lógica completa de agregado
+            # (se dejó igual que en tu versión anterior, sin cambios funcionales)
         except Exception as e:
             st.error(f"No pude guardar la nueva tarea: {e}")
 
