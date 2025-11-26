@@ -1970,23 +1970,23 @@ def render_nueva_tarea(user: dict | None = None):
     /* ===== Tarjeta blanca SOLO para el formulario (filtros) ===== */
     div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
         /* contenedor general de "Nueva tarea" */
-    background: transparent !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
 
-    padding: 20px 0 22px 0;
-    margin-top: 16px;
-    margin-bottom: 10px;
+        padding: 20px 0 22px 0;
+        margin-top: 16px;
+        margin-bottom: 10px;
 
-    /* solo líneas horizontales */
-    border-top: 1px solid #E5E7EB !important;
-    border-bottom: 1px solid #E5E7EB !important;
-    border-left: none !important;
-    border-right: none !important;
+        /* solo líneas horizontales */
+        border-top: 1px solid #E5E7EB !important;
+        border-bottom: 1px solid #E5E7EB !important;
+        border-left: none !important;
+        border-right: none !important;
 
-    margin-left: 8px;
-    margin-right: 24px;
-}
+        margin-left: 8px;
+        margin-right: 24px;
+    }
 
     /* Inputs full width dentro del card */
     div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
@@ -2004,31 +2004,6 @@ def render_nueva_tarea(user: dict | None = None):
       width:100% !important;
       max-width:none !important;
     }
-
-    /* Pastilla “Nueva tarea” (ya no se usa visualmente, pero dejamos estilos por si acaso)
-       .nt-pill{
-         width:calc:100%;
-         height:38px;
-         border-radius:12px;
-         display:flex;
-         align-items:center;
-         justify-content:center;
-         background:#A7C8F0;
-         color:#ffffff;
-         font-weight:700;
-         box-shadow:0 6px 14px rgba(167,200,240,.35);
-         user-select:none;
-       }
-
-       div[data-testid="column"]:has(.nt-pill){
-         flex: 1 1 100% !important;
-         max-width: 100% !important;
-       }
-
-       div[data-testid="column"]:has(.nt-pill) ~ div[data-testid="column"]{
-         display: none !important;
-       }
-    */
 
     /* Franja de indicaciones (ya no usada, pero dejamos el estilo por si la reutilizamos) */
     .help-strip{
@@ -2120,14 +2095,15 @@ def render_nueva_tarea(user: dict | None = None):
 
     /* Quitar el rectángulo del formulario "Nueva tarea" */
     div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel)
+        > div[data-testid="stForm"],
+    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel)
         > form[data-testid="stForm"]{
         background: transparent !important;
         box-shadow: none !important;
         border-radius: 0 !important;
         border: none !important;
-
-       padding-left: 0 !important;
-       padding-right: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
     }
     </style>
         """,
@@ -2236,8 +2212,6 @@ def render_nueva_tarea(user: dict | None = None):
 
     # ===== Bloque de filtros / formulario (card blanco) =====
     with st.container():          # opción 1 (sin borde)
-    # o, si quieres explícito:
-    # with st.container(border=False):
         # sentinel solo para el CSS del card
         st.markdown(
             '<span id="nt-card-sentinel" style="display:none"></span>',
