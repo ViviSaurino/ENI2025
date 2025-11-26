@@ -2189,7 +2189,7 @@ def render_nueva_tarea(user: dict | None = None):
 
       <div class="nt-step-card">
         <div class="nt-step-main">
-          <div class="nt-step-label">3. Revisa en “Tareas recientes”</div>
+          <div class="nt-step-label">3. Revisa tu tarea</div>
         </div>
         <div class="nt-step-icon-slot"><span class="nt-step-icon">🕑</span></div>
       </div>
