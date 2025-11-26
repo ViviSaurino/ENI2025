@@ -2050,7 +2050,7 @@ def render_nueva_tarea(user: dict | None = None):
       background:#FFFFFF;
       border-radius:14px;
       border:1px solid #E5E7EB;
-      padding:18px 18px;     /* ⬅️ MÁS ALTA SOLO CON PADDING   */
+      padding:20px 20px;     /* ⬅️ MÁS ALTA SOLO CON PADDING   */
       min-height:70px;       /* ⬅️ (opcional) altura mínima fija */
       box-shadow:none;       /* ⬅️ aquí quitamos la sombra, ver punto 2 */
 
