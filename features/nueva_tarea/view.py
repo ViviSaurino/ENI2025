@@ -2175,7 +2175,7 @@ def render_nueva_tarea(user: dict | None = None):
     <div class="nt-steps-row">
       <div class="nt-step-card">
         <div class="nt-step-main">
-          <div class="nt-step-label">1. Completa los campos obligatorios</div>
+          <div class="nt-step-label">1. Completa las celdas</div>
         </div>
         <div class="nt-step-icon-slot"><span class="nt-step-icon">✳️</span></div>
       </div>
@@ -2196,14 +2196,14 @@ def render_nueva_tarea(user: dict | None = None):
 
       <div class="nt-step-card">
         <div class="nt-step-main">
-          <div class="nt-step-label">4. Grabar</div>
+          <div class="nt-step-label">4. Graba</div>
         </div>
         <div class="nt-step-icon-slot"><span class="nt-step-icon">💾</span></div>
       </div>
 
       <div class="nt-step-card">
         <div class="nt-step-main">
-          <div class="nt-step-label">5. Subir a Sheets</div>
+          <div class="nt-step-label">5. Sube a Sheets</div>
         </div>
         <div class="nt-step-icon-slot"><span class="nt-step-icon">📤</span></div>
       </div>
