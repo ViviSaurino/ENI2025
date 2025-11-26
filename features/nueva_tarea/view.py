@@ -2048,7 +2048,7 @@ def render_nueva_tarea(user: dict | None = None):
       flex:1 1 180px;
       min-width:180px;
       background:#FFFFFF;
-      border-radius:14px;
+      border-radius:8px;
       border:1px solid #E5E7EB;
       padding:20px 20px;     /* ⬅️ MÁS ALTA SOLO CON PADDING   */
       min-height:70px;       /* ⬅️ (opcional) altura mínima fija */
