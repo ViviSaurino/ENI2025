@@ -610,7 +610,7 @@ def _ensure_deadline_and_compliance(df: pd.DataFrame) -> pd.DataFrame:
 
     # Cumplimiento
     fv = to_naive_local_series(df["Fecha Vencimiento"]) if "Fecha Vencimiento" in df.columns else pd.Series(
-        pd.NaT, index=df.index, dtype="datetime64[ns]"]
+        pd.NaT, index=df.index, dtype="datetime64[ns]"
     )
     ft = to_naive_local_series(df["Fecha Terminado"]) if "Fecha Terminado" in df.columns else pd.Series(
         pd.NaT, index=df.index, dtype="datetime64[ns]"
