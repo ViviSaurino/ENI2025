@@ -2044,11 +2044,6 @@ def render_nueva_tarea(user: dict | None = None):
       margin-bottom:16px;
     }
 
-     /* Ocultar subtítulos de las tarjetas */
-    .nt-step-text{
-      display:none !important;
-    }
-    
     .nt-step-card{
       flex:1 1 180px;
       min-width:180px;
@@ -2057,31 +2052,11 @@ def render_nueva_tarea(user: dict | None = None):
       border:1px solid #E5E7EB;
       padding:10px 14px;
       box-shadow:0 12px 30px rgba(15,23,42,0.04);
-      
+
       display:flex;
-      align-items:center;        /* ANTES: flex-start */
-      justify-content:space-between; /* texto izq, icono der */
+      align-items:center;            /* icono centrado vertical */
+      justify-content:space-between; /* texto izquierda, icono derecha */
       gap:12px;
-    }
-    .nt-step-title{
-      font-size:0.92rem;
-      font-weight:400;           /* 👉 Sin negrita (antes 600) */
-      color:#111827;
-    }
-    .nt-step-icon{
-      width:32px;               
-      height:32px;             
-      border-radius:10px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      background:#EEF2FF;
-      font-size:1.8rem;          /* 👉 Icono más grande (antes 1.1rem) */
-      flex-shrink:0;
-    }
-    .nt-step-text{
-      font-size:0.80rem;
-      color:#4B5563;
     }
 
     .nt-step-main{
@@ -2089,8 +2064,40 @@ def render_nueva_tarea(user: dict | None = None):
       display:flex;
       flex-direction:column;
       justify-content:center;
-      align-items:flex-start;      /* izquierda */
+      align-items:flex-start;
       text-align:left;
+    }
+
+    .nt-step-label{
+      font-size:0.88rem;             /* texto un poco más pequeño */
+      font-weight:400;
+      color:#111827;
+    }
+
+    .nt-step-icon-slot{
+      flex:0 0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .nt-step-icon{
+      width:32px;
+      height:32px;
+      border-radius:10px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:#EEF2FF;
+      font-size:1.8rem;              /* icono más grande */
+      flex-shrink:0;
+    }
+
+    /* Ocultar subtítulos de las tarjetas si se usan */
+    .nt-step-text{
+      display:none !important;
+      font-size:0.80rem;
+      color:#4B5563;
     }
 
     /* Botones de abajo */
@@ -2169,36 +2176,36 @@ def render_nueva_tarea(user: dict | None = None):
       <div class="nt-step-card">
         <div class="nt-step-main">
           <div class="nt-step-label">1. Completa los campos obligatorios</div>
-          <div class="nt-step-icon-slot"><span class="nt-step-icon">✳️</span></div>
         </div>
+        <div class="nt-step-icon-slot"><span class="nt-step-icon">✳️</span></div>
       </div>
 
       <div class="nt-step-card">
         <div class="nt-step-main">
           <div class="nt-step-label">2. Pulsa “Agregar”</div>
-          <div class="nt-step-icon-slot"><span class="nt-step-icon">➕</span></div>
         </div>
+        <div class="nt-step-icon-slot"><span class="nt-step-icon">➕</span></div>
       </div>
 
       <div class="nt-step-card">
         <div class="nt-step-main">
           <div class="nt-step-label">3. Revisa en “Tareas recientes”</div>
-          <div class="nt-step-icon-slot"><span class="nt-step-icon">🕑</span></div>
         </div>
+        <div class="nt-step-icon-slot"><span class="nt-step-icon">🕑</span></div>
       </div>
 
       <div class="nt-step-card">
         <div class="nt-step-main">
           <div class="nt-step-label">4. Grabar</div>
-          <div class="nt-step-icon-slot"><span class="nt-step-icon">💾</span></div>
         </div>
+        <div class="nt-step-icon-slot"><span class="nt-step-icon">💾</span></div>
       </div>
 
       <div class="nt-step-card">
         <div class="nt-step-main">
           <div class="nt-step-label">5. Subir a Sheets</div>
-          <div class="nt-step-icon-slot"><span class="nt-step-icon">📤</span></div>
         </div>
+        <div class="nt-step-icon-slot"><span class="nt-step-icon">📤</span></div>
       </div>
     </div>
     """,
