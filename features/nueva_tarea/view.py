@@ -2123,34 +2123,35 @@ def render_nueva_tarea(user: dict | None = None):
     }
 
     /* ===== Botones Volver (jade) y Agregar (lila) ===== */
-    /* (los div .nt-btn-* se usan solo como envoltorio) */
-    .nt-btn-volver,
-    .nt-btn-agregar{
-        margin-top:0px !important;
-    }
-
-    /* Colores reales de los botones dentro del form "Nueva tarea" */
-    form[data-testid="stForm"] .stButton>button{
+    .nt-btn-volver .stButton>button{
       min-height:38px !important;
       height:38px !important;
       border-radius:999px !important;
+      background:#34D399 !important;
       color:#FFFFFF !important;
       border:none !important;
       font-weight:600 !important;
     }
-    /* 1er botón del form = VOLVER */
-    form[data-testid="stForm"] .stButton:nth-of-type(1)>button{
-      background:#34D399 !important;  /* jade */
-    }
-    /* 2do botón del form = AGREGAR */
-    form[data-testid="stForm"] .stButton:nth-of-type(2)>button{
-      background:#A855F7 !important;  /* lila */
-    }
-    form[data-testid="stForm"] .stButton:nth-of-type(1)>button:hover{
+    .nt-btn-volver .stButton>button:hover{
       background:#10B981 !important;
     }
-    form[data-testid="stForm"] .stButton:nth-of-type(2)>button:hover{
+
+    .nt-btn-agregar .stButton>button{
+      min-height:38px !important;
+      height:38px !important;
+      border-radius:999px !important;
+      background:#A855F7 !important;
+      color:#FFFFFF !important;
+      border:none !important;
+      font-weight:600 !important;
+    }
+    .nt-btn-agregar .stButton>button:hover{
       background:#9333EA !important;
+    }
+
+    .nt-btn-volver,
+    .nt-btn-agregar{
+        margin-top:0px !important;
     }
     </style>
         """,
@@ -2427,15 +2428,15 @@ def render_nueva_tarea(user: dict | None = None):
                 unsafe_allow_html=True,
             )
 
-            # ===== Fila de botones (debajo de la línea) =====
-            btn_left, _, btn_right = st.columns([1, 5, 1])
+            # ===== Fila de botones (ambos a la derecha) =====
+            spacer, col_volver, col_agregar = st.columns([6, 1, 1])
 
-            with btn_left:
+            with col_volver:
                 st.markdown('<div class="nt-btn-volver">', unsafe_allow_html=True)
                 volver_clicked = st.form_submit_button("⬅ Volver", use_container_width=True)
                 st.markdown("</div>", unsafe_allow_html=True)
 
-            with btn_right:
+            with col_agregar:
                 st.markdown('<div class="nt-btn-agregar">', unsafe_allow_html=True)
                 submitted = st.form_submit_button("➕ Agregar", use_container_width=True)
                 st.markdown("</div>", unsafe_allow_html=True)
