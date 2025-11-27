@@ -1837,67 +1837,6 @@ def log_reciente_safe(*args, **kwargs):
 
 
 # ============================================================
-# SOLO configuración de Google Sheets para NUEVA TAREA
-# ============================================================
-def _get_sheet_conf():
-    ss_url = (
-        st.secrets.get("gsheets_doc_url")
-        or (st.secrets.get("gsheets", {}) or {}).get("spreadsheet_url")
-        or (st.secrets.get("sheets", {}) or {}).get("sheet_url")
-    )
-    ws_name = (st.secrets.get("gsheets", {}) or {}).get("worksheet", "TareasRecientes")
-    return ss_url, ws_name
-
-
-SECTION_GAP = globals().get("SECTION_GAP", 30)
-
-
-# --- helpers de hora para esta vista ---
-if "_auto_time_on_date" not in globals():
-
-    def _auto_time_on_date():
-        now = now_lima_trimmed()
-        st.session_state["fi_t"] = now.time()
-
-
-if "_sync_time_from_date" not in globals():
-
-    def _sync_time_from_date():
-        d = st.session_state.get("fi_d", None)
-        if d is None:
-            return
-        try:
-            d = pd.to_datetime(d).date()
-        except Exception:
-            return
-        if d == now_lima_trimmed().date():
-            st.session_state["fi_t"] = now_lima_trimmed().time()
-            try:
-                st.session_state["fi_t_view"] = st.session_state["fi_t"].strftime("%H:%M")
-            except Exception:
-                st.session_state["fi_t_view"] = str(st.session_state["fi_t"])
-
-
-# ===== Helper imagen banner (base64) =====
-def _hero_img_base64() -> str:
-    """
-    Carga ENI2025/assets/NUEVA_TAREA.png y la devuelve en base64.
-    Si no la encuentra, devuelve '' (no rompe la app).
-    """
-    candidates = [
-        os.path.join("assets", "NUEVA_TAREA.png"),
-        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets", "NUEVA_TAREA.png"),
-    ]
-    for p in candidates:
-        try:
-            if os.path.exists(p):
-                with open(p, "rb") as f:
-                    return base64.b64encode(f.read()).decode("utf-8")
-        except Exception:
-            continue
-    return ""
-
-# ============================================================
 #           VISTA SUPERIOR: ➕ NUEVA TAREA
 # ============================================================
 def render_nueva_tarea(user: dict | None = None):
@@ -2098,7 +2037,7 @@ def render_nueva_tarea(user: dict | None = None):
 
     .nt-btn-volver,
     .nt-btn-agregar{
-        margin-top:4px !important;  /* bajarlos un pelín */
+        margin-top:10px !important;  /* un poco más abajo */
     }
     </style>
         """,
@@ -2386,7 +2325,7 @@ def render_nueva_tarea(user: dict | None = None):
     st.markdown(
         """
         <div style="
-            height:3px;
+            height:1.5px;
             background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
             border-radius:999px;
             margin:16px 0 0 0;
@@ -2429,3 +2368,4 @@ def render(user: dict | None = None):
     _bootstrap_df_main_hist()
     render_nueva_tarea(user=user)
     render_historial(user=user)
+
