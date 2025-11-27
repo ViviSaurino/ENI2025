@@ -718,7 +718,7 @@ def _bootstrap_df_main_hist():
 #                 VISTA INFERIOR: TAREAS RECIENTES
 # =======================================================
 def render_historial(user: dict | None = None):
-    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
     # ====== CSS (AJUSTES pedidos) ======
     st.markdown(
