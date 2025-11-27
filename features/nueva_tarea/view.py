@@ -1836,6 +1836,33 @@ def log_reciente_safe(*args, **kwargs):
         pass
 
 # ============================================================
+#   HELPER: imagen del banner "Nueva tarea"
+# ============================================================
+@st.cache_data
+def _hero_img_base64() -> str:
+    """
+    Devuelve el PNG del banner en base64.
+    Busca en la carpeta 'assets' con varios nombres posibles.
+    Si no lo encuentra, devuelve cadena vacía (no rompe la app).
+    """
+    import base64
+    from pathlib import Path
+
+    assets_dir = Path("assets")
+    candidatos = [
+        "TAREA_NUEVA.png",
+        "TAREA-NUEVA.png",
+        "TAREA NUEVA.png",
+        "tarea_nueva.png",
+    ]
+    for nombre in candidatos:
+        ruta = assets_dir / nombre
+        if ruta.exists():
+            return base64.b64encode(ruta.read_bytes()).decode("utf-8")
+    return ""
+
+
+# ============================================================
 #   HELPER: sincronizar hora a partir de la fecha (fi_d)
 # ============================================================
 def _sync_time_from_date():
@@ -1849,14 +1876,12 @@ def _sync_time_from_date():
 
     t = st.session_state.get("fi_t", None)
     if t:
-        # Solo refrescamos el texto
         try:
             st.session_state["fi_t_view"] = t.strftime("%H:%M")
         except Exception:
             pass
         return
 
-    # Si no hay hora, usamos ahora Lima con segundos en 0
     try:
         now = now_lima_trimmed()
     except Exception:
@@ -2067,7 +2092,7 @@ def render_nueva_tarea(user: dict | None = None):
 
     .nt-btn-volver,
     .nt-btn-agregar{
-        margin-top:16px !important;  /* un poco más abajo */
+        margin-top:22px !important;  /* un poco más abajo */
     }
     </style>
         """,
@@ -2099,11 +2124,7 @@ def render_nueva_tarea(user: dict | None = None):
     st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
     # ===== Banner superior “Nueva tarea” =====
-    try:
-        hero_b64 = _hero_img_base64()
-    except NameError:
-        hero_b64 = ""
-
+    hero_b64 = _hero_img_base64()
     hero_img_html = (
         f'<img src="data:image/png;base64,{hero_b64}" alt="Nueva tarea" class="nt-hero-img">'
         if hero_b64 else ""
@@ -2258,7 +2279,7 @@ def render_nueva_tarea(user: dict | None = None):
                 else:
                     st.session_state["fi_d"] = now_lima_trimmed().date()
 
-            _sync_time_from_date()  # usa fi_d y actualiza fi_t / fi_t_view
+            _sync_time_from_date()
             _t = st.session_state.get("fi_t")
             st.session_state["fi_t_view"] = _t.strftime("%H:%M") if _t else ""
 
@@ -2291,7 +2312,7 @@ def render_nueva_tarea(user: dict | None = None):
                 r2c4.text_input("Estado actual", value="No iniciado", disabled=True, key="nt_estado_view")
                 r2c5.selectbox("Complejidad", options=["🟢 Baja", "🟡 Media", "🔴 Alta"], index=0, key="nt_complejidad")
 
-                # FILA 3 (con botones)
+                # FILA 3  (con botones)
                 r3c1, r3c2, r3c3, r3c4, r3c5 = st.columns(COLS_5, gap="medium")
                 r3c1.selectbox(
                     "Duración",
@@ -2332,7 +2353,7 @@ def render_nueva_tarea(user: dict | None = None):
                     key="nt_duracion_label",
                 )
 
-                # FILA 3 (con botones)
+                # FILA 3  (con botones)
                 r3c1, r3c2, r3c3, r3c4, r3c5 = st.columns(COLS_5, gap="medium")
                 r3c1.date_input("Fecha de registro", key="fi_d")
                 _sync_time_from_date()
@@ -2400,6 +2421,4 @@ def render(user: dict | None = None):
     """
     _bootstrap_df_main_hist()
     render_nueva_tarea(user=user)
-    render_historial(user=user)
-
     render_historial(user=user)
