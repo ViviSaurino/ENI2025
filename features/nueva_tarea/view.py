@@ -2378,3 +2378,17 @@ def render_nueva_tarea(user: dict | None = None):
 
     gap = SECTION_GAP if "SECTION_GAP" in globals() else 30
     st.markdown(f"<div style='height:{gap}px;'></div>", unsafe_allow_html=True)
+
+# ============================================================
+#             VISTA UNIFICADA (NUEVA + RECIENTES)
+# ============================================================
+def render(user: dict | None = None):
+    """
+    Vista combinada:
+    - Arriba: ➕ Nueva tarea
+    - Abajo: 🕑 Tareas recientes
+    """
+    # Aseguramos que df_main esté inicializado antes de ambos bloques
+    _bootstrap_df_main_hist()
+    render_nueva_tarea(user=user)
+    render_historial(user=user)
