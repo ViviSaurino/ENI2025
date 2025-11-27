@@ -2078,7 +2078,6 @@ def render_nueva_tarea(user: dict | None = None):
       color:#FFFFFF !important;
       border:none !important;
       font-weight:600 !important;
-      margin-top:18px !important;   /* ⬅ los bajo un poquito */
     }
     .nt-btn-volver .stButton>button:hover{
       background:#10B981 !important;
@@ -2092,7 +2091,6 @@ def render_nueva_tarea(user: dict | None = None):
       color:#FFFFFF !important;
       border:none !important;
       font-weight:600 !important;
-      margin-top:18px !important;   /* ⬅ igual aquí */
     }
     .nt-btn-agregar .stButton>button:hover{
       background:#9333EA !important;
@@ -2321,7 +2319,7 @@ def render_nueva_tarea(user: dict | None = None):
                 r2c4.text_input("Estado actual", value="No iniciado", disabled=True, key="nt_estado_view")
                 r2c5.selectbox("Complejidad", options=["🟢 Baja", "🟡 Media", "🔴 Alta"], index=0, key="nt_complejidad")
 
-                # FILA 3  (botones en la misma fila)
+                # FILA 3  (con botones)
                 r3c1, r3c2, r3c3, r3c4, r3c5 = st.columns(COLS_5, gap="medium")
                 r3c1.selectbox(
                     "Duración",
@@ -2337,12 +2335,16 @@ def render_nueva_tarea(user: dict | None = None):
                     disabled=True,
                     help="Se asigna al elegir la fecha",
                 )
+
+                # 🔹 Pequeño spacer para bajar un poco los botones
                 with r3c4:
+                    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
                     st.markdown('<div class="nt-btn-volver">', unsafe_allow_html=True)
                     volver_clicked = st.form_submit_button("⬅ Volver", use_container_width=True)
                     st.markdown("</div>", unsafe_allow_html=True)
 
                 with r3c5:
+                    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
                     st.markdown('<div class="nt-btn-agregar">', unsafe_allow_html=True)
                     submitted = st.form_submit_button("➕ Agregar", use_container_width=True)
                     st.markdown("</div>", unsafe_allow_html=True)
@@ -2361,7 +2363,7 @@ def render_nueva_tarea(user: dict | None = None):
                     key="nt_duracion_label",
                 )
 
-                # FILA 3  (botones en la misma fila)
+                # FILA 3  (con botones)
                 r3c1, r3c2, r3c3, r3c4, r3c5 = st.columns(COLS_5, gap="medium")
                 r3c1.date_input("Fecha de registro", key="fi_d")
                 _sync_time_from_date()
@@ -2374,11 +2376,13 @@ def render_nueva_tarea(user: dict | None = None):
                 r3c3.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
 
                 with r3c4:
+                    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
                     st.markdown('<div class="nt-btn-volver">', unsafe_allow_html=True)
                     volver_clicked = st.form_submit_button("⬅ Volver", use_container_width=True)
                     st.markdown("</div>", unsafe_allow_html=True)
 
                 with r3c5:
+                    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
                     st.markdown('<div class="nt-btn-agregar">', unsafe_allow_html=True)
                     submitted = st.form_submit_button("➕ Agregar", use_container_width=True)
                     st.markdown("</div>", unsafe_allow_html=True)
@@ -2404,7 +2408,6 @@ def render_nueva_tarea(user: dict | None = None):
     gap = SECTION_GAP if "SECTION_GAP" in globals() else 30
     st.markdown(f"<div style='height:{gap}px;'></div>", unsafe_allow_html=True)
 
-
 # ============================================================
 #             VISTA UNIFICADA (NUEVA + RECIENTES)
 # ============================================================
@@ -2418,4 +2421,3 @@ def render(user: dict | None = None):
     _bootstrap_df_main_hist()
     render_nueva_tarea(user=user)
     render_historial(user=user)
-
