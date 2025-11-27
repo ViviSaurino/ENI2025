@@ -2103,7 +2103,7 @@ def render_nueva_tarea(user: dict | None = None):
 
     /* 🔹 NUEVO: mover toda la FILA de botones */
     .nt-buttons-row{
-        margin-top:-16px !important;  /* sube/baja Volver + Agregar juntos */
+        margin-top:-30px !important;  /* sube/baja Volver + Agregar juntos */
     }
     </style>
         """,
