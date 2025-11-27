@@ -2044,6 +2044,30 @@ def render_nueva_tarea(user: dict | None = None):
         unsafe_allow_html=True,
     )
 
+    # ===== Helper local para el hero (evita NameError) =====
+    def _hero_img_base64() -> str:
+        """
+        Intenta cargar una imagen PNG para el banner y devolverla en base64.
+        Si no la encuentra o falla algo, devuelve '' y simplemente no se muestra la imagen.
+        """
+        try:
+            import base64
+            from pathlib import Path
+
+            # Ajusta el nombre si tu PNG se llama distinto
+            posibles = [
+                "assets/nt_hero.png",
+                "assets/nt-hero.png",
+                "assets/nueva_tarea_hero.png",
+            ]
+            for rel in posibles:
+                p = Path(rel)
+                if p.exists():
+                    return base64.b64encode(p.read_bytes()).decode("utf-8")
+        except Exception:
+            return ""
+        return ""
+
     # ===== Datos =====
     global AREAS_OPC
     if "AREAS_OPC" not in globals():
