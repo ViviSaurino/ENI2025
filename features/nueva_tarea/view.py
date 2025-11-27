@@ -1973,7 +1973,7 @@ def render_nueva_tarea(user: dict | None = None):
       border-radius: 0 !important;
       border: none !important;
       padding: 0 !important;
-      margin: 0px 0 10px 0 !important;
+      margin: -2px 0 10px 0 !important;
     }
 
     div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) > div{
