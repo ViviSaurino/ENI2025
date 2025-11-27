@@ -2098,7 +2098,7 @@ def render_nueva_tarea(user: dict | None = None):
 
     .nt-btn-volver,
     .nt-btn-agregar{
-        margin-top:0px !important;
+        margin-top:-4px !important;  /* pelín hacia arriba */
     }
     </style>
         """,
@@ -2336,15 +2336,12 @@ def render_nueva_tarea(user: dict | None = None):
                     help="Se asigna al elegir la fecha",
                 )
 
-                # 🔹 Pequeño spacer para bajar un poco los botones
                 with r3c4:
-                    st.markdown("<div style='height:-2px'></div>", unsafe_allow_html=True)
                     st.markdown('<div class="nt-btn-volver">', unsafe_allow_html=True)
                     volver_clicked = st.form_submit_button("⬅ Volver", use_container_width=True)
                     st.markdown("</div>", unsafe_allow_html=True)
 
                 with r3c5:
-                    st.markdown("<div style='height:-2px'></div>", unsafe_allow_html=True)
                     st.markdown('<div class="nt-btn-agregar">', unsafe_allow_html=True)
                     submitted = st.form_submit_button("➕ Agregar", use_container_width=True)
                     st.markdown("</div>", unsafe_allow_html=True)
@@ -2376,16 +2373,27 @@ def render_nueva_tarea(user: dict | None = None):
                 r3c3.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
 
                 with r3c4:
-                    st.markdown("<div style='height:-2px'></div>", unsafe_allow_html=True)
                     st.markdown('<div class="nt-btn-volver">', unsafe_allow_html=True)
                     volver_clicked = st.form_submit_button("⬅ Volver", use_container_width=True)
                     st.markdown("</div>", unsafe_allow_html=True)
 
                 with r3c5:
-                    st.markdown("<div style='height:-2px'></div>", unsafe_allow_html=True)
                     st.markdown('<div class="nt-btn-agregar">', unsafe_allow_html=True)
                     submitted = st.form_submit_button("➕ Agregar", use_container_width=True)
                     st.markdown("</div>", unsafe_allow_html=True)
+
+    # ===== Línea azul inferior debajo del formulario =====
+    st.markdown(
+        """
+        <div style="
+            height:1.5px;
+            background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
+            border-radius:999px;
+            margin:16px 0 0 0;
+        "></div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     # ------ Acción botones fuera del form ------
     if volver_clicked:
@@ -2421,3 +2429,4 @@ def render(user: dict | None = None):
     _bootstrap_df_main_hist()
     render_nueva_tarea(user=user)
     render_historial(user=user)
+
