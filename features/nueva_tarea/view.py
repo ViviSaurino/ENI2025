@@ -2146,6 +2146,7 @@ def render_nueva_tarea(user: dict | None = None):
         unsafe_allow_html=True,
     )
 
+    # espacio entre banner y tarjetas de pasos
     st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
 
     if st.session_state.get("nt_visible", True):
@@ -2194,7 +2195,8 @@ def render_nueva_tarea(user: dict | None = None):
         unsafe_allow_html=True,
     )
 
-    st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
+    # 🔹 Espacio pequeño solo para las celdas (formulario)
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
     # ===== Formulario =====
     COLS_5 = [1, 1, 1, 1, 1]
