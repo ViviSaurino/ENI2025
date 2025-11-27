@@ -1966,30 +1966,35 @@ def render_nueva_tarea(user: dict | None = None):
       transform: translateY(10px);
     }
 
-    /* ===== Contenedor de la vista (sin tarjeta) ===== */
+    /* Contenedor del formulario de NUEVA TAREA – sin tarjeta ni bordes */
     div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel){
-        background: transparent !important;
-        box-shadow: none !important;
-        border-radius: 0 !important;
-        border: none !important;
-
-        padding: 0 !important;
-        margin-top: 16px !important;
-        margin-bottom: 10px !important;
-        margin-left: 0 !important;
-        margin-right: 0 !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      border: none !important;
+      padding: 0 !important;
+      margin: 16px 0 10px 0 !important;
     }
 
-    /* ===== Quitar la tarjeta del <form> de esta vista ===== */
-    form[data-testid="stForm"]:has(#nt-card-sentinel){
-        background: transparent !important;
-        box-shadow: none !important;
-        border-radius: 0 !important;
-        border: none !important;
-        padding: 0 !important;
+    /* Cualquier wrapper interno dentro de ese bloque */
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) > div{
+      background: transparent !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      border: none !important;
     }
 
-    /* Inputs full width dentro del card */
+    /* El <form> como tal, también sin tarjeta */
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) form[data-testid="stForm"]{
+      background: transparent !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      border: none !important;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+    }
+
+    /* Inputs full width dentro del formulario de Nueva tarea */
     div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextInput,
     div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stSelectbox,
     div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stDateInput,
@@ -1997,7 +2002,6 @@ def render_nueva_tarea(user: dict | None = None):
     div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextArea{
       width:100% !important;
     }
-
     div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextInput>div,
     div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stSelectbox>div,
     div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stDateInput>div,
