@@ -2020,6 +2020,15 @@ def render_nueva_tarea(user: dict | None = None):
       margin-bottom:16px;
     }
 
+    /* Línea azul entre tarjetas de pasos y formulario */
+    .nt-divider{
+      height:1px;
+      background:#4F46E5;
+      border-radius:999px;
+      opacity:0.8;
+      margin:8px 0 18px 0;
+    }
+
     .nt-step-card{
       flex:1 1 180px;
       min-width:180px;
@@ -2096,6 +2105,13 @@ def render_nueva_tarea(user: dict | None = None):
     }
     .nt-btn-agregar .stButton>button:hover{
       background:#9333EA !important;
+    }
+
+    /* Subir un poquito los botones para pegarlos a las celdas */
+    div[data-testid="column"] > div:has(.nt-btn-volver),
+    div[data-testid="column"] > div:has(.nt-btn-agregar){
+      margin-top:-6px !important;
+      padding-top:0 !important;
     }
 
     div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel)
@@ -2192,7 +2208,9 @@ def render_nueva_tarea(user: dict | None = None):
         unsafe_allow_html=True,
     )
 
-    st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
+    # Línea divisoria azul entre pasos y formulario
+    st.markdown('<div class="nt-divider"></div>', unsafe_allow_html=True)
+    st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
 
     # ===== Formulario =====
     COLS_5 = [1, 1, 1, 1, 1]
