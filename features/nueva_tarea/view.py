@@ -2097,7 +2097,7 @@ def render_nueva_tarea(user: dict | None = None):
     }
     .nt-btn-volver,
     .nt-btn-agregar{
-        margin-top:-16px !important;  /* prueba -10, -12, -16 hasta que te guste */
+        margin-top:-26px !important;  /* prueba -10, -12, -16 hasta que te guste */
     }
     </style>
         """,
