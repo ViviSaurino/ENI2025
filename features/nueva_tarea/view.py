@@ -2188,7 +2188,7 @@ def render_nueva_tarea(user: dict | None = None):
             height:2px;
             background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
             border-radius:999px;
-            margin:10px 0 6px 0;
+            margin:24px 0 6px 0;
         "></div>
         """,
         unsafe_allow_html=True,
