@@ -1835,6 +1835,37 @@ def log_reciente_safe(*args, **kwargs):
         # Silenciamos cualquier error interno del log
         pass
 
+# ============================================================
+#   HELPER: sincronizar hora a partir de la fecha (fi_d)
+# ============================================================
+def _sync_time_from_date():
+    """
+    Usa la fecha fi_d para asegurar que fi_t y fi_t_view tengan una hora válida.
+    Si ya existe fi_t, solo actualiza fi_t_view.
+    """
+    d = st.session_state.get("fi_d", None)
+    if not d:
+        return
+
+    t = st.session_state.get("fi_t", None)
+    if t:
+        # Solo refrescamos el texto
+        try:
+            st.session_state["fi_t_view"] = t.strftime("%H:%M")
+        except Exception:
+            pass
+        return
+
+    # Si no hay hora, usamos ahora Lima con segundos en 0
+    try:
+        now = now_lima_trimmed()
+    except Exception:
+        from datetime import datetime
+        now = datetime.now()
+    now = now.replace(second=0, microsecond=0)
+    st.session_state["fi_t"] = now.time()
+    st.session_state["fi_t_view"] = now.strftime("%H:%M")
+
 
 # ============================================================
 #           VISTA SUPERIOR: ➕ NUEVA TAREA
@@ -1922,7 +1953,7 @@ def render_nueva_tarea(user: dict | None = None):
       border: none !important;
     }
 
-    div[data-testid="stVerticalBlock"]:has(#nt-card-sinel) form[data-testid="stForm"]{
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) form[data-testid="stForm"]{
       background: transparent !important;
       box-shadow: none !important;
       border-radius: 0 !important;
@@ -2068,7 +2099,6 @@ def render_nueva_tarea(user: dict | None = None):
     st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
     # ===== Banner superior “Nueva tarea” =====
-    # 👇 Evitar NameError si _hero_img_base64 no existe en este archivo
     try:
         hero_b64 = _hero_img_base64()
     except NameError:
@@ -2130,7 +2160,7 @@ def render_nueva_tarea(user: dict | None = None):
         unsafe_allow_html=True,
     )
 
-    # Línea azul delgada entre tarjetas y formulario (SUPERIOR)
+    # Línea azul delgada entre tarjetas y formulario (superior)
     st.markdown(
         """
         <div style="
@@ -2148,7 +2178,6 @@ def render_nueva_tarea(user: dict | None = None):
 
     # ===== Formulario =====
     COLS_5 = [1, 1, 1, 1, 1]
-
     volver_clicked = False
     submitted = False
 
@@ -2228,8 +2257,8 @@ def render_nueva_tarea(user: dict | None = None):
                     st.session_state.pop("nt_skip_date_init", None)
                 else:
                     st.session_state["fi_d"] = now_lima_trimmed().date()
-            _sync_time_from_date()  # solo usa fi_d y actualiza fi_t / fi_t_view
 
+            _sync_time_from_date()  # usa fi_d y actualiza fi_t / fi_t_view
             _t = st.session_state.get("fi_t")
             st.session_state["fi_t_view"] = _t.strftime("%H:%M") if _t else ""
 
@@ -2262,7 +2291,7 @@ def render_nueva_tarea(user: dict | None = None):
                 r2c4.text_input("Estado actual", value="No iniciado", disabled=True, key="nt_estado_view")
                 r2c5.selectbox("Complejidad", options=["🟢 Baja", "🟡 Media", "🔴 Alta"], index=0, key="nt_complejidad")
 
-                # FILA 3  (con botones)
+                # FILA 3 (con botones)
                 r3c1, r3c2, r3c3, r3c4, r3c5 = st.columns(COLS_5, gap="medium")
                 r3c1.selectbox(
                     "Duración",
@@ -2303,7 +2332,7 @@ def render_nueva_tarea(user: dict | None = None):
                     key="nt_duracion_label",
                 )
 
-                # FILA 3  (con botones)
+                # FILA 3 (con botones)
                 r3c1, r3c2, r3c3, r3c4, r3c5 = st.columns(COLS_5, gap="medium")
                 r3c1.date_input("Fecha de registro", key="fi_d")
                 _sync_time_from_date()
@@ -2369,7 +2398,8 @@ def render(user: dict | None = None):
     - Arriba: ➕ Nueva tarea
     - Abajo: 🕑 Tareas recientes
     """
-    # Aseguramos que df_main esté inicializado antes de ambos bloques
     _bootstrap_df_main_hist()
     render_nueva_tarea(user=user)
+    render_historial(user=user)
+
     render_historial(user=user)
