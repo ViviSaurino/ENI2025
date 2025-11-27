@@ -1843,13 +1843,14 @@ def _hero_img_base64() -> str:
     """
     Devuelve el PNG del banner en base64.
     Busca en la carpeta 'assets' con varios nombres posibles.
-    Si no lo encuentra, devuelve cadena vacía (no rompe la app).
     """
     import base64
     from pathlib import Path
 
     assets_dir = Path("assets")
     candidatos = [
+        "NUEVA_TAREA.png",   # <- tu archivo
+        "nueva_tarea.png",
         "TAREA_NUEVA.png",
         "TAREA-NUEVA.png",
         "TAREA NUEVA.png",
@@ -2092,7 +2093,7 @@ def render_nueva_tarea(user: dict | None = None):
 
     .nt-btn-volver,
     .nt-btn-agregar{
-        margin-top:22px !important;  /* un poco más abajo */
+        margin-top:0px !important;  /* color y borde, la altura la damos con un spacer */
     }
     </style>
         """,
@@ -2330,11 +2331,14 @@ def render_nueva_tarea(user: dict | None = None):
                 )
 
                 with r3c4:
+                    # 🔹 Spacer para bajar un poco el botón
+                    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
                     st.markdown('<div class="nt-btn-volver">', unsafe_allow_html=True)
                     volver_clicked = st.form_submit_button("⬅ Volver", use_container_width=True)
                     st.markdown("</div>", unsafe_allow_html=True)
 
                 with r3c5:
+                    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
                     st.markdown('<div class="nt-btn-agregar">', unsafe_allow_html=True)
                     submitted = st.form_submit_button("➕ Agregar", use_container_width=True)
                     st.markdown("</div>", unsafe_allow_html=True)
@@ -2366,11 +2370,13 @@ def render_nueva_tarea(user: dict | None = None):
                 r3c3.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
 
                 with r3c4:
+                    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
                     st.markdown('<div class="nt-btn-volver">', unsafe_allow_html=True)
                     volver_clicked = st.form_submit_button("⬅ Volver", use_container_width=True)
                     st.markdown("</div>", unsafe_allow_html=True)
 
                 with r3c5:
+                    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
                     st.markdown('<div class="nt-btn-agregar">', unsafe_allow_html=True)
                     submitted = st.form_submit_button("➕ Agregar", use_container_width=True)
                     st.markdown("</div>", unsafe_allow_html=True)
