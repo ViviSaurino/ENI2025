@@ -2096,14 +2096,14 @@ def render_nueva_tarea(user: dict | None = None):
       background:#9333EA !important;
     }
 
-    /* Fila que contiene ambos botones (para moverlos juntos) */
-    .nt-buttons-row{
-      margin-top:-10px !important;  /* ajusta -10, -14, -20 según lo alto que los quieras */
-    }
-
     .nt-btn-volver,
     .nt-btn-agregar{
-        margin-top:-24px !important;
+        margin-top:0px !important;
+    }
+
+    /* 🔹 NUEVO: mover toda la FILA de botones */
+    .nt-buttons-row{
+        margin-top:-16px !important;  /* sube/baja Volver + Agregar juntos */
     }
     </style>
         """,
@@ -2381,7 +2381,6 @@ def render_nueva_tarea(user: dict | None = None):
             st.markdown('<div class="nt-btn-agregar">', unsafe_allow_html=True)
             submitted = st.form_submit_button("➕ Agregar", use_container_width=True)
             st.markdown("</div>", unsafe_allow_html=True)
-
         st.markdown("</div>", unsafe_allow_html=True)
 
     # ------ Acción botones fuera del form ------
