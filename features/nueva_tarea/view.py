@@ -1892,6 +1892,63 @@ def _sync_time_from_date():
     st.session_state["fi_t"] = now.time()
     st.session_state["fi_t_view"] = now.strftime("%H:%M")
 
+# ============================================================
+#   HELPER: imagen del banner "Nueva tarea"
+# ============================================================
+@st.cache_data
+def _hero_img_base64() -> str:
+    """
+    Devuelve el PNG del banner en base64.
+    Busca en la carpeta 'assets' con varios nombres posibles.
+    """
+    import base64
+    from pathlib import Path
+
+    assets_dir = Path("assets")
+    candidatos = [
+        "NUEVA_TAREA.png",   # <- tu archivo
+        "nueva_tarea.png",
+        "TAREA_NUEVA.png",
+        "TAREA-NUEVA.png",
+        "TAREA NUEVA.png",
+        "tarea_nueva.png",
+    ]
+    for nombre in candidatos:
+        ruta = assets_dir / nombre
+        if ruta.exists():
+            return base64.b64encode(ruta.read_bytes()).decode("utf-8")
+    return ""
+
+
+# ============================================================
+#   HELPER: sincronizar hora a partir de la fecha (fi_d)
+# ============================================================
+def _sync_time_from_date():
+    """
+    Usa la fecha fi_d para asegurar que fi_t y fi_t_view tengan una hora válida.
+    Si ya existe fi_t, solo actualiza fi_t_view.
+    """
+    d = st.session_state.get("fi_d", None)
+    if not d:
+        return
+
+    t = st.session_state.get("fi_t", None)
+    if t:
+        try:
+            st.session_state["fi_t_view"] = t.strftime("%H:%M")
+        except Exception:
+            pass
+        return
+
+    try:
+        now = now_lima_trimmed()
+    except Exception:
+        from datetime import datetime
+        now = datetime.now()
+    now = now.replace(second=0, microsecond=0)
+    st.session_state["fi_t"] = now.time()
+    st.session_state["fi_t_view"] = now.strftime("%H:%M")
+
 
 # ============================================================
 #           VISTA SUPERIOR: ➕ NUEVA TAREA
@@ -2093,7 +2150,7 @@ def render_nueva_tarea(user: dict | None = None):
 
     .nt-btn-volver,
     .nt-btn-agregar{
-        margin-top:0px !important;  /* color y borde, la altura la damos con un spacer */
+        margin-top:0px !important;
     }
     </style>
         """,
@@ -2303,18 +2360,31 @@ def render_nueva_tarea(user: dict | None = None):
                 else f"{prefix}_"
             )
 
-            # ---------- FILA 2 y 3 ----------
+            # ---------- FILA 2 (celdas del medio) ----------
             if _is_fase_otros:
-                # FILA 2
                 r2c1, r2c2, r2c3, r2c4, r2c5 = st.columns(COLS_5, gap="medium")
                 r2c1.text_input("Responsable", key="nt_resp", disabled=True)
                 r2c2.selectbox("Ciclo de mejora", options=["1", "2", "3", "+4"], index=0, key="nt_ciclo_mejora")
                 r2c3.text_input("Tipo de tarea", key="nt_tipo", placeholder="Escribe el tipo de tarea")
                 r2c4.text_input("Estado actual", value="No iniciado", disabled=True, key="nt_estado_view")
                 r2c5.selectbox("Complejidad", options=["🟢 Baja", "🟡 Media", "🔴 Alta"], index=0, key="nt_complejidad")
+            else:
+                r2c1, r2c2, r2c3, r2c4, r2c5 = st.columns(COLS_5, gap="medium")
+                r2c1.selectbox("Ciclo de mejora", options=["1", "2", "3", "+4"], index=0, key="nt_ciclo_mejora")
+                r2c2.text_input("Tipo de tarea", key="nt_tipo", placeholder="Escribe el tipo de tarea")
+                r2c3.text_input("Estado actual", value="No iniciado", disabled=True, key="nt_estado_view")
+                r2c4.selectbox("Complejidad", options=["🟢 Baja", "🟡 Media", "🔴 Alta"], index=0, key="nt_complejidad")
+                r2c5.selectbox(
+                    "Duración",
+                    options=[f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)],
+                    index=0,
+                    key="nt_duracion_label",
+                )
 
-                # FILA 3  (con botones)
-                r3c1, r3c2, r3c3, r3c4, r3c5 = st.columns(COLS_5, gap="medium")
+            # ---------- FILA 3 (última fila de celdas) ----------
+            r3c1, r3c2, r3c3, r3c4, r3c5 = st.columns(COLS_5, gap="medium")
+            if _is_fase_otros:
+                # Duración va en esta fila si la fase es "Otros"
                 r3c1.selectbox(
                     "Duración",
                     options=[f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)],
@@ -2329,36 +2399,10 @@ def render_nueva_tarea(user: dict | None = None):
                     disabled=True,
                     help="Se asigna al elegir la fecha",
                 )
-
-                with r3c4:
-                    # 🔹 Spacer para bajar un poco el botón
-                    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-                    st.markdown('<div class="nt-btn-volver">', unsafe_allow_html=True)
-                    volver_clicked = st.form_submit_button("⬅ Volver", use_container_width=True)
-                    st.markdown("</div>", unsafe_allow_html=True)
-
-                with r3c5:
-                    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-                    st.markdown('<div class="nt-btn-agregar">', unsafe_allow_html=True)
-                    submitted = st.form_submit_button("➕ Agregar", use_container_width=True)
-                    st.markdown("</div>", unsafe_allow_html=True)
-
+                # columnas vacías solo para respetar el grid
+                r3c4.markdown("&nbsp;", unsafe_allow_html=True)
+                r3c5.markdown("&nbsp;", unsafe_allow_html=True)
             else:
-                # FILA 2
-                r2c1, r2c2, r2c3, r2c4, r2c5 = st.columns(COLS_5, gap="medium")
-                r2c1.selectbox("Ciclo de mejora", options=["1", "2", "3", "+4"], index=0, key="nt_ciclo_mejora")
-                r2c2.text_input("Tipo de tarea", key="nt_tipo", placeholder="Escribe el tipo de tarea")
-                r2c3.text_input("Estado actual", value="No iniciado", disabled=True, key="nt_estado_view")
-                r2c4.selectbox("Complejidad", options=["🟢 Baja", "🟡 Media", "🔴 Alta"], index=0, key="nt_complejidad")
-                r2c5.selectbox(
-                    "Duración",
-                    options=[f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)],
-                    index=0,
-                    key="nt_duracion_label",
-                )
-
-                # FILA 3  (con botones)
-                r3c1, r3c2, r3c3, r3c4, r3c5 = st.columns(COLS_5, gap="medium")
                 r3c1.date_input("Fecha de registro", key="fi_d")
                 _sync_time_from_date()
                 r3c2.text_input(
@@ -2368,31 +2412,33 @@ def render_nueva_tarea(user: dict | None = None):
                     help="Se asigna al elegir la fecha",
                 )
                 r3c3.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
+                r3c4.markdown("&nbsp;", unsafe_allow_html=True)
+                r3c5.markdown("&nbsp;", unsafe_allow_html=True)
 
-                with r3c4:
-                    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-                    st.markdown('<div class="nt-btn-volver">', unsafe_allow_html=True)
-                    volver_clicked = st.form_submit_button("⬅ Volver", use_container_width=True)
-                    st.markdown("</div>", unsafe_allow_html=True)
+            # ===== Línea lila-azul PEGADA a las celdas (debajo) =====
+            st.markdown(
+                """
+                <div style="
+                    height:2px;
+                    background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
+                    border-radius:999px;
+                    margin:10px 0 10px 0;
+                "></div>
+                """,
+                unsafe_allow_html=True,
+            )
 
-                with r3c5:
-                    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-                    st.markdown('<div class="nt-btn-agregar">', unsafe_allow_html=True)
-                    submitted = st.form_submit_button("➕ Agregar", use_container_width=True)
-                    st.markdown("</div>", unsafe_allow_html=True)
+            # ===== FILA DE BOTONES (debajo de la línea) =====
+            b1, b2, b3, b4, b5 = st.columns(COLS_5, gap="medium")
+            with b4:
+                st.markdown('<div class="nt-btn-volver">', unsafe_allow_html=True)
+                volver_clicked = st.form_submit_button("⬅ Volver", use_container_width=True)
+                st.markdown("</div>", unsafe_allow_html=True)
 
-    # ===== Línea azul inferior debajo del formulario =====
-    st.markdown(
-        """
-        <div style="
-            height:2px;
-            background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
-            border-radius:999px;
-            margin:16px 0 0 0;
-        "></div>
-        """,
-        unsafe_allow_html=True,
-    )
+            with b5:
+                st.markdown('<div class="nt-btn-agregar">', unsafe_allow_html=True)
+                submitted = st.form_submit_button("➕ Agregar", use_container_width=True)
+                st.markdown("</div>", unsafe_allow_html=True)
 
     # ------ Acción botones fuera del form ------
     if volver_clicked:
@@ -2428,3 +2474,4 @@ def render(user: dict | None = None):
     _bootstrap_df_main_hist()
     render_nueva_tarea(user=user)
     render_historial(user=user)
+
