@@ -2129,88 +2129,47 @@ def render_nueva_tarea(user: dict | None = None):
         unsafe_allow_html=True,
     )
 
-    # ===== Datos =====
-    if "AREAS_OPC" not in globals():
-        globals()["AREAS_OPC"] = [
-            "Jefatura",
-            "Gestión",
-            "Metodología",
-            "Base de datos",
-            "Capacitación",
-            "Monitoreo",
-            "Consistencia",
-        ]
-    st.session_state.setdefault("nt_visible", True)
-
-    # Asegurar que "Tipo de tarea" no arranque con 'Otros'
-    if st.session_state.get("nt_tipo", "").strip().lower() == "otros":
-        st.session_state["nt_tipo"] = ""
-    else:
-        st.session_state.setdefault("nt_tipo", "")
-
-    _NT_SPACE = 35
-    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
-
-    # ===== Banner superior “Nueva tarea” =====
-    hero_b64 = _hero_img_base64()
-    hero_img_html = (
-        f'<img src="data:image/png;base64,{hero_b64}" alt="Nueva tarea" class="nt-hero-img">'
-        if hero_b64 else ""
-    )
+    # ===== Pasos =====
     st.markdown(
-        f"""
-        <div class="nt-hero-wrapper">
-          <div class="nt-hero">
-            <div class="nt-hero-left">
-              <div class="nt-hero-title">Nueva tarea</div>
-            </div>
-            <div class="nt-hero-right">
-              {hero_img_html}
-            </div>
+        """
+        <div class="nt-steps-row">
+          <div class="nt-step-card">
+            <div class="nt-step-main"><div class="nt-step-label">1. Llena los datos</div></div>
+            <div class="nt-step-icon-slot"><span class="nt-step-icon">📝</span></div>
+          </div>
+          <div class="nt-step-card">
+            <div class="nt-step-main"><div class="nt-step-label">2. Pulsa “Agregar”</div></div>
+            <div class="nt-step-icon-slot"><span class="nt-step-icon">➕</span></div>
+          </div>
+          <div class="nt-step-card">
+            <div class="nt-step-main"><div class="nt-step-label">3. Revisa tu tarea</div></div>
+            <div class="nt-step-icon-slot"><span class="nt-step-icon">🕑</span></div>
+          </div>
+          <div class="nt-step-card">
+            <div class="nt-step-main"><div class="nt-step-label">4. Graba</div></div>
+            <div class="nt-step-icon-slot"><span class="nt-step-icon">💾</span></div>
+          </div>
+          <div class="nt-step-card">
+            <div class="nt-step-main"><div class="nt-step-label">5. Sube a Sheets</div></div>
+            <div class="nt-step-icon-slot"><span class="nt-step-icon">📤</span></div>
           </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
-
-    if st.session_state.get("nt_visible", True):
-        if st.session_state.pop("nt_added_ok", False):
-            st.success("Agregado a Tareas recientes")
-
-    # ===== Pasos =====
+    # Línea azul fina entre los pasos y el formulario
     st.markdown(
         """
-    <div class="nt-steps-row">
-      <div class="nt-step-card">
-        <div class="nt-step-main"><div class="nt-step-label">1. Llena los datos</div></div>
-        <div class="nt-step-icon-slot"><span class="nt-step-icon">📝</span></div>
-      </div>
-      <div class="nt-step-card">
-        <div class="nt-step-main"><div class="nt-step-label">2. Pulsa “Agregar”</div></div>
-        <div class="nt-step-icon-slot"><span class="nt-step-icon">➕</span></div>
-      </div>
-      <div class="nt-step-card">
-        <div class="nt-step-main"><div class="nt-step-label">3. Revisa tu tarea</div></div>
-        <div class="nt-step-icon-slot"><span class="nt-step-icon">🕑</span></div>
-      </div>
-      <div class="nt-step-card">
-        <div class="nt-step-main"><div class="nt-step-label">4. Graba</div></div>
-        <div class="nt-step-icon-slot"><span class="nt-step-icon">💾</span></div>
-      </div>
-      <div class="nt-step-card">
-        <div class="nt-step-main"><div class="nt-step-label">5. Sube a Sheets</div></div>
-        <div class="nt-step-icon-slot"><span class="nt-step-icon">📤</span></div>
-      </div>
-    </div>
-    """,
+        <div style="
+            height:1px;
+            background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
+            border-radius:999px;
+            margin:14px 0 10px 0;
+        "></div>
+        """,
         unsafe_allow_html=True,
     )
-
-    # Línea divisoria azul entre pasos y formulario
-    st.markdown('<div class="nt-divider"></div>', unsafe_allow_html=True)
-    st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
 
     # ===== Formulario =====
     COLS_5 = [1, 1, 1, 1, 1]
