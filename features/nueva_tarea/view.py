@@ -1948,6 +1948,34 @@ def _sync_time_from_date():
 
 
 # ============================================================
+#   HELPER: sincronizar hora a partir de la fecha de registro
+# ============================================================
+def _sync_time_from_date():
+    """
+    Asegura que exista una hora (fi_t) coherente con la fecha fi_d.
+    Usa now_lima_trimmed() si está disponible; si no, datetime.now().
+    Actualiza también fi_t_view (HH:MM).
+    """
+    d = st.session_state.get("fi_d", None)
+
+    # Si no hay fecha, limpiamos hora
+    if d is None:
+        st.session_state["fi_t"] = None
+        st.session_state["fi_t_view"] = ""
+        return
+
+    try:
+        dt = now_lima_trimmed()
+    except Exception:
+        from datetime import datetime
+        dt = datetime.now()
+
+    t = dt.time().replace(second=0, microsecond=0)
+    st.session_state["fi_t"] = t
+    st.session_state["fi_t_view"] = t.strftime("%H:%M")
+
+
+# ============================================================
 #           VISTA SUPERIOR: ➕ NUEVA TAREA
 # ============================================================
 def render_nueva_tarea(user: dict | None = None):
@@ -2025,14 +2053,12 @@ def render_nueva_tarea(user: dict | None = None):
       padding: 0 !important;
       margin: -3px 0 10px 0 !important;
     }
-
     div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) > div{
       background: transparent !important;
       box-shadow: none !important;
       border-radius: 0 !important;
       border: none !important;
     }
-
     div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) form[data-testid="stForm"]{
       background: transparent !important;
       box-shadow: none !important;
@@ -2067,7 +2093,6 @@ def render_nueva_tarea(user: dict | None = None):
       margin-top:4px;
       margin-bottom:16px;
     }
-
     .nt-step-card{
       flex:1 1 180px;
       min-width:180px;
@@ -2077,13 +2102,11 @@ def render_nueva_tarea(user: dict | None = None):
       padding:20px 20px;
       min-height:70px;
       box-shadow:none;
-
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:12px;
     }
-
     .nt-step-main{
       flex:1;
       display:flex;
@@ -2119,7 +2142,15 @@ def render_nueva_tarea(user: dict | None = None):
       display:none !important;
     }
 
-    /* ===== Línea lila-azul inferior ===== */
+    /* ===== Línea lila-azul superior (encima de las celdas) ===== */
+    .nt-top-line{
+      height:2px;
+      background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
+      border-radius:999px;
+      margin:12px 0 18px 0;
+    }
+
+    /* ===== Línea lila-azul inferior (encima de los botones) ===== */
     .nt-bottom-line{
       height:2px;
       background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
@@ -2139,8 +2170,8 @@ def render_nueva_tarea(user: dict | None = None):
       box-shadow:none !important;
     }
 
-    /* Volver: usamos un marcador .nt-btn-volver y tomamos su hermano siguiente (el stButton) */
-    .nt-btn-volver + div button{
+    /* Volver: usamos un marcador .nt-btn-volver y cualquier div siguiente */
+    .nt-btn-volver ~ div button{
       min-height:38px !important;
       height:38px !important;
       border-radius:999px !important;
@@ -2150,12 +2181,12 @@ def render_nueva_tarea(user: dict | None = None):
       font-weight:600 !important;
       box-shadow:none !important;
     }
-    .nt-btn-volver + div button:hover{
+    .nt-btn-volver ~ div button:hover{
       background:#10B981 !important;
     }
 
     /* Agregar: marcador .nt-btn-agregar */
-    .nt-btn-agregar + div button{
+    .nt-btn-agregar ~ div button{
       min-height:38px !important;
       height:38px !important;
       border-radius:999px !important;
@@ -2165,7 +2196,7 @@ def render_nueva_tarea(user: dict | None = None):
       font-weight:600 !important;
       box-shadow:none !important;
     }
-    .nt-btn-agregar + div button:hover{
+    .nt-btn-agregar ~ div button:hover{
       background:#9333EA !important;
     }
     </style>
@@ -2305,6 +2336,9 @@ def render_nueva_tarea(user: dict | None = None):
             _fase_sel = st.session_state.get("nt_fase", None)
             _is_fase_otros = str(_fase_sel).strip() == "Otros"
 
+            # ===== Línea lila-azul ENCIMA de las celdas =====
+            st.markdown('<div class="nt-top-line"></div>', unsafe_allow_html=True)
+
             # ---------- FILA 1 ----------
             if _is_fase_otros:
                 c1, c2, c3, c4, c5 = st.columns(COLS_5, gap="medium")
@@ -2412,7 +2446,7 @@ def render_nueva_tarea(user: dict | None = None):
                 )
                 r3c3.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
 
-            # ===== Línea inferior dentro del formulario =====
+            # ===== Línea lila-azul ENCIMA de los botones =====
             st.markdown('<div class="nt-bottom-line"></div>', unsafe_allow_html=True)
 
             # ===== Fila inferior de botones (derecha) =====
