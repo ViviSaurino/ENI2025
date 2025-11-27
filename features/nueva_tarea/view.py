@@ -2037,47 +2037,12 @@ def render_nueva_tarea(user: dict | None = None):
 
     .nt-btn-volver,
     .nt-btn-agregar{
-        margin-top:10px !important;  /* un poco más abajo */
+        margin-top:16px !important;  /* un poco más abajo */
     }
     </style>
         """,
         unsafe_allow_html=True,
     )
-
-    # ===== Helper local para el hero (evita NameError) =====
-    def _hero_img_base64() -> str:
-        """Devuelve la imagen del banner en base64; si no hay, cadena vacía."""
-        try:
-            import base64
-            from pathlib import Path
-
-            posibles = [
-                "assets/nt_hero.png",
-                "assets/nt-hero.png",
-                "assets/nueva_tarea_hero.png",
-            ]
-            for rel in posibles:
-                p = Path(rel)
-                if p.exists():
-                    return base64.b64encode(p.read_bytes()).decode("utf-8")
-        except Exception:
-            return ""
-        return ""
-
-    # ===== Helper para sincronizar hora desde la fecha =====
-    def _sync_time_from_date():
-        """
-        Usa fi_d de session_state y ajusta fi_t.
-        Si no hay fecha, deja fi_t en None.
-        """
-        d = st.session_state.get("fi_d")
-        if not d:
-            st.session_state["fi_t"] = None
-            return
-        # Si ya hay hora, la conserva; si no, pone hora Lima actual recortada.
-        if st.session_state.get("fi_t") is None:
-            t = now_lima_trimmed().time()
-            st.session_state["fi_t"] = t
 
     # ===== Datos =====
     global AREAS_OPC
@@ -2161,11 +2126,11 @@ def render_nueva_tarea(user: dict | None = None):
         unsafe_allow_html=True,
     )
 
-    # Línea azul delgada entre tarjetas y formulario
+    # Línea azul delgada entre tarjetas y formulario (SUPERIOR)
     st.markdown(
         """
         <div style="
-            height:1.5px;
+            height:2px;
             background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
             border-radius:999px;
             margin:24px 0 6px 0;
@@ -2259,7 +2224,7 @@ def render_nueva_tarea(user: dict | None = None):
                     st.session_state.pop("nt_skip_date_init", None)
                 else:
                     st.session_state["fi_d"] = now_lima_trimmed().date()
-            _sync_time_from_date()  # solo usa fi_d y actualiza fi_t
+            _sync_time_from_date()  # solo usa fi_d y actualiza fi_t / fi_t_view
 
             _t = st.session_state.get("fi_t")
             st.session_state["fi_t_view"] = _t.strftime("%H:%M") if _t else ""
@@ -2360,7 +2325,7 @@ def render_nueva_tarea(user: dict | None = None):
     st.markdown(
         """
         <div style="
-            height:1.5px;
+            height:2px;
             background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
             border-radius:999px;
             margin:16px 0 0 0;
@@ -2389,6 +2354,7 @@ def render_nueva_tarea(user: dict | None = None):
 
     gap = SECTION_GAP if "SECTION_GAP" in globals() else 30
     st.markdown(f"<div style='height:{gap}px;'></div>", unsafe_allow_html=True)
+
 
 # ============================================================
 #             VISTA UNIFICADA (NUEVA + RECIENTES)
