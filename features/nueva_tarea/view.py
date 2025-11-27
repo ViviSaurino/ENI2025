@@ -2046,15 +2046,11 @@ def render_nueva_tarea(user: dict | None = None):
 
     # ===== Helper local para el hero (evita NameError) =====
     def _hero_img_base64() -> str:
-        """
-        Intenta cargar una imagen PNG para el banner y devolverla en base64.
-        Si no la encuentra o falla algo, devuelve '' y simplemente no se muestra la imagen.
-        """
+        """Devuelve la imagen del banner en base64; si no hay, cadena vacía."""
         try:
             import base64
             from pathlib import Path
 
-            # Ajusta el nombre si tu PNG se llama distinto
             posibles = [
                 "assets/nt_hero.png",
                 "assets/nt-hero.png",
@@ -2067,6 +2063,21 @@ def render_nueva_tarea(user: dict | None = None):
         except Exception:
             return ""
         return ""
+
+    # ===== Helper para sincronizar hora desde la fecha =====
+    def _sync_time_from_date():
+        """
+        Usa fi_d de session_state y ajusta fi_t.
+        Si no hay fecha, deja fi_t en None.
+        """
+        d = st.session_state.get("fi_d")
+        if not d:
+            st.session_state["fi_t"] = None
+            return
+        # Si ya hay hora, la conserva; si no, pone hora Lima actual recortada.
+        if st.session_state.get("fi_t") is None:
+            t = now_lima_trimmed().time()
+            st.session_state["fi_t"] = t
 
     # ===== Datos =====
     global AREAS_OPC
@@ -2248,7 +2259,7 @@ def render_nueva_tarea(user: dict | None = None):
                     st.session_state.pop("nt_skip_date_init", None)
                 else:
                     st.session_state["fi_d"] = now_lima_trimmed().date()
-            _sync_time_from_date()  # solo usa fi_d y actualiza fi_t / fi_t_view
+            _sync_time_from_date()  # solo usa fi_d y actualiza fi_t
 
             _t = st.session_state.get("fi_t")
             st.session_state["fi_t_view"] = _t.strftime("%H:%M") if _t else ""
@@ -2392,4 +2403,3 @@ def render(user: dict | None = None):
     _bootstrap_df_main_hist()
     render_nueva_tarea(user=user)
     render_historial(user=user)
-
