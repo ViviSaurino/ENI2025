@@ -2127,31 +2127,50 @@ def render_nueva_tarea(user: dict | None = None):
       min-height:38px !important;
       height:38px !important;
       border-radius:999px !important;
+      background-color:#34D399 !important;
       background:#34D399 !important;
       color:#FFFFFF !important;
       border:none !important;
+      border-color:#34D399 !important;
       font-weight:600 !important;
     }
     .nt-btn-volver .stButton>button:hover{
+      background-color:#10B981 !important;
       background:#10B981 !important;
+      border-color:#10B981 !important;
     }
 
     .nt-btn-agregar .stButton>button{
       min-height:38px !important;
       height:38px !important;
       border-radius:999px !important;
+      background-color:#A855F7 !important;
       background:#A855F7 !important;
       color:#FFFFFF !important;
       border:none !important;
+      border-color:#A855F7 !important;
       font-weight:600 !important;
     }
     .nt-btn-agregar .stButton>button:hover{
+      background-color:#9333EA !important;
       background:#9333EA !important;
+      border-color:#9333EA !important;
     }
 
     .nt-btn-volver,
     .nt-btn-agregar{
         margin-top:0px !important;
+    }
+
+    /* Línea inferior dentro del formulario (mismo ancho que celdas) */
+    .nt-bottom-line-wrapper{
+        width:96%;
+        margin:10px auto 8px auto;
+    }
+    .nt-bottom-line{
+        height:1.5px;
+        background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
+        border-radius:999px;
     }
     </style>
         """,
@@ -2415,15 +2434,12 @@ def render_nueva_tarea(user: dict | None = None):
                 )
                 r3c3.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
 
-            # ===== Línea azul lila debajo de las celdas (ANTES de los botones) =====
+            # ===== Línea azul lila debajo de las celdas (mismo ancho que celdas) =====
             st.markdown(
                 """
-                <div style="
-                    height:1.5px;
-                    background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
-                    border-radius:999px;
-                    margin:10px 0 8px 0;
-                "></div>
+                <div class="nt-bottom-line-wrapper">
+                    <div class="nt-bottom-line"></div>
+                </div>
                 """,
                 unsafe_allow_html=True,
             )
