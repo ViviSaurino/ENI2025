@@ -2098,7 +2098,7 @@ def render_nueva_tarea(user: dict | None = None):
 
     /* Fila que contiene ambos botones (para moverlos juntos) */
     .nt-buttons-row{
-      margin-top:-16px !important;  /* ajusta -10, -14, -20 según lo alto que los quieras */
+      margin-top:-5px !important;  /* ajusta -10, -14, -20 según lo alto que los quieras */
     }
 
     .nt-btn-volver,
