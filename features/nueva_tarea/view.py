@@ -1966,28 +1966,6 @@ def render_nueva_tarea(user: dict | None = None):
       transform: translateY(10px);
     }
 
-    /* ===== Botón Volver: pastilla pequeña junto al VS, en el encabezado superior ===== */
-    .nt-back-global{
-      position:fixed !important;   /* respecto al viewport del app */
-      top:26px !important;         /* ajusta si lo ves muy arriba/abajo */
-      right:170px !important;      /* ajusta si lo quieres más cerca/lejos del círculo VS */
-      z-index:10000 !important;
-    }
-    .nt-back-global div.stButton>button{
-      background:transparent !important;
-      color:#2563EB !important;
-      border-radius:999px !important;
-      border:1px solid #DBEAFE !important;
-      font-size:0.9rem !important;
-      padding:4px 16px !important;
-      height:30px !important;
-      min-height:30px !important;
-      box-shadow:none !important;
-    }
-    .nt-back-global div.stButton>button:hover{
-      background:#EFF6FF !important;
-    }
-
     /* ===== Tarjeta blanca SOLO para el formulario (filtros) ===== */
     div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
         background: transparent !important;
@@ -2099,11 +2077,21 @@ def render_nueva_tarea(user: dict | None = None):
       display:none !important;
     }
 
-    /* Botón Agregar (lila, texto blanco) */
-    .nt-outbtn{
-      margin-top: 6px;
+    /* ===== Botones Volver (verde jade) y Agregar (lila) ===== */
+    .nt-btn-volver .stButton>button{
+      min-height:38px !important;
+      height:38px !important;
+      border-radius:999px !important;
+      background:#34D399 !important;   /* jade clarito */
+      color:#FFFFFF !important;
+      border:none !important;
+      font-weight:600 !important;
     }
-    .nt-outbtn .stButton>button{
+    .nt-btn-volver .stButton>button:hover{
+      background:#10B981 !important;
+    }
+
+    .nt-btn-agregar .stButton>button{
       min-height:38px !important;
       height:38px !important;
       border-radius:999px !important;
@@ -2112,7 +2100,7 @@ def render_nueva_tarea(user: dict | None = None):
       border:none !important;
       font-weight:600 !important;
     }
-    .nt-outbtn .stButton>button:hover{
+    .nt-btn-agregar .stButton>button:hover{
       background:#9333EA !important;
     }
 
@@ -2130,20 +2118,6 @@ def render_nueva_tarea(user: dict | None = None):
         """,
         unsafe_allow_html=True,
     )
-
-    # ===== Botón Volver flotando en el encabezado superior =====
-    st.markdown('<div class="nt-back-global">', unsafe_allow_html=True)
-    top_back_clicked = st.button("Volver", key="btn_top_volver")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    if top_back_clicked:
-        st.session_state["home_tile"] = ""
-        display_name = st.session_state.get("user_display_name", "Usuario")
-        try:
-            st.experimental_set_query_params(auth="1", u=display_name)
-        except Exception:
-            pass
-        st.rerun()
 
     # ===== Datos =====
     if "AREAS_OPC" not in globals():
@@ -2243,6 +2217,9 @@ def render_nueva_tarea(user: dict | None = None):
 
     # ===== Bloque de filtros / formulario =====
     COLS_5 = [1, 1, 1, 1, 1]  # ⬅️ 5 columnas iguales por fila
+
+    volver_clicked = False
+    submitted = False
 
     # --- FORMULARIO COMPLETO ---
     with st.form("form_nueva_tarea"):
@@ -2474,13 +2451,30 @@ def render_nueva_tarea(user: dict | None = None):
                 )
                 # r3c4 queda vacío (espacio) para mantener solo 5 celdas totales
 
-        # ---------- Botón Agregar (abajo, lila letras blancas) ----------
-        st.markdown('<div class="nt-outbtn">', unsafe_allow_html=True)
-        submitted = st.form_submit_button("Agregar")
-        st.markdown("</div>", unsafe_allow_html=True)
+        # ---------- FILA DE BOTONES (Volver + Agregar, alineados a la derecha) ----------
+        b1, b2, b3, b4, b5 = st.columns(COLS_5, gap="medium")
 
-    # ------ Acción botón Agregar ------
-    if submitted:
+        with b4:
+            st.markdown('<div class="nt-btn-volver">', unsafe_allow_html=True)
+            volver_clicked = st.form_submit_button("⬅ Volver", use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        with b5:
+            st.markdown('<div class="nt-btn-agregar">', unsafe_allow_html=True)
+            submitted = st.form_submit_button("➕ Agregar", use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+    # ------ Acción botones ------
+    if volver_clicked:
+        st.session_state["home_tile"] = ""
+        display_name = st.session_state.get("user_display_name", "Usuario")
+        try:
+            st.experimental_set_query_params(auth="1", u=display_name)
+        except Exception:
+            pass
+        st.rerun()
+
+    if submitted and not volver_clicked:
         try:
             df = st.session_state.get("df_main", pd.DataFrame()).copy()
             # 👉 Aquí va TODA tu lógica de guardado que ya tenías antes
@@ -2503,6 +2497,10 @@ def render(user: dict | None = None):
     - Abajo: 🕑 Tareas recientes
     """
     # Aseguramos que df_main esté inicializado antes de ambos bloques
+    _bootstrap_df_main_hist()
+    render_nueva_tarea(user=user)
+    render_historial(user=user)
+
     _bootstrap_df_main_hist()
     render_nueva_tarea(user=user)
     render_historial(user=user)
