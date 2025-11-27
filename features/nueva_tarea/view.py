@@ -1966,34 +1966,43 @@ def render_nueva_tarea(user: dict | None = None):
       transform: translateY(10px);
     }
 
-    /* ===== Contenedor del formulario (sin tarjeta) ===== */
-    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
+    /* ===== Contenedor de la vista (sin tarjeta) ===== */
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel){
         background: transparent !important;
         box-shadow: none !important;
         border-radius: 0 !important;
         border: none !important;
 
-    /* sin card, solo un poco de aire arriba/abajo */
-    padding: 0 !important;
-    margin-top: 16px !important;
-    margin-bottom: 10px !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-}
+        padding: 0 !important;
+        margin-top: 16px !important;
+        margin-bottom: 10px !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    /* ===== Quitar la tarjeta del <form> de esta vista ===== */
+    form[data-testid="stForm"]:has(#nt-card-sentinel){
+        background: transparent !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        border: none !important;
+        padding: 0 !important;
+    }
 
     /* Inputs full width dentro del card */
-    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
-    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox,
-    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput,
-    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput,
-    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea{
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextInput,
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stSelectbox,
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stDateInput,
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTimeInput,
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextArea{
       width:100% !important;
     }
-    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput>div,
-    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stSelectbox>div,
-    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stDateInput>div,
-    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTimeInput>div,
-    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextArea>div{
+
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextInput>div,
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stSelectbox>div,
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stDateInput>div,
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTimeInput>div,
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextArea>div{
       width:100% !important;
       max-width:none !important;
     }
