@@ -1920,6 +1920,34 @@ def _sync_time_from_date():
 
 
 # ============================================================
+#   HELPER: sincronizar hora a partir de la fecha de registro
+# ============================================================
+def _sync_time_from_date():
+    """
+    Asegura que exista una hora (fi_t) coherente con la fecha fi_d.
+    Usa now_lima_trimmed() si está disponible; si no, datetime.now().
+    Actualiza también fi_t_view (HH:MM).
+    """
+    d = st.session_state.get("fi_d", None)
+
+    # Si no hay fecha, limpiamos hora
+    if d is None:
+        st.session_state["fi_t"] = None
+        st.session_state["fi_t_view"] = ""
+        return
+
+    try:
+        dt = now_lima_trimmed()
+    except Exception:
+        from datetime import datetime
+        dt = datetime.now()
+
+    t = dt.time().replace(second=0, microsecond=0)
+    st.session_state["fi_t"] = t
+    st.session_state["fi_t_view"] = t.strftime("%H:%M")
+
+
+# ============================================================
 #           VISTA SUPERIOR: ➕ NUEVA TAREA
 # ============================================================
 def render_nueva_tarea(user: dict | None = None):
