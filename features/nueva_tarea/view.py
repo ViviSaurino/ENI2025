@@ -2078,7 +2078,7 @@ def render_nueva_tarea(user: dict | None = None):
       color:#FFFFFF !important;
       border:none !important;
       font-weight:600 !important;
-      margin-top:14px !important;   /* ⬅ los bajo un poquito */
+      margin-top:18px !important;   /* ⬅ los bajo un poquito */
     }
     .nt-btn-volver .stButton>button:hover{
       background:#10B981 !important;
@@ -2092,7 +2092,7 @@ def render_nueva_tarea(user: dict | None = None):
       color:#FFFFFF !important;
       border:none !important;
       font-weight:600 !important;
-      margin-top:14px !important;   /* ⬅ igual aquí */
+      margin-top:18px !important;   /* ⬅ igual aquí */
     }
     .nt-btn-agregar .stButton>button:hover{
       background:#9333EA !important;
