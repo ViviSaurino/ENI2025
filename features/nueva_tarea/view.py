@@ -1864,93 +1864,6 @@ def _hero_img_base64() -> str:
 
 
 # ============================================================
-#   HELPER: sincronizar hora a partir de la fecha (fi_d)
-# ============================================================
-def _sync_time_from_date():
-    """
-    Usa la fecha fi_d para asegurar que fi_t y fi_t_view tengan una hora válida.
-    Si ya existe fi_t, solo actualiza fi_t_view.
-    """
-    d = st.session_state.get("fi_d", None)
-    if not d:
-        return
-
-    t = st.session_state.get("fi_t", None)
-    if t:
-        try:
-            st.session_state["fi_t_view"] = t.strftime("%H:%M")
-        except Exception:
-            pass
-        return
-
-    try:
-        now = now_lima_trimmed()
-    except Exception:
-        from datetime import datetime
-        now = datetime.now()
-    now = now.replace(second=0, microsecond=0)
-    st.session_state["fi_t"] = now.time()
-    st.session_state["fi_t_view"] = now.strftime("%H:%M")
-
-# ============================================================
-#   HELPER: imagen del banner "Nueva tarea"
-# ============================================================
-@st.cache_data
-def _hero_img_base64() -> str:
-    """
-    Devuelve el PNG del banner en base64.
-    Busca en la carpeta 'assets' con varios nombres posibles.
-    """
-    import base64
-    from pathlib import Path
-
-    assets_dir = Path("assets")
-    candidatos = [
-        "NUEVA_TAREA.png",   # <- tu archivo
-        "nueva_tarea.png",
-        "TAREA_NUEVA.png",
-        "TAREA-NUEVA.png",
-        "TAREA NUEVA.png",
-        "tarea_nueva.png",
-    ]
-    for nombre in candidatos:
-        ruta = assets_dir / nombre
-        if ruta.exists():
-            return base64.b64encode(ruta.read_bytes()).decode("utf-8")
-    return ""
-
-
-# ============================================================
-#   HELPER: sincronizar hora a partir de la fecha (fi_d)
-# ============================================================
-def _sync_time_from_date():
-    """
-    Usa la fecha fi_d para asegurar que fi_t y fi_t_view tengan una hora válida.
-    Si ya existe fi_t, solo actualiza fi_t_view.
-    """
-    d = st.session_state.get("fi_d", None)
-    if not d:
-        return
-
-    t = st.session_state.get("fi_t", None)
-    if t:
-        try:
-            st.session_state["fi_t_view"] = t.strftime("%H:%M")
-        except Exception:
-            pass
-        return
-
-    try:
-        now = now_lima_trimmed()
-    except Exception:
-        from datetime import datetime
-        now = datetime.now()
-    now = now.replace(second=0, microsecond=0)
-    st.session_state["fi_t"] = now.time()
-    st.session_state["fi_t_view"] = now.strftime("%H:%M")
-
-
-# ============================================================
 #           VISTA SUPERIOR: ➕ NUEVA TAREA
 # ============================================================
 def render_nueva_tarea(user: dict | None = None):
@@ -2135,37 +2048,32 @@ def render_nueva_tarea(user: dict | None = None):
       margin-top:12px;  /* distancia entre la línea y los botones */
     }
 
-    /* ===== Estilos de los botones Volver (verde) y Agregar (lila) ===== */
-    .nt-btn-volver button,
-    .nt-btn-volver .stButton>button{
-      min-height:38px !important;
-      height:38px !important;
+    /* ===== Botones redondeados por defecto ===== */
+    .stButton > button{
       border-radius:999px !important;
-      background:#34D399 !important;   /* verde jade */
-      color:#FFFFFF !important;
-      border:none !important;
       font-weight:600 !important;
       box-shadow:none !important;
-    }
-    .nt-btn-volver button:hover,
-    .nt-btn-volver .stButton>button:hover{
-      background:#10B981 !important;   /* verde más intenso */
     }
 
-    .nt-btn-agregar button,
-    .nt-btn-agregar .stButton>button{
-      min-height:38px !important;
-      height:38px !important;
-      border-radius:999px !important;
-      background:#A855F7 !important;   /* lila */
+    /* ===== Colores por tipo de botón ===== */
+    /* Volver: type="secondary" -> verde jade */
+    .stButton > button[kind="secondary"]{
+      background:#34D399 !important;
       color:#FFFFFF !important;
       border:none !important;
-      font-weight:600 !important;
-      box-shadow:none !important;
     }
-    .nt-btn-agregar button:hover,
-    .nt-btn-agregar .stButton>button:hover{
-      background:#9333EA !important;   /* lila más oscuro */
+    .stButton > button[kind="secondary"]:hover{
+      background:#10B981 !important;
+    }
+
+    /* Agregar: type="primary" -> lila */
+    .stButton > button[kind="primary"]{
+      background:#A855F7 !important;
+      color:#FFFFFF !important;
+      border:none !important;
+    }
+    .stButton > button[kind="primary"]:hover{
+      background:#9333EA !important;
     }
     </style>
         """,
@@ -2415,19 +2323,23 @@ def render_nueva_tarea(user: dict | None = None):
             st.markdown('<div class="nt-bottom-line"></div>', unsafe_allow_html=True)
 
             # ===== Fila inferior de botones (derecha) =====
-            bottom_left, bottom_right = st.columns([4, 1])  # derecha = mismo ancho que una celda
+            bottom_left, bottom_right = st.columns([4, 1])
 
             with bottom_right:
                 st.markdown('<div class="nt-bottom-row">', unsafe_allow_html=True)
                 col_v, col_a = st.columns(2, gap="medium")
                 with col_v:
-                    st.markdown('<div class="nt-btn-volver">', unsafe_allow_html=True)
-                    volver_clicked = st.form_submit_button("⬅ Volver", use_container_width=True)
-                    st.markdown('</div>', unsafe_allow_html=True)
+                    volver_clicked = st.form_submit_button(
+                        "⬅ Volver",
+                        type="secondary",
+                        use_container_width=True,
+                    )
                 with col_a:
-                    st.markdown('<div class="nt-btn-agregar">', unsafe_allow_html=True)
-                    submitted = st.form_submit_button("➕ Agregar", use_container_width=True)
-                    st.markdown('</div>', unsafe_allow_html=True)
+                    submitted = st.form_submit_button(
+                        "➕ Agregar",
+                        type="primary",
+                        use_container_width=True,
+                    )
                 st.markdown('</div>', unsafe_allow_html=True)
 
     # ------ Acción botones fuera del form ------
