@@ -1976,7 +1976,6 @@ def render_nueva_tarea(user: dict | None = None):
       margin: 16px 0 10px 0 !important;
     }
 
-    /* Cualquier wrapper interno dentro de ese bloque */
     div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) > div{
       background: transparent !important;
       box-shadow: none !important;
@@ -1984,7 +1983,6 @@ def render_nueva_tarea(user: dict | None = None):
       border: none !important;
     }
 
-    /* El <form> como tal, también sin tarjeta */
     div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) form[data-testid="stForm"]{
       background: transparent !important;
       box-shadow: none !important;
@@ -2018,15 +2016,6 @@ def render_nueva_tarea(user: dict | None = None):
       gap:12px;
       margin-top:4px;
       margin-bottom:16px;
-    }
-
-    /* Línea azul entre tarjetas de pasos y formulario */
-    .nt-divider{
-      height:1px;
-      background:#4F46E5;
-      border-radius:999px;
-      opacity:0.8;
-      margin:8px 0 18px 0;
     }
 
     .nt-step-card{
@@ -2106,70 +2095,106 @@ def render_nueva_tarea(user: dict | None = None):
     .nt-btn-agregar .stButton>button:hover{
       background:#9333EA !important;
     }
-
-    /* Subir un poquito los botones para pegarlos a las celdas */
-    div[data-testid="column"] > div:has(.nt-btn-volver),
-    div[data-testid="column"] > div:has(.nt-btn-agregar){
-      margin-top:-6px !important;
-      padding-top:0 !important;
-    }
-
-    div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel)
-        > form[data-testid="stForm"]{
-        background: transparent !important;
-        box-shadow: none !important;
-        border-radius: 0 !important;
-        border: none !important;
-
-        padding-left: 0 !important;
-        padding-right: 0 !important;
-    }
     </style>
         """,
         unsafe_allow_html=True,
     )
 
-    # ===== Pasos =====
+    # ===== Datos =====
+    global AREAS_OPC
+    if "AREAS_OPC" not in globals():
+        AREAS_OPC = [
+            "Jefatura",
+            "Gestión",
+            "Metodología",
+            "Base de datos",
+            "Capacitación",
+            "Monitoreo",
+            "Consistencia",
+        ]
+
+    st.session_state.setdefault("nt_visible", True)
+
+    # Asegurar que "Tipo de tarea" no arranque con 'Otros'
+    if st.session_state.get("nt_tipo", "").strip().lower() == "otros":
+        st.session_state["nt_tipo"] = ""
+    else:
+        st.session_state.setdefault("nt_tipo", "")
+
+    _NT_SPACE = 35
+    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+
+    # ===== Banner superior “Nueva tarea” =====
+    hero_b64 = _hero_img_base64()
+    hero_img_html = (
+        f'<img src="data:image/png;base64,{hero_b64}" alt="Nueva tarea" class="nt-hero-img">'
+        if hero_b64 else ""
+    )
     st.markdown(
-        """
-        <div class="nt-steps-row">
-          <div class="nt-step-card">
-            <div class="nt-step-main"><div class="nt-step-label">1. Llena los datos</div></div>
-            <div class="nt-step-icon-slot"><span class="nt-step-icon">📝</span></div>
-          </div>
-          <div class="nt-step-card">
-            <div class="nt-step-main"><div class="nt-step-label">2. Pulsa “Agregar”</div></div>
-            <div class="nt-step-icon-slot"><span class="nt-step-icon">➕</span></div>
-          </div>
-          <div class="nt-step-card">
-            <div class="nt-step-main"><div class="nt-step-label">3. Revisa tu tarea</div></div>
-            <div class="nt-step-icon-slot"><span class="nt-step-icon">🕑</span></div>
-          </div>
-          <div class="nt-step-card">
-            <div class="nt-step-main"><div class="nt-step-label">4. Graba</div></div>
-            <div class="nt-step-icon-slot"><span class="nt-step-icon">💾</span></div>
-          </div>
-          <div class="nt-step-card">
-            <div class="nt-step-main"><div class="nt-step-label">5. Sube a Sheets</div></div>
-            <div class="nt-step-icon-slot"><span class="nt-step-icon">📤</span></div>
+        f"""
+        <div class="nt-hero-wrapper">
+          <div class="nt-hero">
+            <div class="nt-hero-left">
+              <div class="nt-hero-title">Nueva tarea</div>
+            </div>
+            <div class="nt-hero-right">
+              {hero_img_html}
+            </div>
           </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # Línea azul fina entre los pasos y el formulario
+    st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
+
+    if st.session_state.get("nt_visible", True):
+        if st.session_state.pop("nt_added_ok", False):
+            st.success("Agregado a Tareas recientes")
+
+    # ===== Pasos =====
+    st.markdown(
+        """
+    <div class="nt-steps-row">
+      <div class="nt-step-card">
+        <div class="nt-step-main"><div class="nt-step-label">1. Llena los datos</div></div>
+        <div class="nt-step-icon-slot"><span class="nt-step-icon">📝</span></div>
+      </div>
+      <div class="nt-step-card">
+        <div class="nt-step-main"><div class="nt-step-label">2. Pulsa “Agregar”</div></div>
+        <div class="nt-step-icon-slot"><span class="nt-step-icon">➕</span></div>
+      </div>
+      <div class="nt-step-card">
+        <div class="nt-step-main"><div class="nt-step-label">3. Revisa tu tarea</div></div>
+        <div class="nt-step-icon-slot"><span class="nt-step-icon">🕑</span></div>
+      </div>
+      <div class="nt-step-card">
+        <div class="nt-step-main"><div class="nt-step-label">4. Graba</div></div>
+        <div class="nt-step-icon-slot"><span class="nt-step-icon">💾</span></div>
+      </div>
+      <div class="nt-step-card">
+        <div class="nt-step-main"><div class="nt-step-label">5. Sube a Sheets</div></div>
+        <div class="nt-step-icon-slot"><span class="nt-step-icon">📤</span></div>
+      </div>
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+    # Línea azul delgada entre tarjetas y formulario
     st.markdown(
         """
         <div style="
-            height:1px;
+            height:2px;
             background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
             border-radius:999px;
-            margin:18px 0 10px 0;
+            margin:10px 0 6px 0;
         "></div>
         """,
         unsafe_allow_html=True,
     )
+
+    st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
 
     # ===== Formulario =====
     COLS_5 = [1, 1, 1, 1, 1]
