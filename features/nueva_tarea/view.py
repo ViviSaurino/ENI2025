@@ -1922,7 +1922,7 @@ def render_nueva_tarea(user: dict | None = None):
       border: none !important;
     }
 
-    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) form[data-testid="stForm"]{
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sinel) form[data-testid="stForm"]{
       background: transparent !important;
       box-shadow: none !important;
       border-radius: 0 !important;
@@ -1966,7 +1966,6 @@ def render_nueva_tarea(user: dict | None = None):
       padding:20px 20px;
       min-height:70px;
       box-shadow:none;
-
       display:flex;
       align-items:center;
       justify-content:space-between;
@@ -2069,7 +2068,12 @@ def render_nueva_tarea(user: dict | None = None):
     st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
     # ===== Banner superior “Nueva tarea” =====
-    hero_b64 = _hero_img_base64()
+    # 👇 Evitar NameError si _hero_img_base64 no existe en este archivo
+    try:
+        hero_b64 = _hero_img_base64()
+    except NameError:
+        hero_b64 = ""
+
     hero_img_html = (
         f'<img src="data:image/png;base64,{hero_b64}" alt="Nueva tarea" class="nt-hero-img">'
         if hero_b64 else ""
