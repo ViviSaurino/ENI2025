@@ -2095,9 +2095,15 @@ def render_nueva_tarea(user: dict | None = None):
     .nt-btn-agregar .stButton>button:hover{
       background:#9333EA !important;
     }
+
+    /* Fila que contiene ambos botones (para moverlos juntos) */
+    .nt-buttons-row{
+      margin-top:-16px !important;  /* ajusta -10, -14, -20 según lo alto que los quieras */
+    }
+
     .nt-btn-volver,
     .nt-btn-agregar{
-        margin-top:0px !important;  /* prueba -10, -12, -16 hasta que te guste */
+        margin-top:0px !important;
     }
     </style>
         """,
@@ -2363,6 +2369,7 @@ def render_nueva_tarea(user: dict | None = None):
                 # r3c4 queda vacío
 
         # ---------- FILA DE BOTONES (derecha) ----------
+        st.markdown('<div class="nt-buttons-row">', unsafe_allow_html=True)
         b1, b2, b3, b4, b5 = st.columns(COLS_5, gap="medium")
 
         with b4:
@@ -2374,6 +2381,8 @@ def render_nueva_tarea(user: dict | None = None):
             st.markdown('<div class="nt-btn-agregar">', unsafe_allow_html=True)
             submitted = st.form_submit_button("➕ Agregar", use_container_width=True)
             st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown("</div>", unsafe_allow_html=True)
 
     # ------ Acción botones fuera del form ------
     if volver_clicked:
@@ -2409,3 +2418,4 @@ def render(user: dict | None = None):
     _bootstrap_df_main_hist()
     render_nueva_tarea(user=user)
     render_historial(user=user)
+
