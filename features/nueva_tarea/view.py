@@ -2098,7 +2098,7 @@ def render_nueva_tarea(user: dict | None = None):
 
     .nt-btn-volver,
     .nt-btn-agregar{
-        margin-top:-4px !important;  /* pelín hacia arriba */
+        margin-top:0px !important;  /* pelín hacia arriba */
     }
     </style>
         """,
