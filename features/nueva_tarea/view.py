@@ -1892,6 +1892,34 @@ def _sync_time_from_date():
 
 
 # ============================================================
+#   HELPER: sincronizar hora a partir de la fecha de registro
+# ============================================================
+def _sync_time_from_date():
+    """
+    Asegura que exista una hora (fi_t) coherente con la fecha fi_d.
+    Usa now_lima_trimmed() si está disponible; si no, datetime.now().
+    Actualiza también fi_t_view (HH:MM).
+    """
+    d = st.session_state.get("fi_d", None)
+
+    # Si no hay fecha, limpiamos hora
+    if d is None:
+        st.session_state["fi_t"] = None
+        st.session_state["fi_t_view"] = ""
+        return
+
+    try:
+        dt = now_lima_trimmed()
+    except Exception:
+        from datetime import datetime
+        dt = datetime.now()
+
+    t = dt.time().replace(second=0, microsecond=0)
+    st.session_state["fi_t"] = t
+    st.session_state["fi_t_view"] = t.strftime("%H:%M")
+
+
+# ============================================================
 #           VISTA SUPERIOR: ➕ NUEVA TAREA
 # ============================================================
 def render_nueva_tarea(user: dict | None = None):
@@ -2065,42 +2093,51 @@ def render_nueva_tarea(user: dict | None = None):
 
     /* ===== Línea lila-azul inferior ===== */
     .nt-bottom-line{
-      height:2px;  /* grosor de la línea inferior */
+      height:2px;
       background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
       border-radius:999px;
-      margin:18px 0 0 0;  /* sube/baja la línea respecto a las celdas */
+      margin:18px 0 0 0;
     }
 
     /* ===== Fila inferior de botones ===== */
     .nt-bottom-row{
-      margin-top:12px;  /* distancia entre la línea y los botones */
+      margin-top:12px;
     }
 
-    /* ===== Botones redondeados por defecto ===== */
+    /* ===== Botones: estilo base redondeado ===== */
     .stButton > button{
       border-radius:999px !important;
       font-weight:600 !important;
       box-shadow:none !important;
     }
 
-    /* ===== Colores por tipo de botón ===== */
-    /* Volver: type="secondary" -> verde jade */
-    .stButton > button[kind="secondary"]{
-      background:#34D399 !important;
+    /* Volver: usamos un marcador .nt-btn-volver y tomamos su hermano siguiente (el stButton) */
+    .nt-btn-volver + div button{
+      min-height:38px !important;
+      height:38px !important;
+      border-radius:999px !important;
+      background:#34D399 !important;   /* jade */
       color:#FFFFFF !important;
       border:none !important;
+      font-weight:600 !important;
+      box-shadow:none !important;
     }
-    .stButton > button[kind="secondary"]:hover{
+    .nt-btn-volver + div button:hover{
       background:#10B981 !important;
     }
 
-    /* Agregar: type="primary" -> lila */
-    .stButton > button[kind="primary"]{
-      background:#A855F7 !important;
+    /* Agregar: marcador .nt-btn-agregar */
+    .nt-btn-agregar + div button{
+      min-height:38px !important;
+      height:38px !important;
+      border-radius:999px !important;
+      background:#A855F7 !important;   /* lila */
       color:#FFFFFF !important;
       border:none !important;
+      font-weight:600 !important;
+      box-shadow:none !important;
     }
-    .stButton > button[kind="primary"]:hover{
+    .nt-btn-agregar + div button:hover{
       background:#9333EA !important;
     }
     </style>
@@ -2272,7 +2309,7 @@ def render_nueva_tarea(user: dict | None = None):
                     st.session_state.pop("nt_skip_date_init", None)
                 else:
                     st.session_state["fi_d"] = now_lima_trimmed().date()
-            _sync_time_from_date()  # solo usa fi_d y actualiza fi_t / fi_t_view
+            _sync_time_from_date()
 
             _t = st.session_state.get("fi_t")
             st.session_state["fi_t_view"] = _t.strftime("%H:%M") if _t else ""
@@ -2356,18 +2393,23 @@ def render_nueva_tarea(user: dict | None = None):
             with bottom_right:
                 st.markdown('<div class="nt-bottom-row">', unsafe_allow_html=True)
                 col_v, col_a = st.columns(2, gap="medium")
+
                 with col_v:
+                    # marcador para CSS del botón Volver
+                    st.markdown('<div class="nt-btn-volver"></div>', unsafe_allow_html=True)
                     volver_clicked = st.form_submit_button(
                         "⬅ Volver",
-                        type="secondary",
                         use_container_width=True,
                     )
+
                 with col_a:
+                    # marcador para CSS del botón Agregar
+                    st.markdown('<div class="nt-btn-agregar"></div>', unsafe_allow_html=True)
                     submitted = st.form_submit_button(
                         "➕ Agregar",
-                        type="primary",
                         use_container_width=True,
                     )
+
                 st.markdown("</div>", unsafe_allow_html=True)
 
     # ------ Acción botones fuera del form ------
@@ -2404,4 +2446,3 @@ def render(user: dict | None = None):
     _bootstrap_df_main_hist()
     render_nueva_tarea(user=user)
     render_historial(user=user)
-
