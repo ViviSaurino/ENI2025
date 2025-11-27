@@ -2338,13 +2338,13 @@ def render_nueva_tarea(user: dict | None = None):
 
                 # 🔹 Pequeño spacer para bajar un poco los botones
                 with r3c4:
-                    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='height:2px'></div>", unsafe_allow_html=True)
                     st.markdown('<div class="nt-btn-volver">', unsafe_allow_html=True)
                     volver_clicked = st.form_submit_button("⬅ Volver", use_container_width=True)
                     st.markdown("</div>", unsafe_allow_html=True)
 
                 with r3c5:
-                    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='height:2px'></div>", unsafe_allow_html=True)
                     st.markdown('<div class="nt-btn-agregar">', unsafe_allow_html=True)
                     submitted = st.form_submit_button("➕ Agregar", use_container_width=True)
                     st.markdown("</div>", unsafe_allow_html=True)
@@ -2376,13 +2376,13 @@ def render_nueva_tarea(user: dict | None = None):
                 r3c3.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
 
                 with r3c4:
-                    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='height:2px'></div>", unsafe_allow_html=True)
                     st.markdown('<div class="nt-btn-volver">', unsafe_allow_html=True)
                     volver_clicked = st.form_submit_button("⬅ Volver", use_container_width=True)
                     st.markdown("</div>", unsafe_allow_html=True)
 
                 with r3c5:
-                    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='height:2px'></div>", unsafe_allow_html=True)
                     st.markdown('<div class="nt-btn-agregar">', unsafe_allow_html=True)
                     submitted = st.form_submit_button("➕ Agregar", use_container_width=True)
                     st.markdown("</div>", unsafe_allow_html=True)
