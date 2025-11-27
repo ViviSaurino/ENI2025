@@ -2078,7 +2078,7 @@ def render_nueva_tarea(user: dict | None = None):
       color:#FFFFFF !important;
       border:none !important;
       font-weight:600 !important;
-      margin-top:6px !important;  /* ⬅ los bajamos un poquito */
+      margin-top:10px !important;   /* ⬅ los bajo un poquito */
     }
     .nt-btn-volver .stButton>button:hover{
       background:#10B981 !important;
@@ -2092,7 +2092,7 @@ def render_nueva_tarea(user: dict | None = None):
       color:#FFFFFF !important;
       border:none !important;
       font-weight:600 !important;
-      margin-top:6px !important;  /* ⬅ igual aquí */
+      margin-top:10px !important;   /* ⬅ igual aquí */
     }
     .nt-btn-agregar .stButton>button:hover{
       background:#9333EA !important;
@@ -2376,7 +2376,7 @@ def render_nueva_tarea(user: dict | None = None):
                 with r3c4:
                     st.markdown('<div class="nt-btn-volver">', unsafe_allow_html=True)
                     volver_clicked = st.form_submit_button("⬅ Volver", use_container_width=True)
-                    st.markmarkdown("</div>", unsafe_allow_html=True)
+                    st.markdown("</div>", unsafe_allow_html=True)
 
                 with r3c5:
                     st.markdown('<div class="nt-btn-agregar">', unsafe_allow_html=True)
@@ -2404,6 +2404,7 @@ def render_nueva_tarea(user: dict | None = None):
     gap = SECTION_GAP if "SECTION_GAP" in globals() else 30
     st.markdown(f"<div style='height:{gap}px;'></div>", unsafe_allow_html=True)
 
+
 # ============================================================
 #             VISTA UNIFICADA (NUEVA + RECIENTES)
 # ============================================================
@@ -2417,3 +2418,4 @@ def render(user: dict | None = None):
     _bootstrap_df_main_hist()
     render_nueva_tarea(user=user)
     render_historial(user=user)
+
