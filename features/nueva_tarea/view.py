@@ -2098,7 +2098,7 @@ def render_nueva_tarea(user: dict | None = None):
 
     .nt-btn-volver,
     .nt-btn-agregar{
-        margin-top:0px !important;  /* pelín hacia arriba */
+        margin-top:4px !important;  /* bajarlos un pelín */
     }
     </style>
         """,
@@ -2386,7 +2386,7 @@ def render_nueva_tarea(user: dict | None = None):
     st.markdown(
         """
         <div style="
-            height:1.5px;
+            height:3px;
             background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
             border-radius:999px;
             margin:16px 0 0 0;
@@ -2429,4 +2429,3 @@ def render(user: dict | None = None):
     _bootstrap_df_main_hist()
     render_nueva_tarea(user=user)
     render_historial(user=user)
-
