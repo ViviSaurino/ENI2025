@@ -1926,7 +1926,7 @@ def render_nueva_tarea(user: dict | None = None):
         display:none !important;
     }
 
-    /* ===== Banner superior tipo “Bienvenida” pero para NUEVA TAREA ===== */
+    /* ===== Banner superior “Nueva tarea” ===== */
     .nt-hero-wrapper{
       margin-left:0px;
       margin-right:0px;
@@ -1966,7 +1966,7 @@ def render_nueva_tarea(user: dict | None = None):
       transform: translateY(10px);
     }
 
-    /* ===== Tarjeta blanca SOLO para el formulario (filtros) ===== */
+    /* ===== Tarjeta blanca SOLO para el formulario ===== */
     div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
         background: transparent !important;
         box-shadow: none !important;
@@ -2002,17 +2002,6 @@ def render_nueva_tarea(user: dict | None = None):
       max-width:none !important;
     }
 
-    /* Franja de indicaciones */
-    .help-strip{
-      background:#FFFFFF;
-      border:1px solid #E5E7EB;
-      color:#0B3B76;
-      padding:12px 14px;
-      border-radius:14px;
-      font-size:0.92rem;
-      box-shadow:none;
-    }
-
     /* Tarjetas de pasos de indicaciones */
     .nt-steps-row{
       display:flex;
@@ -2046,21 +2035,18 @@ def render_nueva_tarea(user: dict | None = None):
       align-items:flex-start;
       text-align:left;
     }
-
     .nt-step-label{
       font-size:0.88rem;
       font-weight:400;
       color:#111827;
       white-space: nowrap;
     }
-
     .nt-step-icon-slot{
       flex:0 0 auto;
       display:flex;
       align-items:center;
       justify-content:center;
     }
-
     .nt-step-icon{
       width:32px;
       height:32px;
@@ -2072,17 +2058,16 @@ def render_nueva_tarea(user: dict | None = None):
       font-size:1.8rem;
       flex-shrink:0;
     }
-
     .nt-step-text{
       display:none !important;
     }
 
-    /* ===== Botones Volver (verde jade) y Agregar (lila) ===== */
+    /* ===== Botones Volver (jade) y Agregar (lila) ===== */
     .nt-btn-volver .stButton>button{
       min-height:38px !important;
       height:38px !important;
       border-radius:999px !important;
-      background:#34D399 !important;   /* jade clarito */
+      background:#34D399 !important;
       color:#FFFFFF !important;
       border:none !important;
       font-weight:600 !important;
@@ -2095,8 +2080,8 @@ def render_nueva_tarea(user: dict | None = None):
       min-height:38px !important;
       height:38px !important;
       border-radius:999px !important;
-      background:#A855F7 !important;   /* lila */
-      color:#FFFFFF !important;        /* letras blancas */
+      background:#A855F7 !important;
+      color:#FFFFFF !important;
       border:none !important;
       font-weight:600 !important;
     }
@@ -2145,8 +2130,7 @@ def render_nueva_tarea(user: dict | None = None):
     hero_b64 = _hero_img_base64()
     hero_img_html = (
         f'<img src="data:image/png;base64,{hero_b64}" alt="Nueva tarea" class="nt-hero-img">'
-        if hero_b64
-        else ""
+        if hero_b64 else ""
     )
     st.markdown(
         f"""
@@ -2170,42 +2154,28 @@ def render_nueva_tarea(user: dict | None = None):
         if st.session_state.pop("nt_added_ok", False):
             st.success("Agregado a Tareas recientes")
 
-    # ===== Indicaciones en tarjetas (5 pasos) =====
+    # ===== Pasos =====
     st.markdown(
         """
     <div class="nt-steps-row">
       <div class="nt-step-card">
-        <div class="nt-step-main">
-          <div class="nt-step-label">1. Llena los datos</div>
-        </div>
+        <div class="nt-step-main"><div class="nt-step-label">1. Llena los datos</div></div>
         <div class="nt-step-icon-slot"><span class="nt-step-icon">📝</span></div>
       </div>
-
       <div class="nt-step-card">
-        <div class="nt-step-main">
-          <div class="nt-step-label">2. Pulsa “Agregar”</div>
-        </div>
+        <div class="nt-step-main"><div class="nt-step-label">2. Pulsa “Agregar”</div></div>
         <div class="nt-step-icon-slot"><span class="nt-step-icon">➕</span></div>
       </div>
-
       <div class="nt-step-card">
-        <div class="nt-step-main">
-          <div class="nt-step-label">3. Revisa tu tarea</div>
-        </div>
+        <div class="nt-step-main"><div class="nt-step-label">3. Revisa tu tarea</div></div>
         <div class="nt-step-icon-slot"><span class="nt-step-icon">🕑</span></div>
       </div>
-
       <div class="nt-step-card">
-        <div class="nt-step-main">
-          <div class="nt-step-label">4. Graba</div>
-        </div>
+        <div class="nt-step-main"><div class="nt-step-label">4. Graba</div></div>
         <div class="nt-step-icon-slot"><span class="nt-step-icon">💾</span></div>
       </div>
-
       <div class="nt-step-card">
-        <div class="nt-step-main">
-          <div class="nt-step-label">5. Sube a Sheets</div>
-        </div>
+        <div class="nt-step-main"><div class="nt-step-label">5. Sube a Sheets</div></div>
         <div class="nt-step-icon-slot"><span class="nt-step-icon">📤</span></div>
       </div>
     </div>
@@ -2215,22 +2185,20 @@ def render_nueva_tarea(user: dict | None = None):
 
     st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
 
-    # ===== Bloque de filtros / formulario =====
-    COLS_5 = [1, 1, 1, 1, 1]  # ⬅️ 5 columnas iguales por fila
+    # ===== Formulario =====
+    COLS_5 = [1, 1, 1, 1, 1]
 
     volver_clicked = False
     submitted = False
 
-    # --- FORMULARIO COMPLETO ---
     with st.form("form_nueva_tarea"):
         with st.container():
-            # sentinel solo para el CSS del card
             st.markdown(
                 '<span id="nt-card-sentinel" style="display:none"></span>',
                 unsafe_allow_html=True,
             )
 
-            # ===== Responsable & Área desde ACL =====
+            # ----- Responsable & Área -----
             _acl = st.session_state.get("acl_user", {}) or {}
             display_name_txt = (
                 _acl.get("display")
@@ -2251,7 +2219,7 @@ def render_nueva_tarea(user: dict | None = None):
             area_fixed = _area_acl if _area_acl else (AREAS_OPC[0] if AREAS_OPC else "")
             st.session_state["nt_area"] = area_fixed
 
-            # ===== Fases =====
+            # ----- Fases -----
             FASES = [
                 "Capacitación",
                 "Post-capacitación",
@@ -2267,27 +2235,14 @@ def render_nueva_tarea(user: dict | None = None):
             _fase_sel = st.session_state.get("nt_fase", None)
             _is_fase_otros = str(_fase_sel).strip() == "Otros"
 
-            # ---------- FILA 1 (máx. 5 campos) ----------
+            # ---------- FILA 1 ----------
             if _is_fase_otros:
                 c1, c2, c3, c4, c5 = st.columns(COLS_5, gap="medium")
                 c1.text_input("Área", value=area_fixed, key="nt_area_view", disabled=True)
-                c2.selectbox(
-                    "Fase",
-                    options=FASES,
-                    key="nt_fase",
-                    index=FASES.index("Otros"),
-                )
-                c3.text_input(
-                    "Otros (especifique)",
-                    key="nt_fase_otro",
-                    placeholder="Describe la fase",
-                )
+                c2.selectbox("Fase", options=FASES, key="nt_fase", index=FASES.index("Otros"))
+                c3.text_input("Otros (especifique)", key="nt_fase_otro", placeholder="Describe la fase")
                 c4.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
-                c5.text_input(
-                    "Detalle de tarea",
-                    placeholder="Información adicional (opcional)",
-                    key="nt_detalle",
-                )
+                c5.text_input("Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle")
             else:
                 c1, c2, c3, c4, c5 = st.columns(COLS_5, gap="medium")
                 c1.text_input("Área", value=area_fixed, key="nt_area_view", disabled=True)
@@ -2299,14 +2254,10 @@ def render_nueva_tarea(user: dict | None = None):
                     key="nt_fase",
                 )
                 c3.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
-                c4.text_input(
-                    "Detalle de tarea",
-                    placeholder="Información adicional (opcional)",
-                    key="nt_detalle",
-                )
+                c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle")
                 c5.text_input("Responsable", key="nt_resp", disabled=True)
 
-            # ---------- Fecha/Hora (estado interno) ----------
+            # ----- Fecha/Hora base -----
             if st.session_state.get("fi_d", "___MISSING___") is None:
                 st.session_state.pop("fi_d")
             if st.session_state.get("fi_t", "___MISSING___") is None:
@@ -2316,7 +2267,7 @@ def render_nueva_tarea(user: dict | None = None):
                     st.session_state.pop("nt_skip_date_init", None)
                 else:
                     st.session_state["fi_d"] = now_lima_trimmed().date()
-            _sync_time_from_date()
+            _sync_time_from_date()  # solo usa fi_d y actualiza fi_t / fi_t_view
 
             _t = st.session_state.get("fi_t")
             st.session_state["fi_t_view"] = _t.strftime("%H:%M") if _t else ""
@@ -2324,8 +2275,7 @@ def render_nueva_tarea(user: dict | None = None):
             # ID preview
             _df_tmp = (
                 st.session_state.get("df_main", pd.DataFrame()).copy()
-                if "df_main" in st.session_state
-                else pd.DataFrame()
+                if "df_main" in st.session_state else pd.DataFrame()
             )
             prefix = make_id_prefix(
                 st.session_state.get("nt_area", area_fixed),
@@ -2341,34 +2291,15 @@ def render_nueva_tarea(user: dict | None = None):
                 else f"{prefix}_"
             )
 
-            # ---------- FILA 2 y FILA 3 (máx. 5 campos por fila) ----------
+            # ---------- FILA 2 y 3 ----------
             if _is_fase_otros:
                 # FILA 2
                 r2c1, r2c2, r2c3, r2c4, r2c5 = st.columns(COLS_5, gap="medium")
                 r2c1.text_input("Responsable", key="nt_resp", disabled=True)
-                r2c2.selectbox(
-                    "Ciclo de mejora",
-                    options=["1", "2", "3", "+4"],
-                    index=0,
-                    key="nt_ciclo_mejora",
-                )
-                r2c3.text_input(
-                    "Tipo de tarea",
-                    key="nt_tipo",
-                    placeholder="Escribe el tipo de tarea",
-                )
-                r2c4.text_input(
-                    "Estado actual",
-                    value="No iniciado",
-                    disabled=True,
-                    key="nt_estado_view",
-                )
-                r2c5.selectbox(
-                    "Complejidad",
-                    options=["🟢 Baja", "🟡 Media", "🔴 Alta"],
-                    index=0,
-                    key="nt_complejidad",
-                )
+                r2c2.selectbox("Ciclo de mejora", options=["1", "2", "3", "+4"], index=0, key="nt_ciclo_mejora")
+                r2c3.text_input("Tipo de tarea", key="nt_tipo", placeholder="Escribe el tipo de tarea")
+                r2c4.text_input("Estado actual", value="No iniciado", disabled=True, key="nt_estado_view")
+                r2c5.selectbox("Complejidad", options=["🟢 Baja", "🟡 Media", "🔴 Alta"], index=0, key="nt_complejidad")
 
                 # FILA 3
                 r3c1, r3c2, r3c3, r3c4, _ = st.columns(COLS_5, gap="medium")
@@ -2378,11 +2309,7 @@ def render_nueva_tarea(user: dict | None = None):
                     index=0,
                     key="nt_duracion_label",
                 )
-                r3c2.date_input(
-                    "Fecha de registro",
-                    key="fi_d",
-                    on_change=_auto_time_on_date,
-                )
+                r3c2.date_input("Fecha de registro", key="fi_d")
                 _sync_time_from_date()
                 r3c3.text_input(
                     "Hora de registro (auto)",
@@ -2390,38 +2317,14 @@ def render_nueva_tarea(user: dict | None = None):
                     disabled=True,
                     help="Se asigna al elegir la fecha",
                 )
-                r3c4.text_input(
-                    "ID asignado",
-                    value=id_preview,
-                    disabled=True,
-                    key="nt_id_preview",
-                )
+                r3c4.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
             else:
                 # FILA 2
                 r2c1, r2c2, r2c3, r2c4, r2c5 = st.columns(COLS_5, gap="medium")
-                r2c1.selectbox(
-                    "Ciclo de mejora",
-                    options=["1", "2", "3", "+4"],
-                    index=0,
-                    key="nt_ciclo_mejora",
-                )
-                r2c2.text_input(
-                    "Tipo de tarea",
-                    key="nt_tipo",
-                    placeholder="Escribe el tipo de tarea",
-                )
-                r2c3.text_input(
-                    "Estado actual",
-                    value="No iniciado",
-                    disabled=True,
-                    key="nt_estado_view",
-                )
-                r2c4.selectbox(
-                    "Complejidad",
-                    options=["🟢 Baja", "🟡 Media", "🔴 Alta"],
-                    index=0,
-                    key="nt_complejidad",
-                )
+                r2c1.selectbox("Ciclo de mejora", options=["1", "2", "3", "+4"], index=0, key="nt_ciclo_mejora")
+                r2c2.text_input("Tipo de tarea", key="nt_tipo", placeholder="Escribe el tipo de tarea")
+                r2c3.text_input("Estado actual", value="No iniciado", disabled=True, key="nt_estado_view")
+                r2c4.selectbox("Complejidad", options=["🟢 Baja", "🟡 Media", "🔴 Alta"], index=0, key="nt_complejidad")
                 r2c5.selectbox(
                     "Duración",
                     options=[f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)],
@@ -2431,11 +2334,7 @@ def render_nueva_tarea(user: dict | None = None):
 
                 # FILA 3
                 r3c1, r3c2, r3c3, r3c4, _ = st.columns(COLS_5, gap="medium")
-                r3c1.date_input(
-                    "Fecha de registro",
-                    key="fi_d",
-                    on_change=_auto_time_on_date,
-                )
+                r3c1.date_input("Fecha de registro", key="fi_d")
                 _sync_time_from_date()
                 r3c2.text_input(
                     "Hora de registro",
@@ -2443,15 +2342,10 @@ def render_nueva_tarea(user: dict | None = None):
                     disabled=True,
                     help="Se asigna al elegir la fecha",
                 )
-                r3c3.text_input(
-                    "ID asignado",
-                    value=id_preview,
-                    disabled=True,
-                    key="nt_id_preview",
-                )
-                # r3c4 queda vacío (espacio) para mantener solo 5 celdas totales
+                r3c3.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
+                # r3c4 queda vacío
 
-        # ---------- FILA DE BOTONES (Volver + Agregar, alineados a la derecha) ----------
+        # ---------- FILA DE BOTONES (derecha) ----------
         b1, b2, b3, b4, b5 = st.columns(COLS_5, gap="medium")
 
         with b4:
@@ -2464,7 +2358,7 @@ def render_nueva_tarea(user: dict | None = None):
             submitted = st.form_submit_button("➕ Agregar", use_container_width=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
-    # ------ Acción botones ------
+    # ------ Acción botones fuera del form ------
     if volver_clicked:
         st.session_state["home_tile"] = ""
         display_name = st.session_state.get("user_display_name", "Usuario")
@@ -2477,30 +2371,10 @@ def render_nueva_tarea(user: dict | None = None):
     if submitted and not volver_clicked:
         try:
             df = st.session_state.get("df_main", pd.DataFrame()).copy()
-            # 👉 Aquí va TODA tu lógica de guardado que ya tenías antes
-            #    (insertar fila nueva, actualizar df_main, etc.)
+            # aquí va tu lógica de guardado
             pass
         except Exception as e:
             st.error(f"No pude guardar la nueva tarea: {e}")
 
     gap = SECTION_GAP if "SECTION_GAP" in globals() else 30
     st.markdown(f"<div style='height:{gap}px;'></div>", unsafe_allow_html=True)
-
-
-# ============================================================
-#             VISTA UNIFICADA (NUEVA + RECIENTES)
-# ============================================================
-def render(user: dict | None = None):
-    """
-    Vista combinada:
-    - Arriba: ➕ Nueva tarea
-    - Abajo: 🕑 Tareas recientes
-    """
-    # Aseguramos que df_main esté inicializado antes de ambos bloques
-    _bootstrap_df_main_hist()
-    render_nueva_tarea(user=user)
-    render_historial(user=user)
-
-    _bootstrap_df_main_hist()
-    render_nueva_tarea(user=user)
-    render_historial(user=user)
