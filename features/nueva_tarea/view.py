@@ -1966,24 +1966,20 @@ def render_nueva_tarea(user: dict | None = None):
       transform: translateY(10px);
     }
 
-    /* ===== Tarjeta blanca SOLO para el formulario ===== */
+    /* ===== Contenedor del formulario (sin tarjeta) ===== */
     div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel){
         background: transparent !important;
         box-shadow: none !important;
         border-radius: 0 !important;
+        border: none !important;
 
-        padding: 20px 0 22px 0;
-        margin-top: 16px;
-        margin-bottom: 10px;
-
-        border-top: 1px solid #E5E7EB !important;
-        border-bottom: 1px solid #E5E7EB !important;
-        border-left: none !important;
-        border-right: none !important;
-
-        margin-left: 8px;
-        margin-right: 24px;
-    }
+    /* sin card, solo un poco de aire arriba/abajo */
+    padding: 0 !important;
+    margin-top: 16px !important;
+    margin-bottom: 10px !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
 
     /* Inputs full width dentro del card */
     div[data-testid="stVerticalBlock"]:has(> #nt-card-sentinel) .stTextInput,
