@@ -610,10 +610,10 @@ def _ensure_deadline_and_compliance(df: pd.DataFrame) -> pd.DataFrame:
 
     # Cumplimiento
     fv = to_naive_local_series(df["Fecha Vencimiento"]) if "Fecha Vencimiento" in df.columns else pd.Series(
-        pd.NaT, index=df.index, dtype="datetime64[ns]"
+        pd.NaT, index=df.index, dtype="datetime64[ns]"]
     )
     ft = to_naive_local_series(df["Fecha Terminado"]) if "Fecha Terminado" in df.columns else pd.Series(
-        pd.NaT, index=df.index, dtype="datetime64[ns]"
+        pd.NaT, index=df.index, dtype="datetime64[ns]"]
     )
     today_ts = pd.Timestamp(date.today())
     fv_n = fv.dt.normalize()
@@ -739,8 +739,9 @@ def render_historial(user: dict | None = None):
         --hdr-ini:#DCFCE7;   /* Inicio: verde */
         --hdr-ter:#E0F2FE;   /* Terminado: celeste */
 
-        /* Separadores horizontales suaves */
-        --row-sep:#E5E7EB;
+        /* Separadores horizontales */
+        --row-sep:#E5E7EB;      /* gris para grilla */
+        --hist-sep:#C7D2FE;     /* azul lila para filtros */
       }
 
       .hist-card{ border:0!important; background:transparent!important; border-radius:0!important; padding:0!important; margin:0 0 8px 0!important; }
@@ -771,12 +772,28 @@ def render_historial(user: dict | None = None):
         padding:0!important;
         margin:6px 0 8px 0 !important;
         box-shadow:
-          inset 0 1px 0 var(--row-sep),
-          inset 0 -1px 0 var(--row-sep);
+          inset 0 1px 0 var(--hist-sep),
+          inset 0 -1px 0 var(--hist-sep);
       }
 
-      /* Botón buscar del ancho de su celda (debajo de Hasta) */
-      .hist-search .stButton>button{ width:100%; }
+      /* Botón Buscar lila, ocupa todo el ancho de su celda */
+      .hist-search .stButton>button{
+        width:100%;
+        background:linear-gradient(135deg,#6D28D9,#8B5CF6);
+        color:#FFFFFF;
+        border:none;
+        border-radius:999px;
+        font-weight:600;
+        box-shadow:0 2px 4px rgba(0,0,0,0.12);
+      }
+      .hist-search .stButton>button:hover{
+        filter:brightness(1.05);
+        box-shadow:0 4px 10px rgba(0,0,0,0.16);
+      }
+      .hist-search .stButton>button:focus{
+        outline:none;
+        box-shadow:0 0 0 2px rgba(129,140,248,0.7);
+      }
 
       /* AG Grid base con líneas horizontales suaves */
       .ag-theme-balham .ag-cell{
@@ -911,8 +928,9 @@ def render_historial(user: dict | None = None):
     hist_do_buscar = False
 
     with st.container():
+        # línea superior azul lila
         st.markdown(
-            '<div style="height:0; border-top:1px solid var(--row-sep); margin:0 0 6px 0;"></div>',
+            '<div style="height:0; border-top:1px solid var(--hist-sep); margin:0 0 6px 0;"></div>',
             unsafe_allow_html=True,
         )
         st.markdown('<div class="hist-filters">', unsafe_allow_html=True)
@@ -942,16 +960,12 @@ def render_historial(user: dict | None = None):
             with r1c5:
                 _cum_lbl = _sel(CUMPL_CHOICES, "Cumplimiento", "hist_cumpl")
 
-            # Fila 2: fechas + Buscar (máximo 5 columnas)
-            r2c1, r2c2, r2c3, _, _ = st.columns(COLS_5, gap="medium")
+            # Fila 2: solo fechas
+            r2c1, r2c2, _, _, _ = st.columns(COLS_5, gap="medium")
             with r2c1:
                 f_desde = st.date_input("Desde", value=_min_date, key="hist_desde")
             with r2c2:
                 f_hasta = st.date_input("Hasta", value=_max_date, key="hist_hasta")
-            with r2c3:
-                st.markdown('<div class="hist-search">', unsafe_allow_html=True)
-                hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
-                st.markdown("</div>", unsafe_allow_html=True)
 
         else:
             # Fila 1: 5 filtros
@@ -967,20 +981,24 @@ def render_historial(user: dict | None = None):
             with r1c5:
                 f_desde = st.date_input("Desde", value=_min_date, key="hist_desde")
 
-            # Fila 2: Hasta + Buscar
-            r2c1, r2c2, _, _, _ = st.columns(COLS_5, gap="medium")
+            # Fila 2: solo Hasta
+            r2c1, _, _, _, _ = st.columns(COLS_5, gap="medium")
             with r2c1:
                 f_hasta = st.date_input("Hasta", value=_max_date, key="hist_hasta")
-            with r2c2:
-                st.markdown('<div class="hist-search">', unsafe_allow_html=True)
-                hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
-                st.markdown("</div>", unsafe_allow_html=True)
 
         st.markdown("</div>", unsafe_allow_html=True)
+        # línea inferior azul lila
         st.markdown(
-            '<div style="height:0; border-bottom:1px solid var(--row-sep); margin:2px 0 6px 0;"></div>',
+            '<div style="height:0; border-bottom:1px solid var(--hist-sep); margin:2px 0 10px 0;"></div>',
             unsafe_allow_html=True,
         )
+
+        # Botón Buscar debajo de la línea lila
+        b1, b2, b3, b4, b5 = st.columns(COLS_5, gap="medium")
+        with b3:
+            st.markdown('<div class="hist-search">', unsafe_allow_html=True)
+            hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
+            st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -1870,6 +1888,7 @@ def log_reciente_safe(*args, **kwargs):
         # Silenciamos cualquier error interno del log
         pass
 
+
 # ============================================================
 #   HELPER: imagen del banner "Nueva tarea"
 # ============================================================
@@ -1896,6 +1915,7 @@ def _hero_img_base64() -> str:
         if ruta.exists():
             return base64.b64encode(ruta.read_bytes()).decode("utf-8")
     return ""
+
 
 # ============================================================
 #   HELPER: sincronizar hora a partir de la fecha de registro
@@ -1926,116 +1946,70 @@ def _sync_time_from_date():
     st.session_state["fi_t_view"] = t.strftime("%H:%M")
 
 
-# ============================================================
-#   HELPER: sincronizar hora a partir de la fecha de registro
-# ============================================================
+# (se repite el helper según tu archivo original, sin cambios adicionales)
 def _sync_time_from_date():
-    """
-    Asegura que exista una hora (fi_t) coherente con la fecha fi_d.
-    Usa now_lima_trimmed() si está disponible; si no, datetime.now().
-    Actualiza también fi_t_view (HH:MM).
-    """
     d = st.session_state.get("fi_d", None)
-
-    # Si no hay fecha, limpiamos hora
     if d is None:
         st.session_state["fi_t"] = None
         st.session_state["fi_t_view"] = ""
         return
-
     try:
         dt = now_lima_trimmed()
     except Exception:
         from datetime import datetime
         dt = datetime.now()
-
     t = dt.time().replace(second=0, microsecond=0)
     st.session_state["fi_t"] = t
     st.session_state["fi_t_view"] = t.strftime("%H:%M")
 
 
-# ============================================================
-#   HELPER: sincronizar hora a partir de la fecha de registro
-# ============================================================
 def _sync_time_from_date():
-    """
-    Asegura que exista una hora (fi_t) coherente con la fecha fi_d.
-    Usa now_lima_trimmed() si está disponible; si no, datetime.now().
-    Actualiza también fi_t_view (HH:MM).
-    """
     d = st.session_state.get("fi_d", None)
-
-    # Si no hay fecha, limpiamos hora
     if d is None:
         st.session_state["fi_t"] = None
         st.session_state["fi_t_view"] = ""
         return
-
     try:
         dt = now_lima_trimmed()
     except Exception:
         from datetime import datetime
         dt = datetime.now()
-
     t = dt.time().replace(second=0, microsecond=0)
     st.session_state["fi_t"] = t
     st.session_state["fi_t_view"] = t.strftime("%H:%M")
 
 
-# ============================================================
-#   HELPER: sincronizar hora a partir de la fecha de registro
-# ============================================================
 def _sync_time_from_date():
-    """
-    Asegura que exista una hora (fi_t) coherente con la fecha fi_d.
-    Usa now_lima_trimmed() si está disponible; si no, datetime.now().
-    Actualiza también fi_t_view (HH:MM).
-    """
     d = st.session_state.get("fi_d", None)
-
-    # Si no hay fecha, limpiamos hora
     if d is None:
         st.session_state["fi_t"] = None
         st.session_state["fi_t_view"] = ""
         return
-
     try:
         dt = now_lima_trimmed()
     except Exception:
         from datetime import datetime
         dt = datetime.now()
-
     t = dt.time().replace(second=0, microsecond=0)
     st.session_state["fi_t"] = t
     st.session_state["fi_t_view"] = t.strftime("%H:%M")
 
 
-# ============================================================
-#   HELPER: sincronizar hora a partir de la fecha de registro
-# ============================================================
 def _sync_time_from_date():
-    """
-    Asegura que exista una hora (fi_t) coherente con la fecha fi_d.
-    Usa now_lima_trimmed() si está disponible; si no, datetime.now().
-    Actualiza también fi_t_view (HH:MM).
-    """
     d = st.session_state.get("fi_d", None)
-
-    # Si no hay fecha, limpiamos hora
     if d is None:
         st.session_state["fi_t"] = None
         st.session_state["fi_t_view"] = ""
         return
-
     try:
         dt = now_lima_trimmed()
     except Exception:
         from datetime import datetime
         dt = datetime.now()
-
     t = dt.time().replace(second=0, microsecond=0)
     st.session_state["fi_t"] = t
     st.session_state["fi_t_view"] = t.strftime("%H:%M")
+
 
 
 # ============================================================
