@@ -791,8 +791,8 @@ def render_historial(user: dict | None = None):
       /* AG Grid base con líneas horizontales suaves */
       .ag-theme-balham .ag-cell{
         white-space:nowrap!important; overflow:hidden!important; text-overflow:ellipsis!important;
-        border-top:1px solid var(--row-sep)!important;
-        border-bottom:1px solid var(--row-sep)!important;
+        border-top:2px solid var(--row-sep)!important;
+        border-bottom:2px solid var(--row-sep)!important;
       }
       .ag-theme-balham .ag-header-cell{
         border-top:2px solid var(--row-sep)!important;
@@ -1936,6 +1936,7 @@ def _sync_time_from_date():
     t = dt.time().replace(second=0, microsecond=0)
     st.session_state["fi_t"] = t
     st.session_state["fi_t_view"] = t.strftime("%H:%M")
+
 
 
 # ============================================================
