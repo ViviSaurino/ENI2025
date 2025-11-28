@@ -697,7 +697,7 @@ def _bootstrap_df_main_hist():
         or st.session_state["df_main"].empty
     )
     if not need:
-        # *** NUEVO: baseline si aún no existe
+        # baseline si aún no existe
         st.session_state.setdefault("_hist_baseline", st.session_state["df_main"].copy())
         return
 
@@ -712,6 +712,12 @@ def _bootstrap_df_main_hist():
     except Exception:
         st.session_state["df_main"] = pd.DataFrame(columns=DEFAULT_COLS)
         st.session_state["_hist_baseline"] = st.session_state["df_main"].copy()
+
+
+# =========================================================
+#   VISTA: Historial / Tareas recientes
+# =========================================================
+def render_historial(user: dict | None = None):
 
     # ====== CSS (AJUSTES pedidos) ======
     st.markdown(
@@ -775,7 +781,7 @@ def _bootstrap_df_main_hist():
       .hist-hint + div:has(div[data-testid="stTextInput"]){ display:none!important; }
       .hist-hint + div:has(input[type="text"]){ display:none!important; }
 
-      /* ✅ Marco con dos líneas (arriba y abajo) alrededor de los filtros */
+      /* Marco con dos líneas (arriba y abajo) alrededor de los filtros */
       .hist-filters{
         border:0!important;
         background:transparent!important;
@@ -800,25 +806,7 @@ def _bootstrap_df_main_hist():
         background:#4F46E5;
       }
 
-      /* 🔹 Separador superior con imagen */
-      .hist-top-separator{
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        gap:8px;
-        margin:4px 0 16px 0;
-      }
-      .hist-top-separator-line{
-        flex:1;
-        height:4px; /* 👈 línea lila-azul más gruesa */
-        border-radius:999px;
-        background:linear-gradient(90deg,#6366F1,#A855F7);
-      }
-      .hist-top-separator-img img{
-        display:block;
-      }
-
-      /* 🔹 Bloque imagen + texto "Ahora revisa tus tareas" */
+      /* Bloque imagen + texto "Ahora revisa tus tareas" */
       .hist-hero{
         display:flex;
         align-items:center;
@@ -826,21 +814,21 @@ def _bootstrap_df_main_hist():
         margin:12px 0 4px 0;
       }
       .hist-hero-img img{
-        max-width:150px;   /* 👉 tamaño aprox. de la "bola roja" */
+        max-width:150px;
         height:auto;
         display:block;
       }
       .hist-hero-text{
         font-size:1.1rem;
         font-weight:600;
-        color:#4B5563;     /* gris suave */
+        color:#4B5563;
       }
 
-      /* 🔹 Línea gris clarita y delgada debajo del bloque */
+      /* Línea gris clarita debajo del bloque */
       .hist-hero-line{
         height:1px;
         width:100%;
-        background:#E5E7EB;  /* plomo claro */
+        background:#E5E7EB;
         margin:0 0 16px 0;
       }
 
@@ -887,7 +875,6 @@ def _bootstrap_df_main_hist():
     """,
         unsafe_allow_html=True,
     )
-
 
     # ====== DATA BASE (bootstrap fuerte) ======
     _bootstrap_df_main_hist()
@@ -946,6 +933,7 @@ def _bootstrap_df_main_hist():
             """,
             unsafe_allow_html=True,
         )
+
 
     # ===== Pasos (tarjetas tipo Nueva tarea) =====
     st.markdown(
