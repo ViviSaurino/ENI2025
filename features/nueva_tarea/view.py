@@ -771,8 +771,8 @@ def render_historial(user: dict | None = None):
         padding:0!important;
         margin:8px 0 10px 0 !important;
         box-shadow:
-          inset 0 2px 0 var(--row-sep),
-          inset 0 -2px 0 var(--row-sep);
+          inset 0 3px 0 var(--row-sep),
+          inset 0 -3px 0 var(--row-sep);
       }
 
       /* Botón Buscar estilo lila */
@@ -922,7 +922,7 @@ def render_historial(user: dict | None = None):
 
     with st.container():
         st.markdown(
-            '<div style="height:0; border-top:3px solid var(--row-sep); margin:0 0 8px 0;"></div>',
+            '<div style="height:0; border-top:4px solid var(--row-sep); margin:0 0 8px 0;"></div>',
             unsafe_allow_html=True,
         )
         st.markdown('<div class="hist-filters">', unsafe_allow_html=True)
@@ -980,7 +980,7 @@ def render_historial(user: dict | None = None):
 
         st.markdown("</div>", unsafe_allow_html=True)
         st.markdown(
-            '<div style="height:0; border-bottom:3px solid var(--row-sep); margin:4px 0 10px 0;"></div>',
+            '<div style="height:0; border-bottom:4px solid var(--row-sep); margin:4px 0 10px 0;"></div>',
             unsafe_allow_html=True,
         )
 
