@@ -825,11 +825,32 @@ def render_historial(user: dict | None = None):
     except Exception:
         pass
 
-    # ===== Píldora e indicaciones =====
-    st.markdown('<div class="hist-title-pill">🕑 Tareas recientes</div>', unsafe_allow_html=True)
+    # ===== Pasos (tarjetas tipo Nueva tarea) =====
     st.markdown(
-        '<div class="hist-hint">Aquí puedes editar <b>Tarea</b> y <b>Detalle de tarea</b>. '
-        'Opcional: descargar en Excel. <b>Obligatorio:</b> Grabar y después Subir a Sheets.</div>',
+        """
+    <div class="nt-steps-row">
+      <div class="nt-step-card">
+        <div class="nt-step-main"><div class="nt-step-label">Opcional: Edita tu tarea</div></div>
+        <div class="nt-step-icon-slot"><span class="nt-step-icon">✏️</span></div>
+      </div>
+      <div class="nt-step-card">
+        <div class="nt-step-main"><div class="nt-step-label">Opcional: Editar el detalle</div></div>
+        <div class="nt-step-icon-slot"><span class="nt-step-icon">📋</span></div>
+      </div>
+      <div class="nt-step-card">
+        <div class="nt-step-main"><div class="nt-step-label">Obligatorio: Graba</div></div>
+        <div class="nt-step-icon-slot"><span class="nt-step-icon">💾</span></div>
+      </div>
+      <div class="nt-step-card">
+        <div class="nt-step-main"><div class="nt-step-label">Obligatorio: Subir a Sheets</div></div>
+        <div class="nt-step-icon-slot"><span class="nt-step-icon">📤</span></div>
+      </div>
+      <div class="nt-step-card">
+        <div class="nt-step-main"><div class="nt-step-label">Opcional: Descarga en Excel</div></div>
+        <div class="nt-step-icon-slot"><span class="nt-step-icon">⬇️</span></div>
+      </div>
+    </div>
+    """,
         unsafe_allow_html=True,
     )
 
@@ -886,6 +907,9 @@ def render_historial(user: dict | None = None):
                 return val
         return ""
 
+    COLS_5 = [1, 1, 1, 1, 1]
+    hist_do_buscar = False
+
     with st.container():
         st.markdown(
             '<div style="height:0; border-top:1px solid var(--row-sep); margin:0 0 6px 0;"></div>',
@@ -899,8 +923,9 @@ def render_historial(user: dict | None = None):
                 for x in df_scope.get("Responsable", pd.Series([], dtype=str)).astype(str).unique()
                 if x and x != "nan"
             ])
-            c1, c2, c3, c4, c5, c6, c7 = st.columns([1.30, 1.20, 1.10, 1.10, 1.30, 1.00, 1.00], gap="medium")
-            with c1:
+            # Fila 1: 5 filtros
+            r1c1, r1c2, r1c3, r1c4, r1c5 = st.columns(COLS_5, gap="medium")
+            with r1c1:
                 resp_multi = st.multiselect(
                     "Responsable",
                     options=responsables,
@@ -908,35 +933,45 @@ def render_historial(user: dict | None = None):
                     key="hist_resp",
                     placeholder="Selecciona responsable(s)",
                 )
-            with c2:
+            with r1c2:
                 _est_lbl = _sel(ESTADO_CHOICES, "Estado actual", "hist_estado")
-            with c3:
+            with r1c3:
                 _pri_lbl = _sel(PRIORIDAD_CHOICES, "Prioridad", "hist_prio")
-            with c4:
+            with r1c4:
                 _com_lbl = _sel(COMPLEJIDAD_CHOICES, "Complejidad", "hist_comp")
-            with c5:
+            with r1c5:
                 _cum_lbl = _sel(CUMPL_CHOICES, "Cumplimiento", "hist_cumpl")
-            with c6:
+
+            # Fila 2: fechas + Buscar (máximo 5 columnas)
+            r2c1, r2c2, r2c3, _, _ = st.columns(COLS_5, gap="medium")
+            with r2c1:
                 f_desde = st.date_input("Desde", value=_min_date, key="hist_desde")
-            with c7:
+            with r2c2:
                 f_hasta = st.date_input("Hasta", value=_max_date, key="hist_hasta")
+            with r2c3:
                 st.markdown('<div class="hist-search">', unsafe_allow_html=True)
                 hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
                 st.markdown("</div>", unsafe_allow_html=True)
+
         else:
-            c1, c2, c3, c4, c5, c6 = st.columns([1.20, 1.10, 1.10, 1.30, 1.00, 1.00], gap="medium")
-            with c1:
+            # Fila 1: 5 filtros
+            r1c1, r1c2, r1c3, r1c4, r1c5 = st.columns(COLS_5, gap="medium")
+            with r1c1:
                 _est_lbl = _sel(ESTADO_CHOICES, "Estado actual", "hist_estado")
-            with c2:
+            with r1c2:
                 _pri_lbl = _sel(PRIORIDAD_CHOICES, "Prioridad", "hist_prio")
-            with c3:
+            with r1c3:
                 _com_lbl = _sel(COMPLEJIDAD_CHOICES, "Complejidad", "hist_comp")
-            with c4:
+            with r1c4:
                 _cum_lbl = _sel(CUMPL_CHOICES, "Cumplimiento", "hist_cumpl")
-            with c5:
+            with r1c5:
                 f_desde = st.date_input("Desde", value=_min_date, key="hist_desde")
-            with c6:
+
+            # Fila 2: Hasta + Buscar
+            r2c1, r2c2, _, _, _ = st.columns(COLS_5, gap="medium")
+            with r2c1:
                 f_hasta = st.date_input("Hasta", value=_max_date, key="hist_hasta")
+            with r2c2:
                 st.markdown('<div class="hist-search">', unsafe_allow_html=True)
                 hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
                 st.markdown("</div>", unsafe_allow_html=True)
