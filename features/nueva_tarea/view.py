@@ -2704,12 +2704,39 @@ def _hero_img_base64() -> str:
 
     assets_dir = Path("assets")
     candidatos = [
-        "NUEVA_TAREA.png",   # <- tu archivo
+        "NUEVA_TAREA.png",   # <- tu archivo principal de Nueva tarea
         "nueva_tarea.png",
         "TAREA_NUEVA.png",
         "TAREA-NUEVA.png",
         "TAREA NUEVA.png",
         "tarea_nueva.png",
+    ]
+    for nombre in candidatos:
+        ruta = assets_dir / nombre
+        if ruta.exists():
+            return base64.b64encode(ruta.read_bytes()).decode("utf-8")
+    return ""
+
+
+# ============================================================
+#   HELPER: imagen del separador "Tareas recientes"
+#   (ENI2025/assets/TAREAS_RECIENTES.png)
+# ============================================================
+@st.cache_data
+def _hist_img_base64() -> str:
+    """
+    Devuelve el PNG del banner de 'Tareas recientes' en base64.
+    Espera encontrarlo en la carpeta 'assets'.
+    """
+    import base64
+    from pathlib import Path
+
+    assets_dir = Path("assets")
+    candidatos = [
+        "TAREAS_RECIENTES.png",   # <- archivo que mencionaste
+        "tareas_recientes.png",
+        "TAREAS-RECIENTES.png",
+        "TAREAS RECIENTES.png",
     ]
     for nombre in candidatos:
         ruta = assets_dir / nombre
@@ -2743,7 +2770,6 @@ def _sync_time_from_date():
     t = dt.time().replace(second=0, microsecond=0)
     st.session_state["fi_t"] = t
     st.session_state["fi_t_view"] = t.strftime("%H:%M")
-
 
 
 # ============================================================
