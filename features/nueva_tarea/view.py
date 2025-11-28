@@ -572,7 +572,7 @@ def _add_business_days(start_dates: pd.Series, days: pd.Series) -> pd.Series:
     out = pd.Series(pd.NaT, index=start_dates.index, dtype="datetime64[ns]")
     if ok.any():
         # 🔧 FIX: paréntesis correcto en dtype
-        a = np.array(sd[ok], dtype="datetime64[D]")
+        a = np.array(sd[ok], dtype="datetime64[D]"])
         b = n[ok].to_numpy()
         res = np.busday_offset(a, b, weekmask="Mon Tue Wed Thu Fri")
         out.loc[ok] = pd.to_datetime(res)
@@ -771,13 +771,19 @@ def render_historial(user: dict | None = None):
         padding:0!important;
         margin:6px 0 8px 0 !important;
         box-shadow:
-          inset 0 1px 0 var(--row-sep),
-          inset 0 -1px 0 var(--row-sep);
+          inset 0 2px 0 var(--row-sep),
+          inset 0 -2px 0 var(--row-sep);
       }
 
-      /* Botón Buscar estilo lila y full ancho */
+      /* Botón Buscar estilo lila debajo, alineado a la derecha */
+      .hist-search{
+        display:flex;
+        justify-content:flex-end;
+        margin:4px 0 10px 0;
+      }
       .hist-search .stButton>button{
-        width:100%;
+        width:auto !important;
+        min-width:140px;
         background:#6366F1;
         color:#FFFFFF;
         border:none;
@@ -923,7 +929,7 @@ def render_historial(user: dict | None = None):
 
     with st.container():
         st.markdown(
-            '<div style="height:0; border-top:2px solid var(--row-sep); margin:0 0 6px 0;"></div>',
+            '<div style="height:0; border-top:3px solid var(--row-sep); margin:0 0 6px 0;"></div>',
             unsafe_allow_html=True,
         )
         st.markdown('<div class="hist-filters">', unsafe_allow_html=True)
@@ -953,16 +959,12 @@ def render_historial(user: dict | None = None):
             with r1c5:
                 _cum_lbl = _sel(CUMPL_CHOICES, "Cumplimiento", "hist_cumpl")
 
-            # Fila 2: fechas + Buscar (botón alineado a la derecha)
+            # Fila 2: fechas (botón va debajo de la línea inferior)
             r2c1, r2c2, r2c3, r2c4, r2c5 = st.columns(COLS_5, gap="medium")
             with r2c1:
                 f_desde = st.date_input("Desde", value=_min_date, key="hist_desde")
             with r2c2:
                 f_hasta = st.date_input("Hasta", value=_max_date, key="hist_hasta")
-            with r2c5:
-                st.markdown('<div class="hist-search">', unsafe_allow_html=True)
-                hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
-                st.markdown("</div>", unsafe_allow_html=True)
 
         else:
             # Fila 1: 5 filtros
@@ -978,21 +980,22 @@ def render_historial(user: dict | None = None):
             with r1c5:
                 f_desde = st.date_input("Desde", value=_min_date, key="hist_desde")
 
-            # Fila 2: Hasta + Buscar (botón alineado a la derecha)
+            # Fila 2: Hasta (botón va debajo de la línea inferior)
             r2c1, r2c2, r2c3, r2c4, r2c5 = st.columns(COLS_5, gap="medium")
             with r2c1:
                 f_hasta = st.date_input("Hasta", value=_max_date, key="hist_hasta")
-            with r2c5:
-                st.markdown('<div class="hist-search">', unsafe_allow_html=True)
-                hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
-                st.markdown("</div>", unsafe_allow_html=True)
 
         st.markdown("</div>", unsafe_allow_html=True)
         st.markdown(
-            '<div style="height:0; border-bottom:2px solid var(--row-sep); margin:2px 0 6px 0;"></div>',
+            '<div style="height:0; border-bottom:3px solid var(--row-sep); margin:2px 0 6px 0;"></div>',
             unsafe_allow_html=True,
         )
 
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # 🔍 Botón Buscar debajo de la línea azul lila, alineado a la derecha
+    st.markdown('<div class="hist-search">', unsafe_allow_html=True)
+    hist_do_buscar = st.button("🔍 Buscar", key="hist_btn_buscar")
     st.markdown("</div>", unsafe_allow_html=True)
 
     show_deleted = st.toggle("Mostrar eliminadas (tachadas)", value=True, key="hist_show_deleted")
@@ -1934,6 +1937,7 @@ def _sync_time_from_date():
     t = dt.time().replace(second=0, microsecond=0)
     st.session_state["fi_t"] = t
     st.session_state["fi_t_view"] = t.strftime("%H:%M")
+
 
 
 # ============================================================
