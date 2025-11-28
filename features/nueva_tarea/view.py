@@ -987,7 +987,7 @@ def render_historial(user: dict | None = None):
     # ===== Botón Buscar debajo de la línea, esquina derecha =====
     with st.container():
         # col_espacio grande a la izquierda, col_boton a la derecha (similar ancho a "Agregar")
-        col_espacio, col_boton = st.columns([5, 0.6], gap="medium")
+        col_espacio, col_boton = st.columns([5, 0.45], gap="medium")
         with col_espacio:
             st.write("")  # relleno
         with col_boton:
