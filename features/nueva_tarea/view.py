@@ -740,7 +740,7 @@ def render_historial(user: dict | None = None):
         --hdr-ter:#E0F2FE;   /* Terminado: celeste */
 
         /* Separadores horizontales suaves (ajuste lila-azulado) */
-        --row-sep:#E0E7FF;
+        --row-sep:#C4B5FD;
       }
 
       .hist-card{ border:0!important; background:transparent!important; border-radius:0!important; padding:0!important; margin:0 0 8px 0!important; }
