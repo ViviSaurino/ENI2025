@@ -769,21 +769,14 @@ def render_historial(user: dict | None = None):
         border:0!important; background:transparent!important;
         border-radius:0!important;
         padding:0!important;
-        margin:6px 0 8px 0 !important;
+        margin:8px 0 10px 0 !important;
         box-shadow:
           inset 0 2px 0 var(--row-sep),
           inset 0 -2px 0 var(--row-sep);
       }
 
-      /* Botón Buscar estilo lila debajo, alineado a la derecha */
-      .hist-search{
-        display:flex;
-        justify-content:flex-end;
-        margin:4px 0 10px 0;
-      }
+      /* Botón Buscar estilo lila */
       .hist-search .stButton>button{
-        width:auto !important;
-        min-width:140px;
         background:#6366F1;
         color:#FFFFFF;
         border:none;
@@ -925,11 +918,11 @@ def render_historial(user: dict | None = None):
         return ""
 
     COLS_5 = [1, 1, 1, 1, 1]
-    hist_do_buscar = False
+    hist_do_buscar = False  # se actualizará con el botón de abajo
 
     with st.container():
         st.markdown(
-            '<div style="height:0; border-top:3px solid var(--row-sep); margin:0 0 6px 0;"></div>',
+            '<div style="height:0; border-top:3px solid var(--row-sep); margin:0 0 8px 0;"></div>',
             unsafe_allow_html=True,
         )
         st.markdown('<div class="hist-filters">', unsafe_allow_html=True)
@@ -959,7 +952,7 @@ def render_historial(user: dict | None = None):
             with r1c5:
                 _cum_lbl = _sel(CUMPL_CHOICES, "Cumplimiento", "hist_cumpl")
 
-            # Fila 2: fechas (botón va debajo de la línea inferior)
+            # Fila 2: solo fechas (botón va debajo de la línea)
             r2c1, r2c2, r2c3, r2c4, r2c5 = st.columns(COLS_5, gap="medium")
             with r2c1:
                 f_desde = st.date_input("Desde", value=_min_date, key="hist_desde")
@@ -980,22 +973,28 @@ def render_historial(user: dict | None = None):
             with r1c5:
                 f_desde = st.date_input("Desde", value=_min_date, key="hist_desde")
 
-            # Fila 2: Hasta (botón va debajo de la línea inferior)
+            # Fila 2: Hasta (botón va debajo de la línea)
             r2c1, r2c2, r2c3, r2c4, r2c5 = st.columns(COLS_5, gap="medium")
             with r2c1:
                 f_hasta = st.date_input("Hasta", value=_max_date, key="hist_hasta")
 
         st.markdown("</div>", unsafe_allow_html=True)
         st.markdown(
-            '<div style="height:0; border-bottom:3px solid var(--row-sep); margin:2px 0 6px 0;"></div>',
+            '<div style="height:0; border-bottom:3px solid var(--row-sep); margin:4px 0 10px 0;"></div>',
             unsafe_allow_html=True,
         )
 
-    st.markdown("</div>", unsafe_allow_html=True)
+    # ===== Botón Buscar debajo de la línea, esquina derecha =====
+    with st.container():
+        # col_espacio grande a la izquierda, col_boton a la derecha (similar ancho a "Agregar")
+        col_espacio, col_boton = st.columns([5, 1], gap="medium")
+        with col_espacio:
+            st.write("")  # relleno
+        with col_boton:
+            st.markdown('<div class="hist-search">', unsafe_allow_html=True)
+            hist_do_buscar = st.button("🔍 Buscar", use_container_width=True, key="hist_btn_buscar")
+            st.markdown("</div>", unsafe_allow_html=True)
 
-    # 🔍 Botón Buscar debajo de la línea azul lila, alineado a la derecha
-    st.markdown('<div class="hist-search">', unsafe_allow_html=True)
-    hist_do_buscar = st.button("🔍 Buscar", key="hist_btn_buscar")
     st.markdown("</div>", unsafe_allow_html=True)
 
     show_deleted = st.toggle("Mostrar eliminadas (tachadas)", value=True, key="hist_show_deleted")
@@ -1937,7 +1936,6 @@ def _sync_time_from_date():
     t = dt.time().replace(second=0, microsecond=0)
     st.session_state["fi_t"] = t
     st.session_state["fi_t_view"] = t.strftime("%H:%M")
-
 
 
 # ============================================================
