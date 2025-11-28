@@ -796,8 +796,8 @@ def render_historial(user: dict | None = None):
         border-bottom:1px solid var(--row-sep)!important;
       }
       .ag-theme-balham .ag-header-cell{
-        border-top:1px solid var(--row-sep)!important;
-        border-bottom:1px solid var(--row-sep)!important;
+        border-top:2px solid var(--row-sep)!important;
+        border-bottom:2px solid var(--row-sep)!important;
       }
       .ag-theme-balham .ag-header-cell-label{ white-space:nowrap!important; line-height:1.1!important; overflow:visible!important; text-overflow:clip!important; }
       .ag-theme-balham .ag-header .ag-icon, .ag-theme-balham .ag-header-cell .ag-icon, .ag-theme-balham .ag-header-cell-menu-button,
