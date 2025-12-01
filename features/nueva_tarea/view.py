@@ -830,7 +830,7 @@ def render_historial(user: dict | None = None):
         height:1px;
         width:100%;
         background:#E5E7EB;
-        margin:0 0 50px 0;  /* 👉 prueba 24–28px hasta que te guste */
+        margin:0 0 40px 0;  /* 👉 prueba 24–28px hasta que te guste */
       }
 
       /* AG Grid base con líneas horizontales suaves */
