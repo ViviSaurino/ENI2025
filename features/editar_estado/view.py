@@ -297,20 +297,21 @@ def render(user: dict | None = None):
             color:#0f172a;
           }
 
-          /* Quitar recuadro/gris del formulario de filtros */
-          #est-section [data-testid="stForm"]{
-            background:transparent !important;
-            border:none !important;
-            box-shadow:none !important;
-            padding:0 !important;
-          }
+          /* Quitar recuadro/gris del formulario de filtros (a lo bestia) */
+          #est-section [data-testid="stForm"],
           #est-section [data-testid="stForm"] > div,
           #est-section [data-testid="stForm"] form,
           #est-section [data-testid="stForm"] [data-testid="stHorizontalBlock"],
-          #est-section [data-testid="stForm"] [data-testid="stVerticalBlock"]{
+          #est-section [data-testid="stForm"] [data-testid="stVerticalBlock"],
+          #est-section [data-testid="stForm"] [data-testid="stColumn"],
+          #est-section [data-testid="stForm"] [data-testid="stContainer"]{
             background:transparent !important;
             border:none !important;
             box-shadow:none !important;
+          }
+          #est-section [data-testid="stForm"]::before,
+          #est-section [data-testid="stForm"]::after{
+            display:none !important;
           }
 
           /* Líneas azul-lila encima y debajo de filtros */
@@ -320,6 +321,24 @@ def render(user: dict | None = None):
             background:linear-gradient(90deg,#1D4ED8 0%,#6366F1 100%);
             border-radius:999px;
             margin:6px 0 10px 0;
+          }
+
+          /* Botón Volver como link */
+          #est-section a.btn-volver-est{
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            width:100%;
+            padding:0.55rem 1rem;
+            border-radius:999px;
+            background:#e5e7eb;
+            color:#111827;
+            text-decoration:none;
+            font-weight:600;
+            font-size:0.9rem;
+          }
+          #est-section a.btn-volver-est:hover{
+            background:#d1d5db;
           }
 
           /* ===== Colores de encabezados por bloques (sin emojis en headers) ===== */
@@ -392,9 +411,6 @@ def render(user: dict | None = None):
           gap: 16px;
         ">
           <div style="flex:1 1 auto;">
-            <div style="font-size:0.8rem;font-weight:500;color:#E0E7FF;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.06em;">
-              Gestión ENI 2025
-            </div>
             <div style="font-size:1.4rem;font-weight:700;color:#FFFFFF;">
               Editar tarea
             </div>
@@ -593,8 +609,14 @@ def render(user: dict | None = None):
             # línea inferior azul-lila
             st.markdown('<div class="est-filter-line"></div>', unsafe_allow_html=True)
 
-            # fila para el botón (debajo de la línea, esquina derecha)
+            # fila para botones (debajo de la línea)
             b1, b2, b3, b4 = st.columns(4, gap="medium")
+            with b3:
+                st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+                st.markdown(
+                    "<a href='/' target='_self' class='btn-volver-est'>⬅ Volver</a>",
+                    unsafe_allow_html=True,
+                )
             with b4:
                 st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
                 est_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
