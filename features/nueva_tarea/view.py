@@ -1097,9 +1097,16 @@ def render_historial(user: dict | None = None):
                 f_hasta = st.date_input("Hasta", value=_max_date, key="hist_hasta")
 
         st.markdown("</div>", unsafe_allow_html=True)
-        # línea inferior (debajo de filtros)
+        # línea inferior: igual que la superior
         st.markdown(
-            '<div style="height:0; border-bottom:4px solid var(--row-sep); margin:4px 0 10px 0;"></div>',
+            """
+            <div style="
+                height:1.5px;
+                margin:4px 0 10px 0;
+                background:linear-gradient(90deg,#60A5FA,#A855F7);
+                border-radius:999px;">
+            </div>
+            """,
             unsafe_allow_html=True,
         )
 
