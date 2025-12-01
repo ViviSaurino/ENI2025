@@ -1761,7 +1761,7 @@ def render_historial(user: dict | None = None):
 
     # ⬅️ más espacio a la izquierda y botones más recogidos (dentro de las líneas rojas)
     _sp, b_sync, b_xlsx, b_save_local, b_save_sheets = st.columns(
-        [8.0, 1.1, 1.1, 1.1, 1.1],  # puedes jugar un poco con estos números si quieres afinar más
+        [6.5, 1.1, 1.1, 1.1, 1.1],  # puedes jugar un poco con estos números si quieres afinar más
         gap="medium",
     )
 
