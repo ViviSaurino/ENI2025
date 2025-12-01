@@ -783,14 +783,18 @@ def render_historial(user: dict | None = None):
 
       /* Marco con dos líneas (arriba y abajo) alrededor de los filtros */
       .hist-filters{
-        border:0!important;
-        background:transparent!important;
-        border-radius:0!important;
-        padding:0!important;
-        margin:8px 0 10px 0 !important;
-        box-shadow:
-          inset 0 4px 0 var(--row-sep),
-          inset 0 -4px 0 var(--row-sep);
+          border:0!important;
+          background-color:transparent!important;
+          border-radius:0!important;
+          padding:0!important;
+          margin:8px 0 10px 0 !important;
+
+      /* 👇 Línea superior e inferior, finitas, con degradado azul-lila */
+      background:
+        linear-gradient(90deg,#60A5FA,#A855F7) top,
+        linear-gradient(90deg,#60A5FA,#A855F7) bottom;
+      background-size:100% 2px;   /* ← grosor: súbelo/bájalo aquí (2px) */
+      background-repeat:no-repeat;
       }
 
       /* Botón Buscar estilo lila */
