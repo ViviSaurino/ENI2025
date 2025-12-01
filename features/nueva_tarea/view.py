@@ -1032,12 +1032,18 @@ def render_historial(user: dict | None = None):
     hist_do_buscar = False  # se actualizará con el botón de abajo
 
     with st.container():
-        # línea superior (misma variable de color; grosor acorde)
+        # línea superior: más delgada + degradado azul → lila
         st.markdown(
-            '<div style="height:0; border-top:4px solid var(--row-sep); margin:0 0 8px 0;"></div>',
+            """
+            <div style="
+                height:1px;
+                margin:0 0 8px 0;
+                background:linear-gradient(90deg,#60A5FA,#A855F7);
+                border-radius:999px;">
+            </div>
+            """,
             unsafe_allow_html=True,
         )
-        st.markdown('<div class="hist-filters">', unsafe_allow_html=True)
 
         if super_editor:
             responsables = sorted([
