@@ -814,7 +814,7 @@ def render_historial(user: dict | None = None):
         margin:12px 0 4px 0;
       }
       .hist-hero-img img{
-        max-width:200px;
+        max-width:220px;
         height:auto;
         display:block;
       }
@@ -822,6 +822,7 @@ def render_historial(user: dict | None = None):
         font-size:1.1rem;
         font-weight:600;
         color:#4B5563;
+        margin-top:10px;
       }
 
       /* Línea gris clarita debajo del bloque */
@@ -829,7 +830,7 @@ def render_historial(user: dict | None = None):
         height:1px;
         width:100%;
         background:#E5E7EB;
-        margin:0 0 16px 0;
+        margin:0 0 26px 0;  /* 👉 prueba 24–28px hasta que te guste */
       }
 
       /* AG Grid base con líneas horizontales suaves */
