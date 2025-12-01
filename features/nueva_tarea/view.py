@@ -2192,6 +2192,510 @@ def _sync_time_from_date():
 
 
 # ============================================================
+#           VISTA SUPERIOR: ➕ NUEVA TAREA
+# ============================================================
+def render_nueva_tarea(user: dict | None = None):
+    """Vista: ➕ Nueva tarea (parte superior)"""
+
+    # ===== CSS =====
+    st.markdown(
+        """
+    <style>
+    /* ===== Quitar la “hoja” blanca gigante del centro ===== */
+    section.main{
+        background-color: transparent !important;
+    }
+    div[data-testid="block-container"]{
+        background-color: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+    div[data-testid="block-container"] > div{
+        background-color: transparent !important;
+        box-shadow: none !important;
+    }
+
+    /* Ocultar el caption automático de Streamlit */
+    section.main div[data-testid="stCaptionContainer"]:first-of-type{
+        display:none !important;
+    }
+
+    /* ===== Banner superior “Nueva tarea” ===== */
+    .nt-hero-wrapper{
+      margin-left:0px;
+      margin-right:0px;
+      margin-top:-50px;
+      margin-bottom:0;
+    }
+    .nt-hero{
+      border-radius:8px;
+      background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
+      padding:10px 32px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      color:#FFFFFF;
+      box-shadow:none;
+    }
+    .nt-hero-left{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+    .nt-hero-title{
+      font-size:1.8rem;
+      font-weight:700;
+    }
+    .nt-hero-right{
+      flex:0 0 auto;
+      display:flex;
+      align-items:flex-end;
+      justify-content:flex-end;
+      padding-left:24px;
+    }
+    .nt-hero-img{
+      display:block;
+      height:160px;
+      max-width:160px;
+      transform: translateY(10px);
+    }
+
+    /* Contenedor del formulario de NUEVA TAREA – sin tarjeta ni bordes */
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel){
+      background: transparent !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      border: none !important;
+      padding: 0 !important;
+      margin: -3px 0 10px 0 !important;
+    }
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) > div{
+      background: transparent !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      border: none !important;
+    }
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) form[data-testid="stForm"]{
+      background: transparent !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      border: none !important;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+    }
+
+    /* Inputs full width dentro del formulario de Nueva tarea */
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextInput,
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stSelectbox,
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stDateInput,
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTimeInput,
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextArea{
+      width:100% !important;
+    }
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextInput>div,
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stSelectbox>div,
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stDateInput>div,
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTimeInput>div,
+    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextArea>div{
+      width:100% !important;
+      max-width:none !important;
+    }
+
+    /* Tarjetas de pasos de indicaciones */
+    .nt-steps-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      margin-top:4px;
+      margin-bottom:16px;
+    }
+    .nt-step-card{
+      flex:1 1 180px;
+      min-width:180px;
+      background:#FFFFFF;
+      border-radius:8px;
+      border:1px solid #E5E7EB;
+      padding:20px 20px;
+      min-height:70px;
+      box-shadow:none;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .nt-step-main{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      align-items:flex-start;
+      text-align:left;
+    }
+    .nt-step-label{
+      font-size:0.88rem;
+      font-weight:400;
+      color:#111827;
+      white-space: nowrap;
+    }
+    .nt-step-icon-slot{
+      flex:0 0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .nt-step-icon{
+      width:32px;
+      height:32px;
+      border-radius:10px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background: transparent;
+      font-size:1.8rem;
+      flex-shrink:0;
+    }
+    .nt-step-text{
+      display:none !important;
+    }
+
+    /* ===== Línea lila-azul superior (encima de las celdas) ===== */
+    .nt-top-line{
+      height:2px;
+      background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
+      border-radius:999px;
+      margin:12px 0 18px 0;
+    }
+
+    /* ===== Línea lila-azul inferior (encima de los botones) ===== */
+    .nt-bottom-line{
+      height:2px;
+      background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
+      border-radius:999px;
+      margin:18px 0 0 0;
+    }
+
+    /* ===== Fila inferior de botones ===== */
+    .nt-bottom-row{
+      margin-top:12px;
+    }
+
+    /* ===== Botones: base y colores (jade / lila) ===== */
+    .nt-bottom-row button{
+      border-radius:999px !important;
+      font-weight:600 !important;
+      box-shadow:none !important;
+      border:none !important;
+    }
+    /* Volver = primer botón (jade) */
+    .nt-bottom-row button:first-of-type{
+      background:#34D399 !important;
+      color:#FFFFFF !important;
+    }
+    .nt-bottom-row button:first-of-type:hover{
+      background:#10B981 !important;
+    }
+    /* Agregar = segundo botón (lila) */
+    .nt-bottom-row button:last-of-type{
+      background:#A855F7 !important;
+      color:#FFFFFF !important;
+    }
+    .nt-bottom-row button:last-of-type:hover{
+      background:#9333EA !important;
+    }
+    </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # ===== Datos =====
+    global AREAS_OPC
+    if "AREAS_OPC" not in globals():
+        AREAS_OPC = [
+            "Jefatura",
+            "Gestión",
+            "Metodología",
+            "Base de datos",
+            "Capacitación",
+            "Monitoreo",
+            "Consistencia",
+        ]
+
+    st.session_state.setdefault("nt_visible", True)
+
+    # Asegurar que "Tipo de tarea" no arranque con 'Otros'
+    if st.session_state.get("nt_tipo", "").strip().lower() == "otros":
+        st.session_state["nt_tipo"] = ""
+    else:
+        st.session_state.setdefault("nt_tipo", "")
+
+    _NT_SPACE = 35
+    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+
+    # ===== Banner superior “Nueva tarea” =====
+    hero_b64 = _hero_img_base64()
+    hero_img_html = (
+        f'<img src="data:image/png;base64,{hero_b64}" alt="Nueva tarea" class="nt-hero-img">'
+        if hero_b64 else ""
+    )
+    st.markdown(
+        f"""
+        <div class="nt-hero-wrapper">
+          <div class="nt-hero">
+            <div class="nt-hero-left">
+              <div class="nt-hero-title">Nueva tarea</div>
+            </div>
+            <div class="nt-hero-right">
+              {hero_img_html}
+            </div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # espacio entre banner y tarjetas de pasos
+    st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
+
+    if st.session_state.get("nt_visible", True):
+        if st.session_state.pop("nt_added_ok", False):
+            st.success("Agregado a Tareas recientes")
+
+    # ===== Pasos =====
+    st.markdown(
+        """
+    <div class="nt-steps-row">
+      <div class="nt-step-card">
+        <div class="nt-step-main"><div class="nt-step-label">1. Llena los datos</div></div>
+        <div class="nt-step-icon-slot"><span class="nt-step-icon">📝</span></div>
+      </div>
+      <div class="nt-step-card">
+        <div class="nt-step-main"><div class="nt-step-label">2. Pulsa “Agregar”</div></div>
+        <div class="nt-step-icon-slot"><span class="nt-step-icon">➕</span></div>
+      </div>
+      <div class="nt-step-card">
+        <div class="nt-step-main"><div class="nt-step-label">3. Revisa tu tarea</div></div>
+        <div class="nt-step-icon-slot"><span class="nt-step-icon">🕑</span></div>
+      </div>
+      <div class="nt-step-card">
+        <div class="nt-step-main"><div class="nt-step-label">4. Graba</div></div>
+        <div class="nt-step-icon-slot"><span class="nt-step-icon">💾</span></div>
+      </div>
+      <div class="nt-step-card">
+        <div class="nt-step-main"><div class="nt-step-label">5. Sube a Sheets</div></div>
+        <div class="nt-step-icon-slot"><span class="nt-step-icon">📤</span></div>
+      </div>
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+    # ===== Formulario =====
+    COLS_5 = [1, 1, 1, 1, 1]
+
+    volver_clicked = False
+    submitted = False
+
+    with st.form("form_nueva_tarea"):
+        with st.container():
+            st.markdown(
+                '<span id="nt-card-sentinel" style="display:none"></span>',
+                unsafe_allow_html=True,
+            )
+
+            # ----- Responsable & Área -----
+            _acl = st.session_state.get("acl_user", {}) or {}
+            display_name_txt = (
+                _acl.get("display")
+                or st.session_state.get("user_display_name", "")
+                or _acl.get("name", "")
+                or (st.session_state.get("user") or {}).get("name", "")
+                or ""
+            )
+            if not str(st.session_state.get("nt_resp", "")).strip():
+                st.session_state["nt_resp"] = display_name_txt
+
+            _area_acl = (
+                _acl.get("area")
+                or _acl.get("Área")
+                or _acl.get("area_name")
+                or ""
+            ).strip()
+            area_fixed = _area_acl if _area_acl else (AREAS_OPC[0] if AREAS_OPC else "")
+            st.session_state["nt_area"] = area_fixed
+
+            # ----- Fases -----
+            FASES = [
+                "Capacitación",
+                "Post-capacitación",
+                "Pre-consistencia",
+                "Consistencia",
+                "Operación de campo",
+                "Implementación del sistema de monitoreo",
+                "Uso del sistema de monitoreo",
+                "Uso del sistema de capacitación",
+                "Levantamiento en campo",
+                "Otros",
+            ]
+            _fase_sel = st.session_state.get("nt_fase", None)
+            _is_fase_otros = str(_fase_sel).strip() == "Otros"
+
+            # ===== Línea lila-azul ENCIMA de las celdas =====
+            st.markdown('<div class="nt-top-line"></div>', unsafe_allow_html=True)
+
+            # ---------- FILA 1 ----------
+            if _is_fase_otros:
+                c1, c2, c3, c4, c5 = st.columns(COLS_5, gap="medium")
+                c1.text_input("Área", value=area_fixed, key="nt_area_view", disabled=True)
+                c2.selectbox("Fase", options=FASES, key="nt_fase", index=FASES.index("Otros"))
+                c3.text_input("Otros (especifique)", key="nt_fase_otro", placeholder="Describe la fase")
+                c4.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
+                c5.text_input("Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle")
+            else:
+                c1, c2, c3, c4, c5 = st.columns(COLS_5, gap="medium")
+                c1.text_input("Área", value=area_fixed, key="nt_area_view", disabled=True)
+                c2.selectbox(
+                    "Fase",
+                    options=FASES,
+                    index=None,
+                    placeholder="Selecciona una fase",
+                    key="nt_fase",
+                )
+                c3.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
+                c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle")
+                c5.text_input("Responsable", key="nt_resp", disabled=True)
+
+            # ----- Fecha/Hora base -----
+            if st.session_state.get("fi_d", "___MISSING___") is None:
+                st.session_state.pop("fi_d")
+            if st.session_state.get("fi_t", "___MISSING___") is None:
+                st.session_state.pop("fi_t")
+            if "fi_d" not in st.session_state:
+                if st.session_state.get("nt_skip_date_init", False):
+                    st.session_state.pop("nt_skip_date_init", None)
+                else:
+                    st.session_state["fi_d"] = now_lima_trimmed().date()
+            _sync_time_from_date()
+
+            _t = st.session_state.get("fi_t")
+            st.session_state["fi_t_view"] = _t.strftime("%H:%M") if _t else ""
+
+            # ID preview
+            _df_tmp = (
+                st.session_state.get("df_main", pd.DataFrame()).copy()
+                if "df_main" in st.session_state else pd.DataFrame()
+            )
+            prefix = make_id_prefix(
+                st.session_state.get("nt_area", area_fixed),
+                st.session_state.get("nt_resp", ""),
+            )
+            id_preview = (
+                next_id_by_person(
+                    _df_tmp,
+                    st.session_state.get("nt_area", area_fixed),
+                    st.session_state.get("nt_resp", ""),
+                )
+                if st.session_state.get("fi_d")
+                else f"{prefix}_"
+            )
+
+            # ---------- FILA 2 ----------
+            if _is_fase_otros:
+                r2c1, r2c2, r2c3, r2c4, r2c5 = st.columns(COLS_5, gap="medium")
+                r2c1.text_input("Responsable", key="nt_resp", disabled=True)
+                r2c2.selectbox("Ciclo de mejora", options=["1", "2", "3", "+4"], index=0, key="nt_ciclo_mejora")
+                r2c3.text_input("Tipo de tarea", key="nt_tipo", placeholder="Escribe el tipo de tarea")
+                r2c4.text_input("Estado actual", value="No iniciado", disabled=True, key="nt_estado_view")
+                r2c5.selectbox("Complejidad", options=["🟢 Baja", "🟡 Media", "🔴 Alta"], index=0, key="nt_complejidad")
+
+                # ---------- FILA 3 (solo celdas) ----------
+                r3c1, r3c2, r3c3, _, _ = st.columns(COLS_5, gap="medium")
+                r3c1.selectbox(
+                    "Duración",
+                    options=[f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)],
+                    index=0,
+                    key="nt_duracion_label",
+                )
+                r3c2.date_input("Fecha de registro", key="fi_d")
+                _sync_time_from_date()
+                r3c3.text_input(
+                    "Hora de registro (auto)",
+                    key="fi_t_view",
+                    disabled=True,
+                    help="Se asigna al elegir la fecha",
+                )
+
+            else:
+                r2c1, r2c2, r2c3, r2c4, r2c5 = st.columns(COLS_5, gap="medium")
+                r2c1.selectbox("Ciclo de mejora", options=["1", "2", "3", "+4"], index=0, key="nt_ciclo_mejora")
+                r2c2.text_input("Tipo de tarea", key="nt_tipo", placeholder="Escribe el tipo de tarea")
+                r2c3.text_input("Estado actual", value="No iniciado", disabled=True, key="nt_estado_view")
+                r2c4.selectbox("Complejidad", options=["🟢 Baja", "🟡 Media", "🔴 Alta"], index=0, key="nt_complejidad")
+                r2c5.selectbox(
+                    "Duración",
+                    options=[f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)],
+                    index=0,
+                    key="nt_duracion_label",
+                )
+
+                # ---------- FILA 3 (solo celdas) ----------
+                r3c1, r3c2, r3c3, _, _ = st.columns(COLS_5, gap="medium")
+                r3c1.date_input("Fecha de registro", key="fi_d")
+                _sync_time_from_date()
+                r3c2.text_input(
+                    "Hora de registro",
+                    key="fi_t_view",
+                    disabled=True,
+                    help="Se asigna al elegir la fecha",
+                )
+                r3c3.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
+
+            # ===== Línea lila-azul ENCIMA de los botones =====
+            st.markdown('<div class="nt-bottom-line"></div>', unsafe_allow_html=True)
+
+            # ===== Fila inferior de botones (derecha) =====
+            bottom_left, bottom_right = st.columns([4, 1])
+
+            with bottom_right:
+                st.markdown('<div class="nt-bottom-row">', unsafe_allow_html=True)
+                col_v, col_a = st.columns(2, gap="medium")
+
+                with col_v:
+                    volver_clicked = st.form_submit_button(
+                        "⬅ Volver",
+                        use_container_width=True,
+                    )
+
+                with col_a:
+                    submitted = st.form_submit_button(
+                        "➕ Agregar",
+                        use_container_width=True,
+                    )
+
+                st.markdown("</div>", unsafe_allow_html=True)
+
+    # ------ Acción botones fuera del form ------
+    if volver_clicked:
+        st.session_state["home_tile"] = ""
+        display_name = st.session_state.get("user_display_name", "Usuario")
+        try:
+            st.experimental_set_query_params(auth="1", u=display_name)
+        except Exception:
+            pass
+        st.rerun()
+
+    if submitted and not volver_clicked:
+        try:
+            df = st.session_state.get("df_main", pd.DataFrame()).copy()
+            # aquí va tu lógica de guardado
+            pass
+        except Exception as e:
+            st.error(f"No pude guardar la nueva tarea: {e}")
+
+    gap = SECTION_GAP if "SECTION_GAP" in globals() else 30
+    st.markdown(f"<div style='height:{gap}px;'></div>", unsafe_allow_html=True)
+
+
+# ============================================================
 #             VISTA UNIFICADA (NUEVA + RECIENTES)
 # ============================================================
 def render(user: dict | None = None):
