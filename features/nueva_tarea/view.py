@@ -1036,7 +1036,7 @@ def render_historial(user: dict | None = None):
         st.markdown(
             """
             <div style="
-                height:1px;
+                height:1.5px;
                 margin:0 0 8px 0;
                 background:linear-gradient(90deg,#60A5FA,#A855F7);
                 border-radius:999px;">
