@@ -811,7 +811,7 @@ def render_historial(user: dict | None = None):
         display:flex;
         align-items:center;
         gap:20px;
-        margin:12px 0 4px 0;
+        margin:20px 0 2px 0;
       }
       .hist-hero-img img{
         max-width:220px;
