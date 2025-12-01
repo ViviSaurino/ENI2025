@@ -822,7 +822,7 @@ def render_historial(user: dict | None = None):
         font-size:1.1rem;
         font-weight:600;
         color:#4B5563;
-        margin-top:-30px;
+        margin-top:-100px;
       }
 
       /* Línea gris clarita debajo del bloque */
