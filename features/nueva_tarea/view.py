@@ -1305,7 +1305,7 @@ def render_historial(user: dict | None = None):
     fv = (
         to_naive_local_series(df_grid["Fecha Vencimiento"])
         if "Fecha Vencimiento" in df_grid.columns
-        else pd.Series(pd.NaT, index=df_grid.index, dtype="datetime64[ns]"]
+        else pd.Series(pd.NaT, index=df_grid.index, dtype="datetime64[ns]")
     )
 
     ft = (
