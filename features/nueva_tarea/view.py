@@ -834,6 +834,11 @@ def render_historial(user: dict | None = None):
         margin:0 0 40px 0;  /* 👉 prueba 24–28px hasta que te guste */
       }
 
+      /* Más espacio entre las tarjetas y la línea lila de filtros */
+      .nt-steps-row{
+        margin-bottom: 24px !important;  /* 👈 sube/baja este número */
+      }
+
       /* AG Grid base con líneas horizontales suaves */
       .ag-theme-balham .ag-cell{
         white-space:nowrap!important;
