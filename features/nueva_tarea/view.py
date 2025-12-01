@@ -1305,7 +1305,7 @@ def render_historial(user: dict | None = None):
     fv = (
         to_naive_local_series(df_grid["Fecha Vencimiento"])
         if "Fecha Vencimiento" in df_grid.columns
-        else pd.Series(pd.NaT, index=df_grid.index, dtype="datetime64[ns]")
+        else pd.Series(pd.NaT, index=df_grid.index, dtype="datetime64[ns]"]
     )
 
     ft = (
@@ -1331,6 +1331,706 @@ def render_historial(user: dict | None = None):
     out[no_delivered] = "❌ No entregado"
     out[risk] = "⚠️ En riesgo de retrasos"
     df_grid["Cumplimiento"] = out
+
+    # ======= Snapshot / Detección de cambios =======
+    editable_cols = set()
+
+    gob = GridOptionsBuilder.from_dataframe(df_grid)
+    gob.configure_default_column(
+        resizable=True,
+        editable=False,
+        filter=False,
+        floatingFilter=False,
+        sortable=False,
+        suppressMenu=True,
+        wrapText=False,
+        autoHeight=False,
+        cellStyle={
+            "white-space": "nowrap",
+            "overflow": "hidden",
+            "textOverflow": "ellipsis",
+        },
+    )
+
+    width_map = {
+        "Id": 110,
+        "Área": 140,
+        "Fase": 180,
+        "Responsable": 220,
+        "Tarea": 280,
+        "Detalle": 360,
+        "Detalle de tarea": 360,
+        "Tipo de tarea": 140,
+        "Ciclo de mejora": 150,
+        "Complejidad": 140,
+        "Prioridad": 130,
+        "Estado": 150,
+        "Duración": 120,
+        "Fecha Registro": 150,
+        "Hora Registro": 130,
+        "Fecha inicio": 150,
+        "Hora de inicio": 130,
+        "Fecha Vencimiento": 150,
+        "Hora Vencimiento": 130,
+        "Fecha Terminado": 150,
+        "Hora Terminado": 130,
+        "¿Generó alerta?": 160,
+        "N° alerta": 130,
+        "Fecha de detección": 170,
+        "Hora de detección": 150,
+        "¿Se corrigió?": 140,
+        "Fecha de corrección": 170,
+        "Hora de corrección": 150,
+        "Cumplimiento": 200,
+        "Evaluación": 150,
+        "Calificación": 140,
+        "Fecha Pausado": 150,
+        "Hora Pausado": 130,
+        "Fecha Cancelado": 150,
+        "Hora Cancelado": 130,
+        "Fecha Eliminado": 150,
+        "Hora Eliminado": 130,
+        "Link de descarga": 260,
+        _LINK_CANON: 120,
+    }
+
+    header_map = {
+        "Detalle": "Detalle de tarea",
+        "Fecha Vencimiento": "Fecha límite",
+        "Hora Vencimiento": "Hora límite",
+        "Fecha inicio": "Fecha de inicio",
+        "Hora de inicio": "Hora de inicio",
+        "Fecha Registro": "Fecha de registro",
+        "Hora Registro": "Hora de registro",
+        "Fecha Terminado": "Fecha terminada",
+        "Hora Terminado": "Hora terminada",
+        "Fecha Eliminado": "Fecha eliminada",
+        "Hora Eliminado": "Hora eliminada",
+        "Fecha Cancelado": "Fecha cancelada",
+        "Hora Cancelado": "Hora cancelada",
+        "Fecha Pausado": "Fecha pausada",
+        "Hora Pausado": "Hora pausada",
+    }
+
+    _acl_user = st.session_state.get("acl_user", {}) or {}
+    _ro_acl = {
+        re.sub(r"[^a-z0-9]", "", x.lower())
+        for x in _get_readonly_cols_from_acl(_acl_user)
+    }
+
+    def _normkey(x: str) -> str:
+        return re.sub(r"[^a-z0-9]", "", (x or "").lower())
+
+    super_editor = _is_super_editor()
+    _editable_base = (
+        set(df_grid.columns) - {"Link de descarga", _LINK_CANON}
+        if super_editor
+        else {"Tarea", "Detalle"}
+    )
+    _header_map_norm = {_normkey(k): v for k, v in header_map.items()}
+
+    cell_style_reg = JsCode("function(p){return {backgroundColor:'var(--hdr-reg)'};}")
+    cell_style_ini = JsCode("function(p){return {backgroundColor:'var(--hdr-ini)'};}")
+    cell_style_ter = JsCode("function(p){return {backgroundColor:'var(--hdr-ter)'};}")
+
+    for col in df_grid.columns:
+        nice = _header_map_norm.get(_normkey(col), header_map.get(col, col))
+        col_is_editable = (
+            (col in _editable_base)
+            if super_editor
+            else (
+                (col in _editable_base)
+                and (_normkey(col) not in _ro_acl)
+                and (_normkey(nice) not in _ro_acl)
+            )
+        )
+
+        hdr_class = None
+        cellStyle = None
+        if col in ("Fecha Registro", "Hora Registro"):
+            hdr_class = "hdr-registro"
+            cellStyle = cell_style_reg
+        elif col in ("Fecha inicio", "Hora de inicio"):
+            hdr_class = "hdr-inicio"
+            cellStyle = cell_style_ini
+        elif col in ("Fecha Terminado", "Hora Terminado"):
+            hdr_class = "hdr-termino"
+            cellStyle = cell_style_ter
+
+        kwargs = dict(
+            headerName=nice,
+            minWidth=width_map.get(nice, width_map.get(col, 120)),
+            editable=col_is_editable,
+            suppressMenu=True,
+            filter=False,
+            floatingFilter=False,
+            sortable=False,
+        )
+        if hdr_class:
+            kwargs["headerClass"] = hdr_class
+        if cellStyle:
+            kwargs["cellStyle"] = cellStyle
+
+        gob.configure_column(col, **kwargs)
+
+    gob.configure_column(_LINK_CANON, hide=True)
+
+    date_only_fmt = JsCode(
+        r"""
+    function(p){
+      const v = p.value;
+      if(v===null || v===undefined) return '—';
+      const s = String(v).trim();
+      if(!s || ['nan','nat','null'].includes(s.toLowerCase())) return '—';
+      let y,m,d;
+      const m1 = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if(m1){ y=+m1[1]; m=+m1[2]; d=+m1[3]; }
+      if(!y && /^\d{12,13}$/.test(s)){
+        const dt = new Date(Number(s));
+        if(!isNaN(dt)){ y=dt.getFullYear(); m=dt.getMonth()+1; d=dt.getDate(); }
+      }
+      if(!y){
+        const dt = new Date(s);
+        if(!isNaN(dt)){ y=dt.getFullYear(); m=dt.getMonth()+1; d=dt.getDate(); }
+      }
+      if(!y) return s.split(' ')[0];
+      return String(d).padStart(2,'0') + '/' + String(m).padStart(2,'0') + '/' + y;
+    }"""
+    )
+
+    for col in [
+        "Fecha Registro",
+        "Fecha inicio",
+        "Fecha Vencimiento",
+        "Fecha Terminado",
+        "Fecha Pausado",
+        "Fecha Cancelado",
+        "Fecha Eliminado",
+        "Fecha de detección",
+        "Fecha de corrección",
+    ]:
+        if col in df_grid.columns:
+            nice = _header_map_norm.get(_normkey(col), header_map.get(col, col))
+            hdr_class = None
+            style = None
+            if col == "Fecha Registro":
+                hdr_class = "hdr-registro"
+                style = cell_style_reg
+            elif col == "Fecha inicio":
+                hdr_class = "hdr-inicio"
+                style = cell_style_ini
+            elif col == "Fecha Terminado":
+                hdr_class = "hdr-termino"
+                style = cell_style_ter
+            kwargs = dict(headerName=nice, valueFormatter=date_only_fmt)
+            if hdr_class:
+                kwargs["headerClass"] = hdr_class
+            if style:
+                kwargs["cellStyle"] = style
+            gob.configure_column(col, **kwargs)
+
+    link_value_getter = JsCode(
+        r"""
+    function(p){
+      const text = String((p && p.data && p.data['Link de archivo']) || '').trim();
+      if(!text) return '';
+      const m = text.match(/https?:\/\/\S+/i);
+      return m ? m[0].replace(/[),.]+$/, '') : '';
+    }"""
+    )
+    link_renderer = JsCode(
+        r"""
+    class LinkRenderer{
+      init(params){
+        const url = (params && params.value) ? String(params.value) : '';
+        this.eGui = document.createElement('a');
+        if(url){
+          this.eGui.href = encodeURI(url);
+          this.eGui.target = '_blank';
+          this.eGui.rel='noopener';
+          this.eGui.textContent = url;
+          this.eGui.style.textDecoration='underline';
+        }else{
+          this.eGui.textContent = '—';
+          this.eGui.style.opacity='0.8';
+        }
+      }
+      getGui(){ return this.eGui; }
+      refresh(){ return false; }
+    }"""
+    )
+    gob.configure_column(
+        "Link de descarga",
+        valueGetter=link_value_getter,
+        cellRenderer=link_renderer,
+        tooltipField="Link de descarga",
+        minWidth=width_map["Link de descarga"],
+        flex=1,
+    )
+
+    cumplimiento_style = JsCode(
+        r"""
+    function(p){
+      const v = (p.value || '').toLowerCase();
+      if(!v) return {};
+      if(v.includes('a tiempo')){
+        return {backgroundColor:'#DCFCE7', color:'#065F46', fontWeight:'600',
+                borderRadius:'12px', padding:'4px 8px', textAlign:'center'};
+      }
+      if(v.includes('fuera de tiempo')){
+        return {backgroundColor:'#FFE4E6', color:'#9F1239', fontWeight:'600',
+                borderRadius:'12px', padding:'4px 8px', textAlign:'center'};
+      }
+      if(v.includes('no entregado')){
+        return {backgroundColor:'#FEE2E2', color:'#7F1D1D', fontWeight:'600',
+                borderRadius:'12px', padding:'4px 8px', textAlign:'center'};
+      }
+      if(v.includes('riesgo')){
+        return {backgroundColor:'#FEF9C3', color:'#92400E', fontWeight:'600',
+                borderRadius:'12px', padding:'4px 8px', textAlign:'center'};
+      }
+      return {};
+    }"""
+    )
+    gob.configure_column("Cumplimiento", cellStyle=cumplimiento_style)
+
+    gob.configure_column(
+        "Fecha inicio",
+        headerName=_header_map_norm.get(
+            _normkey("Fecha inicio"), header_map.get("Fecha inicio", "Fecha inicio")
+        ),
+        filter=False,
+        floatingFilter=False,
+        sortable=False,
+        suppressMenu=True,
+        cellStyle=cell_style_ini,
+    )
+
+    gob.configure_column("Calificación", type=["textColumn"])
+
+    gob.configure_grid_options(
+        domLayout="normal",
+        rowHeight=34,
+        headerHeight=64,
+        enableRangeSelection=True,
+        enableCellTextSelection=True,
+        singleClickEdit=True,
+        stopEditingWhenCellsLoseFocus=True,
+        undoRedoCellEditing=False,
+        ensureDomOrder=True,
+        suppressMovableColumns=False,
+        suppressHeaderVirtualisation=True,
+    )
+
+    grid_opts = gob.build()
+    grid_opts["rememberSelection"] = True
+    grid_opts["floatingFilter"] = False
+
+    grid_resp = AgGrid(
+        df_grid,
+        key="grid_historial",
+        gridOptions=grid_opts,
+        theme="balham",
+        height=500,
+        fit_columns_on_grid_load=False,
+        data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+        update_mode=(
+            GridUpdateMode.MODEL_CHANGED
+            | GridUpdateMode.FILTERING_CHANGED
+            | GridUpdateMode.SORTING_CHANGED
+            | GridUpdateMode.VALUE_CHANGED
+        ),
+        allow_unsafe_jscode=True,
+    )
+
+    # === TRACKING de cambios ===
+    base_cols = list(st.session_state.get("df_main", pd.DataFrame()).columns) or list(
+        df_grid.columns
+    )
+    persist_cols = [c for c in df_grid.columns if c in base_cols]
+    snap_cols = persist_cols
+    st.session_state["_hist_cols"] = snap_cols
+
+    prev = st.session_state.get("_hist_prev")
+
+    try:
+        edited = grid_resp["data"]
+        new_df = (
+            pd.DataFrame(edited)
+            if isinstance(edited, list)
+            else pd.DataFrame(grid_resp.data)
+        )
+
+        # asegurar derivados en el df editado ANTES de comparar/guardar
+        new_df = _ensure_deadline_and_compliance(new_df)
+
+        changed_ids_run = set()
+        cell_diff_run: dict[str, set[str]] = {}
+        new_only_ids_run = set()
+
+        if isinstance(prev, pd.DataFrame) and new_df is not None:
+            prev = _ensure_deadline_and_compliance(prev)
+            a = prev.reindex(columns=snap_cols).copy()
+            b = new_df.reindex(columns=snap_cols).copy()
+            if "Id" not in a.columns and "Id" in b.columns:
+                a["Id"] = ""
+            if "Id" not in b.columns and "Id" in a.columns:
+                b["Id"] = ""
+            a["Id"] = a["Id"].astype(str)
+            b["Id"] = b["Id"].astype(str)
+            prev_map = a.set_index("Id", drop=False)
+            curr_map = b.set_index("Id", drop=False)
+
+            for iid, row in curr_map.iterrows():
+                if iid and iid != "nan" and iid not in prev_map.index:
+                    new_only_ids_run.add(iid)
+                    changed_ids_run.add(iid)
+
+            common_ids = prev_map.index.intersection(curr_map.index)
+            cols_to_cmp = [c for c in snap_cols if c != "Id"]
+            if len(common_ids) and cols_to_cmp:
+                prev_block = (
+                    prev_map.loc[common_ids, cols_to_cmp].fillna("").astype(str)
+                )
+                curr_block = (
+                    curr_map.loc[common_ids, cols_to_cmp].fillna("").astype(str)
+                )
+                neq = prev_block.ne(curr_block)
+                changed_any = neq.any(axis=1)
+                ids_changed = changed_any[changed_any].index
+                changed_ids_run.update(ids_changed.tolist())
+                for rid in ids_changed:
+                    diff_mask = neq.loc[rid].to_numpy()
+                    diff_cols = set(neq.columns[diff_mask].tolist())
+                    # si cambian base, forzar derivados para subir
+                    if {"Duración", "Fecha inicio"} & diff_cols:
+                        diff_cols |= {"Fecha Vencimiento", "Hora Vencimiento"}
+                    if {"Fecha Vencimiento", "Fecha Terminado"} & diff_cols:
+                        diff_cols |= {"Cumplimiento"}
+                    cell_diff_run[str(rid)] = diff_cols
+
+        pend_ids = set(st.session_state.get("_hist_changed_ids", []) or [])
+        pend_diff = {
+            k: set(v)
+            for k, v in (st.session_state.get("_hist_cell_diff", {}) or {}).items()
+        }
+        pend_new = set(st.session_state.get("_hist_new_ids", []) or [])
+
+        pend_ids |= changed_ids_run
+        pend_new |= new_only_ids_run
+        for rid, cols in cell_diff_run.items():
+            pend_diff[rid] = (pend_diff.get(rid, set())) | set(cols)
+
+        st.session_state["_hist_changed_ids"] = sorted(pend_ids)
+        st.session_state["_hist_cell_diff"] = {
+            k: sorted(v) for k, v in pend_diff.items()
+        }
+        st.session_state["_hist_new_ids"] = sorted(pend_new)
+
+        if new_df is not None:
+            base = st.session_state.get("df_main", pd.DataFrame()).copy()
+            base = _canonicalize_link_column(base)
+            new_df = _canonicalize_link_column(new_df)
+            if ("Id" in base.columns) and ("Id" in new_df.columns):
+                base["Id"] = base["Id"].astype(str)
+                new_df["Id"] = new_df["Id"].astype(str)
+                base_idx = base.set_index("Id")
+                new_idx = new_df.set_index("Id")
+                cols_to_update = [c for c in new_idx.columns if c in base_idx.columns]
+                base_idx.update(new_df[cols_to_update])
+                st.session_state["df_main"] = base_idx.reset_index()
+            else:
+                st.session_state["df_main"] = new_df
+            try:
+                _save_local(st.session_state["df_main"].copy())
+            except Exception:
+                pass
+
+            try:
+                st.session_state["_hist_prev"] = new_df.reindex(
+                    columns=snap_cols
+                ).copy()
+            except Exception:
+                pass
+
+    except Exception:
+        pass
+
+    # ===== Botonera =====
+    st.markdown('<div style="padding:0 16px;">', unsafe_allow_html=True)
+    _sp, b_sync, b_xlsx, b_save_local, b_save_sheets = st.columns(
+        [4.9, 1.4, 1.6, 1.4, 2.2], gap="medium"
+    )
+
+    with b_xlsx:
+        try:
+            base = st.session_state["df_main"].copy()
+            for c in ["__SEL__", "__DEL__", "¿Eliminar?"]:
+                if c in base.columns:
+                    base.drop(columns=[c], inplace=True, errors="ignore")
+            xlsx_b = export_excel(base, sheet_name=TAB_NAME)
+            st.download_button(
+                "⬇️ Exportar Excel",
+                data=xlsx_b,
+                file_name="tareas.xlsx",
+                mime=(
+                    "application/vnd.openxmlformats-officedocument."
+                    "spreadsheetml.sheet"
+                ),
+                use_container_width=True,
+            )
+        except Exception as e:
+            st.warning(f"No pude generar Excel: {e}")
+
+    with b_sync:
+        if _is_super_editor():
+            if st.button(
+                "🔄 Sincronizar", use_container_width=True, key="btn_sync_sheet"
+            ):
+                try:
+                    pull_user_slice_from_sheet(replace_df_main=False)
+                    _save_local(st.session_state["df_main"].copy())
+                except Exception as e:
+                    st.warning(f"No se pudo sincronizar: {e}")
+
+    with b_save_local:
+        if st.button("💾 Grabar", use_container_width=True):
+            try:
+                _save_local(st.session_state["df_main"].copy())
+                st.success("Datos grabados en data/tareas.csv.")
+            except Exception as e:
+                st.warning(f"No se pudo grabar localmente: {e}")
+
+    with b_save_sheets:
+        if st.button("📤 Subir a Sheets", use_container_width=True):
+            try:
+                # asegurar derivados y IDs ANTES de subir
+                st.session_state["df_main"] = _ensure_deadline_and_compliance(
+                    st.session_state.get("df_main", pd.DataFrame())
+                )
+                base_full = st.session_state.get("df_main", pd.DataFrame()).copy()
+
+                # generar Id para filas sin Id (p. ej. tareas creadas desde correo)
+                base_full, gen_ids = _ensure_row_ids(base_full)
+                if gen_ids:
+                    st.session_state["df_main"] = base_full.copy()
+                    _save_local(base_full.copy())
+
+                pend_ids = set(st.session_state.get("_hist_changed_ids", []) or [])
+                pend_diff = dict(
+                    st.session_state.get("_hist_cell_diff", {}) or {}
+                )
+                new_ids = set(st.session_state.get("_hist_new_ids", []) or {})
+
+                # incluir Ids recién generados como "nuevos"
+                new_ids |= set(map(str, gen_ids))
+
+                # Fallback si no detectó cambios (reconstruir contra baseline)
+                if (not pend_ids) and (not new_ids):
+                    allowed = (
+                        None
+                        if _is_super_editor()
+                        else {
+                            "Tarea",
+                            "Detalle",
+                            "Detalle de tarea",
+                            "Duración",
+                            "Fecha inicio",
+                            "Fecha Vencimiento",
+                            "Hora Vencimiento",
+                            "Cumplimiento",
+                        }
+                    )
+                    base_line = st.session_state.get("_hist_baseline")
+                    p_ids, p_diff, p_new = _derive_pending_from_baseline(
+                        base_full, base_line, allowed_cols=allowed
+                    )
+                    pend_ids, pend_diff, new_ids = (
+                        p_ids,
+                        {k: set(v) for k, v in p_diff.items()},
+                        p_new | new_ids,
+                    )
+
+                ids_to_push = set(pend_ids) | set(new_ids)
+                if not ids_to_push:
+                    st.info("No hay cambios detectados en la grilla para enviar.")
+                else:
+                    if base_full.empty or "Id" not in base_full.columns:
+                        st.warning("No hay base para subir.")
+                    else:
+                        base_full["Id"] = base_full.get("Id", "").astype(str)
+
+                        # 🔒 Usuarios no-super: restringir columnas permitidas
+                        if not _is_super_editor():
+                            me = _display_name().strip()
+                            if "Responsable" in base_full.columns and me:
+                                mask_mias = base_full["Responsable"].astype(
+                                    str
+                                ).str.contains(me, case=False, na=False)
+                                base_full = base_full[mask_mias]
+
+                            ALLOWED_USER_COLS = {
+                                "Tarea",
+                                "Detalle",
+                                "Detalle de tarea",
+                                "Duración",
+                                "Fecha inicio",
+                                "Fecha Vencimiento",
+                                "Hora Vencimiento",
+                                "Cumplimiento",
+                            }
+                            filtered_cell_diff = {}
+                            for rid, cols in pend_diff.items():
+                                keep = {
+                                    c for c in set(cols) if c in ALLOWED_USER_COLS
+                                }
+                                if keep:
+                                    filtered_cell_diff[str(rid)] = keep
+                            pend_diff = filtered_cell_diff
+
+                            ids_in_base = set(
+                                base_full["Id"].astype(str)
+                            )
+                            pend_ids = {
+                                rid
+                                for rid in pend_ids
+                                if (
+                                    rid in ids_in_base
+                                    and (
+                                        (rid in pend_diff)
+                                        or (rid in new_ids)
+                                    )
+                                )
+                            }
+                            new_ids = {
+                                rid for rid in new_ids if rid in ids_in_base
+                            }
+                            ids_to_push = set(pend_ids) | set(new_ids)
+
+                            if not ids_to_push:
+                                st.info(
+                                    "No hay cambios permitidos para subir "
+                                    "(solo 'Tarea', 'Detalle', 'Duración' "
+                                    "y derivados de tus tareas)."
+                                )
+                                st.stop()
+
+                        # ▶️ Upsert a TareasRecientes
+                        df_rows = base_full[
+                            base_full["Id"].astype(str).isin(ids_to_push)
+                        ].copy()
+                        res = _sheet_upsert_by_id_partial(
+                            df_rows,
+                            cell_diff_map=pend_diff,
+                            new_ids=new_ids,
+                        )
+
+                        # ▶️ Además, copiar Cumplimiento a Evaluación si cambió
+                        ids_cumpl = {
+                            rid
+                            for rid, cols in (
+                                st.session_state.get(
+                                    "_hist_cell_diff", {}
+                                )
+                                or {}
+                            ).items()
+                            if "Cumplimiento" in set(cols)
+                        }
+                        if not ids_cumpl:
+                            base_line = st.session_state.get(
+                                "_hist_baseline"
+                            )
+                            if isinstance(base_line, pd.DataFrame):
+                                cur = base_full.set_index("Id")
+                                old = _ensure_deadline_and_compliance(
+                                    base_line
+                                ).set_index("Id")
+                                common = cur.index.intersection(
+                                    old.index
+                                )
+                                if (
+                                    len(common)
+                                    and "Cumplimiento" in cur.columns
+                                    and "Cumplimiento" in old.columns
+                                ):
+                                    ch = (
+                                        old.loc[
+                                            common, "Cumplimiento"
+                                        ].astype(str)
+                                        != cur.loc[
+                                            common, "Cumplimiento"
+                                        ].astype(str)
+                                    )
+                                    ids_cumpl = set(common[ch])
+
+                        if ids_cumpl:
+                            try:
+                                df_eval = base_full[
+                                    base_full["Id"]
+                                    .astype(str)
+                                    .isin(ids_cumpl)
+                                ][
+                                    ["Id", "Cumplimiento"]
+                                ].copy()
+                                res_eval = _sheet_upsert_eval_cumpl(
+                                    df_eval
+                                )
+                                if res_eval.get("ok"):
+                                    st.success(
+                                        res_eval.get(
+                                            "msg",
+                                            "Evaluación actualizada.",
+                                        )
+                                    )
+                                else:
+                                    st.info(
+                                        res_eval.get(
+                                            "msg",
+                                            "No se pudo actualizar Evaluación.",
+                                        )
+                                    )
+                            except Exception as ee:
+                                st.info(
+                                    f"No pude actualizar Evaluación: {ee}"
+                                )
+
+                        if res.get("ok"):
+                            st.success(res.get("msg", "Actualizado."))
+                            # limpiar pendientes
+                            st.session_state["_hist_changed_ids"] = []
+                            st.session_state["_hist_cell_diff"] = {}
+                            st.session_state["_hist_new_ids"] = []
+                            # baseline = estado actual tras subir
+                            try:
+                                st.session_state["_hist_baseline"] = (
+                                    base_full.copy()
+                                )
+                            except Exception:
+                                pass
+                            try:
+                                st.session_state["_last_pull_hist"] = 0
+                                pull_user_slice_from_sheet(
+                                    replace_df_main=False
+                                )
+                                _save_local(
+                                    st.session_state["df_main"].copy()
+                                )
+                                st.rerun()
+                            except Exception as e:
+                                st.info(
+                                    "Actualizado. No pude refrescar "
+                                    f"desde Sheets: {e}"
+                                )
+                        else:
+                            st.warning(
+                                res.get(
+                                    "msg", "No se pudo actualizar."
+                                )
+                            )
+            except Exception as e:
+                st.warning(f"No se pudo subir a Sheets: {e}")
+
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 # ============================================================
@@ -1406,6 +2106,7 @@ def log_reciente_safe(*args, **kwargs):
         # Silenciamos cualquier error interno del log
         pass
 
+
 # ============================================================
 #   HELPER: imagen del banner "Nueva tarea"
 # ============================================================
@@ -1460,6 +2161,7 @@ def _hist_img_base64() -> str:
             return base64.b64encode(ruta.read_bytes()).decode("utf-8")
     return ""
 
+
 # ============================================================
 #   HELPER: sincronizar hora a partir de la fecha de registro
 # ============================================================
@@ -1487,509 +2189,6 @@ def _sync_time_from_date():
     st.session_state["fi_t"] = t
     st.session_state["fi_t_view"] = t.strftime("%H:%M")
 
-
-# ============================================================
-#           VISTA SUPERIOR: ➕ NUEVA TAREA
-# ============================================================
-def render_nueva_tarea(user: dict | None = None):
-    """Vista: ➕ Nueva tarea (parte superior)"""
-
-    # ===== CSS =====
-    st.markdown(
-        """
-    <style>
-    /* ===== Quitar la “hoja” blanca gigante del centro ===== */
-    section.main{
-        background-color: transparent !important;
-    }
-    div[data-testid="block-container"]{
-        background-color: transparent !important;
-        box-shadow: none !important;
-        border: none !important;
-    }
-    div[data-testid="block-container"] > div{
-        background-color: transparent !important;
-        box-shadow: none !important;
-    }
-
-    /* Ocultar el caption automático de Streamlit */
-    section.main div[data-testid="stCaptionContainer"]:first-of-type{
-        display:none !important;
-    }
-
-    /* ===== Banner superior “Nueva tarea” ===== */
-    .nt-hero-wrapper{
-      margin-left:0px;
-      margin-right:0px;
-      margin-top:-50px;
-      margin-bottom:0;
-    }
-    .nt-hero{
-      border-radius:8px;
-      background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
-      padding:10px 32px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      color:#FFFFFF;
-      box-shadow:none;
-    }
-    .nt-hero-left{
-      display:flex;
-      flex-direction:column;
-      gap:4px;
-    }
-    .nt-hero-title{
-      font-size:1.8rem;
-      font-weight:700;
-    }
-    .nt-hero-right{
-      flex:0 0 auto;
-      display:flex;
-      align-items:flex-end;
-      justify-content:flex-end;
-      padding-left:24px;
-    }
-    .nt-hero-img{
-      display:block;
-      height:160px;
-      max-width:160px;
-      transform: translateY(10px);
-    }
-
-    /* Contenedor del formulario de NUEVA TAREA – sin tarjeta ni bordes */
-    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel){
-      background: transparent !important;
-      box-shadow: none !important;
-      border-radius: 0 !important;
-      border: none !important;
-      padding: 0 !important;
-      margin: -3px 0 10px 0 !important;
-    }
-    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) > div{
-      background: transparent !important;
-      box-shadow: none !important;
-      border-radius: 0 !important;
-      border: none !important;
-    }
-    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) form[data-testid="stForm"]{
-      background: transparent !important;
-      box-shadow: none !important;
-      border-radius: 0 !important;
-      border: none !important;
-      padding-left: 0 !important;
-      padding-right: 0 !important;
-    }
-
-    /* Inputs full width dentro del formulario de Nueva tarea */
-    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextInput,
-    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stSelectbox,
-    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stDateInput,
-    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTimeInput,
-    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextArea{
-      width:100% !important;
-    }
-    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextInput>div,
-    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stSelectbox>div,
-    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stDateInput>div,
-    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTimeInput>div,
-    div[data-testid="stVerticalBlock"]:has(#nt-card-sentinel) .stTextArea>div{
-      width:100% !important;
-      max-width:none !important;
-    }
-
-    /* Tarjetas de pasos de indicaciones */
-    .nt-steps-row{
-      display:flex;
-      flex-wrap:wrap;
-      gap:12px;
-      margin-top:4px;
-      margin-bottom:16px;
-    }
-    .nt-step-card{
-      flex:1 1 180px;
-      min-width:180px;
-      background:#FFFFFF;
-      border-radius:8px;
-      border:1px solid #E5E7EB;
-      padding:20px 20px;
-      min-height:70px;
-      box-shadow:none;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-    }
-    .nt-step-main{
-      flex:1;
-      display:flex;
-      flex-direction:column;
-      justify-content:center;
-      align-items:flex-start;
-      text-align:left;
-    }
-    .nt-step-label{
-      font-size:0.88rem;
-      font-weight:400;
-      color:#111827;
-      white-space: nowrap;
-    }
-    .nt-step-icon-slot{
-      flex:0 0 auto;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-    }
-    .nt-step-icon{
-      width:32px;
-      height:32px;
-      border-radius:10px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      background: transparent;
-      font-size:1.8rem;
-      flex-shrink:0;
-    }
-    .nt-step-text{
-      display:none !important;
-    }
-
-    /* ===== Línea lila-azul superior (encima de las celdas) ===== */
-    .nt-top-line{
-      height:2px;
-      background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
-      border-radius:999px;
-      margin:12px 0 18px 0;
-    }
-
-    /* ===== Línea lila-azul inferior (encima de los botones) ===== */
-    .nt-bottom-line{
-      height:2px;
-      background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
-      border-radius:999px;
-      margin:18px 0 0 0;
-    }
-
-    /* ===== Fila inferior de botones ===== */
-    .nt-bottom-row{
-      margin-top:12px;
-    }
-
-    /* ===== Botones: base y colores (jade / lila) ===== */
-    .nt-bottom-row button{
-      border-radius:999px !important;
-      font-weight:600 !important;
-      box-shadow:none !important;
-      border:none !important;
-    }
-    /* Volver = primer botón (jade) */
-    .nt-bottom-row button:first-of-type{
-      background:#34D399 !important;
-      color:#FFFFFF !important;
-    }
-    .nt-bottom-row button:first-of-type:hover{
-      background:#10B981 !important;
-    }
-    /* Agregar = segundo botón (lila) */
-    .nt-bottom-row button:last-of-type{
-      background:#A855F7 !important;
-      color:#FFFFFF !important;
-    }
-    .nt-bottom-row button:last-of-type:hover{
-      background:#9333EA !important;
-    }
-    </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # ===== Datos =====
-    global AREAS_OPC
-    if "AREAS_OPC" not in globals():
-        AREAS_OPC = [
-            "Jefatura",
-            "Gestión",
-            "Metodología",
-            "Base de datos",
-            "Capacitación",
-            "Monitoreo",
-            "Consistencia",
-        ]
-
-    st.session_state.setdefault("nt_visible", True)
-
-    # Asegurar que "Tipo de tarea" no arranque con 'Otros'
-    if st.session_state.get("nt_tipo", "").strip().lower() == "otros":
-        st.session_state["nt_tipo"] = ""
-    else:
-        st.session_state.setdefault("nt_tipo", "")
-
-    _NT_SPACE = 35
-    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
-
-    # ===== Banner superior “Nueva tarea” =====
-    hero_b64 = _hero_img_base64()
-    hero_img_html = (
-        f'<img src="data:image/png;base64,{hero_b64}" alt="Nueva tarea" class="nt-hero-img">'
-        if hero_b64 else ""
-    )
-    st.markdown(
-        f"""
-        <div class="nt-hero-wrapper">
-          <div class="nt-hero">
-            <div class="nt-hero-left">
-              <div class="nt-hero-title">Nueva tarea</div>
-            </div>
-            <div class="nt-hero-right">
-              {hero_img_html}
-            </div>
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # espacio entre banner y tarjetas de pasos
-    st.markdown(f"<div style='height:{_NT_SPACE}px'></div>", unsafe_allow_html=True)
-
-    if st.session_state.get("nt_visible", True):
-        if st.session_state.pop("nt_added_ok", False):
-            st.success("Agregado a Tareas recientes")
-
-    # ===== Pasos =====
-    st.markdown(
-        """
-    <div class="nt-steps-row">
-      <div class="nt-step-card">
-        <div class="nt-step-main"><div class="nt-step-label">1. Llena los datos</div></div>
-        <div class="nt-step-icon-slot"><span class="nt-step-icon">📝</span></div>
-      </div>
-      <div class="nt-step-card">
-        <div class="nt-step-main"><div class="nt-step-label">2. Pulsa “Agregar”</div></div>
-        <div class="nt-step-icon-slot"><span class="nt-step-icon">➕</span></div>
-      </div>
-      <div class="nt-step-card">
-        <div class="nt-step-main"><div class="nt-step-label">3. Revisa tu tarea</div></div>
-        <div class="nt-step-icon-slot"><span class="nt-step-icon">🕑</span></div>
-      </div>
-      <div class="nt-step-card">
-        <div class="nt-step-main"><div class="nt-step-label">4. Graba</div></div>
-        <div class="nt-step-icon-slot"><span class="nt-step-icon">💾</span></div>
-      </div>
-      <div class="nt-step-card">
-        <div class="nt-step-main"><div class="nt-step-label">5. Sube a Sheets</div></div>
-        <div class="nt-step-icon-slot"><span class="nt-step-icon">📤</span></div>
-      </div>
-    </div>
-    """,
-        unsafe_allow_html=True,
-    )
-
-    # ===== Formulario =====
-    COLS_5 = [1, 1, 1, 1, 1]
-
-    volver_clicked = False
-    submitted = False
-
-    with st.form("form_nueva_tarea"):
-        with st.container():
-            st.markdown(
-                '<span id="nt-card-sentinel" style="display:none"></span>',
-                unsafe_allow_html=True,
-            )
-
-            # ----- Responsable & Área -----
-            _acl = st.session_state.get("acl_user", {}) or {}
-            display_name_txt = (
-                _acl.get("display")
-                or st.session_state.get("user_display_name", "")
-                or _acl.get("name", "")
-                or (st.session_state.get("user") or {}).get("name", "")
-                or ""
-            )
-            if not str(st.session_state.get("nt_resp", "")).strip():
-                st.session_state["nt_resp"] = display_name_txt
-
-            _area_acl = (
-                _acl.get("area")
-                or _acl.get("Área")
-                or _acl.get("area_name")
-                or ""
-            ).strip()
-            area_fixed = _area_acl if _area_acl else (AREAS_OPC[0] if AREAS_OPC else "")
-            st.session_state["nt_area"] = area_fixed
-
-            # ----- Fases -----
-            FASES = [
-                "Capacitación",
-                "Post-capacitación",
-                "Pre-consistencia",
-                "Consistencia",
-                "Operación de campo",
-                "Implementación del sistema de monitoreo",
-                "Uso del sistema de monitoreo",
-                "Uso del sistema de capacitación",
-                "Levantamiento en campo",
-                "Otros",
-            ]
-            _fase_sel = st.session_state.get("nt_fase", None)
-            _is_fase_otros = str(_fase_sel).strip() == "Otros"
-
-            # ===== Línea lila-azul ENCIMA de las celdas =====
-            st.markdown('<div class="nt-top-line"></div>', unsafe_allow_html=True)
-
-            # ---------- FILA 1 ----------
-            if _is_fase_otros:
-                c1, c2, c3, c4, c5 = st.columns(COLS_5, gap="medium")
-                c1.text_input("Área", value=area_fixed, key="nt_area_view", disabled=True)
-                c2.selectbox("Fase", options=FASES, key="nt_fase", index=FASES.index("Otros"))
-                c3.text_input("Otros (especifique)", key="nt_fase_otro", placeholder="Describe la fase")
-                c4.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
-                c5.text_input("Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle")
-            else:
-                c1, c2, c3, c4, c5 = st.columns(COLS_5, gap="medium")
-                c1.text_input("Área", value=area_fixed, key="nt_area_view", disabled=True)
-                c2.selectbox(
-                    "Fase",
-                    options=FASES,
-                    index=None,
-                    placeholder="Selecciona una fase",
-                    key="nt_fase",
-                )
-                c3.text_input("Tarea", placeholder="Describe la tarea", key="nt_tarea")
-                c4.text_input("Detalle de tarea", placeholder="Información adicional (opcional)", key="nt_detalle")
-                c5.text_input("Responsable", key="nt_resp", disabled=True)
-
-            # ----- Fecha/Hora base -----
-            if st.session_state.get("fi_d", "___MISSING___") is None:
-                st.session_state.pop("fi_d")
-            if st.session_state.get("fi_t", "___MISSING___") is None:
-                st.session_state.pop("fi_t")
-            if "fi_d" not in st.session_state:
-                if st.session_state.get("nt_skip_date_init", False):
-                    st.session_state.pop("nt_skip_date_init", None)
-                else:
-                    st.session_state["fi_d"] = now_lima_trimmed().date()
-            _sync_time_from_date()
-
-            _t = st.session_state.get("fi_t")
-            st.session_state["fi_t_view"] = _t.strftime("%H:%M") if _t else ""
-
-            # ID preview
-            _df_tmp = (
-                st.session_state.get("df_main", pd.DataFrame()).copy()
-                if "df_main" in st.session_state else pd.DataFrame()
-            )
-            prefix = make_id_prefix(
-                st.session_state.get("nt_area", area_fixed),
-                st.session_state.get("nt_resp", ""),
-            )
-            id_preview = (
-                next_id_by_person(
-                    _df_tmp,
-                    st.session_state.get("nt_area", area_fixed),
-                    st.session_state.get("nt_resp", ""),
-                )
-                if st.session_state.get("fi_d")
-                else f"{prefix}_"
-            )
-
-            # ---------- FILA 2 ----------
-            if _is_fase_otros:
-                r2c1, r2c2, r2c3, r2c4, r2c5 = st.columns(COLS_5, gap="medium")
-                r2c1.text_input("Responsable", key="nt_resp", disabled=True)
-                r2c2.selectbox("Ciclo de mejora", options=["1", "2", "3", "+4"], index=0, key="nt_ciclo_mejora")
-                r2c3.text_input("Tipo de tarea", key="nt_tipo", placeholder="Escribe el tipo de tarea")
-                r2c4.text_input("Estado actual", value="No iniciado", disabled=True, key="nt_estado_view")
-                r2c5.selectbox("Complejidad", options=["🟢 Baja", "🟡 Media", "🔴 Alta"], index=0, key="nt_complejidad")
-
-                # ---------- FILA 3 (solo celdas) ----------
-                r3c1, r3c2, r3c3, _, _ = st.columns(COLS_5, gap="medium")
-                r3c1.selectbox(
-                    "Duración",
-                    options=[f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)],
-                    index=0,
-                    key="nt_duracion_label",
-                )
-                r3c2.date_input("Fecha de registro", key="fi_d")
-                _sync_time_from_date()
-                r3c3.text_input(
-                    "Hora de registro (auto)",
-                    key="fi_t_view",
-                    disabled=True,
-                    help="Se asigna al elegir la fecha",
-                )
-
-            else:
-                r2c1, r2c2, r2c3, r2c4, r2c5 = st.columns(COLS_5, gap="medium")
-                r2c1.selectbox("Ciclo de mejora", options=["1", "2", "3", "+4"], index=0, key="nt_ciclo_mejora")
-                r2c2.text_input("Tipo de tarea", key="nt_tipo", placeholder="Escribe el tipo de tarea")
-                r2c3.text_input("Estado actual", value="No iniciado", disabled=True, key="nt_estado_view")
-                r2c4.selectbox("Complejidad", options=["🟢 Baja", "🟡 Media", "🔴 Alta"], index=0, key="nt_complejidad")
-                r2c5.selectbox(
-                    "Duración",
-                    options=[f"{i} día" if i == 1 else f"{i} días" for i in range(1, 6)],
-                    index=0,
-                    key="nt_duracion_label",
-                )
-
-                # ---------- FILA 3 (solo celdas) ----------
-                r3c1, r3c2, r3c3, _, _ = st.columns(COLS_5, gap="medium")
-                r3c1.date_input("Fecha de registro", key="fi_d")
-                _sync_time_from_date()
-                r3c2.text_input(
-                    "Hora de registro",
-                    key="fi_t_view",
-                    disabled=True,
-                    help="Se asigna al elegir la fecha",
-                )
-                r3c3.text_input("ID asignado", value=id_preview, disabled=True, key="nt_id_preview")
-
-            # ===== Línea lila-azul ENCIMA de los botones =====
-            st.markdown('<div class="nt-bottom-line"></div>', unsafe_allow_html=True)
-
-            # ===== Fila inferior de botones (derecha) =====
-            bottom_left, bottom_right = st.columns([4, 1])
-
-            with bottom_right:
-                st.markdown('<div class="nt-bottom-row">', unsafe_allow_html=True)
-                col_v, col_a = st.columns(2, gap="medium")
-
-                with col_v:
-                    volver_clicked = st.form_submit_button(
-                        "⬅ Volver",
-                        use_container_width=True,
-                    )
-
-                with col_a:
-                    submitted = st.form_submit_button(
-                        "➕ Agregar",
-                        use_container_width=True,
-                    )
-
-                st.markdown("</div>", unsafe_allow_html=True)
-
-    # ------ Acción botones fuera del form ------
-    if volver_clicked:
-        st.session_state["home_tile"] = ""
-        display_name = st.session_state.get("user_display_name", "Usuario")
-        try:
-            st.experimental_set_query_params(auth="1", u=display_name)
-        except Exception:
-            pass
-        st.rerun()
-
-    if submitted and not volver_clicked:
-        try:
-            df = st.session_state.get("df_main", pd.DataFrame()).copy()
-            # aquí va tu lógica de guardado
-            pass
-        except Exception as e:
-            st.error(f"No pude guardar la nueva tarea: {e}")
-
-    gap = SECTION_GAP if "SECTION_GAP" in globals() else 30
-    st.markdown(f"<div style='height:{gap}px;'></div>", unsafe_allow_html=True)
 
 
 # ============================================================
