@@ -1757,9 +1757,12 @@ def render_historial(user: dict | None = None):
         pass
 
     # ===== Botonera =====
-    st.markdown('<div style="padding:0 16px;">', unsafe_allow_html=True)
+     st.markdown('<div style="padding:0 16px;">', unsafe_allow_html=True)
+
+    # ⬅️ más espacio a la izquierda y botones más recogidos
     _sp, b_sync, b_xlsx, b_save_local, b_save_sheets = st.columns(
-        [4.9, 1.4, 1.6, 1.4, 2.2], gap="medium"
+        [6.0, 1.1, 1.1, 1.1, 1.3],  # ⬅️ AQUÍ juegas con los números
+        gap="medium",
     )
 
     with b_xlsx:
