@@ -836,7 +836,7 @@ def render_historial(user: dict | None = None):
 
       /* Más espacio entre las tarjetas y la línea lila de filtros */
       .nt-steps-row{
-        margin-bottom: 24px !important;  /* 👈 sube/baja este número */
+        margin-bottom: 30px !important;  /* 👈 sube/baja este número */
       }
 
       /* AG Grid base con líneas horizontales suaves */
