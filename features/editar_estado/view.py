@@ -298,12 +298,28 @@ def render(user: dict | None = None):
           }
 
           /* Quitar recuadro/gris del formulario de filtros */
-          #est-section [data-testid="stForm"],
-          #est-section form{
+          #est-section [data-testid="stForm"]{
             background:transparent !important;
             border:none !important;
             box-shadow:none !important;
             padding:0 !important;
+          }
+          #est-section [data-testid="stForm"] > div,
+          #est-section [data-testid="stForm"] form,
+          #est-section [data-testid="stForm"] [data-testid="stHorizontalBlock"],
+          #est-section [data-testid="stForm"] [data-testid="stVerticalBlock"]{
+            background:transparent !important;
+            border:none !important;
+            box-shadow:none !important;
+          }
+
+          /* Líneas azul-lila encima y debajo de filtros */
+          #est-section .est-filter-line{
+            width:100%;
+            height:1.5px;
+            background:linear-gradient(90deg,#1D4ED8 0%,#6366F1 100%);
+            border-radius:999px;
+            margin:6px 0 10px 0;
           }
 
           /* ===== Colores de encabezados por bloques (sin emojis en headers) ===== */
@@ -349,7 +365,7 @@ def render(user: dict | None = None):
         # ==== Contenedor principal de la sección ====
         st.markdown('<div class="section-est">', unsafe_allow_html=True)
 
-        # ==== Encabezado lila-azul con imagen a la derecha ====
+        # ==== Encabezado azul-lila con imagen a la derecha ====
         img_block = ""
         try:
             img_path = os.path.join("assets", "NUEVA_TAREA.png")
@@ -369,7 +385,7 @@ def render(user: dict | None = None):
           margin: 0 0 16px 0;
           padding: 18px 22px;
           border-radius: 18px;
-          background: linear-gradient(90deg,#1D4ED8 0%,#6366F1 45%,#EC4899 100%);
+          background: linear-gradient(90deg,#1D4ED8 0%,#6366F1 50%,#8B5CF6 100%);
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -457,7 +473,11 @@ def render(user: dict | None = None):
         estados_catalogo = ["No iniciado", "En curso", "Terminada", "Pausada", "Cancelada", "Eliminada"]
 
         with st.form("est_filtros_v4", clear_on_submit=False):
+            # línea superior azul-lila
+            st.markdown('<div class="est-filter-line"></div>', unsafe_allow_html=True)
+
             if is_super:
+                # 4 celdas por fila
                 r1_c1, r1_c2, r1_c3, r1_c4 = st.columns(4, gap="medium")
                 r2_c1, r2_c2, r2_c3, r2_c4 = st.columns(4, gap="medium")
 
@@ -517,9 +537,6 @@ def render(user: dict | None = None):
                     key="est_hasta",
                 )
 
-                with r2_c4:
-                    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
-                    est_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
             else:
                 r1_c1, r1_c2, r1_c3, r1_c4 = st.columns(4, gap="medium")
                 r2_c1, r2_c2, r2_c3, r2_c4 = st.columns(4, gap="medium")
@@ -573,9 +590,14 @@ def render(user: dict | None = None):
                     key="est_hasta",
                 )
 
-                with r2_c4:
-                    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
-                    est_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
+            # línea inferior azul-lila
+            st.markdown('<div class="est-filter-line"></div>', unsafe_allow_html=True)
+
+            # fila para el botón (debajo de la línea, esquina derecha)
+            b1, b2, b3, b4 = st.columns(4, gap="medium")
+            with b4:
+                st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+                est_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
 
         # Filtrado
         df_tasks = df_all.copy()
