@@ -3,8 +3,6 @@ from __future__ import annotations
 import os
 import re
 import random
-import base64
-from pathlib import Path
 import pandas as pd
 import streamlit as st
 from st_aggrid import (
@@ -21,22 +19,6 @@ if "est_visible" not in st.session_state:
 
 # ======= Toggle: Upsert a Google Sheets (AHORA True por defecto si hay secrets) =======
 DO_SHEETS_UPSERT = bool(st.secrets.get("edit_estado_upsert_to_sheets", True))
-
-# ===== Helper para imágenes del encabezado =====
-def _img_b64(name: str) -> str:
-    """
-    Devuelve la imagen en base64 buscando en assets/ con extensiones comunes.
-    Si no la encuentra, devuelve cadena vacía (no rompe la app).
-    """
-    try:
-        base_dir = Path("assets")
-        for ext in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
-            p = base_dir / f"{name}{ext}"
-            if p.exists():
-                return base64.b64encode(p.read_bytes()).decode("utf-8")
-    except Exception:
-        pass
-    return ""
 
 # Hora Lima para sellado de cambios + ACL
 try:
@@ -105,6 +87,7 @@ def _fmt_hhmm(v) -> str:
         return ""
 
 # ============ Helpers de normalización y deduplicado ============
+
 def _is_blank_str(x) -> bool:
     s = str(x).strip().lower()
     return s in {"", "-", "nan", "nat", "none", "null"}
@@ -124,6 +107,7 @@ def _dedup_keep_last_with_id(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 # ============== Helpers ACL ==============
+
 def _display_name() -> str:
     u = st.session_state.get("acl_user", {}) or {}
     return (
@@ -159,6 +143,7 @@ def _gen_id() -> str:
     return f"{ts}-{rand4}"
 
 # --- I/O local robusto (para persistencia entre sesiones) ---
+
 def _load_local_if_exists() -> pd.DataFrame | None:
     try:
         p = os.path.join("data", "tareas.csv")
@@ -181,6 +166,7 @@ def _save_local(df: pd.DataFrame) -> dict:
         return {"ok": False, "msg": f"Error al guardar: {_e}"}
 
 # --- Upsert a Sheets usando helper de shared.py (sin _gsheets_client local) ---
+
 try:
     # Helper genérico de upsert parcial por Id centralizado en shared.py
     from shared import sheet_upsert_by_id_partial as _shared_upsert_by_id_partial  # type: ignore
@@ -236,6 +222,7 @@ def _sheet_upsert_estado_by_id(df_base: pd.DataFrame, changed_ids: list[str]):
         st.info(f"No pude ejecutar upsert a Sheets con el helper compartido: {e}")
 
 # ===============================================================================
+
 def render(user: dict | None = None):
     # 🔒 Refuerzo: si no hay df_main en sesión, cargar desde disco
     if ("df_main" not in st.session_state) or (not isinstance(st.session_state["df_main"], pd.DataFrame)) or st.session_state["df_main"].empty:
@@ -276,29 +263,82 @@ def render(user: dict | None = None):
             overflow-x: auto !important; 
           }
 
-          .section-est .help-strip + .form-card{ 
-            margin-top: 2px !important; 
+          /* Encabezado degradado Editar tarea */
+          #est-section .est-header-container{
+              margin-top: 0;
+              margin-bottom: 18px;
+              padding: 18px 22px;
+              border-radius: 18px;
+              background: linear-gradient(90deg,#1D4ED8 0%,#6366F1 45%,#EC4899 100%);
+              display:flex;
+              align-items:center;
+              justify-content:space-between;
+              gap:16px;
           }
 
-          .est-pill{ 
-            width:100%; 
-            height:38px; 
-            border-radius:12px; 
-            display:flex; 
-            align-items:center; 
-            justify-content:center;
-            background:#A7C8F0; 
-            color:#ffffff; 
-            font-weight:700; 
-            box-shadow:0 6px 14px rgba(167,200,240,.35); 
-            user-select:none; 
-            margin: 0 0 12px; 
+          #est-section .est-header-text small{
+              display:block;
+              font-size:0.8rem;
+              font-weight:500;
+              color:#E0E7FF;
+              margin-bottom:4px;
+              text-transform:uppercase;
+              letter-spacing:0.06em;
           }
 
-          .est-pill span{ 
-            display:inline-flex; 
-            gap:8px; 
-            align-items:center; 
+          #est-section .est-header-title{
+              font-size:1.4rem;
+              font-weight:700;
+              color:#FFFFFF;
+              margin:0;
+          }
+
+          #est-section .est-header-img{
+              text-align:right;
+          }
+
+          #est-section .est-header-img img{
+              max-height:90px;
+              width:auto;
+          }
+
+          /* Tarjetas de resumen bajo el encabezado */
+          #est-section .est-cards-row{
+              margin-top:10px;
+              margin-bottom:16px;
+          }
+
+          #est-section .est-card{
+              background:#FFFFFF;
+              border-radius:16px;
+              padding:14px 16px;
+              box-shadow:0 8px 18px rgba(15,23,42,0.10);
+              min-height:70px;
+              display:flex;
+              align-items:flex-start;
+              justify-content:space-between;
+          }
+
+          #est-section .est-card-title{
+              font-size:0.92rem;
+              font-weight:600;
+              color:#111827;
+              margin:0;
+          }
+
+          #est-section .est-card-sub{
+              font-size:0.80rem;
+              color:#6B7280;
+              margin-top:4px;
+          }
+
+          /* Asegurar que no haya rectángulo plomo alrededor de los filtros */
+          #est-section .form-card{
+              background:transparent !important;
+              box-shadow:none !important;
+              border:none !important;
+              padding:0 !important;
+              margin-top:0 !important;
           }
 
           /* ===== Colores de encabezados por bloques (sin emojis en headers) ===== */
@@ -341,26 +381,49 @@ def render(user: dict | None = None):
             unsafe_allow_html=True,
         )
 
-        # ==== Título tipo "píldora" ====
-        c_pill, _, _, _, _, _ = st.columns([A, Fw, T_width, D, R, C], gap="medium")
-        with c_pill:
+        # ==== Contenedor principal de la sección ====
+        st.markdown('<div class="section-est">', unsafe_allow_html=True)
+
+        # ==== Encabezado degradado (Editar tarea) ====
+        st.markdown('<div class="est-header-container">', unsafe_allow_html=True)
+        hcol1, hcol2 = st.columns([3, 1], gap="medium")
+        with hcol1:
             st.markdown(
-                '<div class="est-pill"><span>✏️&nbsp;Editar estado</span></div>',
+                """
+                <div class="est-header-text">
+                  <small>Gestión ENI 2025</small>
+                  <h2 class="est-header-title">Editar tarea</h2>
+                </div>
+                """,
                 unsafe_allow_html=True,
             )
+        with hcol2:
+            img_path = os.path.join("assets", "NUEVA_TAREA.png")
+            if os.path.exists(img_path):
+                st.markdown('<div class="est-header-img">', unsafe_allow_html=True)
+                st.image(img_path, use_column_width=False)
+                st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)  # cierra est-header-container
 
-        # ==== Texto de ayuda + tarjeta contenedora ====
-        st.markdown(
-            """
-        <div class="section-est">
-          <div class="help-strip">
-            <strong>Indicaciones:</strong> Usa los filtros para ubicar la tarea → ▶️ al registrar <em>fecha y hora de inicio</em> el estado pasa a “En curso” → ✅ al registrar <em>fecha y hora de término</em> pasa a “Terminada” → 💾 Guardar.<br>
-            <strong>Importante:</strong> cada fecha y hora queda sellada al guardar; solo podrás completar el estado siguiente. Al finalizar, sube el enlace de Drive en <em>Link de archivo</em>.
-          </div>
-          <div class="form-card">
-        """,
-            unsafe_allow_html=True,
-        )
+        # ==== Cuatro tarjetas bajo el encabezado (placeholder) ====
+        st.markdown('<div class="est-cards-row">', unsafe_allow_html=True)
+        cards_row = st.columns(4, gap="medium")
+        for col_card in cards_row:
+            with col_card:
+                st.markdown(
+                    """
+                    <div class="est-card">
+                      <div>
+                        <p class="est-card-title">&nbsp;</p>
+                        <p class="est-card-sub">&nbsp;</p>
+                      </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+        st.markdown("</div>", unsafe_allow_html=True)  # cierra est-cards-row
+
+        # =================== LÓGICA DE DATOS ===================
 
         # Base global (LIMPIA y sin duplicados)
         df_all = st.session_state.get("df_main", pd.DataFrame()).copy()
@@ -416,44 +479,138 @@ def render(user: dict | None = None):
 
         # ===== FILTROS =====
         estados_catalogo = ["No iniciado", "En curso", "Terminada", "Pausada", "Cancelada", "Eliminada"]
+        estado_labels = {
+            "No iniciado": "⏳ No iniciado",
+            "En curso": "🟢 En curso",
+            "Terminada": "✅ Terminada",
+            "Pausada": "⏸️ Pausada",
+            "Cancelada": "✖️ Cancelada",
+            "Eliminada": "🗑️ Eliminada",
+        }
+        estado_opts_labels = ["Todos"] + [estado_labels[e] for e in estados_catalogo]
+
+        est_do_buscar = False
 
         with st.form("est_filtros_v4", clear_on_submit=False):
             if is_super:
-                c_resp, c_fase, c_tipo, c_estado, c_desde, c_hasta, c_buscar = st.columns(
-                    [Fw, Fw, T_width, D, D, R, C], gap="medium"
+                r1_c1, r1_c2, r1_c3, r1_c4 = st.columns(4, gap="medium")
+                r2_c1, r2_c2, r2_c3, r2_c4 = st.columns(4, gap="medium")
+
+                resp_all = sorted(
+                    [
+                        x
+                        for x in df_all.get("Responsable", pd.Series([], dtype=str))
+                        .astype(str)
+                        .unique()
+                        if x and x != "nan"
+                    ]
                 )
-                resp_all = sorted([x for x in df_all.get("Responsable", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
-                est_resp = c_resp.selectbox("Responsable", ["Todos"] + resp_all, index=0)
+                est_resp = r1_c1.selectbox("Responsable", ["Todos"] + resp_all, index=0)
+
+                fases_all = sorted(
+                    [
+                        x
+                        for x in df_all.get("Fase", pd.Series([], dtype=str))
+                        .astype(str)
+                        .unique()
+                        if x and x != "nan"
+                    ]
+                )
+                est_fase = r1_c2.selectbox("Fase", ["Todas"] + fases_all, index=0)
+
+                tipos_all = sorted(
+                    [
+                        x
+                        for x in df_all.get("Tipo de tarea", pd.Series([], dtype=str))
+                        .astype(str)
+                        .unique()
+                        if x and x != "nan"
+                    ]
+                )
+                est_tipo = r1_c3.selectbox("Tipo de tarea", ["Todos"] + tipos_all, index=0)
+
+                sel_label = r1_c4.selectbox("Estado actual", estado_opts_labels, index=0)
+                est_estado = (
+                    "Todos"
+                    if sel_label == "Todos"
+                    else [k for k, v in estado_labels.items() if v == sel_label][0]
+                )
+
+                est_desde = r2_c1.date_input(
+                    "Desde",
+                    value=min_date,
+                    min_value=min_date,
+                    max_value=max_date,
+                    key="est_desde",
+                )
+                est_hasta = r2_c2.date_input(
+                    "Hasta",
+                    value=max_date,
+                    min_value=min_date,
+                    max_value=max_date,
+                    key="est_hasta",
+                )
+
+                with r2_c4:
+                    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+                    est_do_buscar = st.form_submit_button(
+                        "🔍 Buscar", use_container_width=True
+                    )
             else:
-                c_fase, c_tipo, c_estado, c_desde, c_hasta, c_buscar = st.columns(
-                    [Fw, T_width, D, D, R, C], gap="medium"
-                )
+                r1_c1, r1_c2, r1_c3, r1_c4 = st.columns(4, gap="medium")
+                r2_c1, r2_c2, r2_c3, r2_c4 = st.columns(4, gap="medium")
+
                 est_resp = "Todos"
 
-            fases_all = sorted([x for x in df_all.get("Fase", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
-            est_fase = c_fase.selectbox("Fase", ["Todas"] + fases_all, index=0)
+                fases_all = sorted(
+                    [
+                        x
+                        for x in df_all.get("Fase", pd.Series([], dtype=str))
+                        .astype(str)
+                        .unique()
+                        if x and x != "nan"
+                    ]
+                )
+                est_fase = r1_c1.selectbox("Fase", ["Todas"] + fases_all, index=0)
 
-            tipos_all = sorted([x for x in df_all.get("Tipo de tarea", pd.Series([], dtype=str)).astype(str).unique() if x and x != "nan"])
-            est_tipo = c_tipo.selectbox("Tipo de tarea", ["Todos"] + tipos_all, index=0)
+                tipos_all = sorted(
+                    [
+                        x
+                        for x in df_all.get("Tipo de tarea", pd.Series([], dtype=str))
+                        .astype(str)
+                        .unique()
+                        if x and x != "nan"
+                    ]
+                )
+                est_tipo = r1_c2.selectbox("Tipo de tarea", ["Todos"] + tipos_all, index=0)
 
-            estado_labels = {
-                "No iniciado": "⏳ No iniciado",
-                "En curso": "🟢 En curso",
-                "Terminada": "✅ Terminada",
-                "Pausada": "⏸️ Pausada",
-                "Cancelada": "✖️ Cancelada",
-                "Eliminada": "🗑️ Eliminada",
-            }
-            estado_opts_labels = ["Todos"] + [estado_labels[e] for e in estados_catalogo]
-            sel_label = c_estado.selectbox("Estado actual", estado_opts_labels, index=0)
-            est_estado = "Todos" if sel_label == "Todos" else [k for k, v in estado_labels.items() if v == sel_label][0]
+                sel_label = r1_c3.selectbox("Estado actual", estado_opts_labels, index=0)
+                est_estado = (
+                    "Todos"
+                    if sel_label == "Todos"
+                    else [k for k, v in estado_labels.items() if v == sel_label][0]
+                )
 
-            est_desde = c_desde.date_input("Desde", value=min_date, min_value=min_date, max_value=max_date, key="est_desde")
-            est_hasta = c_hasta.date_input("Hasta", value=max_date, min_value=min_date, max_value=max_date, key="est_hasta")
+                est_desde = r1_c4.date_input(
+                    "Desde",
+                    value=min_date,
+                    min_value=min_date,
+                    max_value=max_date,
+                    key="est_desde",
+                )
+                est_hasta = r2_c1.date_input(
+                    "Hasta",
+                    value=max_date,
+                    min_value=min_date,
+                    max_value=max_date,
+                    key="est_hasta",
+                )
 
-            with c_buscar:
-                st.markdown("<div style='height:30px'></div>", unsafe_allow_html=True)
-                est_do_buscar = st.form_submit_button("🔍 Buscar", use_container_width=True)
+                with r2_c4:
+                    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+                    est_do_buscar = st.form_submit_button(
+                        "🔍 Buscar", use_container_width=True
+                    )
 
         # Filtrado
         df_tasks = df_all.copy()
@@ -964,12 +1121,12 @@ def render(user: dict | None = None):
                                     changed_ids.add(i)
 
                             # Estado actual y sellos
-                            fe_eff = _canon_str(base_idx.at[i, "Fecha eliminada"])
+                            fe_eff2 = _canon_str(base_idx.at[i, "Fecha eliminada"])
                             ft_eff2 = _canon_str(base_idx.at[i, "Fecha Terminado"]) or _canon_str(base_idx.at[i, "Fecha terminada"])
                             fi_eff2 = _canon_str(base_idx.at[i, "Fecha inicio"]) or _canon_str(base_idx.at[i, "Fecha de inicio"])
-                            if fe_eff:
+                            if fe_eff2:
                                 base_idx.at[i, "Estado"] = "Eliminada"
-                                base_idx.at[i, "Fecha estado actual"] = fe_eff
+                                base_idx.at[i, "Fecha estado actual"] = fe_eff2
                                 base_idx.at[i, "Hora estado actual"] = _canon_str(base_idx.at[i, "Hora eliminada"]) or h_now
                             elif ft_eff2:
                                 base_idx.at[i, "Estado"] = "Terminada"
@@ -1032,7 +1189,7 @@ def render(user: dict | None = None):
                 except Exception as e:
                     st.error(f"No pude guardar: {e}")
 
-        # cierra form-card + section-est
-        st.markdown("</div></div>", unsafe_allow_html=True)
+        # cierra section-est
+        st.markdown("</div>", unsafe_allow_html=True)
         # cierra est-section
         st.markdown("</div>", unsafe_allow_html=True)
