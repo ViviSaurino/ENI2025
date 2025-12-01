@@ -817,7 +817,7 @@ def render_historial(user: dict | None = None):
         max-width:220px;
         height:auto;
         display:block;
-        margin-top:18px;  
+        margin-top:50px;  
       }
       .hist-hero-text{
         font-size:1.1rem;
