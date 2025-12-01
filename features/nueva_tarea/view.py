@@ -1025,7 +1025,7 @@ def render_historial(user: dict | None = None):
     with st.container():
         # línea superior (misma variable de color; grosor acorde)
         st.markdown(
-            '<div style="height:0; border-top:4px solid var(--row-sep); margin:100 0 8px 0;"></div>',
+            '<div style="height:0; border-top:4px solid var(--row-sep); margin:-50 0 8px 0;"></div>',
             unsafe_allow_html=True,
         )
         st.markdown('<div class="hist-filters">', unsafe_allow_html=True)
