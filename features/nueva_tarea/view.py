@@ -793,7 +793,7 @@ def render_historial(user: dict | None = None):
       background:
         linear-gradient(90deg,#60A5FA,#A855F7) top,
         linear-gradient(90deg,#60A5FA,#A855F7) bottom;
-      background-size:100% 2px;   /* ← grosor: súbelo/bájalo aquí (2px) */
+      background-size:100% 1.5px;   /* ← grosor: súbelo/bájalo aquí (2px) */
       background-repeat:no-repeat;
       }
 
