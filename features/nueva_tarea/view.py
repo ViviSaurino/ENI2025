@@ -1756,12 +1756,12 @@ def render_historial(user: dict | None = None):
     except Exception:
         pass
 
-    # ===== Botonera =====
-     st.markdown('<div style="padding:0 16px;">', unsafe_allow_html=True)
+        # ===== Botonera =====
+    st.markdown('<div style="padding:0 16px;">', unsafe_allow_html=True)
 
-    # ⬅️ más espacio a la izquierda y botones más recogidos
+    # ⬅️ Más espacio a la izquierda y botones más recogidos (entre las líneas rojas)
     _sp, b_sync, b_xlsx, b_save_local, b_save_sheets = st.columns(
-        [6.0, 1.1, 1.1, 1.1, 1.3],  # ⬅️ AQUÍ juegas con los números
+        [6.0, 1.1, 1.1, 1.1, 1.3],  # ⬅️ aquí puedes ajustar un poco los anchos
         gap="medium",
     )
 
@@ -2034,6 +2034,7 @@ def render_historial(user: dict | None = None):
                 st.warning(f"No se pudo subir a Sheets: {e}")
 
     st.markdown("</div>", unsafe_allow_html=True)
+
 
 
 # ============================================================
