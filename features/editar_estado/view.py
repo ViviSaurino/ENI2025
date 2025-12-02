@@ -612,7 +612,7 @@ def render(user: dict | None = None):
             .volver-pill {
                 display:block;
                 box-sizing:border-box;
-                width:70%;
+                width:60%;
                 padding:0.55rem 1rem;
                 border-radius:999px;
                 border:1px solid #E5E7EB;
