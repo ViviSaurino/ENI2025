@@ -588,7 +588,7 @@ def render(user: dict | None = None):
             key="est_hasta_v4_nosuper",
         )
 
-    # Línea inferior y botones
+   # Línea inferior y botones
     st.markdown(
         """
         <div style="
@@ -601,17 +601,41 @@ def render(user: dict | None = None):
         """,
         unsafe_allow_html=True,
     )
+
     b1, b2, b3, b4 = st.columns(4, gap="medium")
+
     with b3:
-        st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
-        # Volver a la página principal (root)
+        # Botón Volver con el mismo formato de píldora que Buscar
         st.markdown(
-            "<a href='/' target='_self' class='btn-volver-est'>⬅ Volver</a>",
+            """
+            <style>
+            .volver-pill {
+                display:block;
+                box-sizing:border-box;
+                width:100%;
+                padding:0.55rem 1rem;
+                border-radius:999px;
+                border:1px solid #E5E7EB;
+                background:#ffffff;
+                color:#111827;
+                text-decoration:none;
+                font-weight:600;
+                font-size:0.9rem;
+                text-align:center;
+            }
+            .volver-pill:hover{
+                background:#F3F4F6;
+            }
+            </style>
+            <a href="/" target="_self" class="volver-pill">⬅ Volver</a>
+            """,
             unsafe_allow_html=True,
         )
+
     with b4:
-        st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
         st.button("🔍 Buscar", use_container_width=True, key="est_buscar_v4")
+
+    
 
     # =================== APLICAR FILTROS ===================
     df_tasks = df_all.copy()
