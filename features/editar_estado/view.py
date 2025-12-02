@@ -613,6 +613,7 @@ def render(user: dict | None = None):
                 display:block;
                 box-sizing:border-box;
                 width:60%;
+                margin:0 auto;   /* para centrar dentro de la celda */
                 padding:0.55rem 1rem;
                 border-radius:999px;
                 border:1px solid #E5E7EB;
@@ -633,7 +634,9 @@ def render(user: dict | None = None):
         )
 
     with b4:
-        st.button("🔍 Buscar", use_container_width=True, key="est_buscar_v4")
+        c1, c2, c3 = st.columns([1,2,1])
+        with c2:
+            st.button("🔍 Buscar", use_container_width=False, key="est_buscar_v4")
 
     
 
