@@ -473,7 +473,18 @@ def render(user: dict | None = None):
     }
 
     # ===== FILTROS (sin form para quitar el rectángulo) =====
-    st.markdown('<div class="est-filter-line"></div>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div style="
+            width:100%;
+            height:1.5px;
+            margin:12px 0 14px 0;
+            border-radius:999px;
+            background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
+        "></div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     if is_super:
         r1_c1, r1_c2, r1_c3, r1_c4 = st.columns(4, gap="medium")
@@ -577,7 +588,18 @@ def render(user: dict | None = None):
         )
 
     # Línea inferior y botones
-    st.markdown('<div class="est-filter-line"></div>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div style="
+            width:100%;
+            height:1.5px;
+            margin:18px 0 12px 0;
+            border-radius:999px;
+            background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
+        "></div>
+        """,
+        unsafe_allow_html=True,
+    )
     b1, b2, b3, b4 = st.columns(4, gap="medium")
     with b3:
         st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
@@ -1112,7 +1134,7 @@ def render(user: dict | None = None):
                         )
 
                     bad_del = [
-                        i for i in ids_ok if (_canon_str(fe_new_vis.get(i, "")) and not _has_end(i))
+                        i for i in ids_ok if (_canon_str(fe_new_vis.get(i, "")) && not _has_end(i))
                     ]
                     if bad_del:
                         st.warning("No puedes registrar 'Fecha eliminada' sin 'Fecha terminada' en algunas tareas.")
