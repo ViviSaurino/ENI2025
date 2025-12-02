@@ -295,7 +295,7 @@ def render(user: dict | None = None):
       #est-section .est-filter-line{
         width:100%;
         height:1.5px;
-        background:linear-gradient(90deg,#1D4ED8 0%,#6366F1 100%);
+        background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
         border-radius:999px;
         margin:6px 0 10px 0;
       }
@@ -381,7 +381,7 @@ def render(user: dict | None = None):
       margin: 0 0 16px 0;
       padding: 18px 22px;
       border-radius: 18px;
-      background: linear-gradient(90deg,#1D4ED8 0%,#6366F1 50%,#8B5CF6 100%);
+      background: linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
       display: flex;
       align-items: center;
       justify-content: space-between;
