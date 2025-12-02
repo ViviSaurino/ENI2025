@@ -269,17 +269,18 @@ def render(user: dict | None = None):
         overflow-x: auto !important;
       }
 
-      /* Tarjetas vacías de resumen */
+      /* Tarjetas vacías de resumen (indicaciones) */
       #est-section .est-cards-row{
-        margin: 12px 0 18px 0;
+        margin: 10px 0 16px 0;
       }
 
       #est-section .est-card{
         background:#ffffff;
-        border-radius:16px;
-        padding:14px 16px;
-        box-shadow:0 6px 18px rgba(15,23,42,0.08);
-        min-height:70px;
+        border-radius:12px;
+        padding:12px 14px;
+        border:1px solid #E5E7EB;
+        box-shadow:none;
+        min-height:68px;
         display:flex;
         align-items:center;
         justify-content:flex-start;
@@ -300,22 +301,26 @@ def render(user: dict | None = None):
         margin:6px 0 10px 0;
       }
 
-      /* Botón Volver como link */
+      /* Botón Volver con estilo tipo botón */
       #est-section a.btn-volver-est{
         display:inline-flex;
         align-items:center;
         justify-content:center;
         width:100%;
-        padding:0.55rem 1rem;
-        border-radius:999px;
-        background:#e5e7eb;
+        padding:0.5rem 1rem;
+        border-radius:0.5rem;
+        background:#ffffff;
+        border:1px solid #e5e7eb;
         color:#111827;
         text-decoration:none;
-        font-weight:600;
+        font-weight:500;
         font-size:0.9rem;
+        cursor:pointer;
       }
       #est-section a.btn-volver-est:hover{
-        background:#d1d5db;
+        border-color:#6366f1;
+        color:#4f46e5;
+        box-shadow:0 0 0 1px rgba(99,102,241,0.2);
       }
 
       /* ===== Colores de encabezados por bloques ===== */
@@ -378,7 +383,7 @@ def render(user: dict | None = None):
 
     header_html = f"""
     <div style="
-      margin: 0 0 16px 0;
+      margin: 0 0 12px 0;
       padding: 18px 22px;
       border-radius: 18px;
       background: linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
@@ -473,18 +478,7 @@ def render(user: dict | None = None):
     }
 
     # ===== FILTROS (sin form para quitar el rectángulo) =====
-    st.markdown(
-        """
-        <div style="
-            width:100%;
-            height:1.5px;
-            margin:12px 0 14px 0;
-            border-radius:999px;
-            background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
-        "></div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.markdown('<div class="est-filter-line"></div>', unsafe_allow_html=True)
 
     if is_super:
         r1_c1, r1_c2, r1_c3, r1_c4 = st.columns(4, gap="medium")
@@ -587,29 +581,23 @@ def render(user: dict | None = None):
             key="est_hasta_v4_nosuper",
         )
 
-    # Línea inferior y botones
-    st.markdown(
-        """
-        <div style="
-            width:100%;
-            height:1.5px;
-            margin:18px 0 12px 0;
-            border-radius:999px;
-            background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
-        "></div>
-        """,
-        unsafe_allow_html=True,
-    )
+    # Línea inferior y botones (ambos dentro de la última columna)
+    st.markdown('<div class="est-filter-line"></div>', unsafe_allow_html=True)
     b1, b2, b3, b4 = st.columns(4, gap="medium")
+
+    with b1:
+        st.markdown("&nbsp;", unsafe_allow_html=True)
+    with b2:
+        st.markdown("&nbsp;", unsafe_allow_html=True)
     with b3:
+        st.markdown("&nbsp;", unsafe_allow_html=True)
+    with b4:
         st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
-        # Volver a la página principal (root)
         st.markdown(
             "<a href='/' target='_self' class='btn-volver-est'>⬅ Volver</a>",
             unsafe_allow_html=True,
         )
-    with b4:
-        st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height:0.4rem'></div>", unsafe_allow_html=True)
         st.button("🔍 Buscar", use_container_width=True, key="est_buscar_v4")
 
     # =================== APLICAR FILTROS ===================
