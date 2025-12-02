@@ -1134,7 +1134,7 @@ def render(user: dict | None = None):
                         )
 
                     bad_del = [
-                        i for i in ids_ok if (_canon_str(fe_new_vis.get(i, "")) && not _has_end(i))
+                        i for i in ids_ok if (_canon_str(fe_new_vis.get(i, "")) and not _has_end(i))
                     ]
                     if bad_del:
                         st.warning("No puedes registrar 'Fecha eliminada' sin 'Fecha terminada' en algunas tareas.")
