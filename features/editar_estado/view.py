@@ -300,23 +300,24 @@ def render(user: dict | None = None):
         margin:6px 0 10px 0;
       }
 
-      /* Botón Volver como link */
-      #est-section a.btn-volver-est{
-        display:inline-flex;
-        align-items:center;
-        justify-content:center;
-        width:100%;
-        padding:0.55rem 1rem;
-        border-radius:999px;
-        background:#e5e7eb;
-        color:#111827;
-        text-decoration:none;
-        font-weight:600;
-        font-size:0.9rem;
-      }
-      #est-section a.btn-volver-est:hover{
-        background:#d1d5db;
-      }
+        /* Botón Volver con el mismo formato que Buscar */
+        #est-section a.btn-volver-est{
+    display:block !important;
+    box-sizing:border-box !important;
+    width:100% !important;
+    padding:0.55rem 1rem !important;
+    border-radius:999px !important;
+    border:1px solid #E5E7EB !important;
+    background:#ffffff !important;
+    color:#111827 !important;
+    text-decoration:none !important;
+    font-weight:600 !important;
+    font-size:0.9rem !important;
+    text-align:center !important;
+  }
+  #est-section a.btn-volver-est:hover{
+    background:#F3F4F6 !important;
+  }
 
       /* ===== Colores de encabezados por bloques ===== */
       /* Registro — lila */
