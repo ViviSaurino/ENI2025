@@ -611,7 +611,7 @@ def render(user: dict | None = None):
                     box-sizing:border-box;
                     width:100%;
                     padding:0.55rem 1.4rem;
-                    border-radius:999px;
+                    border-radius:10px;
                     border:1px solid #E5E7EB;
                     background:#ffffff;
                     color:#2563eb;
