@@ -597,7 +597,7 @@ def render(user: dict | None = None):
     )
 
     # Mucho espacio a la izquierda, botones hacia la derecha
-    col_empty, col_volver, col_buscar = st.columns([7, 1.1, 1.1], gap="medium")
+    col_empty, col_volver, col_buscar = st.columns([7, 1.15, 1.15], gap="medium")
 
     with col_volver:
         # Botón Volver con formato píldora
