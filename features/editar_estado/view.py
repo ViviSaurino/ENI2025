@@ -582,64 +582,67 @@ def render(user: dict | None = None):
             key="est_hasta_v4_nosuper",
         )
 
-    # Línea inferior y botones
-    st.markdown(
-        """
-        <div style="
-            width:100%;
-            height:1.5px;
-            margin:18px 0 12px 0;
-            border-radius:999px;
-            background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
-        "></div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # Mucho espacio a la izquierda, botones a la derecha
-    col_empty, col_volver, col_buscar = st.columns([7, 1.2, 1.8], gap="medium")
-
-    with col_volver:
-        # Estilos para el botón Volver y para el botón Buscar
+        # Línea inferior y botones
         st.markdown(
             """
             <style>
-            /* Botón VOLVER como píldora */
-            #est-section a.volver-pill {
-                display:flex;
+            /* Línea inferior lila-azul */
+            #est-section .est-bottom-line {
+                width:100%;
+                height:1.5px;
+                margin:18px 0 12px 0;
+                border-radius:999px;
+                background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
+            }
+
+            /* Botón VOLVER en formato píldora */
+            #est-section .btn-volver-pill {
+                display:inline-flex;
                 align-items:center;
                 justify-content:center;
                 box-sizing:border-box;
                 width:100%;
-                padding:0.45rem 1.6rem;
+                padding:0.55rem 1.4rem;
                 border-radius:999px;
-                border:1px solid #D1D5DB !important;   /* grosor / color del borde */
-                background:#ffffff !important;
-                color:#2563eb !important;
-                text-decoration:none !important;
+                border:1px solid #E5E7EB;   /* grosor del borde Volver */
+                background:#ffffff;
+                color:#2563eb;
+                text-decoration:none;
                 font-weight:600;
                 font-size:0.9rem;
-                box-shadow:0 1px 2px rgba(15,23,42,0.04);
+                cursor:pointer;
             }
-            #est-section a.volver-pill:hover{
-                background:#F9FAFB !important;
+            #est-section .btn-volver-pill:hover{
+                background:#F3F4F6;
             }
 
-            /* Botón BUSCAR (píldora también) */
+            /* Botón BUSCAR (st.button) con mismo estilo píldora */
             #est-section .stButton > button {
                 border-radius:999px;
-                border-width:1px;                     /* grosor del borde */
-                border-color:#D1D5DB;
-                padding:0.45rem 2.3rem;               /* ancho visual */
+                border:1px solid #E5E7EB;   /* grosor del borde Buscar */
+                padding:0.55rem 1.4rem;     /* ancho visual */
+                font-weight:600;
             }
             </style>
-            <a href="/" target="_self" class="volver-pill">⬅ Volver</a>
+
+            <div class="est-bottom-line"></div>
             """,
             unsafe_allow_html=True,
         )
 
-    with col_buscar:
-        st.button("🔍 Buscar", use_container_width=True, key="est_buscar_v4")
+        # Mucho espacio a la izquierda, botones hacia la derecha
+        col_empty, col_volver, col_buscar = st.columns([7, 1.2, 1.8], gap="medium")
+
+        with col_volver:
+            # Botón Volver como píldora, que regresa a la página principal
+            st.markdown(
+                """<a href="/" target="_self" class="btn-volver-pill">⬅ Volver</a>""",
+                unsafe_allow_html=True,
+            )
+
+        with col_buscar:
+            st.button("🔍 Buscar", use_container_width=True, key="est_buscar_v4")
+
 
 
     # =================== APLICAR FILTROS ===================
