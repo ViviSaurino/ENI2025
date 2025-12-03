@@ -254,14 +254,36 @@ def render(user: dict | None = None):
         margin-top: 0 !important;
       }
 
+      /* === ESTILO BASE COMÚN PARA VOLVER Y BUSCAR === */
+      #est-section a.btn-volver-est,
       #est-section .stButton > button {
-        width: 100% !important;
+        box-sizing:border-box !important;
+        width:100% !important;
         padding:0.55rem 1rem !important;
-        border-radius:12px !important;          /* misma curva aprox. que Volver */
-        border:1px solid #E5E7EB !important;    /* 👈 mismo color de borde */
+        border-radius:12px !important;          /* misma curva para ambos */
+        border:1px solid #E5E7EB !important;    /* mismo color de borde */
         background:#ffffff !important;
+        box-shadow:none !important;             /* sin relieve extra */
+      }
+
+      /* Botón BUSCAR (solo diferencias) */
+      #est-section .stButton > button {
         color:#111827 !important;
-        box-shadow:none !important;             /* quita el relieve gris de Streamlit */
+        padding:0.55rem 1.4rem !important;      /* un pelín más ancho si quieres */
+        font-weight:500 !important;
+      }
+
+      /* Botón VOLVER (solo diferencias) */
+      #est-section a.btn-volver-est{
+        display:block !important;
+        color:#2563eb !important;               /* azul tipo enlace */
+        text-decoration:none !important;
+        font-weight:600 !important;
+        font-size:0.9rem !important;
+        text-align:center !important;
+      }
+      #est-section a.btn-volver-est:hover{
+        background:#F3F4F6 !important;
       }
 
       #est-section .ag-header-cell-label{
@@ -277,7 +299,7 @@ def render(user: dict | None = None):
 
       /* Tarjetas vacías de resumen */
       #est-section .est-cards-row{
-        margin: 12px 0 18px 0;
+         margin: 12px 0 18px 0;
       }
 
       #est-section .est-card{
@@ -305,25 +327,6 @@ def render(user: dict | None = None):
         border-radius:999px;
         margin:6px 0 10px 0;
       }
-
-        /* Botón Volver con el mismo formato que Buscar */
-        #est-section a.btn-volver-est{
-    display:block !important;
-    box-sizing:border-box !important;
-    width:100% !important;
-    padding:0.55rem 1rem !important;
-    border-radius:999px !important;
-    border:1px solid #E5E7EB !important;  /* mismo color */
-    background:#ffffff !important;
-    color:#111827 !important;
-    text-decoration:none !important;
-    font-weight:600 !important;
-    font-size:0.9rem !important;
-    text-align:center !important;
-  }
-  #est-section a.btn-volver-est:hover{
-    background:#F3F4F6 !important;
-  }
 
       /* ===== Colores de encabezados por bloques ===== */
       /* Registro — lila */
@@ -364,6 +367,7 @@ def render(user: dict | None = None):
     """,
         unsafe_allow_html=True,
     )
+
 
     # ==== Contenedor principal de la sección ====
     st.markdown('<div class="section-est">', unsafe_allow_html=True)
