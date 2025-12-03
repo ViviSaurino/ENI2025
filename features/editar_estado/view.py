@@ -597,39 +597,40 @@ def render(user: dict | None = None):
     )
 
     # Mucho espacio a la izquierda, botones a la derecha
-    # Si quieres moverlos más o menos a la derecha,
-    # ajusta estos valores (suman ~10):
     col_empty, col_volver, col_buscar = st.columns([7, 1.2, 1.8], gap="medium")
 
     with col_volver:
-        # Botón Volver con el mismo formato de píldora que Buscar
+        # Estilos para el botón Volver y para el botón Buscar
         st.markdown(
             """
             <style>
-            /* Estilo VOLVER */
-            #est-section .volver-pill {
-                display:block;
+            /* Botón VOLVER como píldora */
+            #est-section a.volver-pill {
+                display:flex;
+                align-items:center;
+                justify-content:center;
                 box-sizing:border-box;
                 width:100%;
-                padding:0.55rem 1rem;
+                padding:0.45rem 1.6rem;
                 border-radius:999px;
-                border:0.8px solid #E5E7EB;   /* ← grosor del borde Volver */
-                background:#ffffff;
-                color:#2563eb;
-                text-decoration:none;
+                border:1px solid #D1D5DB !important;   /* grosor / color del borde */
+                background:#ffffff !important;
+                color:#2563eb !important;
+                text-decoration:none !important;
                 font-weight:600;
                 font-size:0.9rem;
-                text-align:center;
+                box-shadow:0 1px 2px rgba(15,23,42,0.04);
             }
-            #est-section .volver-pill:hover{
-                background:#F3F4F6;
+            #est-section a.volver-pill:hover{
+                background:#F9FAFB !important;
             }
 
-            /* Estilo BUSCAR (botón de Streamlit) */
+            /* Botón BUSCAR (píldora también) */
             #est-section .stButton > button {
                 border-radius:999px;
-                border-width:0.8px;          /* ← grosor del borde Buscar */
-                padding:0.55rem 1.4rem;      /* ← ancho visual del botón Buscar */
+                border-width:1px;                     /* grosor del borde */
+                border-color:#D1D5DB;
+                padding:0.45rem 2.3rem;               /* ancho visual */
             }
             </style>
             <a href="/" target="_self" class="volver-pill">⬅ Volver</a>
@@ -638,7 +639,6 @@ def render(user: dict | None = None):
         )
 
     with col_buscar:
-        # use_container_width=True para que use todo el ancho de su columna
         st.button("🔍 Buscar", use_container_width=True, key="est_buscar_v4")
 
 
