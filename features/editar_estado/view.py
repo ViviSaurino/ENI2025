@@ -256,8 +256,7 @@ def render(user: dict | None = None):
 
       #est-section .stButton > button {
         width: 100% !important;
-        border:1px solid #E5E7EB !important;  /* 👈 borde de BUSCAR */
-        border-radius:999px !important;        /* si quieres que también sea “píldora” */
+        border:1px solid #E5E7EB !important;  /* 👈 mismo color de borde que Volver */
       }
 
       #est-section .ag-header-cell-label{
@@ -309,7 +308,7 @@ def render(user: dict | None = None):
     width:100% !important;
     padding:0.55rem 1rem !important;
     border-radius:999px !important;
-    border:1px solid #E5E7EB !important;
+    border:1px solid #E5E7EB !important;  /* mismo color */
     background:#ffffff !important;
     color:#111827 !important;
     text-decoration:none !important;
