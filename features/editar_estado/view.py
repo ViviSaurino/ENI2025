@@ -589,7 +589,7 @@ def render(user: dict | None = None):
             width:100%;
             height:1.5px;
             margin:18px 0 12px 0;
-            border-radius:16px;
+            border-radius:8px;
             background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
         "></div>
         """,
