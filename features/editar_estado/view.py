@@ -582,53 +582,52 @@ def render(user: dict | None = None):
             key="est_hasta_v4_nosuper",
         )
 
-        # Línea inferior y botones
+    # ========= Línea inferior y botones (para todos) =========
+    st.markdown(
+        """
+        <div style="
+            width:100%;
+            height:1.5px;
+            margin:18px 0 12px 0;
+            border-radius:999px;
+            background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
+        "></div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Mucho espacio a la izquierda, botones hacia la derecha
+    col_empty, col_volver, col_buscar = st.columns([7, 1.2, 1.8], gap="medium")
+
+    with col_volver:
+        # Botón Volver con formato píldora
         st.markdown(
             """
-            <div style="
-                width:100%;
-                height:1.5px;
-                margin:18px 0 12px 0;
-                border-radius:999px;
-                background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
-            "></div>
+            <div style="display:flex; justify-content:flex-end;">
+              <a href="/" target="_self" style="
+                    display:inline-flex;
+                    align-items:center;
+                    justify-content:center;
+                    box-sizing:border-box;
+                    width:100%;
+                    padding:0.55rem 1.4rem;
+                    border-radius:999px;
+                    border:1px solid #E5E7EB;
+                    background:#ffffff;
+                    color:#2563eb;
+                    text-decoration:none;
+                    font-weight:600;
+                    font-size:0.9rem;
+                    cursor:pointer;
+              ">⬅ Volver</a>
+            </div>
             """,
             unsafe_allow_html=True,
         )
 
-        # Mucho espacio a la izquierda, botones hacia la derecha
-        col_empty, col_volver, col_buscar = st.columns([7, 1.2, 1.8], gap="medium")
-
-        with col_volver:
-            # Botón Volver con formato píldora
-            st.markdown(
-                """
-                <div style="display:flex; justify-content:flex-end;">
-                  <a href="/" target="_self" style="
-                        display:inline-flex;
-                        align-items:center;
-                        justify-content:center;
-                        box-sizing:border-box;
-                        width:100%;
-                        padding:0.55rem 1.4rem;
-                        border-radius:999px;
-                        border:1px solid #E5E7EB;
-                        background:#ffffff;
-                        color:#2563eb;
-                        text-decoration:none;
-                        font-weight:600;
-                        font-size:0.9rem;
-                        cursor:pointer;
-                  ">⬅ Volver</a>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-        with col_buscar:
-            # Botón Buscar usando el estilo normal de Streamlit
-            st.button("🔍 Buscar", use_container_width=True, key="est_buscar_v4")
-
+    with col_buscar:
+        # Botón Buscar usando el estilo normal de Streamlit
+        st.button("🔍 Buscar", use_container_width=True, key="est_buscar_v4")
 
 
     # =================== APLICAR FILTROS ===================
