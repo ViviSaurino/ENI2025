@@ -256,7 +256,12 @@ def render(user: dict | None = None):
 
       #est-section .stButton > button {
         width: 100% !important;
-        border:1px solid #E5E7EB !important;  /* 👈 mismo color de borde que Volver */
+        padding:0.55rem 1rem !important;
+        border-radius:12px !important;          /* misma curva aprox. que Volver */
+        border:1px solid #E5E7EB !important;    /* 👈 mismo color de borde */
+        background:#ffffff !important;
+        color:#111827 !important;
+        box-shadow:none !important;             /* quita el relieve gris de Streamlit */
       }
 
       #est-section .ag-header-cell-label{
