@@ -588,7 +588,7 @@ def render(user: dict | None = None):
             key="est_hasta_v4_nosuper",
         )
 
-   # Línea inferior y botones
+    # Línea inferior y botones
     st.markdown(
         """
         <div style="
@@ -602,30 +602,39 @@ def render(user: dict | None = None):
         unsafe_allow_html=True,
     )
 
-    b1, b2, b3, b4 = st.columns(4, gap="medium")
+    # Mucho espacio a la izquierda, botones a la derecha
+    # (si quieres moverlos más o menos a la derecha, ajusta estos valores)
+    col_empty, col_volver, col_buscar = st.columns([7, 1.2, 1.8], gap="medium")
 
-    with b3:
+    with col_volver:
         # Botón Volver con el mismo formato de píldora que Buscar
         st.markdown(
             """
             <style>
-            .volver-pill {
+            /* Estilo VOLVER */
+            #est-section .volver-pill {
                 display:block;
                 box-sizing:border-box;
-                width:60%;
-                margin:0 auto;   /* para centrar dentro de la celda */
+                width:100%;
                 padding:0.55rem 1rem;
                 border-radius:999px;
-                border:1px solid #E5E7EB;
+                border:0.8px solid #E5E7EB;   /* ← grosor del borde Volver */
                 background:#ffffff;
-                color:#111827;
+                color:#2563eb;
                 text-decoration:none;
                 font-weight:600;
                 font-size:0.9rem;
                 text-align:center;
             }
-            .volver-pill:hover{
+            #est-section .volver-pill:hover{
                 background:#F3F4F6;
+            }
+
+            /* Estilo BUSCAR (botón de Streamlit) */
+            #est-section .stButton > button {
+                border-radius:999px;
+                border-width:0.8px;          /* ← grosor del borde Buscar */
+                padding:0.55rem 1.4rem;      /* ← ancho visual del botón Buscar */
             }
             </style>
             <a href="/" target="_self" class="volver-pill">⬅ Volver</a>
@@ -633,12 +642,10 @@ def render(user: dict | None = None):
             unsafe_allow_html=True,
         )
 
-    with b4:
-        c1, c2, c3 = st.columns([1,2,1])
-        with c2:
-            st.button("🔍 Buscar", use_container_width=False, key="est_buscar_v4")
+    with col_buscar:
+        # use_container_width=True para que use todo el ancho de su columna
+        st.button("🔍 Buscar", use_container_width=True, key="est_buscar_v4")
 
-    
 
     # =================== APLICAR FILTROS ===================
     df_tasks = df_all.copy()
