@@ -256,6 +256,8 @@ def render(user: dict | None = None):
 
       #est-section .stButton > button {
         width: 100% !important;
+        border:1px solid #E5E7EB !important;  /* 👈 borde de BUSCAR */
+        border-radius:999px !important;        /* si quieres que también sea “píldora” */
       }
 
       #est-section .ag-header-cell-label{
