@@ -438,6 +438,7 @@ def render(user: dict | None = None):
     me = _display_name().strip()
     is_super = _is_super_editor()
     if not is_super:
+        # Usuarios normales: solo ven sus tareas
         df_all = apply_scope(df_all, user=st.session_state.get("acl_user"))
         if isinstance(df_all, pd.DataFrame) and "Responsable" in df_all.columns and me:
             try:
@@ -445,15 +446,8 @@ def render(user: dict | None = None):
                 df_all = df_all[mask]
             except Exception:
                 pass
-    else:
-        ver_todas = st.toggle("👀 Ver todas las tareas", value=True, key="est_ver_todas")
-        if (not ver_todas) and isinstance(df_all, pd.DataFrame) and "Responsable" in df_all.columns and me:
-            try:
-                mask = df_all["Responsable"].astype(str).str.contains(me, case=False, na=False)
-                df_all = df_all[mask]
-            except Exception:
-                pass
-
+    # Super editores (Vivi / Enrique): ven todo, sin toggle ni texto extra
+       
     # Rango por defecto
     fr_all = pd.to_datetime(df_all.get("Fecha Registro", pd.Series([], dtype=object)), errors="coerce")
     if fr_all.notna().any():
@@ -603,7 +597,8 @@ def render(user: dict | None = None):
     )
 
     # Mucho espacio a la izquierda, botones a la derecha
-    # (si quieres moverlos más o menos a la derecha, ajusta estos valores)
+    # Si quieres moverlos más o menos a la derecha,
+    # ajusta estos valores (suman ~10):
     col_empty, col_volver, col_buscar = st.columns([7, 1.2, 1.8], gap="medium")
 
     with col_volver:
