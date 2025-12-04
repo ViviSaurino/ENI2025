@@ -637,7 +637,7 @@ def render(user: dict | None = None):
             st.rerun()
 
     with col_buscar:
-        st.button("🔍 Buscar", use_container_width=True, key="est_buscar_v4"))
+        st.button("🔍 Buscar", use_container_width=True, key="est_buscar_v4")
 
 
     # =================== APLICAR FILTROS ===================
