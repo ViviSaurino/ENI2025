@@ -811,21 +811,28 @@ def _quick_card_link(title: str, subtitle: str, icon: str, tile_key: str) -> str
     """
 
 # ===== leer parámetro de tarjeta seleccionada (tile) =====
+# Si venimos de un botón "Volver", saltamos UNA vez el parámetro ?tile=
+skip_tile = st.session_state.pop("skip_tile_once", False)
+
 tile_param = ""
-try:
-    params = st.query_params
-    raw = params.get("tile", "")
-    if isinstance(raw, list):
-        tile_param = raw[0] if raw else ""
-    else:
-        tile_param = raw
-except Exception:
+if not skip_tile:
     try:
-        params = st.experimental_get_query_params()
-        raw = params.get("tile", [""])
-        tile_param = raw[0] if raw else ""
+        params = st.query_params
+        raw = params.get("tile", "")
+        if isinstance(raw, list):
+            tile_param = raw[0] if raw else ""
+        else:
+            tile_param = raw
     except Exception:
-        tile_param = ""
+        try:
+            params = st.experimental_get_query_params()
+            raw = params.get("tile", [""])
+            tile_param = raw[0] if raw else ""
+        except Exception:
+            tile_param = ""
+else:
+    # Si hay que saltar el tile, lo ignoramos completamente
+    tile_param = ""
 
 if tile_param:
     st.session_state["home_tile"] = tile_param
@@ -834,6 +841,7 @@ tile = st.session_state.get("home_tile", "")
 
 section = st.session_state.get("nav_section", DEFAULT_SECTION)
 tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
+
 
 # ============ Contenido principal ============
 if section == "Gestión de tareas":
