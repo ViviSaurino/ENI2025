@@ -610,30 +610,11 @@ def render(user: dict | None = None):
     col_empty, col_volver, col_buscar = st.columns([7, 1.15, 1.15], gap="medium")
 
     with col_volver:
-        # Botón Volver con formato píldora
-        st.markdown(
-            """
-            <div style="display:flex; justify-content:flex-end;">
-              <button type="button" onclick="window.history.back();" style="
-                    display:inline-flex;
-                    align-items:center;
-                    justify-content:center;
-                    box-sizing:border-box;
-                    width:100%;
-                    padding:0.55rem 1.4rem;
-                    border-radius:10px;
-                    border:1px solid #E5E7EB;
-                    background:#ffffff;
-                    color:#2563eb;
-                    text-decoration:none;
-                    font-weight:600;
-                    font-size:0.9rem;
-                    cursor:pointer;
-              ">⬅ Volver</a>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        # Botón Volver con el mismo formato de píldora que Buscar
+        if st.button("⬅ Volver", key="est_volver_v4"):
+            # 👇 Ajusta este nombre/valor según tu app
+            st.session_state["gt_view"] = "home"  # por ejemplo: vista principal "Gestión de tareas"
+            st.experimental_rerun()
 
     with col_buscar:
         # Botón Buscar usando el estilo normal de Streamlit
