@@ -614,7 +614,7 @@ def render(user: dict | None = None):
         st.markdown(
             """
             <div style="display:flex; justify-content:flex-end;">
-              <a href="/" target="_self" style="
+              <a href="javascript:window.history.back();" style="
                     display:inline-flex;
                     align-items:center;
                     justify-content:center;
