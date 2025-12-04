@@ -606,19 +606,38 @@ def render(user: dict | None = None):
         unsafe_allow_html=True,
     )
 
-    # Mucho espacio a la izquierda, botones hacia la derecha
     col_empty, col_volver, col_buscar = st.columns([7, 1.15, 1.15], gap="medium")
 
     with col_volver:
-        # Botón Volver con el mismo formato de píldora que Buscar
         if st.button("⬅ Volver", key="est_volver_v4"):
-            # 👇 Ajusta este nombre/valor según tu app
-            st.session_state["gt_view"] = "home"  # por ejemplo: vista principal "Gestión de tareas"
-            st.experimental_rerun()
+            # 1) Limpia la “vista” actual
+            st.session_state["home_tile"] = ""
+
+            # 2) Mantener auth y usuario, pero quitar tile de la URL
+            try:
+                params = st.query_params
+            except Exception:
+                params = st.experimental_get_query_params()
+
+            # normalizamos a dict simple
+            clean_params = {}
+            for k, v in params.items():
+                if isinstance(v, list):
+                    clean_params[k] = v[0] if v else ""
+                else:
+                    clean_params[k] = v
+
+            clean_params.pop("tile", None)  # 👈 quitamos tile
+
+            try:
+                st.query_params = clean_params
+            except Exception:
+                st.experimental_set_query_params(**clean_params)
+
+            st.rerun()
 
     with col_buscar:
-        # Botón Buscar usando el estilo normal de Streamlit
-        st.button("🔍 Buscar", use_container_width=True, key="est_buscar_v4")
+        st.button("🔍 Buscar", use_container_width=True, key="est_buscar_v4"))
 
 
     # =================== APLICAR FILTROS ===================
