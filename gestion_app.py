@@ -854,6 +854,9 @@ def _on_sidebar_nav_change():
         except Exception:
             pass
 
+    # ✅ Fuerza refresco para que no se quede "pegado" a la vista anterior
+    st.rerun()
+
 
 with st.sidebar:
     if LOGO_PATH.exists():
@@ -878,7 +881,6 @@ with st.sidebar:
     )
 
     # (Botón Cerrar sesión se quitó; ahora está en el círculo VS del topbar)
-
 
 # ============ Datos ============
 ensure_df_main()
