@@ -837,6 +837,24 @@ def render_if_allowed(tab_key: str, render_fn):
         st.warning("No tienes permiso para esta sección.")
 
 # ============ Sidebar ============
+
+def _on_sidebar_nav_change():
+    # ✅ Al cambiar sección, volvemos a la "home" de Gestión (banner + tarjetas)
+    st.session_state["home_tile"] = ""
+
+    # ✅ Quitar ?tile=... de la URL para que no reabra la tarjeta
+    try:
+        if "tile" in st.query_params:
+            st.query_params.pop("tile", None)
+    except Exception:
+        try:
+            params = st.experimental_get_query_params()
+            params.pop("tile", None)
+            st.experimental_set_query_params(**params)
+        except Exception:
+            pass
+
+
 with st.sidebar:
     if LOGO_PATH.exists():
         st.markdown("<div class='eni-logo-wrap'>", unsafe_allow_html=True)
@@ -856,9 +874,11 @@ with st.sidebar:
         label_visibility="collapsed",
         key="nav_section",
         horizontal=False,
+        on_change=_on_sidebar_nav_change,  # ✅ AQUÍ
     )
 
     # (Botón Cerrar sesión se quitó; ahora está en el círculo VS del topbar)
+
 
 # ============ Datos ============
 ensure_df_main()
