@@ -334,7 +334,7 @@ st.markdown(
 
   /* ===== Grid de tarjetas rápidas ===== */
   .eni-quick-grid-wrapper{
-    margin:0px 0px 18px 0px;
+    margin:0px 0 18px 0;
   }
 
   .eni-quick-grid{
@@ -372,11 +372,17 @@ st.markdown(
     /* 👇 MISMA ALTURA PARA TODAS LAS TARJETAS */
     min-height: 120px;
     height: 120px;
+
+    /* ✅ FIX: recorta lo que sobresale (iconos) */
+    overflow:hidden;
   }
 
   .eni-quick-card-text{
     max-width:100%;
     text-align:left;
+
+    /* ✅ FIX: evita que el texto fuerce el layout */
+    min-width:0;
   }
   .eni-quick-card-title{
     font-size:14px;
@@ -399,6 +405,16 @@ st.markdown(
   .eni-quick-card-icon{
     font-size:46px;
     margin-left:16px;
+
+    /* ✅ FIX: el icono no deforma la tarjeta */
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    line-height:1;
+
+    /* ✅ FIX: tamaño responsive (no se sale en laptop) */
+    font-size: clamp(30px, 3.2vw, 46px);
   }
   .eni-quick-card-link:hover .eni-quick-card{
     box-shadow:0 14px 28px rgba(148,163,184,0.45);
@@ -438,9 +454,16 @@ st.markdown(
   }
 
   /* ✅ Grilla de tarjetas: se adapta según ancho */
-  @media (max-width: 1200px){
+  @media (max-width: 1400px){
     .eni-quick-grid{ grid-template-columns:repeat(3, minmax(0, 1fr)); }
     .eni-quick-card-title{ white-space: normal; } /* permite 2 líneas si hace falta */
+    .eni-quick-card{
+      padding:16px 14px 14px 14px; /* ✅ un poco menos padding en laptop */
+    }
+    .eni-quick-card-icon{
+      font-size: clamp(28px, 3vw, 42px);
+      margin-left:12px;
+    }
   }
 
   @media (max-width: 900px){
