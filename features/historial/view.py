@@ -700,6 +700,27 @@ def render(user: dict | None = None):
       /* Botón buscar del ancho de su celda (debajo de Hasta) */
       .hist-search .stButton>button{ width:100%; }
 
+      /* ================================
+         ✅ RESPONSIVE: botón Buscar + emoji
+         - Ajusta tamaño según ancho
+         - Evita que el emoji/texto se desborde en laptop
+         ================================ */
+      .hist-search .stButton > button{
+        font-size: clamp(12px, 1.1vw, 14px) !important;
+        padding: clamp(8px, 0.9vw, 10px) clamp(10px, 1.2vw, 16px) !important;
+        line-height: 1.15 !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+      }
+      .hist-search .stButton > button span{
+        display: inline-block !important;
+        max-width: 100% !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        vertical-align: middle !important;
+      }
+
       /* AG Grid base con líneas horizontales suaves */
       .ag-theme-balham .ag-cell{
         white-space:nowrap!important; overflow:hidden!important; text-overflow:ellipsis!important;
@@ -720,6 +741,7 @@ def render(user: dict | None = None):
       .ag-theme-balham .ag-header-cell.hdr-termino{  background:var(--hdr-ter)!important; border-radius:8px; }
     </style>
     """, unsafe_allow_html=True)
+
 
     # ====== DATA BASE (bootstrap fuerte) ======
     _bootstrap_df_main_hist()
