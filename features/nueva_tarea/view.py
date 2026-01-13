@@ -951,23 +951,23 @@ def render_historial(user: dict | None = None):
         """
     <div class="nt-steps-row">
       <div class="nt-step-card">
-        <div class="nt-step-main"><div class="nt-step-label">Opcional: Edita tu tarea</div></div>
+        <div class="nt-step-main"><div class="nt-step-label">Filtra tu tarea</div></div>
         <div class="nt-step-icon-slot"><span class="nt-step-icon">✏️</span></div>
       </div>
       <div class="nt-step-card">
-        <div class="nt-step-main"><div class="nt-step-label">Opcional: Edita el detalle</div></div>
+        <div class="nt-step-main"><div class="nt-step-label">Edita la tarea o detalle</div></div>
         <div class="nt-step-icon-slot"><span class="nt-step-icon">📋</span></div>
       </div>
       <div class="nt-step-card">
-        <div class="nt-step-main"><div class="nt-step-label">Obligatorio: Graba</div></div>
+        <div class="nt-step-main"><div class="nt-step-label">Graba</div></div>
         <div class="nt-step-icon-slot"><span class="nt-step-icon">💾</span></div>
       </div>
       <div class="nt-step-card">
-        <div class="nt-step-main"><div class="nt-step-label">Obligatorio: Sube a Sheets</div></div>
+        <div class="nt-step-main"><div class="nt-step-label">Sube a Sheets</div></div>
         <div class="nt-step-icon-slot"><span class="nt-step-icon">📤</span></div>
       </div>
       <div class="nt-step-card">
-        <div class="nt-step-main"><div class="nt-step-label">Opcional: Descarga en Excel</div></div>
+        <div class="nt-step-main"><div class="nt-step-label">Descarga en Excel</div></div>
         <div class="nt-step-icon-slot"><span class="nt-step-icon">⬇️</span></div>
       </div>
     </div>
