@@ -403,8 +403,7 @@ st.markdown(
     overflow:hidden;
   }
   .eni-quick-card-icon{
-    font-size:46px;
-    margin-left:16px;
+    margin-left:12px;
 
     /* ✅ FIX: el icono no deforma la tarjeta */
     flex:0 0 auto;
@@ -413,8 +412,8 @@ st.markdown(
     justify-content:center;
     line-height:1;
 
-    /* ✅ FIX: tamaño responsive (no se sale en laptop) */
-    font-size: clamp(30px, 3.2vw, 46px);
+    /* ✅ FIX: tamaño responsive (NO se sale, mantiene 1 fila de 5) */
+    font-size: clamp(22px, 2.4vw, 46px);
   }
   .eni-quick-card-link:hover .eni-quick-card{
     box-shadow:0 14px 28px rgba(148,163,184,0.45);
@@ -437,7 +436,6 @@ st.markdown(
   /* ================================
      ✅ RESPONSIVE FIX (laptop / pantallas pequeñas)
      - Evita que el texto se salga de botones
-     - Ajusta grillas (tarjetas) y banner
      ================================ */
 
   /* Botones: ancho completo + wrap del texto (no se sale) */
@@ -453,27 +451,18 @@ st.markdown(
     white-space: normal !important;
   }
 
-  /* ✅ Grilla de tarjetas: se adapta según ancho */
+  /* ✅ Ajuste fino para laptop sin cambiar a 2 filas */
   @media (max-width: 1400px){
-    .eni-quick-grid{ grid-template-columns:repeat(3, minmax(0, 1fr)); }
-    .eni-quick-card-title{ white-space: normal; } /* permite 2 líneas si hace falta */
     .eni-quick-card{
-      padding:16px 14px 14px 14px; /* ✅ un poco menos padding en laptop */
+      padding:14px 12px 12px 12px;
     }
     .eni-quick-card-icon{
-      font-size: clamp(28px, 3vw, 42px);
-      margin-left:12px;
+      font-size: clamp(20px, 2.2vw, 40px);
+      margin-left:10px;
     }
-  }
-
-  @media (max-width: 900px){
-    .eni-quick-grid{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
-    .eni-quick-card{ height:auto; min-height:120px; }
-  }
-
-  @media (max-width: 650px){
-    .eni-quick-grid{ grid-template-columns:1fr; }
-    .eni-quick-card-icon{ font-size:38px; }
+    .eni-quick-card-title{
+      white-space: normal; /* deja partir el título si hace falta */
+    }
   }
 
   /* ✅ Banner/hero: que no se rompa en pantallas chicas */
@@ -486,7 +475,7 @@ st.markdown(
 
   @media (max-width: 650px){
     .eni-main-hero{ height:auto; padding-bottom:16px; }
-    .eni-main-hero-img{ display:none; } /* en móvil/laptop chica ocultamos imagen para evitar choque */
+    .eni-main-hero-img{ display:none; }
     .eni-main-hero-text{ position:relative; left:0; top:0; padding:18px; }
   }
 
