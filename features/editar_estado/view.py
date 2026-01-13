@@ -363,6 +363,28 @@ def render(user: dict | None = None):
         background:#F3F4F6 !important;
         color:#111827 !important;
       }
+
+      /* ================================
+         ✅ RESPONSIVE: botones + “iconos” (emoji)
+         - Ajusta tamaño de texto/emoji según ancho
+         - Evita desbordes en laptop
+         ================================ */
+      #est-section .stButton > button{
+        font-size: clamp(12px, 1.1vw, 14px) !important;
+        padding: clamp(8px, 0.9vw, 10px) clamp(10px, 1.2vw, 16px) !important;
+        line-height: 1.15 !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;   /* mantiene 1 línea */
+      }
+
+      #est-section .stButton > button span{
+        display: inline-block !important;
+        max-width: 100% !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        vertical-align: middle !important;
+      }
     </style>
     """,
         unsafe_allow_html=True,
