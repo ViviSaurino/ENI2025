@@ -955,7 +955,7 @@ def render_historial(user: dict | None = None):
         <div class="nt-step-icon-slot"><span class="nt-step-icon">✏️</span></div>
       </div>
       <div class="nt-step-card">
-        <div class="nt-step-main"><div class="nt-step-label">Edita la tarea o detalle</div></div>
+        <div class="nt-step-main"><div class="nt-step-label">Edita tu tarea o detalle</div></div>
         <div class="nt-step-icon-slot"><span class="nt-step-icon">📋</span></div>
       </div>
       <div class="nt-step-card">
