@@ -418,10 +418,68 @@ st.markdown(
     margin-top:0.2rem !important;
   }
 
+  /* ================================
+     ✅ RESPONSIVE FIX (laptop / pantallas pequeñas)
+     - Evita que el texto se salga de botones
+     - Ajusta grillas (tarjetas) y banner
+     ================================ */
+
+  /* Botones: ancho completo + wrap del texto (no se sale) */
+  div[data-testid="stButton"] > button{
+    width: 100%;
+    white-space: normal !important;
+    word-break: break-word;
+    line-height: 1.15;
+  }
+
+  /* Labels de inputs: que puedan partir línea */
+  label, .stSelectbox label, .stTextInput label, .stDateInput label{
+    white-space: normal !important;
+  }
+
+  /* ✅ Grilla de tarjetas: se adapta según ancho */
+  @media (max-width: 1200px){
+    .eni-quick-grid{ grid-template-columns:repeat(3, minmax(0, 1fr)); }
+    .eni-quick-card-title{ white-space: normal; } /* permite 2 líneas si hace falta */
+  }
+
+  @media (max-width: 900px){
+    .eni-quick-grid{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+    .eni-quick-card{ height:auto; min-height:120px; }
+  }
+
+  @media (max-width: 650px){
+    .eni-quick-grid{ grid-template-columns:1fr; }
+    .eni-quick-card-icon{ font-size:38px; }
+  }
+
+  /* ✅ Banner/hero: que no se rompa en pantallas chicas */
+  @media (max-width: 900px){
+    .eni-main-hero{ height:160px; }
+    .eni-main-hero-text{ left:18px; top:26px; }
+    .eni-main-hero-name{ font-size:22px; }
+    .eni-main-hero-img{ right:10px; height:170px; }
+  }
+
+  @media (max-width: 650px){
+    .eni-main-hero{ height:auto; padding-bottom:16px; }
+    .eni-main-hero-img{ display:none; } /* en móvil/laptop chica ocultamos imagen para evitar choque */
+    .eni-main-hero-text{ position:relative; left:0; top:0; padding:18px; }
+  }
+
+  /* ✅ Sidebar: un poco más angosto en pantallas chicas */
+  @media (max-width: 900px){
+    [data-testid="stSidebar"][aria-expanded="true"]{
+      min-width:200px !important;
+      max-width:200px !important;
+    }
+  }
+
 </style>
 """,
     unsafe_allow_html=True,
 )
+
 
 # ============ AUTENTICACIÓN POR CONTRASEÑA ============
 APP_PASSWORD = "Inei2025$"
