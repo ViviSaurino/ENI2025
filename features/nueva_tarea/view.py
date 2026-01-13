@@ -805,6 +805,8 @@ def render_historial(user: dict | None = None):
         border-radius:999px;
         font-weight:600;
         box-shadow:0 2px 4px rgba(99,102,241,0.25);
+        font-size: clamp(0.82rem, 1.2vw, 0.95rem) !important; /* responsive */
+        padding: clamp(8px, 1.2vw, 12px) clamp(12px, 2vw, 18px) !important; /* responsive */
       }
       .hist-search .stButton>button:hover{
         background:#4F46E5;
@@ -814,20 +816,21 @@ def render_historial(user: dict | None = None):
       .hist-hero{
         display:flex;
         align-items:center;
-        gap:20px;
+        gap: clamp(12px, 2vw, 20px); /* responsive */
         margin:20px 0 2px 0;
+        flex-wrap: wrap; /* responsive */
       }
       .hist-hero-img img{
-        max-width:220px;
+        max-width: clamp(140px, 26vw, 220px); /* responsive */
         height:auto;
         display:block;
         margin-top:10px;  
       }
       .hist-hero-text{
-        font-size:1.1rem;
+        font-size: clamp(0.95rem, 1.6vw, 1.1rem); /* responsive */
         font-weight:600;
         color:#4B5563;
-        margin-top:100px;
+        margin-top: clamp(10px, 8vw, 100px); /* responsive */
       }
 
       /* Línea gris clarita debajo del bloque */
@@ -881,6 +884,12 @@ def render_historial(user: dict | None = None):
       .ag-theme-balham .ag-header-cell.hdr-termino{
         background:var(--hdr-ter)!important;
         border-radius:8px;
+      }
+
+      /* ===== Ajustes extra para pantallas pequeñas (sin romper) ===== */
+      @media (max-width: 768px){
+        .hist-hero{ margin-top: 14px; }
+        .hist-hero-text{ margin-top: 6px; }
       }
     </style>
     """,
@@ -955,7 +964,7 @@ def render_historial(user: dict | None = None):
         <div class="nt-step-icon-slot"><span class="nt-step-icon">✏️</span></div>
       </div>
       <div class="nt-step-card">
-        <div class="nt-step-main"><div class="nt-step-label">Edita tu tarea o detalle</div></div>
+        <div class="nt-step-main"><div class="nt-step-label">Puedes editarla</div></div>
         <div class="nt-step-icon-slot"><span class="nt-step-icon">📋</span></div>
       </div>
       <div class="nt-step-card">
@@ -2250,33 +2259,39 @@ def render_nueva_tarea(user: dict | None = None):
     .nt-hero{
       border-radius:8px;
       background:linear-gradient(90deg,#93C5FD 0%,#A855F7 100%);
-      padding:10px 32px;
+      padding: clamp(8px, 1.2vw, 10px) clamp(14px, 3vw, 32px); /* responsive */
       display:flex;
       align-items:center;
       justify-content:space-between;
       color:#FFFFFF;
       box-shadow:none;
+      gap: 12px;
     }
     .nt-hero-left{
       display:flex;
       flex-direction:column;
       gap:4px;
+      min-width: 0;
     }
     .nt-hero-title{
-      font-size:1.8rem;
+      font-size: clamp(1.15rem, 2.2vw, 1.8rem); /* responsive */
       font-weight:700;
+      line-height:1.1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .nt-hero-right{
       flex:0 0 auto;
       display:flex;
       align-items:flex-end;
       justify-content:flex-end;
-      padding-left:24px;
+      padding-left: clamp(10px, 2vw, 24px); /* responsive */
     }
     .nt-hero-img{
       display:block;
-      height:160px;
-      max-width:160px;
+      height: clamp(90px, 18vw, 160px);   /* responsive */
+      max-width: clamp(90px, 18vw, 160px);/* responsive */
       transform: translateY(10px);
     }
 
@@ -2325,23 +2340,23 @@ def render_nueva_tarea(user: dict | None = None):
     .nt-steps-row{
       display:flex;
       flex-wrap:wrap;
-      gap:12px;
+      gap: clamp(8px, 1.2vw, 12px);  /* responsive */
       margin-top:4px;
       margin-bottom:16px;
     }
     .nt-step-card{
-      flex:1 1 180px;
-      min-width:180px;
+      flex: 1 1 180px;
+      min-width: clamp(140px, 18vw, 180px); /* responsive */
       background:#FFFFFF;
       border-radius:8px;
       border:1px solid #E5E7EB;
-      padding:20px 20px;
-      min-height:70px;
+      padding: clamp(12px, 2vw, 20px);      /* responsive */
+      min-height: clamp(56px, 8vw, 70px);   /* responsive */
       box-shadow:none;
       display:flex;
       align-items:center;
       justify-content:space-between;
-      gap:12px;
+      gap: clamp(8px, 1.2vw, 12px);         /* responsive */
     }
     .nt-step-main{
       flex:1;
@@ -2350,12 +2365,15 @@ def render_nueva_tarea(user: dict | None = None):
       justify-content:center;
       align-items:flex-start;
       text-align:left;
+      min-width: 0;
     }
     .nt-step-label{
-      font-size:0.88rem;
+      font-size: clamp(0.78rem, 1.2vw, 0.88rem); /* responsive */
       font-weight:400;
       color:#111827;
       white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .nt-step-icon-slot{
       flex:0 0 auto;
@@ -2364,14 +2382,14 @@ def render_nueva_tarea(user: dict | None = None):
       justify-content:center;
     }
     .nt-step-icon{
-      width:32px;
-      height:32px;
+      width: clamp(26px, 3vw, 32px);   /* responsive */
+      height: clamp(26px, 3vw, 32px);  /* responsive */
       border-radius:10px;
       display:flex;
       align-items:center;
       justify-content:center;
       background: transparent;
-      font-size:1.8rem;
+      font-size: clamp(1.3rem, 2.2vw, 1.8rem); /* responsive */
       flex-shrink:0;
     }
     .nt-step-text{
@@ -2405,6 +2423,8 @@ def render_nueva_tarea(user: dict | None = None):
       font-weight:600 !important;
       box-shadow:none !important;
       border:none !important;
+      font-size: clamp(0.82rem, 1.2vw, 0.95rem) !important;  /* responsive */
+      padding: clamp(8px, 1.2vw, 12px) clamp(12px, 2vw, 18px) !important; /* responsive */
     }
     /* Volver = primer botón (jade) */
     .nt-bottom-row button:first-of-type{
@@ -2422,10 +2442,19 @@ def render_nueva_tarea(user: dict | None = None):
     .nt-bottom-row button:last-of-type:hover{
       background:#9333EA !important;
     }
+
+    /* ===== Ajustes extra para pantallas pequeñas (sin romper) ===== */
+    @media (max-width: 768px){
+      .nt-hero-wrapper{ margin-top:-30px; }
+      .nt-hero{ padding: 10px 14px; }
+      .nt-hero-title{ white-space: normal; }
+      .nt-step-label{ white-space: normal; }
+    }
     </style>
         """,
         unsafe_allow_html=True,
     )
+
 
     # ===== Datos =====
     global AREAS_OPC
