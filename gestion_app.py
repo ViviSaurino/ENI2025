@@ -965,7 +965,7 @@ if section == "Gestión de tareas":
     u_param = quote(st.session_state.get("user_display_name", "Usuario"), safe="")
 
     # ---- Topbar con avatar + logout ----
-    topbar_label = "🏠 Volver a página principal" if tile else "📋 Gestión de tareas"
+    topbar_label = "🏠 Volver" if tile else "📋 Gestión de tareas"
     st.markdown(
         f"""
         <div class="eni-main-topbar">
