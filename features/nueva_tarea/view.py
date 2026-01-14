@@ -2219,7 +2219,6 @@ def _sync_time_from_date():
     st.session_state["fi_t_view"] = t.strftime("%H:%M")
 
 
-
 # ============================================================
 #           VISTA SUPERIOR: ➕ NUEVA TAREA
 # ============================================================
@@ -2694,19 +2693,16 @@ def render_nueva_tarea(user: dict | None = None):
             st.markdown('<div class="nt-bottom-line"></div>', unsafe_allow_html=True)
 
             # ===== Fila inferior de botones (derecha) =====
-            bottom_left, bottom_right = st.columns([4, 1])
+            btn1, btn2, btn3, btn4, btn5 = st.columns(COLS_5, gap="medium")
 
-            with bottom_right:
+            with btn5:
                 st.markdown('<div class="nt-bottom-row">', unsafe_allow_html=True)
-                col_v, col_a = st.columns(2, gap="medium")
-
-                with col_a:
-                    submitted = st.form_submit_button(
-                        "➕ Agregar",
-                        use_container_width=True,
-                    )
-
+                submitted = st.form_submit_button(
+                    "➕ Agregar",
+                    use_container_width=True,
+                )
                 st.markdown("</div>", unsafe_allow_html=True)
+                
 
     # ------ Acción botones fuera del form ------
     if volver_clicked:
