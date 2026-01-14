@@ -90,7 +90,7 @@ st.markdown(
     display:none !important;
   }
 
-  /* ===== Fila superior: Volver a la página principal de Gestión de tareas + VS EN RECTÁNGULO BLANCO ===== */
+  /* ===== Fila superior: Gestión de tareas + VS EN RECTÁNGULO BLANCO ===== */
   .eni-main-topbar{
     background:#FFFFFF;
     border-radius:8px;
@@ -969,7 +969,7 @@ if section == "Gestión de tareas":
         f"""
         <div class="eni-main-topbar">
           <div class="eni-main-topbar-title">
-            <a class="eni-home-link" href="?auth=1&u={u_param}" target="_self">📋 Gestión de tareas</a>
+            <a class="eni-home-link" href="?auth=1&u={u_param}" target="_self">📋 Volver a la página principal de Gestión de tareas</a>
           </div>
           <div class="eni-main-topbar-user">
             <div class="eni-main-topbar-avatar">{initials}</div>
