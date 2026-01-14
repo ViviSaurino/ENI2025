@@ -1074,25 +1074,25 @@ if section == "Gestión de tareas":
           <div class="eni-quick-grid">
             {_quick_card_link(
                 "1. Nueva tarea",
-                "Registra una nueva tarea y revísalas",
+                "Registra una nueva tarea y revísala",
                 "➕",
                 "nueva_tarea",
             )}
             {_quick_card_link(
                 "2. Editar estado",
-                "Actualiza fases y fechas de las tareas",
+                "Actualiza fases y fechas",
                 "✏️",
                 "editar_estado",
             )}
             {_quick_card_link(
                 "3. Nueva alerta",
-                "Registra alertas y riesgos prioritarios de las tareas",
+                "Registra alertas y riesgos prioritarios",
                 "⚠️",
                 "nueva_alerta",
             )}
             {_quick_card_link(
                 "4. Prioridad",
-                "Revisa los niveles de prioridad de las tareas",
+                "Revisa los niveles de prioridad",
                 "⭐",
                 "prioridad_evaluacion",
             )}
