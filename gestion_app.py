@@ -845,14 +845,16 @@ def _on_sidebar_nav_change():
     # ✅ CLAVE: reescribir la URL SIN tile (igual que el botón "Volver")
     display_name = st.session_state.get("user_display_name", "Usuario")
     try:
-        st.experimental_set_query_params(auth="1", u=display_name)
+        # Streamlit nuevo
+        st.query_params["auth"] = "1"
+        st.query_params["u"] = display_name
+        # si existía, lo borramos explícitamente
+        if "tile" in st.query_params:
+            st.query_params.pop("tile", None)
     except Exception:
         try:
-            st.query_params["auth"] = "1"
-            st.query_params["u"] = display_name
-            # si existía, lo borramos explícitamente
-            if "tile" in st.query_params:
-                st.query_params.pop("tile", None)
+            # Streamlit antiguo
+            st.experimental_set_query_params(auth="1", u=display_name)
         except Exception:
             pass
 
