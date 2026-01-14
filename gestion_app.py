@@ -965,21 +965,36 @@ if section == "Gestión de tareas":
     u_param = quote(st.session_state.get("user_display_name", "Usuario"), safe="")
 
     # ---- Topbar con avatar + logout ----
-    topbar_label = "🏠 Volver" if tile else "📋 Gestión de tareas"
-    st.markdown(
-        f"""
-        <div class="eni-main-topbar">
-          <div class="eni-main-topbar-title">
-            <a class="eni-home-link" href="?auth=1&u={u_param}" target="_self">{topbar_label}</a>
-          </div>
-          <div class="eni-main-topbar-user">
-            <div class="eni-main-topbar-avatar">{initials}</div>
-            <a href="?logout=1" class="eni-main-topbar-logout">Cerrar sesión</a>
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    if tile:
+        # ✅ Dentro de una tarjeta: SÍ es clickeable (volver a home)
+        st.markdown(
+            f"""
+            <div class="eni-main-topbar">
+              <div class="eni-main-topbar-title">
+                <a class="eni-home-link" href="?auth=1&u={u_param}" target="_self">⬅ Volver a Gestión de tareas</a>
+              </div>
+              <div class="eni-main-topbar-user">
+                <div class="eni-main-topbar-avatar">{initials}</div>
+                <a href="?logout=1" class="eni-main-topbar-logout">Cerrar sesión</a>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        # ✅ Home: NO es clickeable (solo texto)
+        st.markdown(
+            f"""
+            <div class="eni-main-topbar">
+              <div class="eni-main-topbar-title">📋 Gestión de tareas</div>
+              <div class="eni-main-topbar-user">
+                <div class="eni-main-topbar-avatar">{initials}</div>
+                <a href="?logout=1" class="eni-main-topbar-logout">Cerrar sesión</a>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     # ===== SI HAY TARJETA SELECCIONADA → SOLO FEATURE (como Kanban/Gantt) =====
     if tile:
