@@ -2341,7 +2341,7 @@ def render_nueva_tarea(user: dict | None = None):
       flex-wrap:wrap;
       gap: clamp(8px, 1.2vw, 12px);  /* responsive */
       margin-top:4px;
-      margin-bottom:16px;
+      margin-bottom:12px;
     }
     .nt-step-card{
       flex: 1 1 180px;
