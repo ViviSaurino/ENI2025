@@ -90,7 +90,7 @@ st.markdown(
     display:none !important;
   }
 
-  /* ===== Fila superior: Gestión de tareas + VS EN RECTÁNGULO BLANCO ===== */
+  /* ===== Fila superior: Volver a la página principal de Gestión de tareas + VS EN RECTÁNGULO BLANCO ===== */
   .eni-main-topbar{
     background:#FFFFFF;
     border-radius:8px;
