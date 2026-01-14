@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*- 
-# ============================  
+# -*- coding: utf-8 -*-
+# ============================
 # Gestión — ENI2025 (App única)
 # ============================
 import streamlit as st
@@ -109,6 +109,18 @@ st.markdown(
     letter-spacing:0.08em;
     text-transform:none;
   }
+
+  /* ✅ Link clickeable para volver a Home (sin tile) */
+  .eni-home-link,
+  .eni-home-link:link,
+  .eni-home-link:visited,
+  .eni-home-link:hover,
+  .eni-home-link:active{
+    text-decoration:none !important;
+    color:#374151 !important;
+    cursor:pointer;
+  }
+
   .eni-main-topbar-user{
     display:flex;
     align-items:center;
@@ -153,17 +165,17 @@ st.markdown(
     margin:0 0px 30px 0px;   /* mismo ancho que el topbar */
     border-radius:10px;
     box-shadow:none;  /* sin sombra en el encabezado lila/azul */
-    height:190px; 
+    height:190px;
     background:linear-gradient(90deg,  #93C5FD 0%, #B157D6 100%);
     position:relative;
     overflow:hidden;
   }
   .eni-main-hero-img{
     position:absolute;
-    right:40px; 
+    right:40px;
     bottom:0;
-    height:200px; 
-    width:auto; 
+    height:200px;
+    width:auto;
   }
   .eni-main-hero-text{
     position:absolute;
@@ -235,13 +247,13 @@ st.markdown(
     min-width:0 !important;
     max-width:0 !important;
     border-right:none !important;
-  } 
-  
+  }
+
   /* Menú de secciones: icono + texto, con pastilla lila en hover y activo */
   section[data-testid="stSidebar"] .stRadio > div{
     gap:4px !important;
   }
-  
+
   section[data-testid="stSidebar"] [data-baseweb="radio"]{
     margin-bottom:10px;
     padding:10px 14px;
@@ -256,17 +268,17 @@ st.markdown(
     box-sizing:border-box;
     cursor:pointer;
   }
-  
+
   section[data-testid="stSidebar"] [data-baseweb="radio"] > div:first-child{
     display:none !important;   /* oculta el botón redondo */
   }
-  
+
   section[data-testid="stSidebar"] [data-baseweb="radio"] > div:last-child{
     padding-left:0 !important;
-    font-size:10px !important; 
-    line-height:1.1 !important; 
+    font-size:10px !important;
+    line-height:1.1 !important;
     font-weight:500;
-    white-space:nowrap; 
+    white-space:nowrap;
   }
 
   /* Hover: pastilla lila suave, mismo tamaño en todas */
@@ -390,7 +402,7 @@ st.markdown(
     color:#111827;
     margin-bottom:4px;
     text-align:left;
-    white-space:nowrap;  
+    white-space:nowrap;
   }
   .eni-quick-card-sub{
     font-size:11px;
@@ -491,7 +503,6 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
-
 
 # ============ AUTENTICACIÓN POR CONTRASEÑA ============
 APP_PASSWORD = "Inei2025$"
@@ -860,7 +871,6 @@ def _on_sidebar_nav_change():
 
     st.rerun()
 
-
 with st.sidebar:
     if LOGO_PATH.exists():
         st.markdown("<div class='eni-logo-wrap'>", unsafe_allow_html=True)
@@ -884,7 +894,6 @@ with st.sidebar:
     )
 
     # (Botón Cerrar sesión se quitó; ahora está en el círculo VS del topbar)
-
 
 # ============ Datos ============
 ensure_df_main()
@@ -930,7 +939,6 @@ tile = st.session_state["home_tile"]
 section = st.session_state.get("nav_section", DEFAULT_SECTION)
 tab_key = TAB_KEY_BY_SECTION.get(section, "tareas_recientes")
 
-
 # ============ Contenido principal ============
 if section == "Gestión de tareas":
     dn = st.session_state.get("user_display_name", "Usuario")
@@ -954,11 +962,15 @@ if section == "Gestión de tareas":
             initials += p[0].upper()
     initials = initials or "VS"
 
+    u_param = quote(st.session_state.get("user_display_name", "Usuario"), safe="")
+
     # ---- Topbar con avatar + logout ----
     st.markdown(
         f"""
         <div class="eni-main-topbar">
-          <div class="eni-main-topbar-title">📋 Gestión de tareas</div>
+          <div class="eni-main-topbar-title">
+            <a class="eni-home-link" href="?auth=1&u={u_param}" target="_self">📋 Gestión de tareas</a>
+          </div>
           <div class="eni-main-topbar-user">
             <div class="eni-main-topbar-avatar">{initials}</div>
             <a href="?logout=1" class="eni-main-topbar-logout">Cerrar sesión</a>
@@ -999,10 +1011,10 @@ if section == "Gestión de tareas":
         # --- Texto de bienvenida según nombre ---
         first_name = dn_clean.split()[0] if dn_clean else "Usuario"
         first_name_l = first_name.lower()
-        
+
         # nombres que son de mujer aunque no terminen en "a"
         female_names = {"elizabet", "lucy", "tiffany", "vivian"}
-        
+
         if first_name_l.endswith("a") or first_name_l in female_names:
             welcome_word = "Bienvenida"
         else:
