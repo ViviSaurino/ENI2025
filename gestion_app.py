@@ -969,7 +969,7 @@ if section == "Gestión de tareas":
         f"""
         <div class="eni-main-topbar">
           <div class="eni-main-topbar-title">
-            <a class="eni-home-link" href="?auth=1&u={u_param}" target="_self">📋 Volver a Gestión de tareas</a>
+            <a class="eni-home-link" href="?auth=1&u={u_param}" target="_self">📋 Gestión de tareas</a>
           </div>
           <div class="eni-main-topbar-user">
             <div class="eni-main-topbar-avatar">{initials}</div>
