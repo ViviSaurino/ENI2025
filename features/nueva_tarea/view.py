@@ -2525,6 +2525,10 @@ def render_nueva_tarea(user: dict | None = None):
         <div class="nt-step-main"><div class="nt-step-label">3. Revisa tu tarea</div></div>
         <div class="nt-step-icon-slot"><span class="nt-step-icon">🕑</span></div>
       </div>
+      <div class="nt-step-card">
+        <div class="nt-step-main"><div class="nt-step-label">4. Para regresar pulsa Volver</div></div>
+        <div class="nt-step-icon-slot"><span class="nt-step-icon">🏠</span></div>
+      </div>
     </div>
     """,
         unsafe_allow_html=True,
@@ -2699,12 +2703,6 @@ def render_nueva_tarea(user: dict | None = None):
             with bottom_right:
                 st.markdown('<div class="nt-bottom-row">', unsafe_allow_html=True)
                 col_v, col_a = st.columns(2, gap="medium")
-
-                with col_v:
-                    volver_clicked = st.form_submit_button(
-                        "⬅ Volver",
-                        use_container_width=True,
-                    )
 
                 with col_a:
                     submitted = st.form_submit_button(
