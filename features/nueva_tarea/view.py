@@ -2252,7 +2252,7 @@ def render_nueva_tarea(user: dict | None = None):
     .nt-hero-wrapper{
       margin-left:0px;
       margin-right:0px;
-      margin-top:-35px;
+      margin-top:-70px;
       margin-bottom:0;
     }
     .nt-hero{
