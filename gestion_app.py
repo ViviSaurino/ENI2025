@@ -842,19 +842,20 @@ def _on_sidebar_nav_change():
     # ✅ Al cambiar sección, volvemos a la "home" de Gestión (banner + tarjetas)
     st.session_state["home_tile"] = ""
 
-    # ✅ Quitar ?tile=... de la URL para que no reabra la tarjeta
+    # ✅ CLAVE: reescribir la URL SIN tile (igual que el botón "Volver")
+    display_name = st.session_state.get("user_display_name", "Usuario")
     try:
-        if "tile" in st.query_params:
-            st.query_params.pop("tile", None)
+        st.experimental_set_query_params(auth="1", u=display_name)
     except Exception:
         try:
-            params = st.experimental_get_query_params()
-            params.pop("tile", None)
-            st.experimental_set_query_params(**params)
+            st.query_params["auth"] = "1"
+            st.query_params["u"] = display_name
+            # si existía, lo borramos explícitamente
+            if "tile" in st.query_params:
+                st.query_params.pop("tile", None)
         except Exception:
             pass
 
-    # ✅ Fuerza refresco para que no se quede "pegado" a la vista anterior
     st.rerun()
 
 
@@ -881,6 +882,7 @@ with st.sidebar:
     )
 
     # (Botón Cerrar sesión se quitó; ahora está en el círculo VS del topbar)
+
 
 # ============ Datos ============
 ensure_df_main()
