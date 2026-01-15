@@ -122,6 +122,11 @@ st.markdown(
     border-radius: 0 !important;
     padding: 0 !important;
     margin: 32px 0 20px 0 !important;
+
+    /* ✅ FIX ROBUSTO: el avatar SIEMPRE a la esquina derecha */
+    position: relative !important;
+    width: 100% !important;
+    min-height: 44px !important;
   }
   .eni-main-topbar-title{
     font-size:15px;
@@ -129,13 +134,9 @@ st.markdown(
     color:#374151;
     letter-spacing:0.08em;
     text-transform:none;
-  }
 
-    /* ✅ ESTO ES LO QUE TE FALTA */
-    display:flex !important;
-    align-items:center !important;
-    justify-content:space-between !important;
-    width:100% !important;
+    /* opcional: evita que el texto choque con el círculo */
+    padding-right: 70px !important;
   }
 
   /* ✅ Link clickeable para volver a Home (sin tile) */
@@ -150,12 +151,16 @@ st.markdown(
   }
 
   .eni-main-topbar-user{
-    display:flex;
-    align-items:center;
-    gap:8px;
+    /* ✅ FIX ROBUSTO: lo fijamos arriba a la derecha dentro del topbar */
+    position: absolute !important;
+    right: 0 !important;
+    top: 0 !important;
+
+    display:flex !important;
+    align-items:center !important;
+    gap:8px !important;
     font-size:13px;
     color:#4B5563;
-    margin-left:auto !important;   /* ✅ empuja a la derecha */;
   }
   .eni-main-topbar-avatar{
     width:38px;
