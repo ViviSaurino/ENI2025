@@ -91,7 +91,7 @@ st.markdown(
     position:fixed;
     top:0; left:0; right:0;
     height:120px;                 /* “arriba un celeste más claro” */
-    background:#edf2fa;           /* celeste claro */
+    background:#bfd3e7;           /* celeste claro */
     z-index:0;
   }
   /* Asegura que el contenido quede encima de la franja */
