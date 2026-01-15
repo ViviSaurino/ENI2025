@@ -575,7 +575,7 @@ st.markdown(
 
   /* ✅ Solo la tarjeta inferior derecha morada */
   .eni-kpi-right .eni-box:last-child{
-    background:#2a2a53 !important;  /* tono morado oscuro del gradiente */
+    background:#8d74c4 !important;  /* tono morado oscuro del gradiente */
     border:0 !important;
   }
 
