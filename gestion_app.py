@@ -121,7 +121,7 @@ st.markdown(
     box-shadow: none !important;
     border-radius: 0 !important;
     padding: 0 !important;
-    margin: 11px 0 40px 0 !important;
+    margin: 11px 0 50px 0 !important;
 
     /* ✅ FIX ROBUSTO: el avatar SIEMPRE a la esquina derecha */
     position: relative !important;
