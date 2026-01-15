@@ -352,8 +352,8 @@ st.markdown(
   section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(4)::before{ content:"📊"; }
 
   *::-webkit-scrollbar{
-    width:0px;
-    height:0px;
+    width:10px;
+    height:10px;
   }
 
   header[data-testid="stHeader"]{
