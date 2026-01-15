@@ -1198,19 +1198,14 @@ if section == "Gestión de tareas":
         </div>
         """
 
-        # ===== layout final HOME (modelo) =====
-        layout_html = f"""
-        <div class="eni-home-layout">
-          <div class="eni-home-left">
-            {left_cards_html}
-          </div>
-          <div class="eni-home-right">
-            {kpi_html}
-            {hero_html}
-          </div>
-        </div>
-        """
-        st.markdown(layout_html, unsafe_allow_html=True)
+        # ✅ CAMBIO 4 (fix): layout HOME con columnas nativas (evita que Streamlit “rompa” el HTML grid)
+        col_left, col_right = st.columns([0.34, 0.66], gap="large")
+        with col_left:
+            st.markdown(left_cards_html, unsafe_allow_html=True)
+        with col_right:
+            st.markdown(kpi_html, unsafe_allow_html=True)
+            st.markdown("<div style='height:18px;'></div>", unsafe_allow_html=True)
+            st.markdown(hero_html, unsafe_allow_html=True)
 
 elif section == "Kanban":
     st.title("🗂️ Kanban")
