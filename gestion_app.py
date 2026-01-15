@@ -71,9 +71,21 @@ inject_global_css()
 st.markdown(
     """
 <style>
-  /* ===== Fondo general de la APP → BLANCO ===== */
+  /* ===== Fondo general de la APP → CELESTE + franja superior más clara ===== */
   html, body, [data-testid="stAppViewContainer"]{
-    background:#FFFFFF;
+    background: linear-gradient(
+      to bottom,
+      #EAF6FF 0px,
+      #EAF6FF 120px,
+      #DCEEFF 120px,
+      #DCEEFF 100%
+    ) !important;
+  }
+
+  /* Asegura que el main no meta “parches blancos” */
+  section.main,
+  html body [data-testid="stAppViewContainer"] .main{
+    background: transparent !important;
   }
 
   .eni-banner{
@@ -94,7 +106,7 @@ st.markdown(
   .eni-main-topbar{
     background:#FFFFFF;
     border-radius:8px;
-    border:1px solid #E5E7EB;
+    border:1px solid rgba(15,23,42,0.08);
     padding:10px 20px;
     display:flex;
     align-items:center;
@@ -227,16 +239,17 @@ st.markdown(
     gap:8px !important;
   }
 
+  /* ===== Sidebar NEGRO + letras blancas ===== */
   [data-testid="stSidebar"]{
     overflow-y:hidden !important;
-    background:#F3F4F6 !important;   /* gris muy clarito */
+    background:#0F172A !important;   /* negro/azul noche */
+    color:#FFFFFF !important;
+    border-right:1px solid rgba(255,255,255,0.10);
     /* Ancho cuando está visible, pero SIN !important para que pueda ir a 0 al colapsar */
     width:230px;
-    color:#111827 !important;
-    border-right:1px solid #E5E7EB;
   }
 
-  /* Cuando está visible: fijamos ancho 200px */
+  /* Cuando está visible: fijamos ancho */
   [data-testid="stSidebar"][aria-expanded="true"]{
     min-width:230px !important;
     max-width:230px !important;
@@ -249,7 +262,7 @@ st.markdown(
     border-right:none !important;
   }
 
-  /* Menú de secciones: icono + texto, con pastilla lila en hover y activo */
+  /* Menú de secciones: icono + texto, con hover oscuro y activo oscuro */
   section[data-testid="stSidebar"] .stRadio > div{
     gap:4px !important;
   }
@@ -281,16 +294,16 @@ st.markdown(
     white-space:nowrap;
   }
 
-  /* Hover: pastilla lila suave, mismo tamaño en todas */
+  /* Hover: gris oscuro */
   section[data-testid="stSidebar"] [data-baseweb="radio"]:hover{
-    background:#F3E8FF !important;  /* lila pastel */
-    color:#4338CA !important;
+    background:rgba(255,255,255,0.08) !important;
+    color:#FFFFFF !important;
   }
 
-  /* Opción ACTIVA: pastilla un poco más marcada */
+  /* Opción ACTIVA: un poco más marcada */
   section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="true"]{
-    background:#EDE9FE !important;
-    color:#4C1D95 !important;
+    background:rgba(255,255,255,0.12) !important;
+    color:#FFFFFF !important;
     border-radius:10px !important;
     box-shadow:none !important;
     font-weight:600 !important;
@@ -299,7 +312,7 @@ st.markdown(
   /* Opciones INACTIVAS (estado base) */
   section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="false"]{
     background:transparent !important;
-    color:#6B7280 !important;
+    color:rgba(255,255,255,0.80) !important;
     border-radius:10px !important;
     box-shadow:none !important;
   }
@@ -308,11 +321,11 @@ st.markdown(
   section[data-testid="stSidebar"] [data-baseweb="radio"]::before{
     font-size:18px;
     margin-right:10px;
-    color:#9CA3AF;
+    color:rgba(255,255,255,0.80);
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"]:hover::before,
   section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="true"]::before{
-    color:#7C3AED;
+    color:#FFFFFF;
   }
   section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(1)::before{
     content:"📋";
@@ -372,8 +385,8 @@ st.markdown(
   .eni-quick-card{
     border-radius:12px;
     padding:18px 18px 16px 18px;
-    box-shadow:0 10px 22px rgba(148,163,184,0.30);
-    border:1px solid #E5E7EB;
+    box-shadow:0 10px 22px rgba(15,23,42,0.10); /* sombra un poco más “dashboard” */
+    border:1px solid rgba(15,23,42,0.08);
     background:#FFFFFF;
     display:flex;
     flex-direction:row;
@@ -428,7 +441,7 @@ st.markdown(
     font-size: clamp(22px, 2.4vw, 46px);
   }
   .eni-quick-card-link:hover .eni-quick-card{
-    box-shadow:0 14px 28px rgba(148,163,184,0.45);
+    box-shadow:0 14px 28px rgba(15,23,42,0.16);
     transform:translateY(-2px);
   }
 
@@ -503,6 +516,7 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+
 
 # ============ AUTENTICACIÓN POR CONTRASEÑA ============
 APP_PASSWORD = "Inei2025$"
