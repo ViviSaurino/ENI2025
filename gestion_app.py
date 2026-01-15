@@ -579,6 +579,22 @@ st.markdown(
     border:0 !important;
   }
 
+  /* ✅ HABILITAR SCROLL VERTICAL (para que puedas bajar y ver la tarjeta 5) */
+  html, body{
+    height: auto !important;
+    overflow-y: auto !important;
+  }
+
+  [data-testid="stAppViewContainer"]{
+    height: auto !important;
+    overflow-y: auto !important;
+  }
+
+  [data-testid="stAppViewContainer"] .main{
+    height: auto !important;
+    overflow-y: auto !important;
+  }
+
 </style>
 """,
     unsafe_allow_html=True,
