@@ -500,6 +500,75 @@ st.markdown(
     .eni-main-hero-text{ position:relative; left:0; top:0; padding:18px; }
   }
 
+  /* =========================================================
+     CAMBIO 4 (SOLO HOME): layout tipo modelo (tarjetas vertical + panel derecho)
+     ========================================================= */
+
+  .eni-home-layout{
+    display:grid;
+    grid-template-columns:260px 1fr; /* columna tarjetas + columna principal */
+    gap:22px;
+    align-items:start;
+    margin-top:0;
+  }
+
+  /* Forzamos tarjetas en VERTICAL SOLO dentro del HOME LEFT */
+  .eni-home-left .eni-quick-grid-wrapper{
+    margin:0 !important;
+  }
+  .eni-home-left .eni-quick-grid{
+    grid-template-columns:1fr !important;
+    gap:14px !important;
+    margin-top:0 !important;
+  }
+  .eni-home-left .eni-quick-card{
+    height:92px !important;
+    min-height:92px !important;
+  }
+
+  /* Hero dentro del panel derecho: no cambia el estilo global, solo su margen en HOME */
+  .eni-home-right .eni-main-hero{
+    margin:0px 0px 18px 0px !important;
+  }
+
+  /* Cajas nuevas (amarillas del modelo) */
+  .eni-kpi-grid{
+    display:grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap:18px;
+    align-items:stretch;
+  }
+  .eni-kpi-right{
+    display:grid;
+    grid-template-rows: 1fr 1fr;
+    gap:18px;
+  }
+
+  .eni-box{
+    background:#FFFFFF;
+    border-radius:12px;
+    border:1px solid rgba(17,24,39,0.08);
+    box-shadow:0 10px 22px rgba(148,163,184,0.25);
+    position:relative;
+    overflow:hidden;
+  }
+
+  /* Barra superior azul (mismo tono del sidebar) */
+  .eni-box::before{
+    content:"";
+    position:absolute;
+    top:0; left:0; right:0;
+    height:34px;
+    background:#2a2a53;
+  }
+
+  .eni-box-lg{ min-height:200px; }
+  .eni-box-sm{ min-height:98px; }
+  .eni-box-wide{
+    min-height:240px;
+    grid-column: 1 / -1;
+  }
+
 </style>
 """,
     unsafe_allow_html=True,
@@ -1032,70 +1101,86 @@ if section == "Gestión de tareas":
         welcome_line1 = welcome_word
         welcome_line2 = dn_clean
 
+        # ===== HERO (HTML) =====
+        hero_html = ""
         if HEADER_IMG_PATH.exists():
             try:
                 with open(HEADER_IMG_PATH, "rb") as f:
                     data = f.read()
                 b64_header = base64.b64encode(data).decode("utf-8")
-                st.markdown(
-                    f"""
-                    <div class="eni-main-hero">
-                      <div class="eni-main-hero-text">
-                        <div class="eni-main-hero-welcome">{welcome_line1}</div>
-                        <div class="eni-main-hero-name">{welcome_line2}</div>
-                      </div>
-                      <img src="data:image/png;base64,{b64_header}"
-                           alt="ENI 2025 encabezado"
-                           class="eni-main-hero-img" />
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+                hero_html = f"""
+                <div class="eni-main-hero">
+                  <div class="eni-main-hero-text">
+                    <div class="eni-main-hero-welcome">{welcome_line1}</div>
+                    <div class="eni-main-hero-name">{welcome_line2}</div>
+                  </div>
+                  <img src="data:image/png;base64,{b64_header}"
+                       alt="ENI 2025 encabezado"
+                       class="eni-main-hero-img" />
+                </div>
+                """
             except Exception:
-                st.image(str(HEADER_IMG_PATH), use_column_width=True)
+                hero_html = f"""
+                <div class="eni-main-hero">
+                  <div class="eni-main-hero-text">
+                    <div class="eni-main-hero-welcome">{welcome_line1}</div>
+                    <div class="eni-main-hero-name">{welcome_line2}</div>
+                  </div>
+                </div>
+                """
         else:
-            st.caption("Plataforma de gestión ENI — 2025")
+            hero_html = f"""
+            <div class="eni-main-hero">
+              <div class="eni-main-hero-text">
+                <div class="eni-main-hero-welcome">{welcome_line1}</div>
+                <div class="eni-main-hero-name">{welcome_line2}</div>
+              </div>
+            </div>
+            """
 
-        display_name = st.session_state.get("user_display_name", "Usuario")
-        u_param = quote(display_name, safe="")
-
-        cards_html = f"""
+        # ===== TARJETAS (mismas, pero en columna izquierda vertical) =====
+        cards_vertical_html = f"""
         <div class="eni-quick-grid-wrapper">
           <div class="eni-quick-grid">
-            {_quick_card_link(
-                "1. Nueva tarea",
-                "Registra una nueva tarea y revísala",
-                "➕",
-                "nueva_tarea",
-            )}
-            {_quick_card_link(
-                "2. Editar estado",
-                "Actualiza fases y fechas",
-                "✏️",
-                "editar_estado",
-            )}
-            {_quick_card_link(
-                "3. Nueva alerta",
-                "Registra alertas y riesgos prioritarios",
-                "⚠️",
-                "nueva_alerta",
-            )}
-            {_quick_card_link(
-                "4. Prioridad",
-                "Revisa los niveles de prioridad",
-                "⭐",
-                "prioridad_evaluacion",
-            )}
-            {_quick_card_link(
-                "5. Evaluación",
-                "Revisa las evaluaciones y cumplimiento",
-                "📝",
-                "nueva_tarea",
-            )}
+            {_quick_card_link("1. Nueva tarea","Registra una nueva tarea y revísala","➕","nueva_tarea")}
+            {_quick_card_link("2. Editar estado","Actualiza fases y fechas","✏️","editar_estado")}
+            {_quick_card_link("3. Nueva alerta","Registra alertas y riesgos prioritarios","⚠️","nueva_alerta")}
+            {_quick_card_link("4. Prioridad","Revisa los niveles de prioridad","⭐","prioridad_evaluacion")}
+            {_quick_card_link("5. Evaluación","Revisa las evaluaciones y cumplimiento","📝","nueva_tarea")}
           </div>
         </div>
         """
-        st.markdown(cards_html, unsafe_allow_html=True)
+
+        # ===== NUEVAS CAJAS (vacías) =====
+        kpi_html = """
+        <div class="eni-kpi-grid">
+          <div class="eni-box eni-box-lg"></div>
+
+          <div class="eni-kpi-right">
+            <div class="eni-box eni-box-sm"></div>
+            <div class="eni-box eni-box-sm"></div>
+          </div>
+
+          <div class="eni-box eni-box-wide"></div>
+        </div>
+        """
+
+        # ===== LAYOUT FINAL (modelo) =====
+        st.markdown(
+            f"""
+            <div class="eni-home-layout">
+              <div class="eni-home-left">
+                {cards_vertical_html}
+              </div>
+
+              <div class="eni-home-right">
+                {hero_html}
+                {kpi_html}
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
 elif section == "Kanban":
     st.title("🗂️ Kanban")
