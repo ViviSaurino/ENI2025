@@ -90,7 +90,7 @@ st.markdown(
     content:"";
     position:fixed;
     top:0; left:0; right:0;
-    height:120px;                 /* “arriba un celeste más claro” */
+    height:80px;                  /* ✅ antes 120px (muy gordo) */
     background:#EEF7FF;           /* celeste claro */
     z-index:0;
   }
@@ -195,7 +195,7 @@ st.markdown(
 
   /* ===== Banner horizontal ENCABEZADO debajo del topbar ===== */
   .eni-main-hero{
-    margin:0 0px 30px 0px;   /* mismo ancho que el topbar */
+    margin:14px 0px 30px 0px;   /* ✅ antes 0px arriba (estaba muy arriba) */
     border-radius:10px;
     box-shadow:none;  /* sin sombra en el encabezado lila/azul */
     height:190px;
@@ -894,8 +894,6 @@ with st.sidebar:
         on_change=_on_sidebar_nav_change,  # ✅ AQUÍ
     )
 
-    # (Botón Cerrar sesión se quitó; ahora está en el círculo VS del topbar)
-
 # ============ Datos ============
 ensure_df_main()
 
@@ -967,7 +965,6 @@ if section == "Gestión de tareas":
 
     # ---- Topbar con avatar + logout ----
     if tile:
-        # ✅ Dentro de una tarjeta: SÍ es clickeable (volver a home)
         st.markdown(
             f"""
             <div class="eni-main-topbar">
@@ -983,7 +980,6 @@ if section == "Gestión de tareas":
             unsafe_allow_html=True,
         )
     else:
-        # ✅ Home: NO es clickeable (solo texto)
         st.markdown(
             f"""
             <div class="eni-main-topbar">
@@ -997,7 +993,6 @@ if section == "Gestión de tareas":
             unsafe_allow_html=True,
         )
 
-    # ===== SI HAY TARJETA SELECCIONADA → SOLO FEATURE (como Kanban/Gantt) =====
     if tile:
         module_path = TILE_TO_VIEW_MODULE.get(tile)
         if module_path:
@@ -1023,13 +1018,10 @@ if section == "Gestión de tareas":
         else:
             st.info("Todavía no hay una vista vinculada a esta tarjeta.")
 
-    # ===== SIN TARJETA → Banner ENCABEZADO + tarjetas debajo =====
     else:
-        # --- Texto de bienvenida según nombre ---
         first_name = dn_clean.split()[0] if dn_clean else "Usuario"
         first_name_l = first_name.lower()
 
-        # nombres que son de mujer aunque no terminen en "a"
         female_names = {"elizabet", "lucy", "tiffany", "vivian"}
 
         if first_name_l.endswith("a") or first_name_l in female_names:
@@ -1040,7 +1032,6 @@ if section == "Gestión de tareas":
         welcome_line1 = welcome_word
         welcome_line2 = dn_clean
 
-        # --- Banner horizontal ENCABEZADO ---
         if HEADER_IMG_PATH.exists():
             try:
                 with open(HEADER_IMG_PATH, "rb") as f:
@@ -1061,12 +1052,10 @@ if section == "Gestión de tareas":
                     unsafe_allow_html=True,
                 )
             except Exception:
-                # Fallback sencillo
                 st.image(str(HEADER_IMG_PATH), use_column_width=True)
         else:
             st.caption("Plataforma de gestión ENI — 2025")
 
-        # --- Tarjetas 5 en fila ---
         display_name = st.session_state.get("user_display_name", "Usuario")
         u_param = quote(display_name, safe="")
 
