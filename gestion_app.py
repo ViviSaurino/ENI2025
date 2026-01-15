@@ -85,10 +85,11 @@ st.markdown(
   /* Franja superior (celeste más claro) */
   [data-testid="stAppViewContainer"]{
     position:relative;
+    overflow:hidden; /* ✅ AJUSTE: para que la franja NO se quede visible al scrollear */
   }
   [data-testid="stAppViewContainer"]::before{
     content:"";
-    position:fixed;
+    position:absolute;   /* ✅ AJUSTE: antes fixed */
     top:0; left:0; right:0;
     height:80px;                  /* ✅ antes 120px (muy gordo) */
     background:#e4e3e9;           /* celeste claro */
@@ -618,6 +619,7 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+
 
 
 
