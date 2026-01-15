@@ -199,7 +199,7 @@ st.markdown(
     border-radius:10px;
     box-shadow:none;  /* sin sombra en el encabezado lila/azul */
     height:210px;
-    background:linear-gradient(90deg,  #B157D6 0%, #2a2a53 100%); 
+    background:linear-gradient(90deg,  #8d74c4 0%, #2a2a53 100%);  
     position:relative;
     overflow:hidden;
     width:100%;
