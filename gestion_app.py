@@ -195,25 +195,26 @@ st.markdown(
 
   /* ===== Banner horizontal ENCABEZADO debajo del topbar ===== */
   .eni-main-hero{
-    margin:30px 0px 25px 0px;   /* ✅ antes 0px arriba (estaba muy arriba) */
+    margin:0px 0px 0px 0px;   /* ✅ (en el nuevo layout lo controlamos desde el contenedor) */
     border-radius:10px;
     box-shadow:none;  /* sin sombra en el encabezado lila/azul */
-    height:190px;
+    height:210px;
     background:linear-gradient(90deg,  #93C5FD 0%, #B157D6 100%);
     position:relative;
     overflow:hidden;
+    width:100%;
   }
   .eni-main-hero-img{
     position:absolute;
-    right:40px;
+    right:28px;
     bottom:0;
-    height:200px;
+    height:205px;
     width:auto;
   }
   .eni-main-hero-text{
     position:absolute;
     left:32px;
-    top:40px;
+    top:46px;
     color:#FFFFFF;
   }
   .eni-main-hero-welcome{
@@ -367,7 +368,7 @@ st.markdown(
     background:transparent;
   }
 
-  /* ===== Grid de tarjetas rápidas ===== */
+  /* ===== Grid de tarjetas rápidas (DEFAULT: horizontal) ===== */
   .eni-quick-grid-wrapper{
     margin:0px 0 18px 0;
   }
@@ -484,8 +485,8 @@ st.markdown(
 
   /* ✅ Banner/hero: que no se rompa en pantallas chicas */
   @media (max-width: 900px){
-    .eni-main-hero{ height:160px; }
-    .eni-main-hero-text{ left:18px; top:26px; }
+    .eni-main-hero{ height:190px; }
+    .eni-main-hero-text{ left:18px; top:34px; }
     .eni-main-hero-name{ font-size:22px; }
     .eni-main-hero-img{ right:10px; height:170px; }
     [data-testid="stSidebar"][aria-expanded="true"]{
@@ -501,72 +502,82 @@ st.markdown(
   }
 
   /* =========================================================
-     CAMBIO 4 (SOLO HOME): layout tipo modelo (tarjetas vertical + panel derecho)
+     ✅ CAMBIO 4 — HOME tipo “modelo”
+     - Columna izquierda: 5 tarjetas en vertical (con más aire)
+     - Columna derecha: (arriba) 3 bloques nuevos vacíos
+                        (abajo) el rectángulo azul/lila con imagen
      ========================================================= */
-
   .eni-home-layout{
     display:grid;
-    grid-template-columns:260px 1fr; /* columna tarjetas + columna principal */
-    gap:22px;
+    grid-template-columns: 300px 1fr;
+    gap:26px;
     align-items:start;
-    margin-top:0;
+    margin-top: 8px;
   }
 
-  /* Forzamos tarjetas en VERTICAL SOLO dentro del HOME LEFT */
-  .eni-home-left .eni-quick-grid-wrapper{
+  /* izquierda */
+  .eni-home-left{
+    width:100%;
+  }
+  .eni-quick-grid.eni-quick-grid--stack{
+    grid-template-columns: 1fr !important;
+    gap:18px !important;              /* ✅ más separación entre tarjetas */
+    margin-top: 0px !important;
+  }
+  .eni-quick-grid-wrapper.eni-quick-grid-wrapper--stack{
     margin:0 !important;
   }
-  .eni-home-left .eni-quick-grid{
-    grid-template-columns:1fr !important;
-    gap:14px !important;
-    margin-top:0 !important;
-  }
-  .eni-home-left .eni-quick-card{
-    height:92px !important;
-    min-height:92px !important;
+  .eni-quick-card{
+    height:104px;                     /* ✅ un poquito más compacta */
+    min-height:104px;
   }
 
-  /* Hero dentro del panel derecho: no cambia el estilo global, solo su margen en HOME */
-  .eni-home-right .eni-main-hero{
-    margin:0px 0px 18px 0px !important;
+  /* derecha */
+  .eni-home-right{
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    gap:18px;
   }
 
-  /* Cajas nuevas (amarillas del modelo) */
+  /* bloques nuevos (vacíos) */
   .eni-kpi-grid{
     display:grid;
-    grid-template-columns: 1.6fr 1fr;
-    gap:18px;
+    grid-template-columns: 1.35fr 0.85fr;
+    gap:16px;
     align-items:stretch;
   }
   .eni-kpi-right{
     display:grid;
     grid-template-rows: 1fr 1fr;
-    gap:18px;
+    gap:16px;
   }
 
   .eni-box{
     background:#FFFFFF;
     border-radius:12px;
-    border:1px solid rgba(17,24,39,0.08);
-    box-shadow:0 10px 22px rgba(148,163,184,0.25);
+    border:1px solid rgba(255,255,255,0.35);
+    box-shadow:0 10px 22px rgba(148,163,184,0.28);
+    min-height:120px;
     position:relative;
     overflow:hidden;
   }
-
-  /* Barra superior azul (mismo tono del sidebar) */
+  /* franja azul (mismo tono del sidebar) */
   .eni-box::before{
     content:"";
     position:absolute;
     top:0; left:0; right:0;
-    height:34px;
+    height:36px;
     background:#2a2a53;
+    opacity:0.92;
   }
+  .eni-box--big{ min-height: 160px; }
+  .eni-box--small{ min-height: 72px; }
 
-  .eni-box-lg{ min-height:200px; }
-  .eni-box-sm{ min-height:98px; }
-  .eni-box-wide{
-    min-height:240px;
-    grid-column: 1 / -1;
+  /* hero dentro del nuevo layout */
+  .eni-main-hero.eni-main-hero--home{
+    height:230px;
+    margin:0 !important;
   }
 
 </style>
@@ -1101,7 +1112,7 @@ if section == "Gestión de tareas":
         welcome_line1 = welcome_word
         welcome_line2 = dn_clean
 
-        # ===== HERO (HTML) =====
+        # ===== HERO HTML (siempre se crea) =====
         hero_html = ""
         if HEADER_IMG_PATH.exists():
             try:
@@ -1109,7 +1120,7 @@ if section == "Gestión de tareas":
                     data = f.read()
                 b64_header = base64.b64encode(data).decode("utf-8")
                 hero_html = f"""
-                <div class="eni-main-hero">
+                <div class="eni-main-hero eni-main-hero--home">
                   <div class="eni-main-hero-text">
                     <div class="eni-main-hero-welcome">{welcome_line1}</div>
                     <div class="eni-main-hero-name">{welcome_line2}</div>
@@ -1121,7 +1132,7 @@ if section == "Gestión de tareas":
                 """
             except Exception:
                 hero_html = f"""
-                <div class="eni-main-hero">
+                <div class="eni-main-hero eni-main-hero--home">
                   <div class="eni-main-hero-text">
                     <div class="eni-main-hero-welcome">{welcome_line1}</div>
                     <div class="eni-main-hero-name">{welcome_line2}</div>
@@ -1130,7 +1141,7 @@ if section == "Gestión de tareas":
                 """
         else:
             hero_html = f"""
-            <div class="eni-main-hero">
+            <div class="eni-main-hero eni-main-hero--home">
               <div class="eni-main-hero-text">
                 <div class="eni-main-hero-welcome">{welcome_line1}</div>
                 <div class="eni-main-hero-name">{welcome_line2}</div>
@@ -1138,49 +1149,68 @@ if section == "Gestión de tareas":
             </div>
             """
 
-        # ===== TARJETAS (mismas, pero en columna izquierda vertical) =====
-        cards_vertical_html = f"""
-        <div class="eni-quick-grid-wrapper">
-          <div class="eni-quick-grid">
-            {_quick_card_link("1. Nueva tarea","Registra una nueva tarea y revísala","➕","nueva_tarea")}
-            {_quick_card_link("2. Editar estado","Actualiza fases y fechas","✏️","editar_estado")}
-            {_quick_card_link("3. Nueva alerta","Registra alertas y riesgos prioritarios","⚠️","nueva_alerta")}
-            {_quick_card_link("4. Prioridad","Revisa los niveles de prioridad","⭐","prioridad_evaluacion")}
-            {_quick_card_link("5. Evaluación","Revisa las evaluaciones y cumplimiento","📝","nueva_tarea")}
+        # ===== izquierda: tarjetas en vertical (con aire) =====
+        left_cards_html = f"""
+        <div class="eni-quick-grid-wrapper eni-quick-grid-wrapper--stack">
+          <div class="eni-quick-grid eni-quick-grid--stack">
+            {_quick_card_link(
+                "1. Nueva tarea",
+                "Registra una nueva tarea y revísala",
+                "➕",
+                "nueva_tarea",
+            )}
+            {_quick_card_link(
+                "2. Editar estado",
+                "Actualiza fases y fechas",
+                "✏️",
+                "editar_estado",
+            )}
+            {_quick_card_link(
+                "3. Nueva alerta",
+                "Registra alertas y riesgos prioritarios",
+                "⚠️",
+                "nueva_alerta",
+            )}
+            {_quick_card_link(
+                "4. Prioridad",
+                "Revisa los niveles de prioridad",
+                "⭐",
+                "prioridad_evaluacion",
+            )}
+            {_quick_card_link(
+                "5. Evaluación",
+                "Revisa las evaluaciones y cumplimiento",
+                "📝",
+                "nueva_tarea",
+            )}
           </div>
         </div>
         """
 
-        # ===== NUEVAS CAJAS (vacías) =====
+        # ===== derecha: nuevos bloques vacíos (amarillos del modelo) =====
         kpi_html = """
         <div class="eni-kpi-grid">
-          <div class="eni-box eni-box-lg"></div>
-
+          <div class="eni-box eni-box--big"></div>
           <div class="eni-kpi-right">
-            <div class="eni-box eni-box-sm"></div>
-            <div class="eni-box eni-box-sm"></div>
+            <div class="eni-box eni-box--small"></div>
+            <div class="eni-box eni-box--small"></div>
           </div>
-
-          <div class="eni-box eni-box-wide"></div>
         </div>
         """
 
-        # ===== LAYOUT FINAL (modelo) =====
-        st.markdown(
-            f"""
-            <div class="eni-home-layout">
-              <div class="eni-home-left">
-                {cards_vertical_html}
-              </div>
-
-              <div class="eni-home-right">
-                {hero_html}
-                {kpi_html}
-              </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        # ===== layout final HOME (modelo) =====
+        layout_html = f"""
+        <div class="eni-home-layout">
+          <div class="eni-home-left">
+            {left_cards_html}
+          </div>
+          <div class="eni-home-right">
+            {kpi_html}
+            {hero_html}
+          </div>
+        </div>
+        """
+        st.markdown(layout_html, unsafe_allow_html=True)
 
 elif section == "Kanban":
     st.title("🗂️ Kanban")
