@@ -352,8 +352,8 @@ st.markdown(
   section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(4)::before{ content:"📊"; }
 
   *::-webkit-scrollbar{
-    width:10px;
-    height:10px;
+    width:0px;
+    height:0px;
   }
 
   header[data-testid="stHeader"]{
@@ -579,26 +579,44 @@ st.markdown(
     border:0 !important;
   }
 
-  /* ✅ HABILITAR SCROLL VERTICAL (para que puedas bajar y ver la tarjeta 5) */
+  /* =========================================================
+     ✅ FIX DEFINITIVO: SCROLL (sin mover tu layout)
+     ========================================================= */
+
+  /* 1) El body NO scrollea, el scroller es el contenedor de Streamlit */
   html, body{
-    height: auto !important;
-    overflow-y: auto !important;
+    height:100% !important;
+    overflow:hidden !important;
   }
 
+  /* 2) Contenedor general: scrollea */
   [data-testid="stAppViewContainer"]{
-    height: auto !important;
-    overflow-y: auto !important;
+    height:100vh !important;
+    overflow:auto !important;
   }
 
-  [data-testid="stAppViewContainer"] .main{
-    height: auto !important;
-    overflow-y: auto !important;
+  /* 3) Main (donde está tu contenido): scrollea */
+  [data-testid="stMain"]{
+    height:100vh !important;
+    overflow:auto !important;
+  }
+
+  /* 4) Evita que algo interno “corte” el scroll */
+  [data-testid="stMainBlockContainer"]{
+    padding-bottom:120px !important;   /* para que se vea la tarjeta 5 */
+    min-height:110vh !important;       /* fuerza espacio extra */
+  }
+
+  /* 5) Override por si en algún punto quedó overflow hidden */
+  .main, section.main, .block-container{
+    overflow:visible !important;
   }
 
 </style>
 """,
     unsafe_allow_html=True,
 )
+
 
 
 # ============ AUTENTICACIÓN POR CONTRASEÑA ============
