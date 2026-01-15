@@ -565,8 +565,8 @@ st.markdown(
     overflow:hidden;
   }
 
-  .eni-box--big{ min-height: 230px; }
-  .eni-box--small{ min-height: 142px; }
+  .eni-box--big{ min-height: 240px; }
+  .eni-box--small{ min-height: 152px; }
 
   .eni-main-hero.eni-main-hero--home{
     height:230px;
