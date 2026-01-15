@@ -540,7 +540,7 @@ st.markdown(
     gap:18px;
 
     /* ✅ refuerza el espacio aunque el grid “se resista” */
-    padding-left: 18px;       /* prueba 0–30 si quieres */
+    padding-left: 25px;       /* prueba 0–30 si quieres */
   }
 
   .eni-kpi-grid{
