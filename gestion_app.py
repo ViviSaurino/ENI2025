@@ -199,7 +199,7 @@ st.markdown(
     border-radius:10px;
     box-shadow:none;  /* sin sombra en el encabezado lila/azul */
     height:210px;
-    background:linear-gradient(90deg,  #8d74c4 0%, #2a2a53 100%);  
+    background:linear-gradient(90deg,  #8d74c4 0%, #2a2a53 100%);
     position:relative;
     overflow:hidden;
     width:100%;
@@ -363,8 +363,8 @@ st.markdown(
   }
 
   html body [data-testid="stAppViewContainer"] .main .block-container{
-    padding-top: 0px !important;  /* prueba 12–30px */
-    margin-top:-1rem !important;   /* vuelve al -1rem */
+    padding-top: 0px !important;
+    margin-top:-1rem !important;
     background:transparent;
   }
 
@@ -405,11 +405,9 @@ st.markdown(
     align-items:center;
     transition:all .15s ease-in-out;
 
-    /* 👇 MISMA ALTURA PARA TODAS LAS TARJETAS */
     min-height: 120px;
     height: 120px;
 
-    /* ✅ FIX: recorta lo que sobresale (iconos) */
     overflow:hidden;
   }
 
@@ -450,20 +448,17 @@ st.markdown(
     transform:translateY(-2px);
   }
 
-  /* Reducir espacio entre columnas principales */
   div[data-testid="stHorizontalBlock"]{
     gap:0.4rem !important;
     column-gap:0.4rem !important;
   }
 
-  /* Reducir espacio superior en títulos internos */
   html body [data-testid="stAppViewContainer"] .main .block-container h1,
   html body [data-testid="stAppViewContainer"] .main .block-container h2,
   html body [data-testid="stAppViewContainer"] .main .block-container h3{
     margin-top:0.2rem !important;
   }
 
-  /* Botones: ancho completo + wrap del texto (no se sale) */
   div[data-testid="stButton"] > button{
     width: 100%;
     white-space: normal !important;
@@ -471,19 +466,16 @@ st.markdown(
     line-height: 1.15;
   }
 
-  /* Labels de inputs: que puedan partir línea */
   label, .stSelectbox label, .stTextInput label, .stDateInput label{
     white-space: normal !important;
   }
 
-  /* ✅ Ajuste fino para laptop sin cambiar a 2 filas */
   @media (max-width: 1400px){
     .eni-quick-card{ padding:14px 12px 12px 12px; }
     .eni-quick-card-icon{ font-size: clamp(20px, 2.2vw, 40px); margin-left:10px; }
     .eni-quick-card-title{ white-space: normal; }
   }
 
-  /* ✅ Banner/hero: que no se rompa en pantallas chicas */
   @media (max-width: 900px){
     .eni-main-hero{ height:190px; }
     .eni-main-hero-text{ left:18px; top:34px; }
@@ -503,30 +495,13 @@ st.markdown(
 
   /* =========================================================
      ✅ CAMBIO 4 — HOME tipo “modelo”
-     - Columna izquierda: 5 tarjetas en vertical (con más aire)
-     - Columna derecha: (arriba) 3 bloques nuevos vacíos
-                        (abajo) el rectángulo azul/lila con imagen
      ========================================================= */
   .eni-home-layout{
     display:grid;
     grid-template-columns: 300px 1fr;
-    gap:40px;
+    gap:70px;                 /* ✅ MÁS GAP real entre columnas (prueba 60–90) */
     align-items:start;
     margin-top: 50px;
-  }
-
-  /* ✅ NUEVO: AUMENTAR ESPACIO ENTRE COL IZQ Y COL DER (LÍNEA ROJA) */
-  .eni-home-layout{
-    column-gap: 55px !important;     /* 👈 más grande (ajusta si quieres) */
-  }
-  /* ✅ NUEVO: EVITA QUE LA COL IZQ SE "COMA" EL GAP */
-  .eni-home-left{
-    max-width: 300px !important;     /* 👈 amarra el ancho real */
-  }
-  /* ✅ NUEVO: ASEGURA QUE LAS TARJETAS NO DESBORDEN (respetan ancho) */
-  .eni-quick-card{
-    width: 100% !important;
-    box-sizing: border-box !important;
   }
 
   /* izquierda */
@@ -535,21 +510,26 @@ st.markdown(
   }
   .eni-quick-grid.eni-quick-grid--stack{
     grid-template-columns: 1fr !important;
-    gap:18px !important;              /* ✅ más separación entre tarjetas */
+    gap:18px !important;
     margin-top: 0px !important;
   }
+
   .eni-quick-grid-wrapper.eni-quick-grid-wrapper--stack{
     margin:0 !important;
 
-    /* ✅ NUEVO: reduce el ancho real de las 5 tarjetas */
-    max-width: 320px;                 /* prueba 300–340 si quieres */
+    max-width: 320px;
     width: 100%;
-    margin-left: auto !important;
+
+    /* ✅ CLAVE: NO centrar (esto agranda el “hueco” visible) */
+    margin-left: 0 !important;
     margin-right: auto !important;
   }
+
   .eni-quick-card{
-    height:104px;                     /* ✅ un poquito más compacta */
+    height:104px;
     min-height:104px;
+    width:100% !important;
+    box-sizing:border-box !important;
   }
 
   /* derecha */
@@ -558,9 +538,11 @@ st.markdown(
     display:flex;
     flex-direction:column;
     gap:18px;
+
+    /* ✅ refuerza el espacio aunque el grid “se resista” */
+    padding-left: 18px;       /* prueba 0–30 si quieres */
   }
 
-  /* bloques nuevos (vacíos) */
   .eni-kpi-grid{
     display:grid;
     grid-template-columns: 1.35fr 0.85fr;
@@ -582,7 +564,6 @@ st.markdown(
     position:relative;
     overflow:hidden;
   }
-  /* franja azul (mismo tono del sidebar) */
   .eni-box::before{
     content:"";
     position:absolute;
@@ -594,7 +575,6 @@ st.markdown(
   .eni-box--big{ min-height: 160px; }
   .eni-box--small{ min-height: 72px; }
 
-  /* hero dentro del nuevo layout */
   .eni-main-hero.eni-main-hero--home{
     height:230px;
     margin:0 !important;
@@ -604,6 +584,7 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+
 
 # ============ AUTENTICACIÓN POR CONTRASEÑA ============
 APP_PASSWORD = "Inei2025$"
