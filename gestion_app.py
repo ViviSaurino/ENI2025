@@ -79,7 +79,7 @@ st.markdown(
 
   /* ===== Fondo general de la APP (celeste) ===== */
   html, body, [data-testid="stAppViewContainer"]{
-    background:#edf2fa;;   /* celeste base (más oscuro) */
+    background:#edf2fa;   /* celeste base (más oscuro) */
   }
 
   /* Franja superior (celeste más claro) */
@@ -91,7 +91,7 @@ st.markdown(
     position:fixed;
     top:0; left:0; right:0;
     height:120px;                 /* “arriba un celeste más claro” */
-    background:#D9ECFF;           /* celeste claro */
+    background:#edf2fa;           /* celeste claro */
     z-index:0;
   }
   /* Asegura que el contenido quede encima de la franja */
