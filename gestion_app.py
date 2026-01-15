@@ -580,36 +580,38 @@ st.markdown(
   }
 
   /* =========================================================
-     ✅ FIX DEFINITIVO: SCROLL (sin mover tu layout)
-     ========================================================= */
+   ✅ FIX SCROLL PRO: SOLO SCROLLEA EL MAIN
+   (sidebar y franja superior quedan fijos)
+   ========================================================= */
 
-  /* 1) El body NO scrollea, el scroller es el contenedor de Streamlit */
+  /* El body NO scrollea */
   html, body{
     height:100% !important;
     overflow:hidden !important;
   }
 
-  /* 2) Contenedor general: scrollea */
+  /* El contenedor principal NO scrollea (evita que “baje” el sidebar/franja) */
   [data-testid="stAppViewContainer"]{
     height:100vh !important;
-    overflow:auto !important;
+    overflow:hidden !important;
   }
 
-  /* 3) Main (donde está tu contenido): scrollea */
+  /* ✅ SOLO el MAIN scrollea */
   [data-testid="stMain"]{
     height:100vh !important;
     overflow:auto !important;
   }
 
-  /* 4) Evita que algo interno “corte” el scroll */
+  /* Asegura espacio para ver el final (tarjeta 5) */
   [data-testid="stMainBlockContainer"]{
-    padding-bottom:120px !important;   /* para que se vea la tarjeta 5 */
-    min-height:110vh !important;       /* fuerza espacio extra */
+    padding-bottom:120px !important;
   }
 
-  /* 5) Override por si en algún punto quedó overflow hidden */
-  .main, section.main, .block-container{
-    overflow:visible !important;
+  /* Sidebar “pegado” (no se mueve al hacer scroll del main) */
+  [data-testid="stSidebar"]{
+    position: sticky !important;
+    top: 0 !important;
+    height: 100vh !important;
   }
 
 </style>
