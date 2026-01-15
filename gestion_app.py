@@ -564,14 +564,6 @@ st.markdown(
     position:relative;
     overflow:hidden;
   }
-  .eni-box::before{
-    content:"";
-    position:absolute;
-    top:0; left:0; right:0;
-    height:36px;
-    background:#2a2a53;
-    opacity:0.92;
-  }
   .eni-box--big{ min-height: 160px; }
   .eni-box--small{ min-height: 72px; }
 
