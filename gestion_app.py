@@ -195,7 +195,7 @@ st.markdown(
 
   /* ===== Banner horizontal ENCABEZADO debajo del topbar ===== */
   .eni-main-hero{
-    margin:14px 0px 30px 0px;   /* ✅ antes 0px arriba (estaba muy arriba) */
+    margin:14px 0px 10px 0px;   /* ✅ antes 0px arriba (estaba muy arriba) */
     border-radius:10px;
     box-shadow:none;  /* sin sombra en el encabezado lila/azul */
     height:190px;
