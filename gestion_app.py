@@ -131,6 +131,13 @@ st.markdown(
     text-transform:none;
   }
 
+    /* ✅ ESTO ES LO QUE TE FALTA */
+    display:flex !important;
+    align-items:center !important;
+    justify-content:space-between !important;
+    width:100% !important;
+  }
+
   /* ✅ Link clickeable para volver a Home (sin tile) */
   .eni-home-link,
   .eni-home-link:link,
