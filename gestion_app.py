@@ -254,7 +254,7 @@ st.markdown(
   /* ===== Sidebar fondo oscuro + texto blanco ===== */
   [data-testid="stSidebar"]{
     overflow-y:hidden !important;
-    background:#0B1220 !important;   /* azul oscuro/negro */
+    background:#2a2a53 !important;   /* azul oscuro/negro */
     width:230px;
     color:#FFFFFF !important;
     border-right:1px solid rgba(255,255,255,0.10);
