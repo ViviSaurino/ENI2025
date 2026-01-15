@@ -79,7 +79,7 @@ st.markdown(
 
   /* ===== Fondo general de la APP (celeste) ===== */
   html, body, [data-testid="stAppViewContainer"]{
-    background:#c8ccd8;   /* celeste base (más grande) */
+    background:#D9ECFF;   /* celeste base (más oscuro) */
   }
 
   /* Franja superior (celeste más claro) */
@@ -91,7 +91,7 @@ st.markdown(
     position:fixed;
     top:0; left:0; right:0;
     height:120px;                 /* “arriba un celeste más claro” */
-    background:#e4e3e9;           /* celeste claro */
+    background:#EEF7FF;           /* celeste claro */
     z-index:0;
   }
   /* Asegura que el contenido quede encima de la franja */
@@ -116,15 +116,12 @@ st.markdown(
 
   /* ===== Fila superior: Gestión de tareas + VS EN RECTÁNGULO BLANCO ===== */
   .eni-main-topbar{
-    background:#FFFFFF;
-    border-radius:8px;
-    border:1px solid #E5E7EB;
-    padding:10px 20px;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    margin:32px 0 47px 0;   /* top  right  bottom  left  (más espacio con el banner) */
-    box-shadow:none;  /* sin sombra */
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 32px 0 20px 0 !important;
   }
   .eni-main-topbar-title{
     font-size:15px;
@@ -254,7 +251,7 @@ st.markdown(
   /* ===== Sidebar fondo oscuro + texto blanco ===== */
   [data-testid="stSidebar"]{
     overflow-y:hidden !important;
-    background:#2a2a53 !important;   /* azul oscuro/negro */
+    background:#0B1220 !important;   /* azul oscuro/negro */
     width:230px;
     color:#FFFFFF !important;
     border-right:1px solid rgba(255,255,255,0.10);
