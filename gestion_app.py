@@ -71,21 +71,33 @@ inject_global_css()
 st.markdown(
     """
 <style>
-  /* ===== Fondo general de la APP → CELESTE + franja superior más clara ===== */
+  /* =========================================================
+     NUEVO LOOK (como tu imagen):
+     - Fondo celeste (con franja superior más clara)
+     - Sidebar azul oscuro/negro + texto BLANCO
+     ========================================================= */
+
+  /* ===== Fondo general de la APP (celeste) ===== */
   html, body, [data-testid="stAppViewContainer"]{
-    background: linear-gradient(
-      to bottom,
-      #EAF6FF 0px,
-      #EAF6FF 120px,
-      #DCEEFF 120px,
-      #DCEEFF 100%
-    ) !important;
+    background:#D9ECFF;   /* celeste base (más oscuro) */
   }
 
-  /* Asegura que el main no meta “parches blancos” */
-  section.main,
+  /* Franja superior (celeste más claro) */
+  [data-testid="stAppViewContainer"]{
+    position:relative;
+  }
+  [data-testid="stAppViewContainer"]::before{
+    content:"";
+    position:fixed;
+    top:0; left:0; right:0;
+    height:120px;                 /* “arriba un celeste más claro” */
+    background:#EEF7FF;           /* celeste claro */
+    z-index:0;
+  }
+  /* Asegura que el contenido quede encima de la franja */
   html body [data-testid="stAppViewContainer"] .main{
-    background: transparent !important;
+    position:relative;
+    z-index:1;
   }
 
   .eni-banner{
@@ -106,7 +118,7 @@ st.markdown(
   .eni-main-topbar{
     background:#FFFFFF;
     border-radius:8px;
-    border:1px solid rgba(15,23,42,0.08);
+    border:1px solid #E5E7EB;
     padding:10px 20px;
     display:flex;
     align-items:center;
@@ -239,17 +251,16 @@ st.markdown(
     gap:8px !important;
   }
 
-  /* ===== Sidebar NEGRO + letras blancas ===== */
+  /* ===== Sidebar fondo oscuro + texto blanco ===== */
   [data-testid="stSidebar"]{
     overflow-y:hidden !important;
-    background:#0F172A !important;   /* negro/azul noche */
+    background:#0B1220 !important;   /* azul oscuro/negro */
+    width:230px;
     color:#FFFFFF !important;
     border-right:1px solid rgba(255,255,255,0.10);
-    /* Ancho cuando está visible, pero SIN !important para que pueda ir a 0 al colapsar */
-    width:230px;
   }
 
-  /* Cuando está visible: fijamos ancho */
+  /* Cuando está visible: fijamos ancho 230px */
   [data-testid="stSidebar"][aria-expanded="true"]{
     min-width:230px !important;
     max-width:230px !important;
@@ -262,7 +273,7 @@ st.markdown(
     border-right:none !important;
   }
 
-  /* Menú de secciones: icono + texto, con hover oscuro y activo oscuro */
+  /* Menú de secciones */
   section[data-testid="stSidebar"] .stRadio > div{
     gap:4px !important;
   }
@@ -280,6 +291,7 @@ st.markdown(
     width:100%;
     box-sizing:border-box;
     cursor:pointer;
+    color:#FFFFFF !important;  /* ✅ para que se vea el texto */
   }
 
   section[data-testid="stSidebar"] [data-baseweb="radio"] > div:first-child{
@@ -288,57 +300,46 @@ st.markdown(
 
   section[data-testid="stSidebar"] [data-baseweb="radio"] > div:last-child{
     padding-left:0 !important;
-    font-size:10px !important;
+    font-size:11px !important;
     line-height:1.1 !important;
-    font-weight:500;
+    font-weight:600;
     white-space:nowrap;
+    color:inherit !important; /* ✅ hereda blanco */
   }
 
-  /* Hover: gris oscuro */
+  /* Hover: pastilla azul más clara */
   section[data-testid="stSidebar"] [data-baseweb="radio"]:hover{
-    background:rgba(255,255,255,0.08) !important;
+    background:rgba(255,255,255,0.10) !important;
     color:#FFFFFF !important;
   }
 
-  /* Opción ACTIVA: un poco más marcada */
+  /* Opción ACTIVA */
   section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="true"]{
-    background:rgba(255,255,255,0.12) !important;
+    background:rgba(255,255,255,0.14) !important;
     color:#FFFFFF !important;
     border-radius:10px !important;
     box-shadow:none !important;
-    font-weight:600 !important;
+    font-weight:700 !important;
   }
 
-  /* Opciones INACTIVAS (estado base) */
+  /* Opción INACTIVA */
   section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="false"]{
     background:transparent !important;
-    color:rgba(255,255,255,0.80) !important;
+    color:rgba(255,255,255,0.85) !important; /* blanco suave pero visible */
     border-radius:10px !important;
     box-shadow:none !important;
   }
 
-  /* Iconitos del menú lateral (tipo texto + icono) */
+  /* Iconitos del menú lateral (emoji) */
   section[data-testid="stSidebar"] [data-baseweb="radio"]::before{
     font-size:18px;
     margin-right:10px;
-    color:rgba(255,255,255,0.80);
+    opacity:0.95;
   }
-  section[data-testid="stSidebar"] [data-baseweb="radio"]:hover::before,
-  section[data-testid="stSidebar"] [data-baseweb="radio"][aria-checked="true"]::before{
-    color:#FFFFFF;
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(1)::before{
-    content:"📋";
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(2)::before{
-    content:"🗂️";
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(3)::before{
-    content:"📅";
-  }
-  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(4)::before{
-    content:"📊";
-  }
+  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(1)::before{ content:"📋"; }
+  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(2)::before{ content:"🗂️"; }
+  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(3)::before{ content:"📅"; }
+  section[data-testid="stSidebar"] [data-baseweb="radio"]:nth-child(4)::before{ content:"📊"; }
 
   *::-webkit-scrollbar{
     width:0px;
@@ -385,8 +386,8 @@ st.markdown(
   .eni-quick-card{
     border-radius:12px;
     padding:18px 18px 16px 18px;
-    box-shadow:0 10px 22px rgba(15,23,42,0.10); /* sombra un poco más “dashboard” */
-    border:1px solid rgba(15,23,42,0.08);
+    box-shadow:0 10px 22px rgba(148,163,184,0.30);
+    border:1px solid #E5E7EB;
     background:#FFFFFF;
     display:flex;
     flex-direction:row;
@@ -405,8 +406,6 @@ st.markdown(
   .eni-quick-card-text{
     max-width:100%;
     text-align:left;
-
-    /* ✅ FIX: evita que el texto fuerce el layout */
     min-width:0;
   }
   .eni-quick-card-title{
@@ -422,26 +421,22 @@ st.markdown(
     color:#6B7280;
     margin:0;
     text-align:left;
-    display:-webkit-box;         /* 👉 máximo 3 líneas en el texto */
+    display:-webkit-box;
     -webkit-line-clamp:3;
     -webkit-box-orient:vertical;
     overflow:hidden;
   }
   .eni-quick-card-icon{
     margin-left:12px;
-
-    /* ✅ FIX: el icono no deforma la tarjeta */
     flex:0 0 auto;
     display:flex;
     align-items:center;
     justify-content:center;
     line-height:1;
-
-    /* ✅ FIX: tamaño responsive (NO se sale, mantiene 1 fila de 5) */
     font-size: clamp(22px, 2.4vw, 46px);
   }
   .eni-quick-card-link:hover .eni-quick-card{
-    box-shadow:0 14px 28px rgba(15,23,42,0.16);
+    box-shadow:0 14px 28px rgba(148,163,184,0.45);
     transform:translateY(-2px);
   }
 
@@ -458,11 +453,6 @@ st.markdown(
     margin-top:0.2rem !important;
   }
 
-  /* ================================
-     ✅ RESPONSIVE FIX (laptop / pantallas pequeñas)
-     - Evita que el texto se salga de botones
-     ================================ */
-
   /* Botones: ancho completo + wrap del texto (no se sale) */
   div[data-testid="stButton"] > button{
     width: 100%;
@@ -478,16 +468,9 @@ st.markdown(
 
   /* ✅ Ajuste fino para laptop sin cambiar a 2 filas */
   @media (max-width: 1400px){
-    .eni-quick-card{
-      padding:14px 12px 12px 12px;
-    }
-    .eni-quick-card-icon{
-      font-size: clamp(20px, 2.2vw, 40px);
-      margin-left:10px;
-    }
-    .eni-quick-card-title{
-      white-space: normal; /* deja partir el título si hace falta */
-    }
+    .eni-quick-card{ padding:14px 12px 12px 12px; }
+    .eni-quick-card-icon{ font-size: clamp(20px, 2.2vw, 40px); margin-left:10px; }
+    .eni-quick-card-title{ white-space: normal; }
   }
 
   /* ✅ Banner/hero: que no se rompa en pantallas chicas */
@@ -496,6 +479,10 @@ st.markdown(
     .eni-main-hero-text{ left:18px; top:26px; }
     .eni-main-hero-name{ font-size:22px; }
     .eni-main-hero-img{ right:10px; height:170px; }
+    [data-testid="stSidebar"][aria-expanded="true"]{
+      min-width:200px !important;
+      max-width:200px !important;
+    }
   }
 
   @media (max-width: 650px){
@@ -504,19 +491,10 @@ st.markdown(
     .eni-main-hero-text{ position:relative; left:0; top:0; padding:18px; }
   }
 
-  /* ✅ Sidebar: un poco más angosto en pantallas chicas */
-  @media (max-width: 900px){
-    [data-testid="stSidebar"][aria-expanded="true"]{
-      min-width:200px !important;
-      max-width:200px !important;
-    }
-  }
-
 </style>
 """,
     unsafe_allow_html=True,
 )
-
 
 # ============ AUTENTICACIÓN POR CONTRASEÑA ============
 APP_PASSWORD = "Inei2025$"
