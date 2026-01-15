@@ -564,12 +564,19 @@ st.markdown(
     position:relative;
     overflow:hidden;
   }
+
   .eni-box--big{ min-height: 160px; }
   .eni-box--small{ min-height: 72px; }
 
   .eni-main-hero.eni-main-hero--home{
     height:230px;
     margin:0 !important;
+  }
+
+  /* ✅ Solo la tarjeta inferior derecha morada */
+  .eni-kpi-right .eni-box:last-child{
+    background:#2a2a53 !important;  /* tono morado oscuro del gradiente */
+    border:0 !important;
   }
 
 </style>
