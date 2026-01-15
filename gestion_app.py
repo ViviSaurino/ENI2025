@@ -498,8 +498,8 @@ st.markdown(
      ========================================================= */
   .eni-home-layout{
     display:grid;
-    grid-template-columns: 260px 1fr;  /* ✅ más angosta la izquierda */
-    gap:70px;                           /* ✅ más espacio entre columnas */
+    grid-template-columns: 250px 1fr;  /* ✅ más angosta la izquierda */
+    gap:80px;                           /* ✅ más espacio entre columnas */
     align-items:start;
     margin-top: 50px;
   }
