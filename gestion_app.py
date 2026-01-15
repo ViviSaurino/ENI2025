@@ -526,6 +526,12 @@ st.markdown(
   }
   .eni-quick-grid-wrapper.eni-quick-grid-wrapper--stack{
     margin:0 !important;
+
+    /* ✅ NUEVO: reduce el ancho real de las 5 tarjetas */
+    max-width: 320px;                 /* prueba 300–340 si quieres */
+    width: 100%;
+    margin-left: auto !important;
+    margin-right: auto !important;
   }
   .eni-quick-card{
     height:104px;                     /* ✅ un poquito más compacta */
@@ -1187,7 +1193,7 @@ if section == "Gestión de tareas":
         </div>
         """
 
-        # ===== derecha: nuevos bloques vacíos (amarillos del modelo) =====
+        # ===== derecha: nuevos bloques vacíos (3 tarjetas) =====
         kpi_html = """
         <div class="eni-kpi-grid">
           <div class="eni-box eni-box--big"></div>
@@ -1198,14 +1204,20 @@ if section == "Gestión de tareas":
         </div>
         """
 
-        # ✅ CAMBIO 4 (fix): layout HOME con columnas nativas (evita que Streamlit “rompa” el HTML grid)
-        col_left, col_right = st.columns([0.34, 0.66], gap="large")
+        # ✅ HOME: tarjetas angostas a la izquierda, banner ARRIBA a la derecha, y 3 bloques ABAJO
+        col_left, col_right = st.columns([0.28, 0.72], gap="large")  # ✅ izquierda más angosta
         with col_left:
             st.markdown(left_cards_html, unsafe_allow_html=True)
+
         with col_right:
-            st.markdown(kpi_html, unsafe_allow_html=True)
-            st.markdown("<div style='height:18px;'></div>", unsafe_allow_html=True)
+            # ✅ 1) Banner lila/azul ARRIBA
             st.markdown(hero_html, unsafe_allow_html=True)
+
+            # espacio entre banner y bloques
+            st.markdown("<div style='height:16px;'></div>", unsafe_allow_html=True)
+
+            # ✅ 2) Los 3 bloques nuevos ABAJO
+            st.markdown(kpi_html, unsafe_allow_html=True)
 
 elif section == "Kanban":
     st.title("🗂️ Kanban")
