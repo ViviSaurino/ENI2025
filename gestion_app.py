@@ -498,8 +498,8 @@ st.markdown(
      ========================================================= */
   .eni-home-layout{
     display:grid;
-    grid-template-columns: 300px 1fr;
-    gap:70px;                 /* ✅ MÁS GAP real entre columnas (prueba 60–90) */
+    grid-template-columns: 260px 1fr;  /* ✅ más angosta la izquierda */
+    gap:70px;                           /* ✅ más espacio entre columnas */
     align-items:start;
     margin-top: 50px;
   }
@@ -517,7 +517,7 @@ st.markdown(
   .eni-quick-grid-wrapper.eni-quick-grid-wrapper--stack{
     margin:0 !important;
 
-    max-width: 320px;
+    max-width: 260px;
     width: 100%;
 
     /* ✅ CLAVE: NO centrar (esto agranda el “hueco” visible) */
