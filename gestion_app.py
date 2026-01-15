@@ -512,7 +512,7 @@ st.markdown(
     grid-template-columns: 300px 1fr;
     gap:26px;
     align-items:start;
-    margin-top: 20px;
+    margin-top: 50px;
   }
 
   /* izquierda */
