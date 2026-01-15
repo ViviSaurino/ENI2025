@@ -510,7 +510,7 @@ st.markdown(
   .eni-home-layout{
     display:grid;
     grid-template-columns: 300px 1fr;
-    gap:26px;
+    gap:40px;
     align-items:start;
     margin-top: 50px;
   }
