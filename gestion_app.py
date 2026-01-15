@@ -515,6 +515,20 @@ st.markdown(
     margin-top: 50px;
   }
 
+  /* ✅ NUEVO: AUMENTAR ESPACIO ENTRE COL IZQ Y COL DER (LÍNEA ROJA) */
+  .eni-home-layout{
+    column-gap: 55px !important;     /* 👈 más grande (ajusta si quieres) */
+  }
+  /* ✅ NUEVO: EVITA QUE LA COL IZQ SE "COMA" EL GAP */
+  .eni-home-left{
+    max-width: 300px !important;     /* 👈 amarra el ancho real */
+  }
+  /* ✅ NUEVO: ASEGURA QUE LAS TARJETAS NO DESBORDEN (respetan ancho) */
+  .eni-quick-card{
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
   /* izquierda */
   .eni-home-left{
     width:100%;
