@@ -121,7 +121,7 @@ st.markdown(
     box-shadow: none !important;
     border-radius: 0 !important;
     padding: 0 !important;
-    margin: 11px 0 20px 0 !important;
+    margin: 11px 0 40px 0 !important;
 
     /* ✅ FIX ROBUSTO: el avatar SIEMPRE a la esquina derecha */
     position: relative !important;
@@ -363,7 +363,7 @@ st.markdown(
   }
 
   html body [data-testid="stAppViewContainer"] .main .block-container{
-    padding-top: 18px !important;  /* prueba 12–30px */
+    padding-top: 0px !important;  /* prueba 12–30px */
     margin-top:-1rem !important;   /* vuelve al -1rem */
     background:transparent;
   }
