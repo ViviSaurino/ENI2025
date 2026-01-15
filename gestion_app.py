@@ -498,8 +498,8 @@ st.markdown(
      ========================================================= */
   .eni-home-layout{
     display:grid;
-    grid-template-columns: 250px 1fr;  /* ✅ más angosta la izquierda */
-    gap:80px;                           /* ✅ más espacio entre columnas */
+    grid-template-columns: 260px 1fr;  /* ✅ más angosta la izquierda */
+    gap:70px;                           /* ✅ más espacio entre columnas */
     align-items:start;
     margin-top: 50px;
   }
@@ -537,7 +537,7 @@ st.markdown(
     width:100%;
     display:flex;
     flex-direction:column;
-    gap:18px;
+    gap:25px;
 
     /* ✅ refuerza el espacio aunque el grid “se resista” */
     padding-left: 25px;       /* prueba 0–30 si quieres */
