@@ -155,7 +155,7 @@ st.markdown(
     gap:8px;
     font-size:13px;
     color:#4B5563;
-    position:relative;
+    margin-left:auto !important;   /* ✅ empuja a la derecha */;
   }
   .eni-main-topbar-avatar{
     width:38px;
